@@ -57,7 +57,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 
 .layout {
   display: grid; gap: clamp(20px, 3vw, 40px); padding-block: 28px; align-items: start;
-  grid-template-columns: minmax(0, min(calc(100vh - 210px), 820px)) minmax(0, 1fr);
+  grid-template-columns: minmax(0, min(calc(100vh - 210px), 820px)) minmax(300px, 1fr);
   grid-template-areas: "play panel" "list list";
 }
 .play { grid-area: play; display: grid; gap: 14px; }
@@ -96,11 +96,6 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 }
 .controls button:hover, .ghost:hover { border-color: var(--accent); }
 .controls button:active, .ghost:active { transform: translateY(1px); }
-.mode { display: flex; }
-.controls .mode button { border-radius: 0; }
-.controls .mode button:first-child { border-radius: 8px 0 0 8px; }
-.controls .mode button:last-child { border-radius: 0 8px 8px 0; margin-left: -1px; }
-.controls .mode button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .controls .primary { margin-left: auto; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
 .controls .primary:hover { background: color-mix(in srgb, var(--accent) 88%, var(--ink)); }
 
@@ -249,3 +244,9 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .wdl .l { background: var(--bad); opacity: .75; }
 .wdl-key { margin: 0; display: flex; justify-content: space-between; gap: 6px; font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .wdl-key b { color: var(--good); }
+
+/* Move explanations */
+.why { display: grid; gap: 8px; }
+.why:empty { display: none; }
+.why p { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); font-size: .95rem; }
+.why b { font-family: var(--font-mono); }

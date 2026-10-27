@@ -434,7 +434,71 @@ function say(text, tone = '') {
   msgEl.className = 'message ' + tone;
 }
 
-function render() { renderBoard(); renderMoves(); }
+function render() { renderBoard(); renderMoves(); renderWhy(); }
+
+// ---------- Move explanations ----------
+const PIECE = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
+
+// What a move does, read off the board: development, centre, captures, checks, attacks.
+function idea(before, san) {
+  const g = new Chess();
+  before.forEach((x) => g.move(x));
+  const prev = g.history({ verbose: true }).at(-1);
+  const m = g.move(san);
+  const out = [];
+  if (m.flags.includes('k') || m.flags.includes('q')) out.push('Castles: the king gets to safety and the rook comes into play');
+  else {
+    if (m.captured) out.push(`${prev && prev.to === m.to ? 'Takes back' : 'Takes'} the ${PIECE[m.captured]} on ${m.to}`);
+    if ('nb'.includes(m.piece) && m.from[1] === (m.color === 'w' ? '1' : '8')) out.push(`Develops the ${PIECE[m.piece]}`);
+    if (m.piece === 'p' && !m.captured && 'de'.includes(m.to[0])) out.push('Claims the centre');
+    else if (m.piece === 'p' && !m.captured && 'cf'.includes(m.to[0])) out.push('Fights for the centre from the side');
+    if (m.piece === 'q' && g.history().length < 12) out.push('Brings the queen out early');
+  }
+  if (g.inCheck()) out.push('Gives check');
+  // Pieces the moved piece now hits: look at its moves as if it could move again.
+  const fen = g.fen().split(' ');
+  fen[1] = m.color; fen[3] = '-';
+  try {
+    const hits = new Chess(fen.join(' ')).moves({ square: m.to, verbose: true })
+      // pawns only count in the centre, where hitting them matters early on
+      .filter((x) => x.captured && x.captured !== 'k' && (x.captured !== 'p' || /^[de][45]$/.test(x.to)))
+      .map((x) => `${PIECE[x.captured]} on ${x.to}`);
+    if (hits.length) out.push(`Attacks the ${hits.join(' and the ')}`);
+  } catch {}
+  return out.length ? out.join('. ') + '.' : '';
+}
+console.assert(idea(['e4', 'e5'], 'Nf3') === 'Develops the knight. Attacks the pawn on e5.', 'idea');
+
+// The idea plus what real games say: how often the move is chosen here, and how you do after it.
+function why(before, san) {
+  const yours = (before.length % 2 === 0) === (cur.side === 'w');
+  const mine = ratingsAround(rating);
+  const pick = explore(before, yours ? STRONG[speed] : mine);
+  const chosen = pick.moves.find((x) => x.san === san);
+  const after = explore(before, mine).moves.find((x) => x.san === san);
+  const stat = chosen ? (yours
+    ? ` Players rated ${speed === 'blitz' ? '2200' : '2000'}+ choose it here in ${pct(chosen.n / pick.total)} of games.`
+    : ` At your level, ${pct(chosen.n / pick.total)} of players choose it here.`) : '';
+  const res = after ? ` You win ${pct(cur.side === 'w' ? after.win : 1 - after.win - after.draw)} of games after it.` : '';
+  return (idea(before, san) + stat + res).trim();
+}
+
+function renderWhy() {
+  const el = $('#why');
+  if (!cur || !line.length) return (el.innerHTML = '');
+  const hist = game.history();
+  const label = (n, san) => `${Math.floor(n / 2) + 1}.${n % 2 ? '..' : ''}${san}`;
+  const parts = [];
+  if (hist.length) {
+    const n = hist.length - 1;
+    const who = (n % 2 === 0) === (cur.side === 'w') ? 'You played' : `${n % 2 ? 'Black' : 'White'} played`;
+    parts.push(`<p><b>${who} ${label(n, hist[n])}</b> ${why(hist.slice(0, n).map(clean), clean(hist[n]))}</p>`);
+  }
+  if (mode === 'learn' && userTurn() && inLine()) {
+    parts.push(`<p><b>Your move: ${label(ply, line[ply])}</b> ${why(line.slice(0, ply), line[ply])}</p>`);
+  }
+  el.innerHTML = parts.join('');
+}
 
 // ---------- Game ----------
 function start(op) {
@@ -468,6 +532,7 @@ function play(i) {
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   misses = 0; missesHere = 0; busy = false;
   engineGen++; // ignore a Stockfish reply still on its way from the previous game
+  stopped = false;
   $('#op-var').textContent = `Line ${i + 1} of ${lines.length} · ${l.share < 0.01 ? '<1' : Math.round(l.share * 100)}% of games at ${rating} ± 200${l.name ? ' · ' + l.name : ''}`;
   $('#restart').textContent = 'Restart';
   render();
@@ -475,7 +540,8 @@ function play(i) {
   else { say('Your opponent starts…'); reply(); }
 }
 
-const userTurn = () => line.length > 0 && !game.isGameOver() && game.turn() === cur.side;
+let stopped = false;  // the play-on game was stopped because you fell clearly behind
+const userTurn = () => line.length > 0 && !stopped && !game.isGameOver() && game.turn() === cur.side;
 const inLine = () => ply < line.length;
 
 // ---------- Play on vs Stockfish after the line ----------
@@ -490,17 +556,37 @@ function engineMove() {
   engine ??= new Worker(URL.createObjectURL(new Blob([`importScripts('${ENGINE_SRC}')`], { type: 'text/javascript' })));
   const gen = ++engineGen;
   busy = true;
+  let score = null; // Stockfish's latest evaluation, from its own side
   engine.onmessage = (e) => {
-    if (typeof e.data !== 'string' || !e.data.startsWith('bestmove') || gen !== engineGen) return;
+    if (typeof e.data !== 'string' || gen !== engineGen) return;
+    const sc = e.data.match(/ score (cp|mate) (-?\d+)/);
+    if (sc) score = { [sc[1]]: Number(sc[2]) };
+    if (!e.data.startsWith('bestmove')) return;
     const uci = e.data.split(' ')[1];
     lastMove = game.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
     ply++; busy = false;
     render();
-    if (!gameOver()) say('Your move.');
+    if (gameOver()) return;
+    if (score && (score.mate > 0 || score.cp >= LOST)) return failed(score);
+    say('Your move.');
   };
   engine.postMessage(`setoption name Skill Level value ${skill()}`);
   engine.postMessage(`position fen ${game.fen()}`);
   engine.postMessage('go movetime 600');
+}
+
+// When Stockfish is this far ahead (in centipawns, 100 = a pawn), the game stops and the line fails.
+const LOST = 300;
+
+function failed(score) {
+  stopped = true;
+  misses++; // so Restart replays this line instead of moving on
+  const s = stats[statKey(cur.id)];
+  s.done = s.done.filter((k) => k !== lineKey(line));
+  store(STORE, stats);
+  $('#restart').textContent = 'Restart';
+  const how = 'mate' in score ? `it has mate in ${score.mate}` : `it is ${(score.cp / 100).toFixed(1)} pawns ahead`;
+  say(`Stockfish is clearly winning: ${how}. Game stopped, and this line counts as failed. Press Restart to try again.`, 'bad');
 }
 
 function gameOver() {
@@ -581,7 +667,7 @@ function finish() {
   store(STORE, stats);
   renderList();
   const left = lines.findIndex((l) => !s.done.includes(lineKey(l.moves)));
-  const on = ' Now play on against Stockfish until checkmate.';
+  const on = ' Now play on against Stockfish. Fall 3 pawns behind and the line fails.';
   if (misses) say(`Opening done with ${misses} mistake${misses === 1 ? '' : 's'}; Restart tries this line again.${on}`);
   else if (left === -1) say(`Flawless! Every common line at your level is cleared.${on}`, 'good');
   else {
@@ -664,6 +750,9 @@ function setMode(m) {
   store(STORE + '-mode', m);
   $('#mode-learn').setAttribute('aria-pressed', m === 'learn');
   $('#mode-try').setAttribute('aria-pressed', m === 'try');
+  $('#mode-about').textContent = m === 'learn'
+    ? 'Every move is shown and explained. Nothing is scored.'
+    : 'Find the moves yourself. A line clears when you play it without mistakes.';
   if (lines.length) play(lineIdx);
 }
 $('#mode-learn').addEventListener('click', () => setMode('learn'));
