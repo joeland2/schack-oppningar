@@ -140,6 +140,9 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
   .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "play" "panel" "list"; gap: 20px; padding-block: 16px; }
   .board-frame { padding: 6px; }
   .top { position: static; }
+  /* On a phone the message and the move explanation come first, right under the board. */
+  .panel #message { order: -2; }
+  .panel #why { order: -1; }
 }
 @media (prefers-reduced-motion: reduce) { .board.shake { animation: none; } .fill { transition: none; } }
 
