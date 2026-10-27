@@ -51,7 +51,7 @@ Opening lines are built from what real players at the user's own rating (±200) 
   - Data for 2200+ players is thin deep into lines.
   - Stockfish strength is a rough mapping from rating.
 - Terminology: Learn / Try (practice modes), line (one sequence of moves from the opening's root), cleared (played without mistakes in Try).
-- **Open decision:** the public hosting target (GitHub Pages or another static host) is not chosen yet.
+- Hosted publicly on GitHub Pages from the `main` branch: https://joeland2.github.io/schack-oppningar/. Every push to `main` redeploys it.
 
 ## Brand Commitments
 
