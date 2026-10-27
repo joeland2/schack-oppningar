@@ -20,4 +20,6 @@ Plain HTML, CSS and JavaScript with no build step. Move logic comes from [chess.
 
 Run locally: `npx serve .` and open the address shown.
 
+Before committing a change, run `tools/stamp.sh`: it gives every CSS and JS reference a fresh `?v=` stamp so browsers load the new files instead of cached ones.
+
 The board uses Lichess's default look. Piece images in `pieces/` are the cburnett set by [Colin M.L. Burnett](https://en.wikipedia.org/wiki/User:Cburnett), licensed [GPLv2+](https://www.gnu.org/licenses/gpl-2.0.txt), taken from [lichess-org/lila](https://github.com/lichess-org/lila).
