@@ -321,3 +321,9 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .lb-done { background: var(--good); }
 .lb-played { background: var(--accent); opacity: .45; }
 .why .plan { display: block; margin-top: 6px; color: var(--muted); font-size: .9rem; }
+
+/* Narrow phones: keep all board buttons on one row */
+@media (max-width: 420px) {
+  .controls { gap: 6px; }
+  .controls button { padding: 8px 10px; font-size: .9rem; }
+}
