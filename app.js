@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake } from './board.js?v=20261027201700';
-import { STYLES, STYLE_OF } from './styles.js?v=20261027201700';
+import { drawBoard, enableDrag, shake } from './board.js?v=20261027202635';
+import { STYLES, STYLE_OF } from './styles.js?v=20261027202635';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -713,12 +713,14 @@ function showAnalysis(verdict = '', tone = '') {
 async function enterExplore() {
   busy = false; sel = null; hintSq = []; analysis = null;
   renderBoard();
-  say('Explore: play any move for White or Black. Stockfish rates each one.');
+  say('Explore: play your moves and the opponent answers. Stockfish rates each move.');
   analysis = await analyseHere();
   showAnalysis();
+  if (analysis && game.turn() !== cur.side && !game.isGameOver()) opponentAnswers('');
 }
 
-async function exploreMove(from, to, promotion = 'q', keepRedo = false) {
+// prefix: the verdict on your own move, kept in front when the opponent's automatic answer is rated.
+async function exploreMove(from, to, promotion = 'q', keepRedo = false, prefix = '') {
   let m;
   try { m = game.move({ from, to, promotion }); } catch { return false; }
   if (!m) return false;
@@ -732,8 +734,8 @@ async function exploreMove(from, to, promotion = 'q', keepRedo = false) {
   if (!after) return true;
   busy = false;
   analysis = after;
-  if (game.isCheckmate()) return say(`${m.san} is checkmate. ${sideName(m.color)} wins.`, 'good');
-  if (game.isGameOver()) return say(`${m.san}: the game is drawn.`);
+  if (game.isCheckmate()) return say(`${prefix}${m.san} is checkmate. ${sideName(m.color)} wins.`, 'good');
+  if (game.isGameOver()) return say(`${prefix}${m.san}: the game is drawn.`);
   // How much the move gave away, from the mover's side: their evaluation before minus after.
   const loss = before ? before.cp + after.cp : 0;
   const label = loss <= 20 ? 'excellent' : loss <= 50 ? 'good' : loss <= 100 ? 'an inaccuracy' : loss <= 250 ? 'a mistake' : 'a blunder';
@@ -743,9 +745,29 @@ async function exploreMove(from, to, promotion = 'q', keepRedo = false) {
   const better = before && loss > 50 && before.best.san !== m.san
     ? ` Better was ${before.best.san}.${ideaAt(new Chess(before.fen), before.best.san) ? ' ' + ideaAt(new Chess(before.fen), before.best.san) : ''}` : '';
   const moveIdea = ideaAt(new Chess(before?.fen ?? new Chess().fen()), m.san);
-  showAnalysis(`${m.san} is ${label}${loss > 50 ? `, giving away about ${pawns(loss)} pawns` : ''}.${moveIdea && loss <= 50 ? ' ' + moveIdea : ''}${often}${better}`,
-    loss <= 50 ? 'good' : loss <= 100 ? '' : 'bad');
+  const verdict = `${m.san} is ${label}${loss > 50 ? `, giving away about ${pawns(loss)} pawns` : ''}.${moveIdea && loss <= 50 ? ' ' + moveIdea : ''}${often}${better}`;
+  showAnalysis(prefix + verdict, loss <= 50 ? 'good' : loss <= 100 ? '' : 'bad');
+  // Your move: the opponent answers by itself, as players at your level most often do (Stockfish where
+  // games run out). To try another answer for them, step back and move their piece yourself.
+  if (m.color === cur.side && !keepRedo && !prefix) opponentAnswers(`${verdict} `);
   return true;
+}
+
+async function opponentAnswers(prefix) {
+  const at = game.fen();
+  busy = true;
+  const real = explore(game.history().map(clean), ratingsAround(rating)).moves.filter((x) => x.n >= MIN_GAMES);
+  let san = real[0]?.san;
+  if (!san) {
+    const r = await think(at, { elo: opponentElo() });
+    if (!r || game.fen() !== at) return;
+    san = new Chess(at).move(uciMove(r.uci)).san;
+  }
+  await new Promise((x) => setTimeout(x, 500));
+  if (game.fen() !== at || mode !== 'explore') return;
+  busy = false;
+  const reply = new Chess(at).move(san);
+  exploreMove(reply.from, reply.to, reply.promotion || 'q', false, prefix);
 }
 
 let failedNow = false; // Try: this play-on game already fell clearly behind and failed the line
@@ -1106,7 +1128,7 @@ let redo = [];
 
 async function stepBack() {
   if (!cur || !lines.length || !game.history().length) return;
-  if (mode !== 'explore') { setMode('explore', false); gameGen++; } // the line's pending reply no longer applies
+  if (mode !== 'explore') { setMode('explore', false, false); gameGen++; } // the line's pending reply no longer applies
   else if (busy) return;
   redo.push(game.undo());
   lastMove = game.history({ verbose: true }).at(-1) || null;
@@ -1191,14 +1213,14 @@ $('#weakest').addEventListener('click', () => {
   const score = (o) => { const s = stats[statKey(o.id)]; return s && s.total ? s.done.length / s.total : 0; };
   start([...list].sort((a, b) => score(a) - score(b))[0]);
 });
-function setMode(m, restart = true) {
+function setMode(m, restart = true, remember = true) {
   mode = m;
-  store(STORE + '-mode', m);
+  if (remember) store(STORE + '-mode', m);
   for (const k of ['learn', 'try', 'explore']) $(`#mode-${k}`).setAttribute('aria-pressed', m === k);
   $('#mode-about').textContent = {
     learn: 'Every move is shown and explained. Nothing is scored.',
     try: 'Find the moves yourself. A line clears when you win it, 3 pawns up or mate, without mistakes.',
-    explore: 'Play any move for White or Black. Stockfish rates each move and shows the best one.',
+    explore: 'Play your moves and the opponent answers like players at your level. Stockfish rates every move. To try another answer, step back and move their piece.',
   }[m];
   $('#hint').hidden = $('#show').hidden = m === 'explore';
   if (!lines.length) return;
