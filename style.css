@@ -291,3 +291,18 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
   border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; }
 .search:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ocard h3 .as { display: block; font-size: .72rem; font-weight: 600; color: var(--muted); margin-top: 2px; }
+
+/* White and Black side by side, each on its own colour */
+.cols { display: grid; gap: clamp(14px, 2vw, 24px); grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); align-items: start; }
+.og-w, .og-b { padding: clamp(14px, 2vw, 22px); border-radius: 14px; border: 1px solid var(--line); color: var(--ink); }
+.og-w {
+  --bg: #e9e7e1; --surface: #ffffff; --ink: #1b1d1c; --muted: #5d625f; --line: #d4d1c8; --accent: #1d5a48; --accent-ink: #fff;
+  --good: #1f7a4d; --bad: #b23a2e; background: var(--bg);
+}
+.og-b {
+  --bg: #0b0d0c; --surface: #181b1a; --ink: #eceeed; --muted: #9aa3a0; --line: #2b302e; --accent: #5fb895; --accent-ink: #0d1a15;
+  --good: #5fc48d; --bad: #f07a6c; background: var(--bg);
+}
+.og h2 { display: flex; align-items: center; gap: 8px; color: var(--ink); }
+.og-n { font: 600 .75rem var(--font-mono); padding: 1px 8px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); letter-spacing: 0; }
+.og-w .ocards, .og-b .ocards { grid-template-columns: repeat(auto-fill, minmax(min(170px, 42vw), 1fr)); }

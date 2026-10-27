@@ -260,9 +260,12 @@ function card(o) {
 let query = '';
 
 function renderList() {
+  const whiteAll = OPENINGS.filter((o) => o.side === 'w' && o.share >= MIN_REACH).length;
   const groups = [
-    ['w', 'You play White', 'Best results first (a draw counts as half a win), from real games at your level. Openings reached in under 1% of games are left out.'],
-    ['b', 'You play Black', 'The White openings you meet most often at your level, with how Black does against them. Search to practise your own defences, like the Sicilian.'],
+    ['w', 'You play White', (n) => `Your openings, best results first (a draw counts as half a win). ${style === 'any'
+      ? `All ${n} played in at least 1% of games at your level.`
+      : `${n} of ${whiteAll} are ${STYLES[style].label.toLowerCase()}; change style to see the rest.`}`],
+    ['b', 'You play Black', (n) => `The ${n} White openings you meet most often at your level, and how Black does against them. Your style does not filter these: White picks them. Search for your own defences, like the Sicilian.`],
   ];
   const q = query.trim().toLowerCase();
   const list = q ? OPENINGS.filter((o) => o.family.toLowerCase().includes(q)).sort((a, b) => b.share - a.share) : shown();
@@ -272,10 +275,10 @@ function renderList() {
       ? 'Openings played at your level whose name matches. "as Black" means your own defence; "vs" means a White opening you answer.'
       : `No opening at your level matches "${q.replace(/[<&"]/g, '')}".`}</p>
       <div class="ocards">${list.map((o) => card(o).replace('</h3>', `<small class="as">${isVs(o) ? 'you play Black' : `you play ${sideName(o.side)}`}</small></h3>`)).join('')}</div></section>`
-    : groups.map(([side, label, about]) => {
+    : `<div class="cols">${groups.map(([side, label, about]) => {
       const ops = list.filter((o) => o.side === side);
-      return `<section class="og"><h2>${label}</h2><p class="og-about">${about}</p>${ops.length ? '' : empty}<div class="ocards">${ops.map(card).join('')}</div></section>`;
-    }).join('');
+      return `<section class="og og-${side}"><h2>${label} <span class="og-n">${ops.length}</span></h2><p class="og-about">${about(ops.length)}</p>${ops.length ? '' : empty}<div class="ocards">${ops.map(card).join('')}</div></section>`;
+    }).join('')}</div>`;
   seen.disconnect();
   listEl.querySelectorAll('.ocard').forEach((c) => {
     const op = list.find((o) => o.id === c.dataset.id);
