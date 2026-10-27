@@ -306,3 +306,18 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .og h2 { display: flex; align-items: center; gap: 8px; color: var(--ink); }
 .og-n { font: 600 .75rem var(--font-mono); padding: 1px 8px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); letter-spacing: 0; }
 .og-w .ocards, .og-b .ocards { grid-template-columns: repeat(auto-fill, minmax(min(170px, 38vw), 1fr)); }
+
+/* Current line */
+.line-box { display: grid; gap: 8px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.line-box:empty { display: none; }
+.lb-kicker { margin: 0; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+.lb-name { margin: 0; font-size: 1.15rem; line-height: 1.25; }
+.lb-name small { font: .8rem var(--font-mono); color: var(--muted); }
+.lb-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+.lb-stats div { display: grid; }
+.lb-stats b { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.lb-stats span { font-size: .78rem; color: var(--muted); line-height: 1.3; }
+.lb-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--line); }
+.lb-done { background: var(--good); }
+.lb-played { background: var(--accent); opacity: .45; }
+.why .plan { display: block; margin-top: 6px; color: var(--muted); font-size: .9rem; }

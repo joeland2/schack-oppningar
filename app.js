@@ -499,8 +499,24 @@ function idea(before, san) {
 }
 
 // Same, from a position (a Chess game) rather than a move list. Plays the move on g.
+// A position with the given side to move, so we can ask what that side's pieces reach.
+function asMover(g, color) {
+  const fen = g.fen().split(' ');
+  fen[1] = color; fen[3] = '-';
+  try { return new Chess(fen.join(' ')); } catch { return null; }
+}
+const CENTRE = ['d4', 'd5', 'e4', 'e5'];
+// How many squares a side's bishops and queen reach: rises when a pawn move opens their lines.
+function lineMobility(g, color) {
+  const h = asMover(g, color);
+  if (!h) return 0;
+  return h.moves({ verbose: true }).filter((x) => 'bq'.includes(x.piece)).length;
+}
+
 function ideaAt(g, san) {
   const prev = g.history({ verbose: true }).at(-1);
+  const mobBefore = lineMobility(g, g.turn());
+  const castleBefore = ['f', 'g'].map((f) => g.get(f + (g.turn() === 'w' ? '1' : '8')));
   const m = g.move(san);
   const out = [];
   if (m.flags.includes('k') || m.flags.includes('q')) out.push('Castles: the king gets to safety and the rook comes into play');
@@ -512,19 +528,27 @@ function ideaAt(g, san) {
     if (m.piece === 'q' && g.moveNumber() <= 7) out.push('Brings the queen out early');
   }
   if (g.inCheck()) out.push('Gives check');
-  // Pieces the moved piece now hits: look at its moves as if it could move again.
-  const fen = g.fen().split(' ');
-  fen[1] = m.color; fen[3] = '-';
-  try {
-    const hits = new Chess(fen.join(' ')).moves({ square: m.to, verbose: true })
-      // pawns only count in the centre, where hitting them matters early on
-      .filter((x) => x.captured && x.captured !== 'k' && (x.captured !== 'p' || /^[de][45]$/.test(x.to)))
-      .map((x) => `${PIECE[x.captured]} on ${x.to}`);
-    if (hits.length) out.push(`Attacks the ${hits.join(' and the ')}`);
-  } catch {}
+  // What the moved piece now reaches: look at its moves as if it could move again.
+  const h = asMover(g, m.color);
+  const reach = h ? h.moves({ square: m.to, verbose: true }) : [];
+  // pawns only count in the centre, where hitting them matters early on
+  const hits = reach.filter((x) => x.captured && x.captured !== 'k' && (x.captured !== 'p' || CENTRE.includes(x.to)))
+    .map((x) => `${PIECE[x.captured]} on ${x.to}`);
+  if (hits.length) out.push(`Attacks the ${hits.join(' and the ')}`);
+  // Centre squares it now covers (a pawn covers the squares diagonally ahead of it).
+  const fwd = m.color === 'w' ? 1 : -1;
+  const covers = m.piece === 'p'
+    ? [-1, 1].map((d) => String.fromCharCode(m.to.charCodeAt(0) + d) + (Number(m.to[1]) + fwd))
+    : reach.filter((x) => !x.captured).map((x) => x.to);
+  const centre = CENTRE.filter((sq) => covers.includes(sq) && !g.get(sq));
+  if (centre.length && m.piece !== 'k') out.push(`Controls ${centre.join(' and ')} in the centre`);
+  if (m.piece === 'p' && lineMobility(g, m.color) - mobBefore >= 3) out.push('Opens lines for the bishop and queen');
+  const rank = m.color === 'w' ? '1' : '8';
+  const castleNow = ['f', 'g'].map((f) => g.get(f + rank));
+  if (g.getCastlingRights?.(m.color)?.k && castleBefore.some(Boolean) && !castleNow.some(Boolean)) out.push('Clears the way to castle');
   return out.length ? out.join('. ') + '.' : '';
 }
-console.assert(idea(['e4', 'e5'], 'Nf3') === 'Develops the knight. Attacks the pawn on e5.', 'idea');
+console.assert(idea(['e4', 'e5'], 'Nf3').startsWith('Develops the knight. Attacks the pawn on e5.'), 'idea');
 
 // The idea plus what real games say: how often the move is chosen here, and how you do after it.
 function why(before, san) {
@@ -541,6 +565,47 @@ function why(before, san) {
   return (idea(before, san) + stat + res).trim();
 }
 
+// Stockfish on the line's move: is it the engine's choice, and what is the plan after it?
+const plans = new Map(); // fen + move → promise of the text, so a position is only analysed once
+const evalFor = (cp, white) => `${(white ? cp : -cp) >= 0 ? '+' : '−'}${pawns(Math.abs(cp))} for White`;
+
+function pvText(fen, pv, n = 5) {
+  const g = new Chess(fen);
+  const out = [];
+  for (const u of pv.slice(0, n)) {
+    const label = g.turn() === 'w' ? `${g.moveNumber()}.` : out.length ? '' : `${g.moveNumber()}...`;
+    try { out.push(label + g.move(uciMove(u)).san); } catch { break; }
+  }
+  return out.join(' ');
+}
+
+function planFor(fen, san) {
+  const key = `${fen}|${san}`;
+  if (!plans.has(key)) plans.set(key, makePlan(fen, san).then((t) => { if (!t) plans.delete(key); return t; }));
+  return plans.get(key);
+}
+
+async function makePlan(fen, san) {
+  const want = new Chess(fen).move(san);
+  const uci = want.from + want.to + (want.promotion || '');
+  const white = new Chess(fen).turn() === 'w';
+  const best = await think(fen, { ms: 700 });
+  if (!best) return null;
+  let text;
+  if (best.uci === uci) {
+    text = `Stockfish's top choice here (${evalFor(toCp(best.score), white)}). The plan: ${pvText(fen, best.pv)}.`;
+  } else {
+    const alt = await think(fen, { ms: 500, only: uci });
+    if (!alt) return null;
+    const diff = toCp(best.score) - toCp(alt.score);
+    const bestSan = new Chess(fen).move(uciMove(best.uci)).san;
+    text = diff <= 30
+      ? `About as good as Stockfish's top choice ${bestSan} (${evalFor(toCp(alt.score), white)}). The plan: ${pvText(fen, alt.pv)}.`
+      : `Stockfish slightly prefers ${bestSan} (by ${pawns(diff)} pawns), but this is the move strong players choose most here. The plan: ${pvText(fen, alt.pv)}.`;
+  }
+  return text;
+}
+
 function renderWhy() {
   const el = $('#why');
   if (!cur || !line.length || mode === 'explore') return (el.innerHTML = ''); // Explore explains in the message
@@ -553,9 +618,12 @@ function renderWhy() {
     parts.push(`<p><b>${who} ${label(n, hist[n])}</b> ${why(hist.slice(0, n).map(clean), clean(hist[n]))}</p>`);
   }
   if (mode === 'learn' && userTurn() && inLine()) {
-    parts.push(`<p><b>Your move: ${label(ply, line[ply])}</b> ${why(line.slice(0, ply), line[ply])}</p>`);
+    parts.push(`<p><b>Your move: ${label(ply, line[ply])}</b> ${why(line.slice(0, ply), line[ply])}<span class="plan" id="plan">Stockfish is looking…</span></p>`);
   }
   el.innerHTML = parts.join('');
+  if (!$('#plan')) return;
+  const at = game.fen(), san = line[ply];
+  planFor(at, san).then((t) => { if (t && game.fen() === at && $('#plan')) $('#plan').textContent = t; });
 }
 
 // ---------- Game ----------
@@ -567,7 +635,6 @@ function start(op) {
   $('#op-title').textContent = (isVs(op) ? 'vs ' : '') + op.name;
   $('#op-eco').textContent = op.eco;
   $('#op-info').textContent = `Starts ${numbered(op.root)}. ${isVs(op) ? 'You meet it' : 'Played'} in ${pctOf(op.share)} of ${speed} games at your level; ${sideName(op.side)} wins ${pct(op.side === 'w' ? op.win : 1 - op.win - op.draw)}.`;
-  $('#op-var').textContent = '';
   $('#op-side').textContent = op.side === 'w' ? 'You play White' : 'You play Black';
   $('#restart').textContent = 'Restart';
   $('#picker').hidden = true;
@@ -576,7 +643,8 @@ function start(op) {
   if (!rating) return say(`Enter your Lichess ${speed} rating at the top.`);
   lines = buildLines(op);
   if (!lines.length) return say('Not enough games at your rating for this opening.', 'bad');
-  const s = stats[statKey(op.id)] = { done: [], ...stats[statKey(op.id)], total: lines.length };
+  const s = stats[statKey(op.id)] = { done: [], played: [], ...stats[statKey(op.id)], total: lines.length };
+  s.played ??= [];
   store(STORE, stats);
   const next = lines.findIndex((l) => !s.done.includes(lineKey(l.moves)));
   play(next === -1 ? 0 : next);
@@ -594,10 +662,10 @@ function play(i) {
   won = false;
   redo = [];
   lastEval = null;
-  $('#op-var').textContent = `Line ${i + 1} of ${lines.length} · ${l.share < 0.01 ? '<1' : Math.round(l.share * 100)}% of games at ${rating} ± 200${l.name ? ' · ' + l.name : ''}`;
   $('#restart').textContent = 'Restart';
   render();
   renderLines();
+  renderLineBox();
   if (mode === 'explore') return enterExplore();
   if (userTurn()) prompt('Your move. Play the first move.');
   else { say('Your opponent starts…'); reply(); }
@@ -692,26 +760,31 @@ const sideName = (c) => (c === 'w' ? 'White' : 'Black');
 
 // One Stockfish search, at full strength unless elo is given. Resolves { uci, score } (score from the side
 // to move), or null if something newer (another search, a restart, leaving the board) came first.
-function think(fen, { ms = 600, elo = null } = {}) {
+function think(fen, { ms = 600, elo = null, only = null } = {}) {
   engine ??= new Worker(ENGINE_SRC);
   const gen = ++engineGen;
   if (searching) { engine.postMessage('stop'); skipBest++; }
   searching = true;
   return new Promise((resolve) => {
-    let score = null;
+    let score = null, pv = [];
     engine.onmessage = (e) => {
       if (typeof e.data !== 'string') return;
       if (e.data.startsWith('bestmove') && skipBest) { skipBest--; return; }
       const sc = e.data.match(/ score (cp|mate) (-?\d+)/);
-      if (sc) score = { [sc[1]]: Number(sc[2]) };
+      // Bound lines are provisional and carry a cut-short line, so they do not replace the last full one.
+      if (sc && !/ (lower|upper)bound/.test(e.data)) {
+        score = { [sc[1]]: Number(sc[2]) };
+        const line = (e.data.match(/ pv (.+)$/)?.[1] || '').split(' ');
+        if (line.length >= pv.length || line[0] !== pv[0]) pv = line;
+      }
       if (!e.data.startsWith('bestmove')) return;
       searching = false;
-      resolve(gen === engineGen ? { uci: e.data.split(' ')[1], score } : null);
+      resolve(gen === engineGen ? { uci: e.data.split(' ')[1], score, pv } : null);
     };
     engine.postMessage(`setoption name UCI_LimitStrength value ${!!elo}`);
     if (elo) engine.postMessage(`setoption name UCI_Elo value ${elo}`);
     engine.postMessage(`position fen ${fen}`);
-    engine.postMessage(`go movetime ${ms}`);
+    engine.postMessage(`go movetime ${ms}${only ? ` searchmoves ${only}` : ''}`);
   });
 }
 
@@ -835,6 +908,7 @@ function wonLine() {
   if (mode === 'try' && misses === 0 && !s.done.includes(lineKey(line))) s.done.push(lineKey(line));
   store(STORE, stats);
   renderLines();
+  renderLineBox();
   if (!wasComplete && cleared() === lines.length) showComplete();
   const left = lines.findIndex((l) => !s.done.includes(lineKey(l.moves)));
   $('#restart').textContent = mode === 'try' && misses ? 'Restart' : 'Next line';
@@ -850,6 +924,27 @@ const cleared = () => lines.filter((l) => stats[statKey(cur.id)]?.done.includes(
 const lineName = (l) => (l.name ? l.name.split(' · ').at(-1).split(': ').at(-1) : 'Unnamed line');
 // The line's last two moves with their real move numbers, e.g. "5.O-O d6", so same-named lines can be told apart.
 const lineEnd = (l) => numbered(lineKey(l.moves)).split(' ').slice(l.moves.length % 2 ? -1 : -2).join(' ');
+
+// Which line this is, how far through the opening you are, and how likely the line is to come up.
+function renderLineBox() {
+  const l = lines[lineIdx];
+  if (!l) return ($('#line-box').innerHTML = '');
+  const s = stats[statKey(cur.id)] || {};
+  const n = lines.length;
+  const played = lines.filter((x) => s.played?.includes(lineKey(x.moves))).length;
+  const done = cleared();
+  const oneIn = Math.max(1, Math.round(1 / (cur.share * l.share)));
+  $('#line-box').innerHTML = `
+    <p class="lb-kicker">Line ${lineIdx + 1} of ${n}</p>
+    <h2 class="lb-name">${lineName(l)} <small>${lineEnd(l)}</small></h2>
+    <div class="lb-stats">
+      <div><b>${pctOf(l.share)}</b><span>of games in this opening go this way</span></div>
+      <div><b>1 in ${oneIn.toLocaleString('en')}</b><span>of all your ${speed} games reach it</span></div>
+      <div><b>${played}/${n}</b><span>lines played through</span></div>
+      <div><b>${done}/${n}</b><span>lines cleared</span></div>
+    </div>
+    <div class="lb-bar" aria-hidden="true"><span class="lb-done" style="width:${(done / n) * 100}%"></span><span class="lb-played" style="width:${(Math.max(0, played - done) / n) * 100}%"></span></div>`;
+}
 
 function renderLines() {
   const done = stats[statKey(cur.id)]?.done || [];
@@ -934,6 +1029,9 @@ function showHint() {
 }
 
 function finish() {
+  const s = stats[statKey(cur.id)];
+  if (!s.played.includes(lineKey(line))) { s.played.push(lineKey(line)); store(STORE, stats); }
+  renderLineBox();
   if (gameOver()) return;
   if (mode === 'learn') {
     $('#restart').textContent = 'Next line';
