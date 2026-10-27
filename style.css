@@ -327,3 +327,4 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
   .controls { gap: 6px; }
   .controls button { padding: 8px 10px; font-size: .9rem; }
 }
+.lb-note { margin: 0; font-size: .78rem; color: var(--muted); }

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261027180142">
+  <link rel="stylesheet" href="style.css?v=20261027195522">
 </head>
 <body>
   <header class="top">
@@ -114,6 +114,10 @@
         <p id="op-info" class="info"></p>
       </div>
       <div id="line-box" class="line-box"></div>
+      <details class="lines" open>
+        <summary id="lines-sum"></summary>
+        <ol id="lines-list"></ol>
+      </details>
       <p id="message" class="message" aria-live="polite"></p>
       <div id="why" class="why"></div>
       <div class="progress">
@@ -121,16 +125,12 @@
         <span id="progress"></span>
       </div>
       <ol id="moves" class="moves"></ol>
-      <details class="lines" open>
-        <summary id="lines-sum"></summary>
-        <ol id="lines-list"></ol>
-      </details>
     </aside>
   </main>
 
   <footer class="wrap foot">Click a piece, then the square to move it to. Your opponent plays the replies real Lichess players within 200 of your rating choose in your time control, most common first. Style tags are our own judgement; popularity comes from real games. Learn shows every move; Try tests you, and a line clears when you play it without mistakes.</footer>
 
-  <script type="module" src="app.js?v=20261027180142"></script>
+  <script type="module" src="app.js?v=20261027195522"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <p class="complete-kicker">Opening complete</p>
     <h2 id="complete-title"></h2>

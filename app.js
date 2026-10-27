@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake } from './board.js?v=20261027180142';
-import { STYLES, STYLE_OF } from './styles.js?v=20261027180142';
+import { drawBoard, enableDrag, shake } from './board.js?v=20261027195522';
+import { STYLES, STYLE_OF } from './styles.js?v=20261027195522';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -599,6 +599,7 @@ async function makePlan(fen, san) {
   if (best.uci === uci) {
     text = `Stockfish's top choice here (${evalFor(toCp(best.score), white)}). The plan: ${pvText(fen, best.pv)}.`;
   } else {
+    if (game.fen() !== fen) return null; // you have moved on; a second search would only get in the way
     const alt = await think(fen, { ms: 500, only: uci });
     if (!alt) return null;
     const diff = toCp(best.score) - toCp(alt.score);
@@ -661,7 +662,7 @@ function play(i) {
   game = new Chess();
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   misses = 0; missesHere = 0; busy = false;
-  engineGen++; // ignore a Stockfish reply still on its way from the previous game
+  engineGen++; gameGen++; // ignore a Stockfish search or opponent reply still on its way from the previous game
   failedNow = false;
   won = false;
   redo = [];
@@ -739,22 +740,23 @@ async function exploreMove(from, to, promotion = 'q', keepRedo = false) {
 }
 
 let failedNow = false; // Try: this play-on game already fell clearly behind and failed the line
-let won = false;       // you checkmated Stockfish in this game
+let won = false;       // you won this game: checkmate or a clear advantage
 let lastEval = null;    // Stockfish's evaluation after its last move, from its side, in centipawns
-const userTurn = () => line.length > 0 && !game.isGameOver() && game.turn() === cur.side;
+const userTurn = () => line.length > 0 && !won && !game.isGameOver() && game.turn() === cur.side;
 const inLine = () => ply < line.length;
 
 // ---------- Stockfish ----------
 // Stockfish 18 lite (WebAssembly, single-threaded) from github.com/nmrugg/stockfish.js, GPLv3, in engine/.
 const ENGINE_SRC = 'engine/stockfish-18-lite-single.js';
 let engine = null;
-let engineGen = 0;
-let searching = false;
-let skipBest = 0;      // bestmoves still owed by searches that were stopped early
+let engineGen = 0;     // bumped by every search, so only the newest one is answered
+let gameGen = 0;       // bumped when the game is reset or left; a pending opponent reply checks it
+let pending = null;    // resolve() of the search in progress, so a newer search can close it
+let owed = 0;          // searches started whose bestmove has not arrived yet
 // The opponent plays at your rating; Stockfish's lowest setting is 1320, so below that it is a little stronger.
 const opponentElo = () => Math.max(1320, Math.min(3190, rating));
 // When Stockfish is this far ahead (in centipawns, 100 = a pawn), a Try line fails; you still play on to mate.
-const LOST = 300;
+const LOST = 300; // and when you are this far ahead, the line is won
 // A move of yours that gives away this much is taken back, and you get help to find a better one.
 const BLUNDER = 150;
 const toCp = (s) => ('mate' in s ? Math.sign(s.mate || 1) * 10000 : s.cp);
@@ -764,16 +766,32 @@ const sideName = (c) => (c === 'w' ? 'White' : 'Black');
 
 // One Stockfish search, at full strength unless elo is given. Resolves { uci, score } (score from the side
 // to move), or null if something newer (another search, a restart, leaving the board) came first.
+// Stockfish answers every "go" with exactly one bestmove, even when it is stopped early, and a stopped
+// search can still answer after a newer one was sent. So each search skips the answers still owed to
+// the searches before it, and ignores their info lines too.
 function think(fen, { ms = 600, elo = null, only = null } = {}) {
-  engine ??= new Worker(ENGINE_SRC);
+  if (!engine) {
+    engine = new Worker(ENGINE_SRC);
+    // If the engine ever crashes, start a fresh one on the next search.
+    engine.addEventListener('error', () => { engine = null; owed = 0; pending?.(null); pending = null; });
+  }
   const gen = ++engineGen;
-  if (searching) { engine.postMessage('stop'); skipBest++; }
-  searching = true;
+  pending?.(null); // the search this one replaces will never be answered
+  let skip = owed;
+  owed++;
   return new Promise((resolve) => {
+    pending = resolve;
     let score = null, pv = [];
     engine.onmessage = (e) => {
       if (typeof e.data !== 'string') return;
-      if (e.data.startsWith('bestmove') && skipBest) { skipBest--; return; }
+      if (e.data.startsWith('bestmove')) {
+        owed--;
+        if (skip > 0) { if (--skip === 0) go(); return; }
+        pending = null;
+        resolve(gen === engineGen ? { uci: e.data.split(' ')[1], score, pv } : null);
+        return;
+      }
+      if (skip > 0) return; // still an older search talking
       const sc = e.data.match(/ score (cp|mate) (-?\d+)/);
       // Bound lines are provisional and carry a cut-short line, so they do not replace the last full one.
       if (sc && !/ (lower|upper)bound/.test(e.data)) {
@@ -781,14 +799,16 @@ function think(fen, { ms = 600, elo = null, only = null } = {}) {
         const line = (e.data.match(/ pv (.+)$/)?.[1] || '').split(' ');
         if (line.length >= pv.length || line[0] !== pv[0]) pv = line;
       }
-      if (!e.data.startsWith('bestmove')) return;
-      searching = false;
-      resolve(gen === engineGen ? { uci: e.data.split(' ')[1], score, pv } : null);
     };
-    engine.postMessage(`setoption name UCI_LimitStrength value ${!!elo}`);
-    if (elo) engine.postMessage(`setoption name UCI_Elo value ${elo}`);
-    engine.postMessage(`position fen ${fen}`);
-    engine.postMessage(`go movetime ${ms}${only ? ` searchmoves ${only}` : ''}`);
+    // Options must not change while a search runs (the WebAssembly engine crashes), so a new search
+    // starts only once every older one has answered.
+    const go = () => {
+      engine.postMessage(`setoption name UCI_LimitStrength value ${!!elo}`);
+      if (elo) engine.postMessage(`setoption name UCI_Elo value ${elo}`);
+      engine.postMessage(`position fen ${fen}`);
+      engine.postMessage(`go movetime ${ms}${only ? ` searchmoves ${only}` : ''}`);
+    };
+    if (skip) engine.postMessage('stop'); else go();
   });
 }
 
@@ -804,12 +824,14 @@ async function engineMove() {
   ply++; busy = false; hintSq = [];
   render();
   if (gameOver()) return;
+  // Stockfish's score is from its own side, so a big minus is a big plus for you.
+  if (r.score && (r.score.mate < 0 || r.score.cp <= -LOST)) return wonLine(r.score);
   if (mode === 'try' && !failedNow && r.score && (r.score.mate > 0 || r.score.cp >= LOST)) return failLine(r.score);
   say('Your move.');
   suggest();
 }
 
-// Learn, after the line: show Stockfish's best move for you, all the way to checkmate.
+// Learn, after the line: show Stockfish's best move for you until you are clearly winning.
 // Show move does the same in Try (and counts as a mistake).
 async function suggest(asked = false) {
   if ((mode !== 'learn' && !asked) || !userTurn() || inLine()) return;
@@ -852,7 +874,7 @@ async function takeBack(loss, refutation) {
   renderBoard();
 }
 
-// Try: Stockfish is clearly winning, so the line fails. The game goes on to checkmate.
+// Try: Stockfish is clearly winning, so the line fails. You may play on.
 function failLine(score) {
   failedNow = true;
   misses++; // so Restart replays this line instead of moving on
@@ -861,7 +883,7 @@ function failLine(score) {
   store(STORE, stats);
   $('#restart').textContent = 'Restart';
   const how = 'mate' in score ? `has mate in ${score.mate}` : `is ${pawns(score.cp)} pawns ahead`;
-  say(`Stockfish ${how}, so this line counts as failed. Play on to checkmate, or press Restart to try the line again.`, 'bad');
+  say(`Stockfish ${how}, so this line counts as failed. Play on, or press Restart to try the line again.`, 'bad');
 }
 
 // A move that is not the line's: say whether strong players play it too, and what Stockfish answers.
@@ -904,9 +926,12 @@ function gameOver() {
   return true;
 }
 
-// You checkmated Stockfish. In Try the line is cleared if you made no mistakes on the way.
-function wonLine() {
+// You won the line: checkmate, or (score given) Stockfish says you are clearly ahead.
+function wonLine(score = null) {
   won = true;
+  const how = !score ? 'Checkmate!' : 'mate' in score
+    ? `You have mate in ${-score.mate}: that is a win.`
+    : `You are ${pawns(-score.cp)} pawns ahead: a clear win.`;
   const s = stats[statKey(cur.id)];
   const wasComplete = cleared() === lines.length;
   if (mode === 'try' && misses === 0 && !s.done.includes(lineKey(line))) s.done.push(lineKey(line));
@@ -916,10 +941,10 @@ function wonLine() {
   if (!wasComplete && cleared() === lines.length) showComplete();
   const left = lines.findIndex((l) => !s.done.includes(lineKey(l.moves)));
   $('#restart').textContent = mode === 'try' && misses ? 'Restart' : 'Next line';
-  if (mode === 'learn') return say('Checkmate! Press Next line for the next most common line, or switch to Try.', 'good');
-  if (misses) return say(`Checkmate! But with ${misses} mistake${misses === 1 ? '' : 's'} the line is not cleared yet. Press Restart to try again.`, 'good');
-  say(left === -1 ? 'Checkmate! Every common line at your level is cleared.'
-    : `Checkmate! Line cleared: ${cleared()} of ${lines.length}. Press Next line for the next most common one.`, 'good');
+  if (mode === 'learn') return say(`${how} Press Next line for the next most common line, or switch to Try.`, 'good');
+  if (misses) return say(`${how} But with ${misses} mistake${misses === 1 ? '' : 's'} the line is not cleared yet. Press Restart to try again.`, 'good');
+  say(left === -1 ? `${how} Every common line at your level is cleared.`
+    : `${how} Line cleared: ${cleared()} of ${lines.length}. Press Next line for the next most common one.`, 'good');
 }
 
 // ---------- Lines overview and the "opening complete" approval ----------
@@ -947,7 +972,8 @@ function renderLineBox() {
       <div><b>${played}/${n}</b><span>lines played through</span></div>
       <div><b>${done}/${n}</b><span>lines cleared</span></div>
     </div>
-    <div class="lb-bar" aria-hidden="true"><span class="lb-done" style="width:${(done / n) * 100}%"></span><span class="lb-played" style="width:${(Math.max(0, played - done) / n) * 100}%"></span></div>`;
+    <div class="lb-bar" aria-hidden="true"><span class="lb-done" style="width:${(done / n) * 100}%"></span><span class="lb-played" style="width:${(Math.max(0, played - done) / n) * 100}%"></span></div>
+    <p class="lb-note">Progress is saved in this browser. Pick any line in the list below.</p>`;
 }
 
 function renderLines() {
@@ -965,7 +991,7 @@ $('#lines-list').addEventListener('click', (e) => {
 
 function showComplete() {
   $('#complete-title').textContent = (isVs(cur) ? 'vs ' : '') + cur.name;
-  $('#complete-text').textContent = `You cleared all ${lines.length} lines: every common reply at ${rating} ± 200 in ${speed}, each played to checkmate without a mistake.`;
+  $('#complete-text').textContent = `You cleared all ${lines.length} lines: every common reply at ${rating} ± 200 in ${speed}, each played to a clear win without a mistake.`;
   $('#complete').showModal();
 }
 $('#complete-more').addEventListener('click', () => { $('#complete').close(); play((lineIdx + 1) % lines.length); });
@@ -973,9 +999,10 @@ $('#complete-back').addEventListener('click', () => { $('#complete').close(); sh
 
 function reply() {
   busy = true;
-  const gen = engineGen; // play() bumps it, so a reply meant for an earlier game is dropped
+  // Background Stockfish searches must not cancel this, so it checks the game counter, not the engine's.
+  const gen = gameGen;
   setTimeout(() => {
-    if (gen !== engineGen) return;
+    if (gen !== gameGen) return;
     const m = game.move(line[ply]);
     lastMove = m; ply++; busy = false; hintSq = [];
     render();
@@ -1039,10 +1066,10 @@ function finish() {
   if (gameOver()) return;
   if (mode === 'learn') {
     $('#restart').textContent = 'Next line';
-    say('Opening done. Keep following the moves to checkmate.', 'good');
+    say('Opening done. Keep following the moves until you are clearly winning.', 'good');
   }
-  else if (misses) say(`Opening done with ${misses} mistake${misses === 1 ? '' : 's'}. Play on to checkmate, or press Restart to try again.`);
-  else say('Opening played without mistakes. Now checkmate Stockfish to clear the line. Fall 3 pawns behind and it fails.', 'good');
+  else if (misses) say(`Opening done with ${misses} mistake${misses === 1 ? '' : 's'}. Play on, or press Restart to try again.`);
+  else say('Opening played without mistakes. Now get 3 pawns ahead (or mate) to clear the line. Fall 3 pawns behind and it fails.', 'good');
   if (game.turn() !== cur.side) engineMove(); else suggest();
 }
 
@@ -1071,7 +1098,7 @@ let redo = [];
 
 async function stepBack() {
   if (!cur || !lines.length || !game.history().length) return;
-  if (mode !== 'explore') setMode('explore', false);
+  if (mode !== 'explore') { setMode('explore', false); gameGen++; } // the line's pending reply no longer applies
   else if (busy) return;
   redo.push(game.undo());
   lastMove = game.history({ verbose: true }).at(-1) || null;
@@ -1114,7 +1141,7 @@ $('#show').addEventListener('click', () => {
 });
 // Opening picker, shown before the board.
 async function showPicker() {
-  cur = null; engineGen++; // stops a Stockfish reply that is still on its way
+  cur = null; engineGen++; gameGen++; // stops a Stockfish search or opponent reply that is still on its way
   $('#trainer').hidden = true;
   $('#picker').hidden = false;
   listEl.innerHTML = '';
@@ -1162,7 +1189,7 @@ function setMode(m, restart = true) {
   for (const k of ['learn', 'try', 'explore']) $(`#mode-${k}`).setAttribute('aria-pressed', m === k);
   $('#mode-about').textContent = {
     learn: 'Every move is shown and explained. Nothing is scored.',
-    try: 'Find the moves yourself. A line clears when you checkmate without mistakes.',
+    try: 'Find the moves yourself. A line clears when you win it, 3 pawns up or mate, without mistakes.',
     explore: 'Play any move for White or Black. Stockfish rates each move and shows the best one.',
   }[m];
   $('#hint').hidden = $('#show').hidden = m === 'explore';
