@@ -394,7 +394,7 @@ function renderMine({ counted, slips, openings }, name) {
     const g = new Chess();
     s.before.forEach((m) => g.move(m));
     const best = new Chess(g.fen()).move(s.best);
-    drawBoard(out.querySelector(`[data-slip="${n}"]`), g, { side: s.side, last: g.history({ verbose: true }).at(-1), hint: [best.from, best.to] });
+    drawBoard(out.querySelector(`[data-slip="${n}"]`), g, { side: s.side, last: g.history({ verbose: true }).at(-1), arrow: [best.from, best.to] });
   });
   out.querySelectorAll('[data-practise]').forEach((b) => b.addEventListener('click', () => {
     const s = slips[Number(b.dataset.practise)];
@@ -422,7 +422,7 @@ $('#mine-name').value = load(STORE + '-lichess-name', '');
 
 // ---------- Board ----------
 function renderBoard() {
-  drawBoard(boardEl, game, { side: cur.side, sel, last: lastMove, hint: hintSq, wrong: wrongSq });
+  drawBoard(boardEl, game, { side: cur.side, sel, last: lastMove, hint: hintSq, wrong: wrongSq, arrow: hintSq.length === 2 ? hintSq : null });
 }
 
 function renderMoves() {

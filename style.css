@@ -69,7 +69,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 
 /* Board */
 .board-frame { padding: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
-.board { display: grid; grid-template-columns: repeat(8, 1fr); aspect-ratio: 1; max-width: 100%; user-select: none; border-radius: 4px; overflow: hidden; }
+.board { position: relative; display: grid; grid-template-columns: repeat(8, 1fr); aspect-ratio: 1; max-width: 100%; user-select: none; border-radius: 4px; overflow: hidden; }
 .board.shake { animation: shake .3s; }
 @keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 .sq { position: relative; border: 0; padding: 0; display: grid; place-items: center; cursor: pointer; aspect-ratio: 1; }
@@ -250,3 +250,8 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .why:empty { display: none; }
 .why p { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); font-size: .95rem; }
 .why b { font-family: var(--font-mono); }
+
+/* Move arrow, Lichess green */
+.arrow { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; opacity: .85; }
+.arrow line { stroke: #15781b; stroke-width: .17; stroke-linecap: round; }
+.arrow polygon { fill: #15781b; }

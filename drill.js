@@ -13,7 +13,7 @@ export function drill(items, storeKey) {
   try { solved = new Set(JSON.parse(localStorage.getItem(storeKey)) || []); } catch {}
   let idx = 0, cur, game, step, sel, last, hint, wrong, busy;
 
-  const draw = () => drawBoard(boardEl, game, { side: cur.side, sel, last, hint, wrong });
+  const draw = () => drawBoard(boardEl, game, { side: cur.side, sel, last, hint, wrong, arrow: hint.length === 2 ? hint : null });
   const expected = () => new Chess(game.fen()).move(cur.solution[step]);
   const finished = () => step >= cur.solution.length;
 
