@@ -321,7 +321,11 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .lb-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--line); }
 .lb-done { background: var(--good); }
 .lb-played { background: var(--accent); opacity: .45; }
-.why .plan { display: block; margin-top: 6px; color: var(--muted); font-size: .9rem; }
+.why .reps { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px; font-size: .9rem; color: var(--muted); }
+.why .rep { padding: 1px 7px; border-radius: 999px; background: var(--line); white-space: nowrap; }
+.why .rep b { color: var(--ink); }
+.why .rep.now { background: var(--accent); color: var(--accent-ink); }
+.why .rep.now b { color: var(--accent-ink); }
 
 /* Narrow phones: keep all board buttons on one row */
 @media (max-width: 420px) {
@@ -394,17 +398,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .captured b { margin-left: 12px; font: 600 .85rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* Evaluation bar, upright beside the board like on Lichess: White's share fills from White's side */
-.board-row { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; }
-.evalbar { position: relative; border-radius: 6px; overflow: hidden; background: #2a2724; border: 1px solid var(--line); }
-.evalbar-white { position: absolute; left: 0; right: 0; bottom: 0; height: 50%; background: #f2efe8; transition: height .3s ease-out; }
-.evalbar.flip .evalbar-white { bottom: auto; top: 0; }
-.evalbar-num { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font: 700 .58rem var(--font-mono); letter-spacing: -0.04em;
-  color: #1b1d1c; font-variant-numeric: tabular-nums; }
-.evalbar.flip .evalbar-num { bottom: auto; top: 6px; }
-.evalbar.behind .evalbar-num { color: #f2efe8; }
-.evalbar.stale { opacity: .45; }
-@media (prefers-reduced-motion: reduce) { .evalbar-white { transition: none; } }
-/* Black taken pieces need a light edge to show on the dark page */
+.board-row { display: grid; }
+@media (prefers-reduced-motion: reduce) { /* Black taken pieces need a light edge to show on the dark page */
 .captured img[src*="/bP"], .captured img[src*="/bN"], .captured img[src*="/bB"], .captured img[src*="/bR"], .captured img[src*="/bQ"] {
   filter: drop-shadow(0 0 1px rgb(255 255 255 / .75)) drop-shadow(0 0 1px rgb(255 255 255 / .5));
 }

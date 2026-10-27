@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake, moveWords, instruction } from './board.js?v=20261027214753';
-import { STYLES, STYLE_OF } from './styles.js?v=20261027214753';
+import { drawBoard, enableDrag, shake, moveWords, instruction } from './board.js?v=20261027232256';
+import { STYLES, STYLE_OF } from './styles.js?v=20261027232256';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -482,8 +482,7 @@ function renderMoves() {
     html += `<li><span class="num">${i / 2 + 1}.</span>${cell(i)}${cell(i + 1)}</li>`;
   }
   movesEl.innerHTML = html;
-  const free = line.length && ply >= line.length;
-  $('#progress').textContent = mode === 'explore' ? 'Exploring' : free ? 'Opening done · playing on vs Stockfish' : line.length ? `${ply} of ${line.length} moves` : '';
+  $('#progress').textContent = mode === 'explore' ? 'Exploring' : line.length ? `${Math.min(ply, line.length)} of ${line.length} moves` : '';
   $('#bar').style.width = line.length ? `${Math.min(ply / line.length, 1) * 100}%` : '0';
 }
 
@@ -493,7 +492,7 @@ function say(text, tone = '') {
   msgEl.className = 'message ' + tone;
 }
 
-function render() { renderBoard(); renderMoves(); renderWhy(); renderControls(); renderMaterial(); renderEval(); }
+function render() { renderBoard(); renderMoves(); renderWhy(); renderControls(); renderMaterial(); }
 
 // ---------- Material and evaluation ----------
 const START = { q: 1, r: 2, b: 2, n: 2, p: 8 };
@@ -518,32 +517,12 @@ function renderMaterial() {
   row(cur.side, -lead, 'them');
 }
 
-// Stockfish's verdict on the current position as a bar: White's share fills from the left.
-function renderEval() {
-  if (!cur) return;
-  const el = $('#evalbar');
-  const sc = knownEval(game.fen());
-  el.classList.toggle('stale', !sc);
-  if (!sc) return;
-  const cp = (game.turn() === 'w' ? 1 : -1) * toCp(sc);
-  const share = 'mate' in sc ? (cp > 0 ? 100 : 0) : 100 / (1 + Math.exp(-cp / 250));
-  // No sign: the fill already shows who is ahead, and the bar is narrow.
-  const text = 'mate' in sc ? `M${Math.abs(sc.mate)}` : pawns(Math.abs(cp));
-  el.querySelector('.evalbar-white').style.height = `${share}%`;
-  el.querySelector('.evalbar-num').textContent = text;
-  // White's end of the bar sits on White's side of the board, and so does the number:
-  // dark on the white fill, light when White's share is too thin to hold it.
-  el.classList.toggle('flip', cur.side === 'b');
-  el.classList.toggle('behind', share < 12);
-  el.setAttribute('aria-label', `Stockfish: ${'mate' in sc ? `mate for ${cp > 0 ? 'White' : 'Black'}` : Math.abs(cp) < 30 ? 'equal' : `${cp > 0 ? 'White' : 'Black'} is better by ${pawns(Math.abs(cp))} pawns`}`);
-}
-
 // Buttons that cannot do anything right now say so, instead of silently ignoring a press.
 function renderControls() {
   if (!cur) return;
   $('#step-back').disabled = !game.history().length;
   $('#step-fwd').disabled = mode !== 'explore' || !redo.length;
-  $('#hint').disabled = !(userTurn() && inLine());
+  $('#hint').disabled = !userTurn();
   $('#show').disabled = !userTurn();
 }
 
@@ -619,51 +598,29 @@ function why(before, san) {
   const after = explore(before, mine).moves.find((x) => x.san === san);
   const stat = chosen ? (yours
     ? ` Players rated ${BUCKETS[strong.groups[0]]}+ choose it here in ${pct(chosen.n / pick.total)} of games.`
-    : ` At your level, ${pct(chosen.n / pick.total)} of players choose it here.`) : '';
-  const res = after ? ` You win ${pct(cur.side === 'w' ? after.win : 1 - after.win - after.draw)} of games after it.` : '';
+    : '') : '';
+  const res = after ? ` You score ${pct(scoreFor(after, cur.side))} after it.` : '';
   return (idea(before, san) + stat + res).trim();
 }
 
-// Stockfish on the line's move: is it the engine's choice, and what is the plan after it?
-const plans = new Map(); // fen + move → promise of the text, so a position is only analysed once
-const evalFor = (cp, white) => `${(white ? cp : -cp) >= 0 ? '+' : '−'}${pawns(Math.abs(cp))} for White`;
+// A side's share of the points after a move (a draw is half a point); explore() gives White's.
+const scoreFor = (m, color) => (color === 'w' ? m.score : 1 - m.score);
+const sideName = (c) => (c === 'w' ? 'White' : 'Black');
 
-function pvText(fen, pv, n = 5) {
-  const g = new Chess(fen);
-  const out = [];
-  for (const u of pv.slice(0, n)) {
-    const label = g.turn() === 'w' ? `${g.moveNumber()}.` : out.length ? '' : `${g.moveNumber()}...`;
-    try { out.push(label + g.move(uciMove(u)).san); } catch { break; }
-  }
-  return out.join(' ');
-}
-
-function planFor(fen, san) {
-  const key = `${fen}|${san}`;
-  if (!plans.has(key)) plans.set(key, makePlan(fen, san).then((t) => { if (!t) plans.delete(key); return t; }));
-  return plans.get(key);
-}
-
-async function makePlan(fen, san) {
-  const want = new Chess(fen).move(san);
-  const uci = want.from + want.to + (want.promotion || '');
-  const white = new Chess(fen).turn() === 'w';
-  const best = await think(fen, { ms: 400 });
-  if (!best) return null;
-  let text;
-  if (best.uci === uci) {
-    text = `Stockfish's top choice here (${evalFor(toCp(best.score), white)}). The plan: ${pvText(fen, best.pv)}.`;
-  } else {
-    if (game.fen() !== fen) return null; // you have moved on; a second search would only get in the way
-    const alt = await think(fen, { ms: 300, only: uci });
-    if (!alt) return null;
-    const diff = toCp(best.score) - toCp(alt.score);
-    const bestSan = new Chess(fen).move(uciMove(best.uci)).san;
-    text = diff <= 30
-      ? `About as good as Stockfish's top choice ${bestSan} (${evalFor(toCp(alt.score), white)}). The plan: ${pvText(fen, alt.pv)}.`
-      : `Stockfish slightly prefers ${bestSan} (by ${pawns(diff)} pawns), but this is the move strong players choose most here. The plan: ${pvText(fen, alt.pv)}.`;
-  }
-  return text;
+// What the opponent plays here at your level, most common first, and which of your lines covers each
+// reply: the replies you can expect to meet, compared with the one this line practises.
+function repliesText(before, played) {
+  const x = explore(before, ratingsAround(rating));
+  if (x.total < MIN_GAMES) return '';
+  const covers = (san) => lines.findIndex((l) => lineKey(l.moves.slice(0, before.length + 1)) === lineKey([...before, san]));
+  const top = x.moves.filter((m) => m.n / x.total >= 0.02).slice(0, 5);
+  const rest = 1 - top.reduce((s, m) => s + m.n / x.total, 0);
+  const part = (m) => {
+    const i = covers(m.san);
+    const tag = m.san === played ? ' (this line)' : i >= 0 ? ` (line ${i + 1})` : '';
+    return `<span class="rep${m.san === played ? ' now' : ''}"><b>${m.san}</b> ${pct(m.n / x.total)}${tag}</span>`;
+  };
+  return `<span class="reps">At your level: ${top.map(part).join(' ')}${rest >= 0.01 ? ` <span class="rep">others ${pct(rest)}</span>` : ''}</span>`;
 }
 
 function renderWhy() {
@@ -674,16 +631,16 @@ function renderWhy() {
   const parts = [];
   if (hist.length) {
     const n = hist.length - 1;
-    const who = (n % 2 === 0) === (cur.side === 'w') ? 'You played' : `${n % 2 ? 'Black' : 'White'} played`;
-    parts.push(`<p><b>${who} ${label(n, hist[n])}</b> ${why(hist.slice(0, n).map(clean), clean(hist[n]))}</p>`);
+    const before = hist.slice(0, n).map(clean), san = clean(hist[n]);
+    const yours = (n % 2 === 0) === (cur.side === 'w');
+    parts.push(yours
+      ? `<p><b>You played ${label(n, hist[n])}</b> ${why(before, san)}</p>`
+      : `<p><b>${sideName(n % 2 ? 'b' : 'w')} played ${label(n, hist[n])}</b> ${idea(before, san)} ${repliesText(before, san)}</p>`);
   }
-  if (mode === 'learn' && userTurn() && inLine()) {
-    parts.push(`<p><b>Your move: ${label(ply, line[ply])}</b> ${why(line.slice(0, ply), line[ply])}<span class="plan" id="plan">Stockfish is looking…</span></p>`);
+  if (mode === 'learn' && userTurn()) {
+    parts.push(`<p><b>Your move: ${label(ply, line[ply])}</b> ${why(line.slice(0, ply), line[ply])}</p>`);
   }
   el.innerHTML = parts.join('');
-  if (!$('#plan')) return;
-  const at = game.fen(), san = line[ply];
-  planFor(at, san).then((t) => { if (t && game.fen() === at && $('#plan')) $('#plan').textContent = t; });
 }
 
 // ---------- Game ----------
@@ -716,11 +673,8 @@ function play(i) {
   game = new Chess();
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   misses = 0; missesHere = 0; busy = false;
-  engineGen++; gameGen++; // ignore a Stockfish search or opponent reply still on its way from the previous game
-  failedNow = false;
-  won = false;
+  gameGen++; // ignore an opponent reply still on its way from the previous game
   redo = [];
-  lastEval = null;
   $('#restart').textContent = 'Restart';
   render();
   renderLines();
@@ -730,335 +684,85 @@ function play(i) {
   else { say('Your opponent starts…'); reply(); }
 }
 
-// ---------- Explore: any move for either side, rated by Stockfish ----------
-let analysis = null; // Stockfish on the current position: { fen, best (a chess.js move), cp from the side to move }
-
-async function analyseHere() {
-  const at = game.fen();
-  const r = await think(at, { ms: 400 });
-  if (!r || game.fen() !== at) return null;
-  return { fen: at, best: new Chess(at).move(uciMove(r.uci)), cp: r.score ? toCp(r.score) : 0, mate: r.score?.mate };
-}
-
-// "+0.4 for White", from the side to move's evaluation.
-function evalText(a) {
-  const forWhite = game.turn() === 'w' ? a.cp : -a.cp;
-  if (a.mate) return `mate in ${Math.abs(a.mate)} for ${sideName((a.mate > 0) === (game.turn() === 'w') ? 'w' : 'b')}`;
-  return `${forWhite >= 0 ? '+' : '−'}${pawns(Math.abs(forWhite))} (${Math.abs(forWhite) < 30 ? 'equal' : forWhite > 0 ? 'White is better' : 'Black is better'})`;
-}
-
-function showAnalysis(verdict = '', tone = '') {
-  if (!analysis) return;
-  hintSq = [analysis.best.from, analysis.best.to];
+// ---------- Explore: any move for either side, rated by what real players do ----------
+// What the side to move plays here at your level, with the most common move as an arrow.
+function exploreSay(prefix = '') {
+  const x = explore(game.history().map(clean), ratingsAround(rating));
+  const top = x.moves.filter((m) => m.n >= MIN_GAMES).slice(0, 4);
+  const side = game.turn();
+  const first = top[0] && new Chess(game.fen()).move(top[0].san);
+  hintSq = first ? [first.from, first.to] : [];
   renderBoard();
-  const bestIdea = ideaAt(new Chess(analysis.fen), analysis.best.san);
-  say(`${verdict ? verdict + ' ' : ''}Stockfish: ${evalText(analysis)}. Best for ${sideName(game.turn())} now: ${moveWords(analysis.best)}.${bestIdea ? ' ' + bestIdea : ''}`, tone);
+  const best = [...top].sort((a, b) => scoreFor(b, side) - scoreFor(a, side))[0];
+  say(prefix + (top.length
+    ? `${sideName(side)} at your level plays ${top.map((m) => `${m.san} ${pct(m.n / x.total)}`).join(', ')}. Best results: ${best.san} (${sideName(side)} scores ${pct(scoreFor(best, side))}).`
+    : 'Too few games at your level reach this position to say what players do next.'));
 }
 
-async function enterExplore() {
-  busy = false; sel = null; hintSq = []; analysis = null;
-  renderBoard();
-  say('Explore: play your moves and the opponent answers. Stockfish rates each move.');
-  analysis = await analyseHere();
-  showAnalysis();
-  if (analysis && game.turn() !== cur.side && !game.isGameOver()) opponentAnswers('');
+function enterExplore() {
+  busy = false; sel = null; hintSq = [];
+  exploreSay('Explore: ');
+  if (game.turn() !== cur.side && !game.isGameOver()) opponentAnswers('');
 }
 
-// prefix: the verdict on your own move, kept in front when the opponent's automatic answer is rated.
-async function exploreMove(from, to, promotion = 'q', keepRedo = false, prefix = '') {
+// prefix: the verdict on your own move, kept in front when the opponent's automatic answer is described.
+function exploreMove(from, to, promotion = 'q', keepRedo = false, prefix = '') {
+  const hist = game.history().map(clean);
   let m;
   try { m = game.move({ from, to, promotion }); } catch { return false; }
   if (!m) return false;
   if (!keepRedo) redo = []; // a new move starts a new branch
-  const before = analysis;
-  const hist = game.history().slice(0, -1).map(clean);
-  lastMove = m; ply = hist.length + 1; sel = null; hintSq = []; analysis = null; busy = true;
+  lastMove = m; ply = hist.length + 1; sel = null; hintSq = []; busy = false;
   render();
-  say(`${m.san}: Stockfish is thinking…`);
-  const after = await analyseHere();
-  if (!after) return true;
-  busy = false;
-  analysis = after;
-  if (game.isCheckmate()) return say(`${prefix}${m.san} is checkmate. ${sideName(m.color)} wins.`, 'good');
-  if (game.isGameOver()) return say(`${prefix}${m.san}: the game is drawn.`);
-  // How much the move gave away, from the mover's side: their evaluation before minus after.
-  const loss = before ? before.cp + after.cp : 0;
-  const label = loss <= 20 ? 'excellent' : loss <= 50 ? 'good' : loss <= 100 ? 'an inaccuracy' : loss <= 250 ? 'a mistake' : 'a blunder';
-  const real = explore(hist, ratingsAround(rating));
-  const seen = real.moves.find((x) => x.san === clean(m.san));
-  const often = seen ? ` ${pct(seen.n / real.total)} of players at your level play it here.` : '';
-  const better = before && loss > 50 && before.best.san !== m.san
-    ? ` Better was ${moveWords(before.best)}.${ideaAt(new Chess(before.fen), before.best.san) ? ' ' + ideaAt(new Chess(before.fen), before.best.san) : ''}` : '';
-  const moveIdea = ideaAt(new Chess(before?.fen ?? new Chess().fen()), m.san);
-  const verdict = `${m.san} is ${label}${loss > 50 ? `, giving away about ${pawns(loss)} pawns` : ''}.${moveIdea && loss <= 50 ? ' ' + moveIdea : ''}${often}${better}`;
-  showAnalysis(prefix + verdict, loss <= 50 ? 'good' : loss <= 100 ? '' : 'bad');
-  // Your move: the opponent answers by itself, as players at your level most often do (Stockfish where
-  // games run out). To try another answer for them, step back and move their piece yourself.
-  if (m.color === cur.side && !keepRedo && !prefix) opponentAnswers(`${verdict} `);
+  if (game.isCheckmate()) { say(`${prefix}${m.san} is checkmate. ${sideName(m.color)} wins.`, 'good'); return true; }
+  if (game.isGameOver()) { say(`${prefix}${m.san}: the game is drawn.`); return true; }
+  const x = explore(hist, ratingsAround(rating));
+  const seen = x.moves.find((s) => s.san === clean(m.san));
+  const verdict = seen
+    ? `${m.san}: ${pct(seen.n / x.total)} of players at your level play it here, and ${sideName(m.color)} scores ${pct(scoreFor(seen, m.color))} after it. `
+    : `${m.san}: ${x.total ? 'no one at your level played it here' : 'no games at your level reach this far'}. `;
+  // Your move: the opponent answers by itself, as players at your level most often do.
+  // To try another answer for them, step back and move their piece yourself.
+  if (m.color === cur.side && !keepRedo && !prefix) opponentAnswers(verdict);
+  else exploreSay(prefix + verdict);
   return true;
 }
 
-async function opponentAnswers(prefix) {
+function opponentAnswers(prefix) {
   const at = game.fen();
-  busy = true;
   const real = explore(game.history().map(clean), ratingsAround(rating)).moves.filter((x) => x.n >= MIN_GAMES);
-  let san = real[0]?.san;
-  if (!san) {
-    const r = await think(at, { elo: opponentElo() });
-    if (!r || game.fen() !== at) return;
-    san = new Chess(at).move(uciMove(r.uci)).san;
-  }
-  await new Promise((x) => setTimeout(x, 500));
-  if (game.fen() !== at || mode !== 'explore') return;
-  busy = false;
-  const reply = new Chess(at).move(san);
-  exploreMove(reply.from, reply.to, reply.promotion || 'q', false, prefix);
-}
-
-let failedNow = false; // Try: this play-on game already fell clearly behind and failed the line
-let won = false;       // you won this game: checkmate or a clear advantage
-let lastEval = null;    // Stockfish's evaluation after its last move, from its side, in centipawns
-const userTurn = () => line.length > 0 && !won && !game.isGameOver() && game.turn() === cur.side;
-const inLine = () => ply < line.length;
-
-// ---------- Stockfish ----------
-// Stockfish 18 lite (WebAssembly, single-threaded) from github.com/nmrugg/stockfish.js, GPLv3, in engine/.
-const ENGINE_SRC = 'engine/stockfish-18-lite-single.js';
-let engine = null;
-let engineGen = 0;     // bumped by every search, so only the newest one is answered
-let gameGen = 0;       // bumped when the game is reset or left; a pending opponent reply checks it
-let pending = null;    // resolve() of the search in progress, so a newer search can close it
-let owed = 0;          // searches started whose bestmove has not arrived yet
-// The opponent plays at your rating; Stockfish's lowest setting is 1320, so below that it is a little stronger.
-const opponentElo = () => Math.max(1320, Math.min(3190, rating));
-// When Stockfish is this far ahead (in centipawns, 100 = a pawn), a Try line fails; you still play on to mate.
-const LOST = 300; // and when you are this far ahead, the line is won
-// A move of yours that gives away this much is taken back, and you get help to find a better one.
-const BLUNDER = 150;
-const toCp = (s) => ('mate' in s ? Math.sign(s.mate || 1) * 10000 : s.cp);
-const uciMove = (uci) => ({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
-const pawns = (cp) => (Math.min(cp, 2000) / 100).toFixed(1);
-const sideName = (c) => (c === 'w' ? 'White' : 'Black');
-
-// One Stockfish search, at full strength unless elo is given. Resolves { uci, score } (score from the side
-// to move), or null if something newer (another search, a restart, leaving the board) came first.
-// Stockfish answers every "go" with exactly one bestmove, even when it is stopped early, and a stopped
-// search can still answer after a newer one was sent. So each search skips the answers still owed to
-// the searches before it, and ignores their info lines too.
-// Full-strength answers are kept by position, so a position seen before answers at once, even next visit.
-const sfKey = (fen, ms, only) => `${fen.split(' ').slice(0, 4).join(' ')}|${ms}|${only || ''}`;
-const SF_CACHE = new Map(Object.entries(load(STORE + '-sf', {})));
-const SF_KEEP = 3000; // about 0.5 MB in the browser
-let sfSave = null;
-function remember(key, value) {
-  SF_CACHE.delete(key);
-  SF_CACHE.set(key, value);
-  while (SF_CACHE.size > SF_KEEP) SF_CACHE.delete(SF_CACHE.keys().next().value);
-  clearTimeout(sfSave);
-  sfSave = setTimeout(() => store(STORE + '-sf', Object.fromEntries(SF_CACHE)), 1000);
-}
-// The latest full-strength evaluation of a position, from the side to move, if one has been made.
-const knownEval = (fen) => [...['400', '500', '700']].map((ms) => SF_CACHE.get(sfKey(fen, ms)))
-  .find(Boolean)?.score ?? null;
-
-function think(fen, { ms = 400, elo = null, only = null } = {}) {
-  const key = sfKey(fen, ms, only) + (elo ? `|elo${elo}` : '');
-  if (key && SF_CACHE.has(key)) return Promise.resolve(SF_CACHE.get(key));
-  return search(fen, { ms, elo, only }).then((r) => { if (r && key) { remember(key, r); renderEval(); } return r; });
-}
-
-function search(fen, { ms, elo, only }) {
-  if (!engine) {
-    engine = new Worker(ENGINE_SRC);
-    // If the engine ever crashes, start a fresh one on the next search.
-    engine.addEventListener('error', () => { engine = null; owed = 0; pending?.(null); pending = null; });
-  }
-  const gen = ++engineGen;
-  pending?.(null); // the search this one replaces will never be answered
-  let skip = owed;
-  owed++;
-  return new Promise((resolve) => {
-    pending = resolve;
-    let score = null, pv = [];
-    engine.onmessage = (e) => {
-      if (typeof e.data !== 'string') return;
-      if (e.data.startsWith('bestmove')) {
-        owed--;
-        if (skip > 0) { if (--skip === 0) go(); return; }
-        pending = null;
-        resolve(gen === engineGen ? { uci: e.data.split(' ')[1], score, pv } : null);
-        return;
-      }
-      if (skip > 0) return; // still an older search talking
-      const sc = e.data.match(/ score (cp|mate) (-?\d+)/);
-      // Bound lines are provisional and carry a cut-short line, so they do not replace the last full one.
-      if (sc && !/ (lower|upper)bound/.test(e.data)) {
-        score = { [sc[1]]: Number(sc[2]) };
-        const line = (e.data.match(/ pv (.+)$/)?.[1] || '').split(' ');
-        if (line.length >= pv.length || line[0] !== pv[0]) pv = line;
-      }
-    };
-    // Options must not change while a search runs (the WebAssembly engine crashes), so a new search
-    // starts only once every older one has answered.
-    const go = () => {
-      engine.postMessage(`setoption name UCI_LimitStrength value ${!!elo}`);
-      if (elo) engine.postMessage(`setoption name UCI_Elo value ${elo}`);
-      engine.postMessage(`position fen ${fen}`);
-      engine.postMessage(`go movetime ${ms}${only ? ` searchmoves ${only}` : ''}`);
-    };
-    if (skip) engine.postMessage('stop'); else go();
-  });
-}
-
-// ---------- Play on vs Stockfish after the line ----------
-// The opponent's move after the line: what players at your level play most, while real games reach
-// this far; Stockfish at your level once they run out. A full-strength look first rates your last move.
-async function engineMove() {
+  if (!real.length) return exploreSay(prefix + 'Real games run out here, so the opponent no longer answers by itself. ');
   busy = true;
-  const t0 = performance.now();
-  const at = game.fen();
-  const r = await think(at);
-  if (!r || game.fen() !== at) return;
-  const now = r.score && toCp(r.score);
-  if (r.score && lastEval !== null && now - lastEval >= BLUNDER) return takeBack(now - lastEval, r.uci);
-  const real = explore(game.history().map(clean), ratingsAround(rating)).moves.filter((x) => x.n >= MIN_GAMES);
-  let move = real[0] && { san: real[0].san };
-  if (!move) {
-    const e = await think(at, { elo: opponentElo() });
-    if (!e || game.fen() !== at) return;
-    move = uciMove(e.uci);
-  }
-  // At least 0.4 s in all, so a cached answer does not feel instant; no extra wait after a real search.
-  await new Promise((x) => setTimeout(x, Math.max(0, 400 - (performance.now() - t0))));
-  if (game.fen() !== at) return;
-  try { lastMove = game.move(move.san ?? move); } catch { busy = false; return; }
-  ply++; busy = false; hintSq = [];
-  render();
-  if (gameOver()) return;
-  // Stockfish's score is from its own side, so a big minus is a big plus for you.
-  if (r.score && (r.score.mate < 0 || r.score.cp <= -LOST)) return wonLine(r.score);
-  if (mode === 'try' && !failedNow && r.score && (r.score.mate > 0 || r.score.cp >= LOST)) return failLine(r.score);
-  say(real.length ? 'Your move. (Black played what players at your level play most.)'.replace('Black', sideName(lastMove.color)) : 'Your move.');
-  // The new position's evaluation becomes the yardstick for your next move.
-  const here = game.fen();
-  const base = await think(here);
-  if (base?.score && game.fen() === here) lastEval = -toCp(base.score);
-  suggest();
+  const gen = gameGen;
+  setTimeout(() => {
+    if (gen !== gameGen || game.fen() !== at || mode !== 'explore') return;
+    busy = false;
+    const m = new Chess(at).move(real[0].san);
+    exploreMove(m.from, m.to, m.promotion || 'q', false, prefix);
+  }, 450);
 }
 
-// Learn, after the line: show Stockfish's best move for you until you are clearly winning.
-// Show move does the same in Try (and counts as a mistake).
-async function suggest(asked = false) {
-  if ((mode !== 'learn' && !asked) || !userTurn() || inLine()) return;
-  const at = game.fen();
-  const r = await think(at, { ms: 400 });
-  if (!r || game.fen() !== at) return;
-  const best = new Chess(at).move(uciMove(r.uci));
-  const bestIdea = ideaAt(new Chess(at), best.san);
-  hintSq = [best.from, best.to];
-  renderBoard();
-  say(`${instruction(best)}.${bestIdea ? ' ' + bestIdea : ''}${r.score?.mate > 0 ? ` Mate in ${r.score.mate}.` : ''}`);
-}
+let gameGen = 0; // bumped when the game is reset or left; a pending opponent reply checks it
+const userTurn = () => ply < line.length && game.turn() === cur.side;
 
-// Your last move gave away a lot: explain Stockfish's answer to it, take it back, and help.
-async function takeBack(loss, refutation) {
-  const bad = game.history().at(-1);
-  const after = new Chess(game.fen());
-  const reply = after.move(uciMove(refutation)).san;
-  const replyIdea = ideaAt(new Chess(game.fen()), reply);
-  game.undo();
-  ply--;
-  lastMove = game.history({ verbose: true }).at(-1) || null;
-  render();
-  const opp = sideName(cur.side === 'w' ? 'b' : 'w');
-  const why = `${bad} gives away about ${pawns(loss)} pawns: ${opp} answers ${reply}.${replyIdea ? ' ' + replyIdea : ''} The move was taken back.`;
-  say(`${why} Looking for a better move…`, 'bad');
-  const r = await think(game.fen(), { ms: 400 });
-  if (!r) return;
-  const best = new Chess(game.fen()).move(uciMove(r.uci));
-  busy = false;
-  if (mode === 'learn') {
-    hintSq = [best.from, best.to];
-    const bestIdea = ideaAt(new Chess(game.fen()), best.san);
-    say(`${why} Stockfish suggests: ${instruction(best)}.${bestIdea ? ' ' + bestIdea : ''}`, 'bad');
-  } else {
-    misses++;
-    hintSq = [best.from];
-    say(`${why} Find a better move: the piece to move is highlighted.`, 'bad');
-  }
-  renderBoard();
-}
-
-// Try: Stockfish is clearly winning, so the line fails. You may play on.
-function failLine(score) {
-  failedNow = true;
-  misses++; // so Restart replays this line instead of moving on
-  review(false);
-  renderLineBox();
-  $('#restart').textContent = 'Restart';
-  const how = 'mate' in score ? `has mate in ${score.mate}` : `is ${pawns(score.cp)} pawns ahead`;
-  say(`Stockfish ${how}, so this line counts as failed. Play on, or press Restart to try the line again.`, 'bad');
-}
-
-// A move that is not the line's: say whether strong players play it too, and what Stockfish answers.
-async function explainWrong(san) {
+// A move that is not the line's: how often strong players choose it, and how you score after it
+// compared with the line's move, at your level.
+function explainWrong(san) {
   const before = line.slice(0, ply);
-  const at = game.fen();
   const strong = strongGroups(before);
-  const alt = strong.x.moves.find((x) => x.san === clean(san));
-  const parts = [];
-  if (alt && alt.n / strong.x.total >= RARE) {
-    parts.push(`${san} is a real option: players rated ${BUCKETS[strong.groups[0]]}+ choose it here in ${pct(alt.n / strong.x.total)} of games, but this line practises another move.`);
-  }
-  const g = new Chess(at);
-  g.move(san);
-  const r = await think(g.fen(), { ms: 400 });
-  if (!r || game.fen() !== at) return; // you have moved on meanwhile
-  const opp = sideName(cur.side === 'w' ? 'b' : 'w');
-  const cp = r.score ? toCp(r.score) : 0;
-  if (cp >= 100) {
-    const reply = new Chess(g.fen()).move(uciMove(r.uci)).san;
-    const replyIdea = ideaAt(new Chess(g.fen()), reply);
-    parts.push(`After ${san}, ${opp} answers ${reply}.${replyIdea ? ' ' + replyIdea : ''} Stockfish puts you about ${pawns(cp)} pawns behind.`);
-  } else if (!parts.length) {
-    parts.push(`Stockfish finds ${san} playable, but strong players rarely choose it here.`);
-  }
   const want = expectedMove();
-  if (mode === 'learn') {
-    const wantIdea = idea(before, want.san);
-    parts.push(`The line plays ${moveWords(want)}.${wantIdea ? ' ' + wantIdea : ''}`);
-  } else if (missesHere >= 2) parts.push('The piece to move is highlighted.');
+  const share = (s) => strong.x.moves.find((x) => x.san === s)?.n / strong.x.total || 0;
+  const mine = explore(before, ratingsAround(rating)).moves;
+  const score = (s) => { const m = mine.find((x) => x.san === s); return m && m.n >= MIN_GAMES ? pct(scoreFor(m, cur.side)) : null; };
+  const theirs = share(clean(san)), lineMove = mode === 'learn' ? want.san : "the line's move";
+  const parts = [theirs >= RARE
+    ? `It is a real option: players rated ${BUCKETS[strong.groups[0]]}+ choose it in ${pct(theirs)} of games, ${lineMove} in ${pct(share(want.san))}.`
+    : `Players rated ${BUCKETS[strong.groups[0]]}+ ${theirs ? `choose it in only ${pct(theirs)} of games` : 'never choose it here'}; ${lineMove} in ${pct(share(want.san))}.`];
+  if (score(clean(san)) && score(want.san)) parts.push(`At your level you score ${score(clean(san))} after ${san} and ${score(want.san)} after ${lineMove}.`);
+  if (mode === 'learn') parts.push(`The line plays ${moveWords(want)}.`);
+  else if (missesHere >= 2) parts.push('The piece to move is highlighted.');
   else parts.push('Try again.');
   say(`${san} is not the move here. ${parts.join(' ')}`, 'bad');
-}
-
-function gameOver() {
-  if (!game.isGameOver()) return false;
-  if (!game.isCheckmate()) say('Draw. Press Restart to try the line again.');
-  else if (game.turn() === cur.side) say('Checkmate: Stockfish wins this one. Press Restart to try the line again.', 'bad');
-  else wonLine();
-  return true;
-}
-
-// You won the line: checkmate, or (score given) Stockfish says you are clearly ahead.
-function wonLine(score = null) {
-  won = true;
-  const how = !score ? 'Checkmate!' : 'mate' in score
-    ? `You have mate in ${-score.mate}: that is a win.`
-    : `You are ${pawns(-score.cp)} pawns ahead: a clear win.`;
-  const s = stats[statKey(cur.id)];
-  const wasComplete = cleared() === lines.length;
-  const r = mode === 'try' ? review(misses === 0) : null;
-  renderLines();
-  renderLineBox();
-  if (!wasComplete && cleared() === lines.length) showComplete();
-  const left = lines.findIndex((l) => !s.done.includes(lineKey(l.moves)));
-  $('#restart').textContent = mode === 'try' && misses ? 'Restart' : 'Next line';
-  if (mode === 'learn') return say(`${how} Line learned. Press Next line, or switch to Practice to test it.`, 'good');
-  if (misses) return say(`${how} But with ${plural(misses, 'mistake')} the line is not cleared; practise it again today. Press Restart.`, 'good');
-  const back = `It comes back for review in ${plural(INTERVALS[r.box], 'day')}.`;
-  say(left === -1 ? `${how} Every common line at your level is cleared. ${back}`
-    : `${how} Line cleared, ${cleared()} of ${lines.length}. ${back} Press Next line.`, 'good');
 }
 
 // ---------- Practice: lines come back for review ----------
@@ -1149,7 +853,7 @@ $('#lines-list').addEventListener('click', (e) => {
 
 function showComplete() {
   $('#complete-title').textContent = `${isVs(cur) ? 'vs ' : ''}${cur.name}: complete`;
-  $('#complete-text').textContent = `You cleared all ${lines.length} lines: every common reply at ${rating} ± 200 in ${speed}, each played to a clear win without a mistake.`;
+  $('#complete-text').textContent = `You cleared all ${lines.length} lines: every common reply at ${rating} ± 200 in ${speed}, each played from memory without a mistake.`;
   $('#complete').showModal();
 }
 $('#complete-more').addEventListener('click', () => { $('#complete').close(); play((lineIdx + 1) % lines.length); });
@@ -1157,7 +861,7 @@ $('#complete-back').addEventListener('click', () => { $('#complete').close(); sh
 
 function reply() {
   busy = true;
-  // Background Stockfish searches must not cancel this, so it checks the game counter, not the engine's.
+  // A newer game or a switch to Explore cancels this, through the game counter.
   const gen = gameGen;
   setTimeout(() => {
     if (gen !== gameGen) return;
@@ -1173,12 +877,6 @@ function tryMove(from, to) {
   let m;
   try { m = game.move({ from, to, promotion: 'q' }); } catch { return false; }
   if (!m) return false;
-  if (!inLine()) {
-    lastMove = m; ply++; sel = null;
-    render();
-    if (!gameOver()) engineMove();
-    return true;
-  }
   if (clean(m.san) !== line[ply]) {
     game.undo();
     misses++; missesHere++;
@@ -1186,7 +884,6 @@ function tryMove(from, to) {
     renderBoard();
     shake(boardEl);
     if (missesHere >= 2) showHint();
-    say(`${m.san} is not the move here. Looking at why…`, 'bad');
     explainWrong(m.san);
     setTimeout(() => { wrongSq = null; renderBoard(); }, 700);
     return true;
@@ -1206,7 +903,7 @@ function expectedMove() {
 
 // In Learn mode the move to play is always shown.
 function prompt(text) {
-  if (mode !== 'learn' || !inLine()) return say(text);
+  if (mode !== 'learn' || !userTurn()) return say(text);
   const m = expectedMove();
   hintSq = [m.from, m.to];
   renderBoard();
@@ -1214,23 +911,28 @@ function prompt(text) {
 }
 
 function showHint() {
-  if (!userTurn() || !inLine()) return;
+  if (!userTurn()) return;
   hintSq = [expectedMove().from];
   renderBoard();
 }
 
+// The end of the line. Learn: the line counts as learned. Practice: without a mistake it is cleared
+// and comes back for review later; with one it stays to be practised again today.
 function finish() {
   const s = stats[statKey(cur.id)];
-  if (!s.played.includes(lineKey(line))) { s.played.push(lineKey(line)); store(STORE, stats); }
+  if (!s.played.includes(lineKey(line))) s.played.push(lineKey(line));
+  store(STORE, stats);
+  const wasComplete = cleared() === lines.length;
+  const r = mode === 'try' ? review(misses === 0) : null;
+  renderLines();
   renderLineBox();
-  if (gameOver()) return;
-  if (mode === 'learn') {
-    $('#restart').textContent = 'Next line';
-    say('Opening done. Keep following the moves until you are clearly winning.', 'good');
-  }
-  else if (misses) say(`Opening done with ${misses} mistake${misses === 1 ? '' : 's'}. Play on, or press Restart to try again.`);
-  else say('Opening played without mistakes. Now get 3 pawns ahead (or mate) to clear the line. Fall 3 pawns behind and it fails.', 'good');
-  if (game.turn() !== cur.side) engineMove(); else suggest();
+  $('#restart').textContent = mode === 'try' && misses ? 'Try again' : 'Next line';
+  if (mode === 'learn') return say('Line learned. Press Next line, or switch to Practice to play it from memory.', 'good');
+  if (misses) return say(`Line done with ${plural(misses, 'mistake')}, so it is not cleared. Press Try again.`, 'bad');
+  if (!wasComplete && cleared() === lines.length) showComplete();
+  const back = `It comes back for review in ${plural(INTERVALS[r.box], 'day')}.`;
+  say(cleared() === lines.length ? `Line cleared. Every common line at your level is cleared. ${back}`
+    : `Line cleared, ${cleared()} of ${lines.length}. ${back} Press Next line.`, 'good');
 }
 
 // In Explore you move whichever side is to move; otherwise only your own side, on your turn.
@@ -1256,18 +958,16 @@ boardEl.addEventListener('click', (e) => {
 // opponent's other moves and see how to answer them. Forward replays the moves you stepped back over.
 let redo = [];
 
-async function stepBack() {
+function stepBack() {
   if (!cur || !lines.length || !game.history().length) return;
   if (mode !== 'explore') { setMode('explore', false, false); gameGen++; } // the line's pending reply no longer applies
   else if (busy) return;
   redo.push(game.undo());
   lastMove = game.history({ verbose: true }).at(-1) || null;
   ply = game.history().length;
-  busy = false; analysis = null; sel = null;
+  busy = false; sel = null;
   render();
-  say('Stepped back. Stockfish is thinking…');
-  analysis = await analyseHere();
-  showAnalysis(mode === 'explore' && redo.length ? `Move any piece, for either side, to see what Stockfish thinks of it. Step forward replays the moves.` : '');
+  exploreSay('Stepped back. Move any piece, for either side, to see how often players at your level choose it. ');
 }
 
 function stepForward() {
@@ -1287,12 +987,11 @@ document.addEventListener('keydown', (e) => {
 $('#restart').addEventListener('click', () => {
   if (!lines.length) return start(cur);
   if (mode === 'learn') return play(ply >= line.length ? nextLine() : lineIdx);
-  play(won && misses === 0 ? nextLine() : lineIdx);
+  play(ply >= line.length && misses === 0 ? nextLine() : lineIdx);
 });
-$('#hint').addEventListener('click', () => { if (userTurn() && inLine()) { showHint(); say('The piece to move is highlighted.'); } });
+$('#hint').addEventListener('click', () => { if (userTurn()) { showHint(); say('The piece to move is highlighted.'); } });
 $('#show').addEventListener('click', () => {
-  if (userTurn() && !inLine() && !busy) { if (mode === 'try') misses++; return suggest(true); }
-  if (!userTurn() || !inLine()) return;
+  if (!userTurn()) return;
   const m = expectedMove();
   misses++;
   say(`The move: ${instruction(m)}.`);
@@ -1300,7 +999,7 @@ $('#show').addEventListener('click', () => {
 });
 // Opening picker, shown before the board.
 async function showPicker() {
-  cur = null; engineGen++; gameGen++; // stops a Stockfish search or opponent reply that is still on its way
+  cur = null; gameGen++; // stops an opponent reply that is still on its way
   $('#trainer').hidden = true;
   $('#picker').hidden = false;
   listEl.innerHTML = '';
@@ -1347,9 +1046,9 @@ function setMode(m, restart = true, remember = true) {
   if (remember) store(STORE + '-mode', m);
   for (const k of ['learn', 'try', 'explore']) $(`#mode-${k}`).setAttribute('aria-pressed', m === k);
   $('#mode-about').textContent = {
-    learn: 'Every move is shown and explained. Nothing is scored.',
-    try: 'Practice: find the moves yourself. A line clears when you win it without mistakes, then comes back for review after 1, 3, 7, 14 and 30 days.',
-    explore: 'Play your moves and the opponent answers like players at your level. Stockfish rates every move. To try another answer, step back and move their piece.',
+    learn: 'Every move is shown, with the replies you can expect at your level. Nothing is scored.',
+    try: 'Practice: play the line from memory. A line played without mistakes is cleared and comes back for review after 1, 3, 7, 14 and 30 days.',
+    explore: 'Play any move: the opponent answers as players at your level most often do, and you see how often each move is played and how it scores. To try another answer, step back and move their piece.',
   }[m];
   $('#hint').hidden = $('#show').hidden = m === 'explore';
   if (!lines.length) return;

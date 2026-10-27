@@ -21,7 +21,7 @@ Typical situation: a short practice session between games, on a laptop or phone,
 Chess Trainer helps players improve through three self-contained practice modes, picked from a start page:
 
 1. **Basics**: short interactive lessons where the player makes each move themselves, with an explanation after.
-2. **Openings**: real-game statistics at the player's rating in the chosen time control, Blitz or Classical. As White: openings reached in at least 1% of games, best results first (a draw counts as half). As Black: the 15 White openings met most often, practised from Black's side. Every card shows how often the opening is played and its win/draw/loss split. The player can pick a play style (Attacking, Solid, Positional, Tricky) to see only openings that suit it. Each card previews the opening by playing its moves on a mini board. Each opening is drilled against the replies real players at that level actually choose, most common first. Learn shows every move in plain words ("Play knight to f3") with an explanation; Practice tests the player, and a line cleared without mistakes comes back for review after 1, 3, 7, 14 and 30 days (a mistake sends it back to the start). After the opening, the player plays on against Stockfish until one side is clearly winning (3 pawns ahead or a forced mate).
+2. **Openings**: real-game statistics at the player's rating in the chosen time control, Blitz or Classical. As White: openings reached in at least 1% of games, best results first (a draw counts as half). As Black: the 15 White openings met most often, practised from Black's side. Every card shows how often the opening is played and its win/draw/loss split. The player can pick a play style (Attacking, Solid, Positional, Tricky) to see only openings that suit it. Each card previews the opening by playing its moves on a mini board. Each opening is drilled against the replies real players at that level actually choose, most common first. Learn shows every move in plain words ("Play knight to f3") with an explanation; Practice tests the player, and a line cleared without mistakes comes back for review after 1, 3, 7, 14 and 30 days (a mistake sends it back to the start). After each opponent move the player sees every reply players at their level choose there, most common first, and which line covers it. A wrong move is compared with the line's move: how often strong players choose each, and how players at their level score after each. A line ends where the real-game data ends; there is no engine play.
 3. **Think like the pros**: find the move Magnus Carlsen, Hikaru Nakamura or Alireza Firouzja found in a real game, then see an engine-based explanation of why it works and why the next-best move falls short.
 
 Success: a player meets the lines they will actually face at their level, recognises them in their own games, and clears more lines over time.
@@ -39,7 +39,7 @@ Opening lines are built from what real players at the user's own rating (±200) 
 
 ## Capabilities and Constraints
 
-- Plain static HTML, CSS and JavaScript with no build step. chess.js is loaded from jsDelivr; Stockfish 18 lite (WebAssembly, about 7 MB) is served from `engine/`.
+- Plain static HTML, CSS and JavaScript with no build step. chess.js is loaded from jsDelivr.
 - Must be served over HTTP; it does not work from `file://`.
 - Opening and puzzle data is precomputed and committed to the repo. The only runtime calls are reading the player's public Lichess profile for their rating, and "Check my own games": it fetches the player's last 100 rated games of the chosen time control from Lichess's public games API by username (no login). It then flags the first move in each game that leaves every named opening line and that 2200+ players (2000+ in classical) choose in under 5% of games:
   - `data/explorer-blitz.json` and `data/explorer-classical.json`: games, White wins and draws per Lichess rating group from 2,000,000 rated blitz games and 400,000 rated classical games, Lichess database September 2026, up to 20 plies deep. Rebuild with `tools/make_explorer.py <blitz|classical>`.
@@ -50,7 +50,6 @@ Opening lines are built from what real players at the user's own rating (±200) 
 - Known limits:
   - Opening names come only from exact move-order matches with the named-lines list, so transpositions are missed.
   - Data for 2200+ players is thin deep into lines.
-  - Stockfish plays at your rating via UCI_Elo, but never below 1320, its lowest setting.
 - Terminology: Learn / Practice / Explore (modes; Practice is stored as 'try'), line (one sequence of moves from the opening's root), cleared (played without mistakes in Try).
 - Hosted publicly on GitHub Pages from the `main` branch: https://joeland2.github.io/schack-oppningar/. Every push to `main` redeploys it.
 
