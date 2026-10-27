@@ -39,6 +39,50 @@ function arrowSvg([from, to], side) {
   </svg>`;
 }
 
+// Drag and drop on top of click-click moves. canDrag(square) says whether a piece may be picked up;
+// onDrop(from, to) makes the move. The board may be redrawn at any time, so listeners sit on the board element.
+export function enableDrag(el, { canDrag, onDrop }) {
+  let from = null, ghost = null, start = null, moved = false, skipClick = false;
+  const place = (e) => {
+    const size = ghost.offsetWidth;
+    ghost.style.left = `${e.clientX - size / 2}px`;
+    ghost.style.top = `${e.clientY - size / 2}px`;
+  };
+  el.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('.sq');
+    const img = b?.querySelector('img.pc');
+    if (e.button > 0 || !img || !canDrag(b.dataset.sq)) return;
+    from = b.dataset.sq; start = [e.clientX, e.clientY]; moved = false;
+    ghost = img.cloneNode();
+    ghost.className = 'drag-ghost';
+    ghost.style.width = ghost.style.height = `${b.getBoundingClientRect().width}px`;
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (!from) return;
+    if (!moved && Math.hypot(e.clientX - start[0], e.clientY - start[1]) > 5) {
+      moved = true;
+      el.setPointerCapture(e.pointerId); // only once dragging: capturing earlier would steal plain clicks
+      document.body.append(ghost);
+      el.querySelector(`[data-sq="${from}"] img.pc`)?.classList.add('dragging');
+    }
+    if (moved) place(e);
+  });
+  const end = (e) => {
+    if (!from) return;
+    const was = from;
+    from = null;
+    ghost.remove();
+    el.querySelector('.dragging')?.classList.remove('dragging');
+    if (!moved || e.type === 'pointercancel') return;
+    skipClick = true; // a drag ends with a click on the board; it must not also select a square
+    const to = document.elementFromPoint(e.clientX, e.clientY)?.closest('.sq')?.dataset.sq;
+    if (to && to !== was) onDrop(was, to);
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('click', (e) => { if (skipClick) { skipClick = false; e.stopImmediatePropagation(); } }, true);
+}
+
 export function shake(el) {
   el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
 }

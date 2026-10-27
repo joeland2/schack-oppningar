@@ -2,7 +2,7 @@
 // item: { id, group, title, tag, side, fen, solution: [san…], intro, explain (html), wrong?(san) }
 // Moves at odd positions in solution are the opponent's replies and are played automatically.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, shake } from './board.js';
+import { drawBoard, enableDrag, shake } from './board.js';
 
 const $ = (s) => document.querySelector(s);
 const clean = (san) => san.replace(/[+#]/g, '');
@@ -80,6 +80,10 @@ export function drill(items, storeKey) {
     return true;
   }
 
+  enableDrag(boardEl, {
+    canDrag: (sq) => !busy && !finished() && game.get(sq)?.color === cur.side,
+    onDrop: (from, to) => { sel = null; if (!tryMove(from, to)) draw(); },
+  });
   boardEl.addEventListener('click', (e) => {
     const b = e.target.closest('.sq');
     if (!b || busy || finished()) return;

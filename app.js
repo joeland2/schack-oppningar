@@ -1,5 +1,5 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, shake } from './board.js';
+import { drawBoard, enableDrag, shake } from './board.js';
 import { STYLES, STYLE_OF } from './styles.js';
 
 const STORE = 'opening-book-v2';
@@ -806,6 +806,10 @@ function finish() {
   if (game.turn() !== cur.side) engineMove(); else suggest();
 }
 
+enableDrag(boardEl, {
+  canDrag: (sq) => !busy && userTurn() && game.get(sq)?.color === cur.side,
+  onDrop: (from, to) => { sel = null; if (!tryMove(from, to)) renderBoard(); },
+});
 boardEl.addEventListener('click', (e) => {
   const b = e.target.closest('.sq');
   if (!b || busy || !userTurn()) return;
