@@ -109,7 +109,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .eco { font: 600 .78rem var(--font-mono); letter-spacing: .04em; color: var(--accent); }
 h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1.1; letter-spacing: -0.025em; text-wrap: balance; }
 .info { margin: 0; color: var(--muted); max-width: 46ch; }
-.message { margin: 0; min-height: 3em; padding: 12px 14px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); border-left-width: 4px; font-weight: 500; }
+.message { margin: 0; min-height: 3em; padding: 12px 14px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); font-weight: 500; }
 .message.good { border-color: var(--good); color: var(--good); background: color-mix(in srgb, var(--good) 8%, var(--surface)); }
 .message.bad { border-color: var(--bad); color: var(--bad); background: color-mix(in srgb, var(--bad) 8%, var(--surface)); }
 
@@ -222,3 +222,15 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .cta:hover { background: color-mix(in srgb, var(--accent) 88%, var(--ink)); }
 .pill { border: 1px solid var(--line); background: transparent; color: var(--ink); padding: 4px 12px; border-radius: 99px; cursor: pointer; font-size: .9rem; margin: 4px 2px 0; }
 .pill:hover { border-color: var(--accent); }
+
+/* Time control and style switches */
+.choices { display: flex; flex-wrap: wrap; gap: 14px 32px; margin: 18px 0 10px; }
+.choice { display: grid; gap: 6px; align-content: start; }
+.choice-label { font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.seg { display: flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; background: var(--surface); width: fit-content; max-width: 100%; }
+.seg button { border: 0; background: transparent; color: var(--ink); padding: 7px 14px; border-radius: 7px; cursor: pointer; font-weight: 500; }
+.seg button:hover { background: var(--bg); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.choice-about { margin: 0; color: var(--muted); font-size: .9rem; min-height: 1.4em; }
+.tags { margin: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { font-size: .7rem; font-weight: 600; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }

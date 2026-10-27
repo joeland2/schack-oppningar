@@ -15,7 +15,7 @@
     <div class="wrap top-in">
       <a class="brand" href="./">Chess<span>Trainer</span></a>
       <div class="account">
-        <label>Lichess blitz rating <input id="rating" type="number" min="400" max="3200" step="50" inputmode="numeric"></label>
+        <label>Lichess <span class="speed-name">blitz</span> rating <input id="rating" type="number" min="400" max="3200" step="50" inputmode="numeric"></label>
         <button id="weakest" class="ghost" type="button">Practise weakest</button>
       </div>
     </div>
@@ -23,9 +23,29 @@
 
   <section id="picker" class="wrap picker">
     <h1>Practise openings</h1>
+    <div class="choices">
+      <div class="choice">
+        <span class="choice-label">Time control</span>
+        <div class="seg" role="group" aria-label="Time control">
+          <button type="button" data-speed="blitz">Blitz</button>
+          <button type="button" data-speed="classical">Classical</button>
+        </div>
+      </div>
+      <div class="choice">
+        <span class="choice-label">Your style</span>
+        <div class="seg" role="group" aria-label="Play style">
+          <button type="button" data-style="any">Any</button>
+          <button type="button" data-style="attacking">Attacking</button>
+          <button type="button" data-style="solid">Solid</button>
+          <button type="button" data-style="positional">Positional</button>
+          <button type="button" data-style="tricky">Tricky</button>
+        </div>
+        <p id="style-about" class="choice-about"></p>
+      </div>
+    </div>
     <p id="pick-msg" class="info" aria-live="polite"></p>
     <form id="rating-form" class="rating-ask" hidden>
-      <label for="rating-big">What is your Lichess blitz rating?</label>
+      <label for="rating-big">What is your Lichess <span class="speed-name">blitz</span> rating?</label>
       <div class="rating-row">
         <input id="rating-big" type="number" min="400" max="3200" step="1" inputmode="numeric" placeholder="e.g. 1200" required>
         <button type="submit" class="cta">Show my openings</button>
@@ -73,7 +93,7 @@
     </aside>
   </main>
 
-  <footer class="wrap foot">Click a piece, then the square to move it to. Your opponent plays the replies real Lichess players at your blitz rating ± 200 play in blitz, most common first. Learn shows every move; Try tests you, and a line clears when you play it without mistakes.</footer>
+  <footer class="wrap foot">Click a piece, then the square to move it to. Your opponent plays the replies real Lichess players within 200 of your rating choose in your time control, most common first. Style tags are our own judgement; popularity comes from real games. Learn shows every move; Try tests you, and a line clears when you play it without mistakes.</footer>
 
   <script type="module" src="app.js"></script>
 </body>

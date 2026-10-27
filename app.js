@@ -1,14 +1,18 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
 import { drawBoard, shake } from './board.js';
+import { STYLES, STYLE_OF } from './styles.js';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
 const MAX_LINES = 20;
 const MIN_GAMES = 20;     // below this, real-game data is too thin to trust
-const MAX_PLY = 20;       // data/explorer.json goes this deep
+const MAX_PLY = 20;       // data/explorer-*.json goes this deep
 const BUCKETS = [0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]; // Lichess explorer rating groups
-const STRONG = [7, 8];    // the 2200+ groups
+// Rating groups whose moves count as yours: 2200+ in blitz; 2000+ in classical, where 2200+ games are scarce.
+const STRONG = { blitz: [7, 8], classical: [6, 7, 8] };
 const WANT = { w: 30, b: 15 };   // openings listed per colour
+const POOL = { w: 80, b: 40 };   // candidates collected, so a style filter still has enough to show
+const SPEEDS = { blitz: 'Blitz', classical: 'Classical' };
 // First-move names that are not an opening plan of their own.
 const GENERIC = new Set(["King's Pawn Game", "Queen's Pawn Game", "King's Knight Opening"]);
 
@@ -19,7 +23,10 @@ const msgEl = $('#message');
 const movesEl = $('#moves');
 
 let stats = load(STORE, {});    // { [openingId]: { done: [lineKey], total } }
-let rating = load(STORE + '-blitz-rating', null);
+let speed = load(STORE + '-speed', 'blitz');
+const ratingKey = () => `${STORE}-${speed}-rating`;
+let rating = load(ratingKey(), null);
+let style = load(STORE + '-style', 'any');
 let OPENINGS = [];   // most played openings at your level
 let cur = null;      // current opening
 let lines = [];      // real-game lines for cur, most common first
@@ -54,15 +61,18 @@ console.assert(ratingsAround(1500).join() === '2,3,4' && ratingsAround(2400).joi
 
 // ---------- Data (all local, nothing is fetched from Lichess) ----------
 let TREE, BOOK, NAMES;
+const TREES = {};
 
-// data/explorer.json: move counts per rating group from Lichess blitz games, built by tools/make_explorer.py.
+// data/explorer-<speed>.json: move counts per rating group from Lichess games of that time control,
+// built by tools/make_explorer.py. Loaded once per time control.
+async function loadTree() {
+  TREES[speed] ??= (await fetch(`data/explorer-${speed}.json`).then((r) => r.json())).tree;
+  TREE = TREES[speed];
+}
+
 // data/*.tsv: named opening lines from github.com/lichess-org/chess-openings (CC0): eco, name, pgn.
-async function loadData() {
-  const [explorer, ...texts] = await Promise.all([
-    fetch('data/explorer.json').then((r) => r.json()),
-    ...[...'abcde'].map((f) => fetch(`data/${f}.tsv`).then((r) => r.text())),
-  ]);
-  TREE = explorer.tree;
+async function loadBook() {
+  const texts = await Promise.all([...'abcde'].map((f) => fetch(`data/${f}.tsv`).then((r) => r.text())));
   BOOK = texts.flatMap((t) => t.trim().split('\n').slice(1)).map((row) => {
     const [eco, name, pgn] = row.split('\t');
     return { eco, name, moves: pgn.replace(/\d+\.\s*/g, '').trim().split(/\s+/).map(clean) };
@@ -95,9 +105,9 @@ function explore(moves, groups) {
   return { total: sum(node[0]), moves: replies.filter((m) => m.n > 0).sort((a, b) => b.n - a.n) };
 }
 
-// Your move: what 2200+ players play most here, preferring moves from this opening's book.
+// Your move: what strong players play most here, preferring moves from this opening's book.
 function userMove(moves, book) {
-  const strong = explore(moves, STRONG).moves.filter((m) => m.n >= MIN_GAMES);
+  const strong = explore(moves, STRONG[speed]).moves.filter((m) => m.n >= MIN_GAMES);
   return (strong.find((m) => book.has(lineKey([...moves, m.san]))) || strong[0])?.san;
 }
 
@@ -143,7 +153,7 @@ function popularOpenings() {
   const found = new Map();
   const open = [{ moves: [], share: 1 }];
   const count = (side) => [...found.values()].filter((o) => o.side === side).length;
-  while (open.length && (count('w') < WANT.w || count('b') < WANT.b)) {
+  while (open.length && (count('w') < POOL.w || count('b') < POOL.b)) {
     open.sort((a, b) => b.share - a.share);
     const p = open.shift();
     const x = explore(p.moves, mine);
@@ -151,55 +161,103 @@ function popularOpenings() {
       const share = p.share * m.n / x.total;
       if (share < 0.0005 || m.n < MIN_GAMES) continue;
       const moves = [...p.moves, m.san];
-      const family = m.name && m.name.split(':')[0];
-      if (family && !GENERIC.has(family) && !found.has(family)) {
-        found.set(family, { id: family, name: family, family, eco: m.eco, side: moves.length % 2 ? 'w' : 'b', root: moves.join(' '), share });
+      const family = m.name && familyOf(m.name);
+      if (family && !found.has(family)) {
+        found.set(family, { id: family, name: family.split(': ').at(-1), family, eco: m.eco, side: moves.length % 2 ? 'w' : 'b', root: moves.join(' '), share });
       }
       open.push({ moves, share });
     }
   }
-  return top(found);
+  return [...found.values()].sort((a, b) => b.share - a.share);
 }
 
-function top(found) {
-  const all = [...found.values()].sort((a, b) => b.share - a.share);
-  return [...all.filter((o) => o.side === 'w').slice(0, WANT.w), ...all.filter((o) => o.side === 'b').slice(0, WANT.b)];
+// "Sicilian Defense: Najdorf Variation" → "Sicilian Defense". Generic first-move names keep their
+// variation instead ("Queen's Pawn Game: London System"), or are skipped when they have none.
+function familyOf(name) {
+  const head = name.split(':')[0];
+  if (!GENERIC.has(head)) return head;
+  const sub = name.split(',')[0];
+  return sub === head ? null : sub;
+}
+console.assert(familyOf("Queen's Pawn Game: London System, with e6") === "Queen's Pawn Game: London System" && familyOf("Queen's Pawn Game") === null, 'familyOf');
+
+const fitsStyle = (o) => style === 'any' || (STYLE_OF[o.family] || []).includes(style);
+
+// The openings shown: the most played ones that fit the chosen style.
+function shown() {
+  const fit = OPENINGS.filter(fitsStyle);
+  return [...fit.filter((o) => o.side === 'w').slice(0, WANT.w), ...fit.filter((o) => o.side === 'b').slice(0, WANT.b)];
 }
 
 // ---------- Opening list ----------
 function renderList() {
   const groups = [['w', 'You play White'], ['b', 'You play Black']];
+  const list = shown();
   listEl.innerHTML = groups.map(([side, label]) => {
-    const ops = OPENINGS.filter((o) => o.side === side);
+    const ops = list.filter((o) => o.side === side);
     const max = Math.max(...ops.map((o) => o.share));
-    return `<section class="og"><h2>${label}</h2><div class="ocards">${ops.map((o) => {
+    const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for ${side === 'w' ? 'White' : 'Black'} at your level. Try another style.</p>`;
+    return `<section class="og"><h2>${label}</h2>${ops.length ? '' : empty}<div class="ocards">${ops.map((o) => {
       const s = stats[o.id] || { done: [], total: 0 };
       const level = s.total && s.done.length >= s.total ? 'sitter' : s.done.length ? 'pagar' : 'ny';
       const levelTxt = { sitter: 'Learned', pagar: `${s.done.length}/${s.total} lines`, ny: 'New' }[level];
       const moves = numbered(o.root).split(' ');
+      const tags = (STYLE_OF[o.family] || []).map((t) => `<span class="tag">${STYLES[t].label}</span>`).join('');
       return `<article class="ocard" role="button" tabindex="0" data-id="${o.id}" aria-label="${o.name}">
         <div class="board mini" data-mini="${o.id}" inert></div>
         <div class="ocard-body">
           <div class="ocard-top"><span class="eco">${o.eco}</span><span class="chip ${level}">${levelTxt}</span></div>
           <h3>${o.name}</h3>
           <p class="omoves">${moves.slice(0, -1).join(' ')} <b>${moves.at(-1)}</b></p>
+          ${tags ? `<p class="tags">${tags}</p>` : ''}
           <div class="share"><span style="width:${(o.share / max) * 100}%"></span></div>
-          <small>${o.share < 0.01 ? '<1' : Math.round(o.share * 100)}% of games at your level</small>
+          <small>${o.share < 0.01 ? '<1' : Math.round(o.share * 100)}% of ${speed} games at your level</small>
         </div>
       </article>`;
     }).join('')}</div></section>`;
   }).join('');
-  for (const o of OPENINGS) {
-    const g = new Chess();
-    o.root.split(' ').forEach((m) => g.move(m));
-    const last = g.history({ verbose: true }).at(-1);
-    drawBoard(listEl.querySelector(`[data-mini="${CSS.escape(o.id)}"]`), g, { side: o.side, last });
-  }
+  const seen = new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (!e.isIntersecting) return;
+    seen.unobserve(e.target);
+    playPreview(e.target);
+  }), { threshold: 0.6 });
   listEl.querySelectorAll('.ocard').forEach((c) => {
-    const go = () => start(OPENINGS.find((o) => o.id === c.dataset.id));
+    const op = list.find((o) => o.id === c.dataset.id);
+    const go = () => start(op);
+    previewAt(c, op.root.split(' ').length);
+    if (!REDUCE_MOTION) {
+      seen.observe(c);
+      c.addEventListener('mouseenter', () => playPreview(c));
+      c.addEventListener('focus', () => playPreview(c));
+    }
     c.addEventListener('click', go);
     c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
   });
+}
+
+// ---------- Animated previews ----------
+const REDUCE_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Draws a card's mini board after its first n moves.
+function previewAt(card, n) {
+  const op = OPENINGS.find((o) => o.id === card.dataset.id);
+  const g = new Chess();
+  op.root.split(' ').slice(0, n).forEach((m) => g.move(m));
+  drawBoard(card.querySelector('.mini'), g, { side: op.side, last: g.history({ verbose: true }).at(-1) });
+}
+
+// Plays the opening move by move from the start position; a newer run on the same card cancels the old one.
+function playPreview(card) {
+  const total = OPENINGS.find((o) => o.id === card.dataset.id).root.split(' ').length;
+  const run = String(Number(card.dataset.run || 0) + 1);
+  card.dataset.run = run;
+  let n = 0;
+  const step = () => {
+    if (card.dataset.run !== run || !card.isConnected) return;
+    previewAt(card, n);
+    if (n++ < total) setTimeout(step, n === 1 ? 350 : 600);
+  };
+  step();
 }
 
 // ---------- Board ----------
@@ -238,14 +296,14 @@ function start(op) {
   misses = 0; missesHere = 0; busy = true;
   $('#op-title').textContent = op.name;
   $('#op-eco').textContent = op.eco;
-  $('#op-info').textContent = `Starts ${numbered(op.root)}. Played in ${op.share < 0.01 ? 'under 1' : Math.round(op.share * 100)}% of blitz games at your level.`;
+  $('#op-info').textContent = `Starts ${numbered(op.root)}. Played in ${op.share < 0.01 ? 'under 1' : Math.round(op.share * 100)}% of ${speed} games at your level.`;
   $('#op-var').textContent = '';
   $('#op-side').textContent = op.side === 'w' ? 'You play White' : 'You play Black';
   $('#restart').textContent = 'Restart';
   $('#picker').hidden = true;
   $('#trainer').hidden = false;
   render();
-  if (!rating) return say('Enter your Lichess blitz rating at the top.');
+  if (!rating) return say(`Enter your Lichess ${speed} rating at the top.`);
   lines = buildLines(op);
   if (!lines.length) return say('Not enough games at your rating for this opening.', 'bad');
   const s = stats[op.id] = { done: [], ...stats[op.id], total: lines.length };
@@ -409,22 +467,47 @@ $('#show').addEventListener('click', () => {
   hintSq = [m.from, m.to]; renderBoard();
 });
 // Opening picker, shown before the board.
-function showPicker() {
+async function showPicker() {
   cur = null; engineGen++; // stops a Stockfish reply that is still on its way
   $('#trainer').hidden = true;
   $('#picker').hidden = false;
   listEl.innerHTML = '';
+  renderChoices();
   $('#rating-form').hidden = !!rating;
   if (!rating) return ($('#pick-msg').textContent = 'The openings you see depend on what players at your level actually play.');
+  $('#pick-msg').textContent = `Loading ${speed} games…`;
+  try { await loadTree(); } catch { return say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .'); }
   OPENINGS = popularOpenings();
-  $('#pick-msg').textContent = `The most played openings in blitz at ${rating} ± 200. Pick one to practise.`;
+  $('#pick-msg').textContent = `The most played openings in ${speed} at ${rating} ± 200${style === 'any' ? '' : `, ${STYLES[style].label.toLowerCase()} ones first`}. Pick one to practise.`;
   renderList();
 }
+
+// Time control and style switches, plus the rating labels that depend on the time control.
+function renderChoices() {
+  document.querySelectorAll('[data-speed]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.speed === speed));
+  document.querySelectorAll('[data-style]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.style === style));
+  $('#style-about').textContent = style === 'any' ? 'All common openings, whatever their character.' : STYLES[style].about;
+  document.querySelectorAll('.speed-name').forEach((el) => (el.textContent = speed));
+  $('#rating').value = rating || '';
+}
+document.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('click', () => {
+  speed = b.dataset.speed;
+  store(STORE + '-speed', speed);
+  rating = load(ratingKey(), null);
+  showPicker();
+}));
+document.querySelectorAll('[data-style]').forEach((b) => b.addEventListener('click', () => {
+  style = b.dataset.style;
+  store(STORE + '-style', style);
+  renderChoices();
+  if (OPENINGS.length) renderList();
+}));
 $('#back').addEventListener('click', showPicker);
 $('#weakest').addEventListener('click', () => {
-  if (!OPENINGS.length) return;
+  const list = shown();
+  if (!list.length) return;
   const score = (o) => { const s = stats[o.id]; return s && s.total ? s.done.length / s.total : 0; };
-  start([...OPENINGS].sort((a, b) => score(a) - score(b))[0]);
+  start([...list].sort((a, b) => score(a) - score(b))[0]);
 });
 function setMode(m) {
   mode = m;
@@ -437,18 +520,16 @@ $('#mode-learn').addEventListener('click', () => setMode('learn'));
 $('#mode-try').addEventListener('click', () => setMode('try'));
 function setRating(r) {
   rating = r >= 400 && r <= 3200 ? Math.round(r) : null;
-  store(STORE + '-blitz-rating', rating);
-  $('#rating').value = rating || '';
+  store(ratingKey(), rating);
   showPicker();
 }
 $('#rating').addEventListener('change', (e) => setRating(Number(e.target.value)));
 $('#rating-form').addEventListener('submit', (e) => { e.preventDefault(); setRating(Number($('#rating-big').value)); });
 document.querySelectorAll('#rating-form .pill').forEach((b) => b.addEventListener('click', () => setRating(Number(b.dataset.r))));
 
-try { await loadData(); } catch {
+try { await loadBook(); } catch {
   say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .', 'bad');
   throw new Error('opening data failed to load');
 }
-$('#rating').value = rating || '';
 setMode(mode);
 showPicker();

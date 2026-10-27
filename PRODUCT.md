@@ -21,7 +21,7 @@ Typical situation: a short practice session between games, on a laptop or phone,
 Chess Trainer helps players improve through three self-contained practice modes, picked from a start page:
 
 1. **Basics**: short interactive lessons where the player makes each move themselves, with an explanation after.
-2. **Openings**: the most played openings at the player's blitz rating (30 for White, 15 for Black). Each opening is drilled against the replies real players at that level actually choose, most common first. Learn mode shows every move; Try mode tests the player, and a line counts as cleared only when played without mistakes. After the opening, the player plays on against Stockfish until checkmate.
+2. **Openings**: the most played openings at the player's rating in the chosen time control, Blitz or Classical (30 for White, 15 for Black). The player can pick a play style (Attacking, Solid, Positional, Tricky) to see only openings that suit it. Each card previews the opening by playing its moves on a mini board. Each opening is drilled against the replies real players at that level actually choose, most common first. Learn mode shows every move; Try mode tests the player, and a line counts as cleared only when played without mistakes. After the opening, the player plays on against Stockfish until checkmate.
 3. **Think like the pros**: find the move Magnus Carlsen, Hikaru Nakamura or Alireza Firouzja found in a real game, then see an engine-based explanation of why it works and why the next-best move falls short.
 
 Success: a player meets the lines they will actually face at their level, recognises them in their own games, and clears more lines over time.
@@ -33,7 +33,7 @@ Opening lines are built from what real players at the user's own rating (±200) 
 ## Operating Context
 
 - Used in a browser on desktop and phone; no install and no account.
-- The player enters their Lichess blitz rating by hand. It is stored in the browser.
+- The player picks a time control (Blitz or Classical) and enters their Lichess rating for it by hand. Both are stored in the browser.
 - Progress (cleared lines, solved lessons and puzzles, Learn/Try mode) lives in the browser's local storage only.
 - Players typically go back and forth between practising here and playing blitz on Lichess.
 
@@ -42,7 +42,8 @@ Opening lines are built from what real players at the user's own rating (±200) 
 - Plain static HTML, CSS and JavaScript with no build step. chess.js and stockfish.js are loaded from jsDelivr.
 - Must be served over HTTP; it does not work from `file://`.
 - All game data is precomputed and committed to the repo. The site makes no calls to Lichess or chess.com at runtime:
-  - `data/explorer.json`: move counts per Lichess rating group from 2,000,000 rated blitz games, Lichess database September 2026, up to 20 plies deep. Rebuild with `tools/make_explorer.py`.
+  - `data/explorer-blitz.json` and `data/explorer-classical.json`: move counts per Lichess rating group from 2,000,000 rated blitz games and 400,000 rated classical games, Lichess database September 2026, up to 20 plies deep. Rebuild with `tools/make_explorer.py <blitz|classical>`.
+  - `styles.js`: which play styles each opening suits. This is editorial judgement, not game data.
   - `data/*.tsv`: named opening lines from lichess-org/chess-openings.
   - `data/pros.json`: 45 puzzles (15 per player) from chess.com blitz and rapid games, analysed with Stockfish. Rebuild with `tools/make_pros.py`.
 - Lines branch on every opponent reply played in at least 5% of games from that position, capped at about 20 lines per opening.
@@ -61,7 +62,7 @@ Opening lines are built from what real players at the user's own rating (±200) 
 
 ## Evidence on Hand
 
-- Real game statistics: `data/explorer.json` (Lichess database, CC0).
+- Real game statistics: `data/explorer-blitz.json`, `data/explorer-classical.json` (Lichess database, CC0).
 - Real pro positions and engine analysis: `data/pros.json`, with a link to each source game.
 - Named opening lines: `data/a.tsv` to `data/e.tsv` (CC0).
 - Piece art: `pieces/` (cburnett, GPLv2+, credited in README.md).

@@ -1,11 +1,11 @@
-"""Build data/explorer.json: opening move statistics from the Lichess game database.
+"""Build data/explorer-<speed>.json: opening move statistics from the Lichess game database.
 
-Streams the start of a monthly dump from database.lichess.org (CC0), keeps rated blitz games,
+Streams the start of a monthly dump from database.lichess.org (CC0), keeps rated games of one time control,
 and counts how often every move sequence up to MAX_PLY occurs, per Lichess explorer rating group
 (by the players' average rating). The openings page reads this file instead of calling Lichess.
 
 Needs: curl and zstd on PATH.
-Run:   python tools/make_explorer.py [games]       (default 1,000,000 blitz games)
+Run:   python tools/make_explorer.py <blitz|classical> [games]   (default 2,000,000 games)
 Output node format: [counts per rating group, {san: child node}] — the dict is left out on leaves.
 """
 import json, re, subprocess, sys
@@ -34,19 +34,21 @@ def moves_of(text):
 
 
 def main():
-    want = int(sys.argv[1]) if len(sys.argv) > 1 else 1_000_000
+    speed = sys.argv[1]
+    want = int(sys.argv[2]) if len(sys.argv) > 2 else 2_000_000
+    event = {'blitz': 'Blitz', 'classical': 'Classical'}[speed]
     counts = {}  # 'e4 c5 Nf3' -> [n per bucket]
     stream = subprocess.Popen(f'curl -s {URL} | zstd -dc', shell=True, stdout=subprocess.PIPE, text=True)
     games = 0
-    blitz = False
+    wanted = False
     elo = []
     for line in stream.stdout:
         if line.startswith('[Event '):
-            blitz = 'Blitz' in line
+            wanted = event in line
             elo = []
         elif line.startswith(('[WhiteElo ', '[BlackElo ')):
             elo.append(int(line.split('"')[1]))
-        elif line.startswith('1.') and blitz and len(elo) == 2:
+        elif line.startswith('1.') and wanted and len(elo) == 2:
             b = bisect_right(BUCKETS, sum(elo) / 2) - 1
             key = ''
             for san in moves_of(line):
@@ -76,8 +78,8 @@ def main():
             node.append({})
         node[1][last] = [counts[key]]
     assert sum(root[0]) == games and all(sum(c[0]) <= sum(root[0]) for c in root[1].values())
-    with open('data/explorer.json', 'w') as f:
-        json.dump({'buckets': BUCKETS, 'games': games, 'source': URL, 'tree': root}, f, separators=(',', ':'))
+    with open(f'data/explorer-{speed}.json', 'w') as f:
+        json.dump({'speed': speed, 'buckets': BUCKETS, 'games': games, 'source': URL, 'tree': root}, f, separators=(',', ':'))
     print(f'wrote {games:,} games', file=sys.stderr)
 
 
