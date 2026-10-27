@@ -1,0 +1,2291 @@
+[
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "Toxicmybrother",
+  "opponentRating": 3059,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-23",
+  "url": "https://www.chess.com/game/live/185802407154",
+  "fen": "r1b1r2k/1pn3bp/2pR2p1/pPn1p3/2B1Pp2/P1N2N1P/3B1PP1/R5K1 w - - 0 21",
+  "move": "bxc6",
+  "eval": {
+   "cp": 60
+  },
+  "pv": [
+   "bxc6",
+   "bxc6",
+   "Rxc6",
+   "N7e6",
+   "Bxe6",
+   "Nxe6",
+   "Rc1",
+   "Nd4"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "Rb1",
+   "eval": {
+    "cp": -124
+   },
+   "pv": [
+    "Rb1",
+    "Be6",
+    "Bxe6",
+    "Rxe6",
+    "Rxe6",
+    "N7xe6"
+   ]
+  },
+  "others": [
+   {
+    "move": "Rb1",
+    "eval": {
+     "cp": -124
+    }
+   },
+   {
+    "move": "Rc1",
+    "eval": {
+     "cp": -148
+    }
+   }
+  ]
+ },
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "Toxicmybrother",
+  "opponentRating": 3059,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-23",
+  "url": "https://www.chess.com/game/live/185802407154",
+  "fen": "r1b1r2k/2n3bp/2PR2p1/pp1Np3/2B1np2/P4N1P/3B1PP1/R5K1 w - - 0 23",
+  "move": "Nxc7",
+  "eval": {
+   "cp": 145
+  },
+  "pv": [
+   "Nxc7",
+   "Nxd6"
+  ],
+  "motifs": [
+   "capture",
+   "sacrifice"
+  ],
+  "alt": {
+   "move": "Rd7",
+   "eval": {
+    "cp": -88
+   },
+   "pv": [
+    "Rd7",
+    "Ne6",
+    "Bxb5",
+    "Bxd7",
+    "cxd7",
+    "Red8"
+   ]
+  },
+  "others": [
+   {
+    "move": "Rd7",
+    "eval": {
+     "cp": -88
+    }
+   },
+   {
+    "move": "Bd3",
+    "eval": {
+     "cp": -130
+    }
+   }
+  ]
+ },
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "KodandaPrime",
+  "opponentRating": 3094,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-23",
+  "url": "https://www.chess.com/game/live/185798089100",
+  "fen": "r3k1nr/pp1npp1p/3p2p1/q1pP4/2P1P1b1/2P2N1P/P2B1PP1/R2QKB1R b KQkq - 0 9",
+  "move": "Bxf3",
+  "eval": {
+   "cp": -28
+  },
+  "pv": [
+   "Bxf3",
+   "Qxf3"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "Bh5",
+   "eval": {
+    "cp": -610
+   },
+   "pv": [
+    "Bh5",
+    "g4",
+    "Ngf6",
+    "gxh5",
+    "Nxe4",
+    "h6"
+   ]
+  },
+  "others": [
+   {
+    "move": "Bh5",
+    "eval": {
+     "cp": -610
+    }
+   },
+   {
+    "move": "Bxh3",
+    "eval": {
+     "cp": -730
+    }
+   }
+  ]
+ },
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "KodandaPrime",
+  "opponentRating": 3094,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-23",
+  "url": "https://www.chess.com/game/live/185798089100",
+  "fen": "8/kpq3rp/p2p4/P1pPnp2/Q1P2p1P/2P2P2/3KBP2/1R6 b - - 1 28",
+  "move": "Rg2",
+  "eval": {
+   "cp": 433
+  },
+  "pv": [
+   "Rg2",
+   "Rf1",
+   "Qd8",
+   "h5",
+   "Rh2",
+   "Qa1",
+   "Kb8",
+   "Qb1"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Qd8",
+   "eval": {
+    "cp": 274
+   },
+   "pv": [
+    "Qd8",
+    "Rh1"
+   ]
+  },
+  "others": [
+   {
+    "move": "Qd8",
+    "eval": {
+     "cp": 274
+    }
+   },
+   {
+    "move": "Nd7",
+    "eval": {
+     "cp": 272
+    }
+   }
+  ]
+ },
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "KodandaPrime",
+  "opponentRating": 3096,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-23",
+  "url": "https://www.chess.com/game/live/185797911534",
+  "fen": "r1bqr1k1/1p1nbpp1/2p4p/p2p3n/3P4/2NBPNB1/PPQ2PPP/R4RK1 w - - 8 14",
+  "move": "Nxd5",
+  "eval": {
+   "cp": 240
+  },
+  "pv": [
+   "Nxd5",
+   "Nxg3",
+   "Nxe7+",
+   "Rxe7",
+   "hxg3",
+   "Nf6",
+   "a3",
+   "Be6"
+  ],
+  "motifs": [
+   "capture",
+   "sacrifice"
+  ],
+  "alt": {
+   "move": "Be5",
+   "eval": {
+    "cp": 35
+   },
+   "pv": [
+    "Be5",
+    "Bf6",
+    "Bxf6",
+    "Nhxf6",
+    "Rfe1",
+    "Qe7"
+   ]
+  },
+  "others": [
+   {
+    "move": "Be5",
+    "eval": {
+     "cp": 35
+    }
+   },
+   {
+    "move": "Bh7+",
+    "eval": {
+     "cp": 28
+    }
+   }
+  ]
+ },
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "KodandaPrime",
+  "opponentRating": 3096,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-23",
+  "url": "https://www.chess.com/game/live/185797911534",
+  "fen": "r1bqr1k1/1p1nbpp1/2p4p/p2N4/3P4/3BPNn1/PPQ2PPP/R4RK1 w - - 0 15",
+  "move": "Nxe7+",
+  "eval": {
+   "cp": 234
+  },
+  "pv": [
+   "Nxe7+",
+   "Rxe7",
+   "hxg3",
+   "Nf6",
+   "a3",
+   "Be6",
+   "Rac1",
+   "a4"
+  ],
+  "motifs": [
+   "check",
+   "capture"
+  ],
+  "alt": {
+   "move": "Nf4",
+   "eval": {
+    "cp": -345
+   },
+   "pv": [
+    "Nf4",
+    "Nxf1",
+    "Bc4",
+    "Bf6",
+    "Bxf7+",
+    "Kxf7"
+   ]
+  },
+  "others": [
+   {
+    "move": "Nf4",
+    "eval": {
+     "cp": -345
+    }
+   },
+   {
+    "move": "Bh7+",
+    "eval": {
+     "cp": -501
+    }
+   }
+  ]
+ },
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "LeonLivaic2000",
+  "opponentRating": 3113,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-23",
+  "url": "https://www.chess.com/game/live/185796494104",
+  "fen": "4r1k1/1pq1pp1p/3p2p1/1RnP4/r4BB1/2Q4P/2P2PP1/2R3K1 b - - 0 23",
+  "move": "Rxf4",
+  "eval": {
+   "cp": 115
+  },
+  "pv": [
+   "Rxf4",
+   "Ra1",
+   "Re4",
+   "Ra7",
+   "Rb8",
+   "g3",
+   "Re5",
+   "Bf3"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "h5",
+   "eval": {
+    "cp": -492
+   },
+   "pv": [
+    "h5",
+    "Rxc5",
+    "Qxc5",
+    "Qxc5",
+    "dxc5",
+    "Bd7"
+   ]
+  },
+  "others": [
+   {
+    "move": "h5",
+    "eval": {
+     "cp": -492
+    }
+   },
+   {
+    "move": "Na6",
+    "eval": {
+     "cp": -599
+    }
+   }
+  ]
+ },
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "Colossus9000",
+  "opponentRating": 3107,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-18",
+  "url": "https://www.chess.com/game/live/185521485286",
+  "fen": "1r2k2r/2p1qp2/p2p3p/3P3P/8/3B4/1PP2Q2/2K3R1 b k - 2 25",
+  "move": "Kf8",
+  "eval": {
+   "cp": 236
+  },
+  "pv": [
+   "Kf8",
+   "Bg6"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Kd8",
+   "eval": {
+    "cp": 6
+   },
+   "pv": [
+    "Kd8",
+    "Qa7",
+    "Rc8",
+    "Bxa6",
+    "c5",
+    "Qxe7+"
+   ]
+  },
+  "others": [
+   {
+    "move": "Kd8",
+    "eval": {
+     "cp": 6
+    }
+   },
+   {
+    "move": "Kd7",
+    "eval": {
+     "cp": -100
+    }
+   }
+  ]
+ },
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "Colossus9000",
+  "opponentRating": 3107,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-18",
+  "url": "https://www.chess.com/game/live/185521485286",
+  "fen": "4rk1r/2p1qp2/p2p2Bp/3P3P/8/8/1PP2Q2/1K4R1 b - - 6 27",
+  "move": "Rg8",
+  "eval": {
+   "cp": 425
+  },
+  "pv": [
+   "Rg8",
+   "Rf1",
+   "Rg7",
+   "Qf4",
+   "Kg8",
+   "Bd3",
+   "Rg5",
+   "Ka2"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Qd7",
+   "eval": {
+    "cp": 16
+   },
+   "pv": [
+    "Qd7",
+    "Rf1",
+    "Re7",
+    "Qf6",
+    "Rg8",
+    "Bf5"
+   ]
+  },
+  "others": [
+   {
+    "move": "Qd7",
+    "eval": {
+     "cp": 16
+    }
+   },
+   {
+    "move": "c5",
+    "eval": {
+     "cp": 6
+    }
+   }
+  ]
+ },
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "SGchess01",
+  "opponentRating": 3156,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-18",
+  "url": "https://www.chess.com/game/live/185521112528",
+  "fen": "7r/R5k1/4qb2/2p1n2p/4PQ1p/8/1B3PP1/6K1 b - - 4 32",
+  "move": "Kg6",
+  "eval": {
+   "cp": 396
+  },
+  "pv": [
+   "Kg6",
+   "Qc1"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Kg8",
+   "eval": {
+    "cp": 38
+   },
+   "pv": [
+    "Kg8",
+    "Ra5",
+    "Rh7",
+    "Rxc5",
+    "Nd3",
+    "Qb8+"
+   ]
+  },
+  "others": [
+   {
+    "move": "Kg8",
+    "eval": {
+     "cp": 38
+    }
+   },
+   {
+    "move": "Kf8",
+    "eval": {
+     "cp": 36
+    }
+   }
+  ]
+ },
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "LeonLivaic2000",
+  "opponentRating": 3060,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-17",
+  "url": "https://www.chess.com/game/live/185462435196",
+  "fen": "5rr1/1k6/pP2p2p/1b1pBnqP/2pP2p1/2P3P1/2N1BP1Q/1R4K1 b - - 0 28",
+  "move": "Qd2",
+  "eval": {
+   "cp": 553
+  },
+  "pv": [
+   "Qd2",
+   "Bd1",
+   "Ba4",
+   "f3",
+   "Qxh2+",
+   "Kxh2",
+   "gxf3",
+   "Nb4"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Ba4",
+   "eval": {
+    "cp": 283
+   },
+   "pv": [
+    "Ba4",
+    "Bf4",
+    "Qe7",
+    "Bd1",
+    "a5",
+    "Qg2"
+   ]
+  },
+  "others": [
+   {
+    "move": "Ba4",
+    "eval": {
+     "cp": 283
+    }
+   },
+   {
+    "move": "Qe7",
+    "eval": {
+     "cp": 256
+    }
+   }
+  ]
+ },
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "LeonLivaic2000",
+  "opponentRating": 3060,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-17",
+  "url": "https://www.chess.com/game/live/185462435196",
+  "fen": "3r2r1/1k6/pP2p2p/4Bn1P/3P2p1/2p3P1/2B2PK1/4R3 b - - 2 38",
+  "move": "Nxd4",
+  "eval": {
+   "cp": 319
+  },
+  "pv": [
+   "Nxd4",
+   "Be4+",
+   "Kxb6",
+   "Rc1",
+   "c2",
+   "Bf4",
+   "Kb5",
+   "Bxh6"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "Kxb6",
+   "eval": {
+    "cp": 140
+   },
+   "pv": [
+    "Kxb6",
+    "Rb1+",
+    "Ka7",
+    "Be4",
+    "Rb8",
+    "Rc1"
+   ]
+  },
+  "others": [
+   {
+    "move": "Kxb6",
+    "eval": {
+     "cp": 140
+    }
+   },
+   {
+    "move": "Rd5",
+    "eval": {
+     "cp": 134
+    }
+   }
+  ]
+ },
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "theloyalwolf",
+  "opponentRating": 3038,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-16",
+  "url": "https://www.chess.com/game/live/185419569754",
+  "fen": "r3r1k1/2ppqpp1/bpnb1n1p/p5N1/2PP1N2/P2Q2P1/1P2P1BP/R1B2RK1 w - - 0 14",
+  "move": "Nd5",
+  "eval": {
+   "cp": 579
+  },
+  "pv": [
+   "Nd5",
+   "hxg5",
+   "Nxe7+",
+   "Bxe7",
+   "Bxc6",
+   "dxc6",
+   "Bxg5",
+   "a4"
+  ],
+  "motifs": [
+   "sacrifice"
+  ],
+  "alt": {
+   "move": "Nh5",
+   "eval": {
+    "cp": -184
+   },
+   "pv": [
+    "Nh5",
+    "hxg5"
+   ]
+  },
+  "others": [
+   {
+    "move": "Nh5",
+    "eval": {
+     "cp": -184
+    }
+   },
+   {
+    "move": "Nf3",
+    "eval": {
+     "cp": -163
+    }
+   }
+  ]
+ },
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "theloyalwolf",
+  "opponentRating": 3038,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-16",
+  "url": "https://www.chess.com/game/live/185419569754",
+  "fen": "r3r1k1/2ppqpp1/bpnb1n2/p2N2p1/2PP4/P2Q2P1/1P2P1BP/R1B2RK1 w - - 0 15",
+  "move": "Nxe7+",
+  "eval": {
+   "cp": 532
+  },
+  "pv": [
+   "Nxe7+",
+   "Bxe7",
+   "Bxg5",
+   "d5",
+   "b3",
+   "Nxd4",
+   "e3",
+   "Ne6"
+  ],
+  "motifs": [
+   "check",
+   "capture"
+  ],
+  "alt": {
+   "move": "Nxf6+",
+   "eval": {
+    "cp": -155
+   },
+   "pv": [
+    "Nxf6+",
+    "gxf6"
+   ]
+  },
+  "others": [
+   {
+    "move": "Nxf6+",
+    "eval": {
+     "cp": -155
+    }
+   },
+   {
+    "move": "Rf2",
+    "eval": {
+     "cp": -177
+    }
+   }
+  ]
+ },
+ {
+  "player": "Magnus Carlsen",
+  "opponent": "theloyalwolf",
+  "opponentRating": 3040,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-16",
+  "url": "https://www.chess.com/game/live/185419413526",
+  "fen": "3q2rk/1b2pp1p/pp1p1npQ/2rPn3/P7/1BN4P/1PP1NPP1/3RR1K1 b - - 5 21",
+  "move": "g5",
+  "eval": {
+   "cp": 596
+  },
+  "pv": [
+   "g5",
+   "f4",
+   "Rg6",
+   "fxe5",
+   "Rxh6",
+   "exf6",
+   "Rxf6",
+   "Ng3"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Rxc3",
+   "eval": {
+    "cp": 322
+   },
+   "pv": [
+    "Rxc3",
+    "f4"
+   ]
+  },
+  "others": [
+   {
+    "move": "Rxc3",
+    "eval": {
+     "cp": 322
+    }
+   },
+   {
+    "move": "Qf8",
+    "eval": {
+     "cp": -10
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "KodandaPrime",
+  "opponentRating": 3144,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-25",
+  "url": "https://www.chess.com/game/live/185932492614",
+  "fen": "8/4R3/8/4Ppp1/5k2/4r3/6KP/8 b - - 1 64",
+  "move": "Re2+",
+  "eval": {
+   "cp": 250
+  },
+  "pv": [
+   "Re2+",
+   "Kg1",
+   "Kf3",
+   "h3",
+   "Kg3",
+   "Kf1",
+   "Rc2",
+   "e6"
+  ],
+  "motifs": [
+   "check"
+  ],
+  "alt": {
+   "move": "Ra3",
+   "eval": {
+    "cp": 35
+   },
+   "pv": [
+    "Ra3",
+    "Rb7",
+    "Kxe5"
+   ]
+  },
+  "others": [
+   {
+    "move": "Ra3",
+    "eval": {
+     "cp": 35
+    }
+   },
+   {
+    "move": "Rxe5",
+    "eval": {
+     "cp": 28
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "KodandaPrime",
+  "opponentRating": 3144,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-25",
+  "url": "https://www.chess.com/game/live/185932492614",
+  "fen": "8/8/8/R4pp1/8/4rk2/7P/6K1 b - - 9 70",
+  "move": "Re1#",
+  "eval": {
+   "mate": 1
+  },
+  "pv": [
+   "Re1#"
+  ],
+  "motifs": [
+   "check",
+   "mate"
+  ],
+  "alt": {
+   "move": "f4",
+   "eval": {
+    "cp": 49
+   },
+   "pv": [
+    "f4",
+    "Ra1",
+    "Rd3",
+    "Rb1",
+    "Rc3",
+    "Rd1"
+   ]
+  },
+  "others": [
+   {
+    "move": "f4",
+    "eval": {
+     "cp": 49
+    }
+   },
+   {
+    "move": "Kg4",
+    "eval": {
+     "cp": 49
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "KodandaPrime",
+  "opponentRating": 3146,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-25",
+  "url": "https://www.chess.com/game/live/185932314894",
+  "fen": "r1b1r1k1/ppq2ppp/5n2/3pP3/1P3R2/P1NPQ2P/4B1P1/R5K1 w - - 1 18",
+  "move": "d4",
+  "eval": {
+   "cp": 443
+  },
+  "pv": [
+   "d4",
+   "a5"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Rxf6",
+   "eval": {
+    "cp": -21
+   },
+   "pv": [
+    "Rxf6",
+    "Qxc3",
+    "Rc1",
+    "Qxa3",
+    "Rf4",
+    "Be6"
+   ]
+  },
+  "others": [
+   {
+    "move": "Rxf6",
+    "eval": {
+     "cp": -21
+    }
+   },
+   {
+    "move": "Nb5",
+    "eval": {
+     "cp": -64
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "KodandaPrime",
+  "opponentRating": 3150,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-25",
+  "url": "https://www.chess.com/game/live/185931745402",
+  "fen": "b3rrk1/p1b5/3p2qp/2pPp3/2P1N1P1/PR1Q1p1B/5P1K/4R3 w - - 0 35",
+  "move": "g5",
+  "eval": {
+   "cp": 154
+  },
+  "pv": [
+   "g5",
+   "hxg5",
+   "Rg1",
+   "Bd8",
+   "Nxg5",
+   "Qxd3",
+   "Rxd3",
+   "Kh8"
+  ],
+  "motifs": [
+   "sacrifice"
+  ],
+  "alt": {
+   "move": "Qd1",
+   "eval": {
+    "cp": -42
+   },
+   "pv": [
+    "Qd1",
+    "Ba5"
+   ]
+  },
+  "others": [
+   {
+    "move": "Qd1",
+    "eval": {
+     "cp": -42
+    }
+   },
+   {
+    "move": "Qb1",
+    "eval": {
+     "cp": 14
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "KodandaPrime",
+  "opponentRating": 3150,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-25",
+  "url": "https://www.chess.com/game/live/185931745402",
+  "fen": "8/6k1/3p4/2pP4/p1P2qpQ/P3pp2/5P2/5BK1 w - - 0 59",
+  "move": "Qe7+",
+  "eval": {
+   "cp": 468
+  },
+  "pv": [
+   "Qe7+",
+   "Kg6",
+   "Qxe3",
+   "Qf6",
+   "Bd3+",
+   "Kf7",
+   "Qe6+",
+   "Qxe6"
+  ],
+  "motifs": [
+   "check"
+  ],
+  "alt": {
+   "move": "Bd3",
+   "eval": {
+    "cp": 172
+   },
+   "pv": [
+    "Bd3"
+   ]
+  },
+  "others": [
+   {
+    "move": "Bd3",
+    "eval": {
+     "cp": 172
+    }
+   },
+   {
+    "move": "fxe3",
+    "eval": {
+     "cp": 0
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "KodandaPrime",
+  "opponentRating": 3152,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-25",
+  "url": "https://www.chess.com/game/live/185931476460",
+  "fen": "8/3r2p1/2p2p1p/k4P2/6P1/1R2KP2/8/8 b - - 8 42",
+  "move": "c5",
+  "eval": {
+   "cp": 543
+  },
+  "pv": [
+   "c5",
+   "Ra3+",
+   "Kb4",
+   "Ra6",
+   "c4",
+   "Rc6",
+   "c3",
+   "f4"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Ka6",
+   "eval": {
+    "cp": 219
+   },
+   "pv": [
+    "Ka6",
+    "Ra3+",
+    "Kb5",
+    "Rb3+",
+    "Kc4",
+    "Rb1"
+   ]
+  },
+  "others": [
+   {
+    "move": "Ka6",
+    "eval": {
+     "cp": 219
+    }
+   },
+   {
+    "move": "Ka4",
+    "eval": {
+     "cp": 202
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "KodandaPrime",
+  "opponentRating": 3152,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-25",
+  "url": "https://www.chess.com/game/live/185931476460",
+  "fen": "8/3r2p1/5p1p/k1p2P2/6P1/4KP2/8/1R6 b - - 1 43",
+  "move": "c4",
+  "eval": {
+   "cp": 523
+  },
+  "pv": [
+   "c4",
+   "f4",
+   "Ka4",
+   "g5",
+   "hxg5",
+   "fxg5",
+   "fxg5",
+   "Rb6"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Ka4",
+   "eval": {
+    "cp": 310
+   },
+   "pv": [
+    "Ka4",
+    "Rc1",
+    "Kb5",
+    "Rb1+",
+    "Kc6",
+    "Rc1"
+   ]
+  },
+  "others": [
+   {
+    "move": "Ka4",
+    "eval": {
+     "cp": 310
+    }
+   },
+   {
+    "move": "Ka6",
+    "eval": {
+     "cp": 291
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "NeonNinja73",
+  "opponentRating": 2876,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-24",
+  "url": "https://www.chess.com/game/live/185887618306",
+  "fen": "6r1/p1kq2r1/1n1p1Q2/p1pPp1B1/P1b1P3/2P3P1/5RB1/4R1K1 w - - 3 30",
+  "move": "Bh4",
+  "eval": {
+   "cp": -81
+  },
+  "pv": [
+   "Bh4",
+   "Rh7"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Bh6",
+   "eval": {
+    "cp": -476
+   },
+   "pv": [
+    "Bh6",
+    "Rxg3",
+    "Bf8",
+    "R8g6",
+    "Qf5",
+    "R3g4"
+   ]
+  },
+  "others": [
+   {
+    "move": "Bh6",
+    "eval": {
+     "cp": -476
+    }
+   },
+   {
+    "move": "Bd2",
+    "eval": {
+     "cp": -508
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "NeonNinja73",
+  "opponentRating": 2876,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-24",
+  "url": "https://www.chess.com/game/live/185887618306",
+  "fen": "2b2R2/p1kq2r1/1n1p2Q1/p1pPp3/4P2B/2P3P1/6BK/8 w - - 3 37",
+  "move": "Qf6",
+  "eval": {
+   "cp": -49
+  },
+  "pv": [
+   "Qf6",
+   "Rh7"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Qh6",
+   "eval": {
+    "cp": -216
+   },
+   "pv": [
+    "Qh6",
+    "Rh7",
+    "Qc1",
+    "a4",
+    "c4",
+    "Qg4"
+   ]
+  },
+  "others": [
+   {
+    "move": "Qh6",
+    "eval": {
+     "cp": -216
+    }
+   },
+   {
+    "move": "Qf5",
+    "eval": {
+     "cp": -253
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "NeonNinja73",
+  "opponentRating": 2877,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-24",
+  "url": "https://www.chess.com/game/live/185887538234",
+  "fen": "b3r1k1/p2qrpb1/1p4pp/8/1PNpP2P/2nP1NP1/2Q2PB1/1R2R1K1 b - e3 0 25",
+  "move": "dxe3",
+  "eval": {
+   "cp": 685
+  },
+  "pv": [
+   "dxe3",
+   "Nce5",
+   "Rxe5",
+   "Nxe5",
+   "exf2+",
+   "Qxf2",
+   "Bxe5",
+   "Rxe5"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "Nxb1",
+   "eval": {
+    "cp": 373
+   },
+   "pv": [
+    "Nxb1",
+    "Qxb1",
+    "b5",
+    "Ncd2",
+    "Qd6",
+    "Bh3"
+   ]
+  },
+  "others": [
+   {
+    "move": "Nxb1",
+    "eval": {
+     "cp": 373
+    }
+   },
+   {
+    "move": "b5",
+    "eval": {
+     "cp": 355
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "gurelediz",
+  "opponentRating": 3348,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-24",
+  "url": "https://www.chess.com/game/live/185886690046",
+  "fen": "rn3rk1/p3qp2/1p2pn1p/2p3p1/3PP2P/P4NB1/1PQ2PP1/R4K1R b - - 0 15",
+  "move": "g4",
+  "eval": {
+   "cp": -32
+  },
+  "pv": [
+   "g4",
+   "Ne5",
+   "cxd4",
+   "Qe2",
+   "h5",
+   "Rc1",
+   "Qb7",
+   "Kg1"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Nh5",
+   "eval": {
+    "cp": -298
+   },
+   "pv": [
+    "Nh5"
+   ]
+  },
+  "others": [
+   {
+    "move": "Nh5",
+    "eval": {
+     "cp": -298
+    }
+   },
+   {
+    "move": "Qb7",
+    "eval": {
+     "cp": -322
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "MountThief",
+  "opponentRating": 2918,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-24",
+  "url": "https://www.chess.com/game/live/185886194228",
+  "fen": "4r3/kbr2p2/1q3np1/p1np3p/P1P2P2/B3P1PP/2R3B1/2R1QNK1 b - - 0 32",
+  "move": "Nd3",
+  "eval": {
+   "cp": 46
+  },
+  "pv": [
+   "Nd3",
+   "c5",
+   "Qa6",
+   "Qd1",
+   "Nxc1",
+   "Rxc1",
+   "Ne4",
+   "Bb2"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Nxa4",
+   "eval": {
+    "cp": -292
+   },
+   "pv": [
+    "Nxa4",
+    "Rb1"
+   ]
+  },
+  "others": [
+   {
+    "move": "Nxa4",
+    "eval": {
+     "cp": -292
+    }
+   },
+   {
+    "move": "Nb3",
+    "eval": {
+     "cp": -360
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "MountThief",
+  "opponentRating": 2918,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-24",
+  "url": "https://www.chess.com/game/live/185886194228",
+  "fen": "4r3/kbr2p2/1q3np1/p1Pp3p/P4P2/B2nP1PP/2R3B1/2R1QNK1 b - - 0 33",
+  "move": "Qa6",
+  "eval": {
+   "cp": 47
+  },
+  "pv": [
+   "Qa6",
+   "Qd1"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Qb3",
+   "eval": {
+    "cp": -602
+   },
+   "pv": [
+    "Qb3",
+    "Qxa5+",
+    "Kb8",
+    "Rc3",
+    "Qxa3",
+    "Rxa3"
+   ]
+  },
+  "others": [
+   {
+    "move": "Qb3",
+    "eval": {
+     "cp": -602
+    }
+   },
+   {
+    "move": "Qe6",
+    "eval": {
+     "cp": -697
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "Toro1234",
+  "opponentRating": 2883,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-24",
+  "url": "https://www.chess.com/game/live/185872464840",
+  "fen": "r1b1k2r/pp3pbp/1q1pp3/2pPnp2/2P5/2NBP3/PPQ1NPPP/R3K2R b KQkq - 5 11",
+  "move": "Qxb2",
+  "eval": {
+   "cp": 251
+  },
+  "pv": [
+   "Qxb2",
+   "Kd2",
+   "Qxc2+",
+   "Kxc2",
+   "Nxd3",
+   "Kxd3",
+   "exd5",
+   "Nxd5"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "Bd7",
+   "eval": {
+    "cp": 5
+   },
+   "pv": [
+    "Bd7",
+    "O-O"
+   ]
+  },
+  "others": [
+   {
+    "move": "Bd7",
+    "eval": {
+     "cp": 5
+    }
+   },
+   {
+    "move": "h5",
+    "eval": {
+     "cp": 9
+    }
+   }
+  ]
+ },
+ {
+  "player": "Hikaru Nakamura",
+  "opponent": "Toro1234",
+  "opponentRating": 2883,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-24",
+  "url": "https://www.chess.com/game/live/185872464840",
+  "fen": "r1b1k2r/pp3pbp/3pp3/2pPnp2/2P5/2NBP3/PqQ1NPPP/R4RK1 b kq - 1 12",
+  "move": "Qxc2",
+  "eval": {
+   "cp": 441
+  },
+  "pv": [
+   "Qxc2",
+   "Bxc2",
+   "Nxc4",
+   "Rab1",
+   "Na3",
+   "Nb5",
+   "Nxb5",
+   "Rxb5"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "Qa3",
+   "eval": {
+    "cp": 6
+   },
+   "pv": [
+    "Qa3",
+    "Rad1",
+    "Bd7",
+    "Nf4",
+    "O-O-O"
+   ]
+  },
+  "others": [
+   {
+    "move": "Qa3",
+    "eval": {
+     "cp": 6
+    }
+   },
+   {
+    "move": "Nxd3",
+    "eval": {
+     "cp": -6
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "Hikaru",
+  "opponentRating": 3477,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186829589509",
+  "fen": "2r1r2k/1b1q2pp/3p1p2/2n1pPb1/1PP3N1/p1Q5/6PP/1B1RR1BK b - - 0 34",
+  "move": "Na4",
+  "eval": {
+   "cp": 469
+  },
+  "pv": [
+   "Na4",
+   "Qxa3",
+   "Rxc4",
+   "Ne3",
+   "Bxe3",
+   "Rxe3",
+   "Qc6",
+   "Rg3"
+  ],
+  "motifs": [
+   "sacrifice"
+  ],
+  "alt": {
+   "move": "Bh4",
+   "eval": {
+    "cp": 143
+   },
+   "pv": [
+    "Bh4",
+    "bxc5",
+    "Bxe1",
+    "Qxe1",
+    "Qa4",
+    "Ne3"
+   ]
+  },
+  "others": [
+   {
+    "move": "Bh4",
+    "eval": {
+     "cp": 143
+    }
+   },
+   {
+    "move": "a2",
+    "eval": {
+     "cp": 109
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "Hikaru",
+  "opponentRating": 3477,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186829589509",
+  "fen": "2r1r2k/1b1q2pp/3p1p2/4pPb1/nPP3N1/Q7/6PP/1B1RR1BK b - - 0 35",
+  "move": "Rxc4",
+  "eval": {
+   "cp": 395
+  },
+  "pv": [
+   "Rxc4",
+   "Ne3",
+   "Bxe3",
+   "Rxe3",
+   "Rec8",
+   "Rdd3",
+   "Qc6",
+   "Rg3"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "Bh4",
+   "eval": {
+    "cp": 138
+   },
+   "pv": [
+    "Bh4",
+    "Bc2",
+    "Rxc4",
+    "Bxa4",
+    "Bxg2+",
+    "Kxg2"
+   ]
+  },
+  "others": [
+   {
+    "move": "Bh4",
+    "eval": {
+     "cp": 138
+    }
+   },
+   {
+    "move": "h5",
+    "eval": {
+     "cp": 7
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "LiemLe",
+  "opponentRating": 3211,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186828989201",
+  "fen": "2r3k1/8/q2N2p1/1b1Pp2p/pQ1pPp2/3R1P1P/K5P1/8 b - - 1 45",
+  "move": "Bxd3",
+  "eval": {
+   "cp": 545
+  },
+  "pv": [
+   "Bxd3",
+   "Nxc8",
+   "Qxc8",
+   "Qb6",
+   "Kg7",
+   "Ka3",
+   "Ba6",
+   "Qa7+"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "Rc2+",
+   "eval": {
+    "cp": 331
+   },
+   "pv": [
+    "Rc2+",
+    "Ka1",
+    "Bd7",
+    "Qb8+",
+    "Kg7",
+    "Ne8+"
+   ]
+  },
+  "others": [
+   {
+    "move": "Rc2+",
+    "eval": {
+     "cp": 331
+    }
+   },
+   {
+    "move": "Bc4+",
+    "eval": {
+     "cp": 291
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "MITerryble",
+  "opponentRating": 3162,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186827790219",
+  "fen": "4r1k1/R5p1/1p2N2p/1b1pB3/5p1q/2P4P/6P1/6K1 w - - 0 39",
+  "move": "Rxg7+",
+  "eval": {
+   "cp": 0
+  },
+  "pv": [
+   "Rxg7+",
+   "Kh8",
+   "Rg3+",
+   "Kh7",
+   "Rg7+"
+  ],
+  "motifs": [
+   "check",
+   "capture"
+  ],
+  "alt": {
+   "move": "c4",
+   "eval": {
+    "cp": -796
+   },
+   "pv": [
+    "c4",
+    "Rxe6",
+    "Bc3",
+    "Re1+",
+    "Bxe1",
+    "Qxe1+"
+   ]
+  },
+  "others": [
+   {
+    "move": "c4",
+    "eval": {
+     "cp": -796
+    }
+   },
+   {
+    "move": "Nd8",
+    "eval": {
+     "cp": -907
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "dropstoneDP",
+  "opponentRating": 3155,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186827189297",
+  "fen": "r2q1rk1/1ppbb1pp/4p3/1BPpNp2/1P1P4/2Q1P3/5PPP/1RB2RK1 b - - 0 15",
+  "move": "Bxb5",
+  "eval": {
+   "cp": 44
+  },
+  "pv": [
+   "Bxb5",
+   "Re1"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "Bc8",
+   "eval": {
+    "cp": -694
+   },
+   "pv": [
+    "Bc8",
+    "Bd3",
+    "Bf6",
+    "c6",
+    "Bxe5",
+    "dxe5"
+   ]
+  },
+  "others": [
+   {
+    "move": "Bc8",
+    "eval": {
+     "cp": -694
+    }
+   },
+   {
+    "move": "c6",
+    "eval": {
+     "cp": -720
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "dropstoneDP",
+  "opponentRating": 3155,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186827189297",
+  "fen": "8/1pp1k2p/2P1P3/1b2Pp2/1P6/2B2pq1/3Q4/4R2K b - - 1 30",
+  "move": "Bxc6",
+  "eval": {
+   "cp": 663
+  },
+  "pv": [
+   "Bxc6",
+   "Re4",
+   "fxe4",
+   "Qh2",
+   "Qxh2+",
+   "Kxh2",
+   "Kxe6",
+   "Kh3"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "Bd3",
+   "eval": {
+    "cp": 2
+   },
+   "pv": [
+    "Bd3",
+    "Qh2",
+    "f4",
+    "Qxg3",
+    "fxg3",
+    "cxb7"
+   ]
+  },
+  "others": [
+   {
+    "move": "Bd3",
+    "eval": {
+     "cp": 2
+    }
+   },
+   {
+    "move": "Qxe1+",
+    "eval": {
+     "cp": -355
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "0ck0_zapaxlo",
+  "opponentRating": 3080,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186826589383",
+  "fen": "r4r2/4b1kp/3pp3/q4pP1/2b1P2P/2N2P2/PP1Q4/3RK2R w K - 0 21",
+  "move": "Qd4+",
+  "eval": {
+   "cp": -36
+  },
+  "pv": [
+   "Qd4+",
+   "Qe5"
+  ],
+  "motifs": [
+   "check"
+  ],
+  "alt": {
+   "move": "Rg1",
+   "eval": {
+    "cp": -433
+   },
+   "pv": [
+    "Rg1",
+    "Qc7",
+    "h5",
+    "e5",
+    "h6+",
+    "Kh8"
+   ]
+  },
+  "others": [
+   {
+    "move": "Rg1",
+    "eval": {
+     "cp": -433
+    }
+   },
+   {
+    "move": "h5",
+    "eval": {
+     "cp": -501
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "0ck0_zapaxlo",
+  "opponentRating": 3080,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186826589383",
+  "fen": "r4r2/4b1kp/3pp3/4qpP1/2bQP2P/2N2P2/PP6/3RK2R w K - 2 22",
+  "move": "Qxc4",
+  "eval": {
+   "cp": -39
+  },
+  "pv": [
+   "Qxc4",
+   "Rfb8"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "Qxe5+",
+   "eval": {
+    "cp": -428
+   },
+   "pv": [
+    "Qxe5+",
+    "dxe5",
+    "Rd7",
+    "Rf7",
+    "b3",
+    "Ba6"
+   ]
+  },
+  "others": [
+   {
+    "move": "Qxe5+",
+    "eval": {
+     "cp": -428
+    }
+   },
+   {
+    "move": "h5",
+    "eval": {
+     "cp": -479
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "GMKrikor",
+  "opponentRating": 3035,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186825989287",
+  "fen": "r1bqrbk1/1ppn1p2/3p1n1p/pN4p1/4P2B/2N5/PPP2PPP/R2QRBK1 w - - 0 13",
+  "move": "Bg3",
+  "eval": {
+   "cp": 15
+  },
+  "pv": [
+   "Bg3",
+   "Ne5"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "e5",
+   "eval": {
+    "cp": -240
+   },
+   "pv": [
+    "e5",
+    "Nxe5",
+    "Bg3",
+    "c6",
+    "Nd4",
+    "a4"
+   ]
+  },
+  "others": [
+   {
+    "move": "e5",
+    "eval": {
+     "cp": -240
+    }
+   },
+   {
+    "move": "Nxc7",
+    "eval": {
+     "cp": -502
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "GMKrikor",
+  "opponentRating": 3035,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186825989287",
+  "fen": "r3r1k1/5p2/2ppb2p/1pq1b2B/p3P1p1/P1NR2P1/1PPQ1PP1/3R2K1 w - - 0 27",
+  "move": "Ne2",
+  "eval": {
+   "cp": -112
+  },
+  "pv": [
+   "Ne2",
+   "Bxb2",
+   "Nf4",
+   "Bxa3",
+   "e5",
+   "dxe5",
+   "Nxe6",
+   "Rxe6"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Qe2",
+   "eval": {
+    "cp": -344
+   },
+   "pv": [
+    "Qe2",
+    "Bxc3"
+   ]
+  },
+  "others": [
+   {
+    "move": "Qe2",
+    "eval": {
+     "cp": -344
+    }
+   },
+   {
+    "move": "Qe3",
+    "eval": {
+     "cp": -388
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "Sergeant_James",
+  "opponentRating": 2975,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186824790061",
+  "fen": "3r4/b1q2pk1/2pr1nbp/pp2N1pn/P3P3/1PP3PP/2BNQPK1/3RR1B1 b - - 0 29",
+  "move": "Rxd2",
+  "eval": {
+   "cp": 251
+  },
+  "pv": [
+   "Rxd2",
+   "Rxd2",
+   "Rxd2",
+   "Qxd2",
+   "Qxe5",
+   "axb5",
+   "cxb5"
+  ],
+  "motifs": [
+   "capture",
+   "sacrifice"
+  ],
+  "alt": {
+   "move": "Bh7",
+   "eval": {
+    "cp": -29
+   },
+   "pv": [
+    "Bh7",
+    "Nef3"
+   ]
+  },
+  "others": [
+   {
+    "move": "Bh7",
+    "eval": {
+     "cp": -29
+    }
+   },
+   {
+    "move": "Nd5",
+    "eval": {
+     "cp": -198
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "Sergeant_James",
+  "opponentRating": 2975,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186824790061",
+  "fen": "8/b1q2pk1/2p2nbp/pp2N1pn/P3P3/1PP3PP/2BQ1PK1/4R1B1 b - - 0 31",
+  "move": "Qxe5",
+  "eval": {
+   "cp": 74
+  },
+  "pv": [
+   "Qxe5",
+   "axb5"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "Nf4+",
+   "eval": {
+    "cp": -544
+   },
+   "pv": [
+    "Nf4+",
+    "gxf4"
+   ]
+  },
+  "others": [
+   {
+    "move": "Nf4+",
+    "eval": {
+     "cp": -544
+    }
+   },
+   {
+    "move": "Nxg3",
+    "eval": {
+     "cp": -547
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "Papas_con_nuggets",
+  "opponentRating": 2753,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186823589349",
+  "fen": "r4rk1/ppq1bppp/2n5/3p3b/3Pn1P1/3BBN1P/PP3P2/R2QRNK1 b - - 0 15",
+  "move": "Bg6",
+  "eval": {
+   "cp": 40
+  },
+  "pv": [
+   "Bg6",
+   "Ne5"
+  ],
+  "motifs": [],
+  "alt": {
+   "move": "Bb4",
+   "eval": {
+    "cp": -212
+   },
+   "pv": [
+    "Bb4",
+    "gxh5",
+    "Bxe1",
+    "Nxe1",
+    "f5",
+    "Bxe4"
+   ]
+  },
+  "others": [
+   {
+    "move": "Bb4",
+    "eval": {
+     "cp": -212
+    }
+   },
+   {
+    "move": "Qc8",
+    "eval": {
+     "cp": -258
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "Papas_con_nuggets",
+  "opponentRating": 2753,
+  "color": "b",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186823589349",
+  "fen": "5r1k/p2qb1pp/2r3b1/1Q1pN1P1/3Pnp2/P6P/1P1B1P2/1B2RNK1 b - - 1 25",
+  "move": "Qxh3",
+  "eval": {
+   "cp": 28
+  },
+  "pv": [
+   "Qxh3",
+   "Bxe4",
+   "Bxe4",
+   "Rxe4",
+   "dxe4",
+   "Qxc6"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "Qf5",
+   "eval": {
+    "cp": -224
+   },
+   "pv": [
+    "Qf5",
+    "Bxe4"
+   ]
+  },
+  "others": [
+   {
+    "move": "Qf5",
+    "eval": {
+     "cp": -224
+    }
+   },
+   {
+    "move": "a6",
+    "eval": {
+     "cp": -405
+    }
+   }
+  ]
+ },
+ {
+  "player": "Alireza Firouzja",
+  "opponent": "Harry_Rakkel",
+  "opponentRating": 2742,
+  "color": "w",
+  "timeClass": "blitz",
+  "date": "2026-10-20",
+  "url": "https://www.chess.com/game/live/186821789837",
+  "fen": "k2br1r1/1pq2p2/p2p3p/3npBp1/8/2R1BPP1/PPP2Q1P/1K2R3 w - - 0 26",
+  "move": "Rxc7",
+  "eval": {
+   "cp": 696
+  },
+  "pv": [
+   "Rxc7",
+   "Bxc7",
+   "a3",
+   "h5",
+   "c4",
+   "Nxe3",
+   "Qxe3",
+   "Bb8"
+  ],
+  "motifs": [
+   "capture"
+  ],
+  "alt": {
+   "move": "Rb3",
+   "eval": {
+    "cp": 16
+   },
+   "pv": [
+    "Rb3",
+    "Ne7"
+   ]
+  },
+  "others": [
+   {
+    "move": "Rb3",
+    "eval": {
+     "cp": 16
+    }
+   },
+   {
+    "move": "Ra3",
+    "eval": {
+     "cp": -25
+    }
+   }
+  ]
+ }
+]

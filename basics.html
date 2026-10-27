@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Chess Basics</title>
+  <meta name="description" content="Learn how every piece moves, then check, checkmate, castling and en passant, by playing the moves yourself.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-in">
+      <a class="brand" href="./">Chess<span>Trainer</span></a>
+      <span class="crumb">Chess Basics</span>
+    </div>
+  </header>
+
+  <main class="wrap layout">
+    <section class="play">
+      <div class="board-frame">
+        <div id="board" class="board" role="grid" aria-label="Chessboard"></div>
+      </div>
+      <div class="controls">
+        <button id="hint" type="button">Hint</button>
+        <button id="show" type="button">Show move</button>
+        <button id="next" type="button" class="primary">Next</button>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="op-head">
+        <h1 id="title"></h1>
+        <p id="intro" class="info"></p>
+      </div>
+      <p id="message" class="message" aria-live="polite"></p>
+      <div id="explain" class="explain" hidden></div>
+    </aside>
+
+    <nav id="items" class="list" aria-label="Exercises"></nav>
+  </main>
+
+  <script type="module" src="basics.js"></script>
+</body>
+</html>

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Opening Book</title>
-  <meta name="description" content="Practise chess openings move by move against the replies real Lichess players at your level play, with instant feedback.">
+  <title>Chess Trainer</title>
+  <meta name="description" content="Learn the basics, drill the openings real players use against you, and find the moves top players found.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -13,51 +13,29 @@
 <body>
   <header class="top">
     <div class="wrap top-in">
-      <a class="brand" href="./">Opening<span>Book</span></a>
-      <div class="account">
-        <label>Lichess blitz rating <input id="rating" type="number" min="400" max="3200" step="50" inputmode="numeric"></label>
-        <button id="login" class="ghost" type="button">Log in with Lichess</button>
-        <button id="weakest" class="ghost" type="button">Practise weakest</button>
-      </div>
+      <a class="brand" href="./">Chess<span>Trainer</span></a>
     </div>
   </header>
 
-  <main class="wrap layout">
-    <section class="play">
-      <div class="board-frame">
-        <div id="board" class="board" role="grid" aria-label="Chessboard"></div>
-      </div>
-      <div class="controls">
-        <div class="mode" role="group" aria-label="Mode">
-          <button id="mode-learn" type="button" aria-pressed="true">Learn</button>
-          <button id="mode-try" type="button" aria-pressed="false">Try</button>
-        </div>
-        <button id="hint" type="button">Hint</button>
-        <button id="show" type="button">Show move</button>
-        <button id="restart" type="button" class="primary">Restart</button>
-      </div>
-    </section>
-
-    <aside class="panel">
-      <div class="op-head">
-        <p class="meta"><span id="op-eco" class="eco"></span> <span id="op-side"></span></p>
-        <h1 id="op-title"></h1>
-        <p id="op-info" class="info"></p>
-        <p id="op-var" class="meta"></p>
-      </div>
-      <p id="message" class="message" aria-live="polite"></p>
-      <div class="progress">
-        <div class="track"><div id="bar" class="fill"></div></div>
-        <span id="progress"></span>
-      </div>
-      <ol id="moves" class="moves"></ol>
-    </aside>
-
-    <nav id="openings" class="list" aria-label="Openings"></nav>
+  <main class="wrap home">
+    <h1>What do you want to work on?</h1>
+    <div class="cards">
+      <a class="card" href="basics.html">
+        <img src="pieces/wP.svg" alt="">
+        <h2>Learn the basics</h2>
+        <p>How every piece moves, plus check, checkmate, castling and en passant. Play each move yourself.</p>
+      </a>
+      <a class="card" href="openings.html">
+        <img src="pieces/wN.svg" alt="">
+        <h2>Practise openings</h2>
+        <p>The most common openings at your Lichess rating, and the replies real players actually use against them.</p>
+      </a>
+      <a class="card" href="pros.html">
+        <img src="pieces/wK.svg" alt="">
+        <h2>Think like the pros</h2>
+        <p>Find the move Magnus, Hikaru or Alireza found in a real game, then see Stockfish explain why it works.</p>
+      </a>
+    </div>
   </main>
-
-  <footer class="wrap foot">Click a piece, then the square to move it to. Your opponent plays the replies real Lichess players at your blitz rating ± 200 play in blitz, most common first. Learn shows every move; Try tests you, and a line clears when you play it without mistakes.</footer>
-
-  <script type="module" src="app.js"></script>
 </body>
 </html>
