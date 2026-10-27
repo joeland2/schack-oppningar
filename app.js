@@ -12,7 +12,6 @@ const BUCKETS = [0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]; // Lichess 
 const STRONG = { blitz: [7, 8], classical: [6, 7, 8] };
 const WANT = { w: 30, b: 15 };   // openings listed per colour
 const POOL = { w: 80, b: 40 };   // candidates collected, so a style filter still has enough to show
-const SPEEDS = { blitz: 'Blitz', classical: 'Classical' };
 // First-move names that are not an opening plan of their own.
 const GENERIC = new Set(["King's Pawn Game", "Queen's Pawn Game", "King's Knight Opening"]);
 
@@ -22,9 +21,12 @@ const listEl = $('#openings');
 const msgEl = $('#message');
 const movesEl = $('#moves');
 
-let stats = load(STORE, {});    // { [openingId]: { done: [lineKey], total } }
+let stats = load(STORE, {});    // { 'blitz:Italian Game': { done: [lineKey], total } }
+// Progress saved before time controls existed was all blitz.
+for (const k of Object.keys(stats)) if (!k.includes(':')) { stats[`blitz:${k}`] = stats[k]; delete stats[k]; }
 let speed = load(STORE + '-speed', 'blitz');
 const ratingKey = () => `${STORE}-${speed}-rating`;
+const statKey = (id) => `${speed}:${id}`;
 let rating = load(ratingKey(), null);
 let style = load(STORE + '-style', 'any');
 let OPENINGS = [];   // most played openings at your level
@@ -62,12 +64,14 @@ console.assert(ratingsAround(1500).join() === '2,3,4' && ratingsAround(2400).joi
 // ---------- Data (all local, nothing is fetched from Lichess) ----------
 let TREE, BOOK, NAMES;
 const TREES = {};
+const POPULAR = {};   // popularOpenings() per time control and rating; it takes a moment to compute
 
 // data/explorer-<speed>.json: move counts per rating group from Lichess games of that time control,
 // built by tools/make_explorer.py. Loaded once per time control.
 async function loadTree() {
   TREES[speed] ??= (await fetch(`data/explorer-${speed}.json`).then((r) => r.json())).tree;
   TREE = TREES[speed];
+  console.assert(explore(['e4'], [3]).moves.some((m) => m.san === 'c5'), `data/explorer-${speed}.json is not in the expected format`);
 }
 
 // data/*.tsv: named opening lines from github.com/lichess-org/chess-openings (CC0): eco, name, pgn.
@@ -198,7 +202,7 @@ function renderList() {
     const max = Math.max(...ops.map((o) => o.share));
     const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for ${side === 'w' ? 'White' : 'Black'} at your level. Try another style.</p>`;
     return `<section class="og"><h2>${label}</h2>${ops.length ? '' : empty}<div class="ocards">${ops.map((o) => {
-      const s = stats[o.id] || { done: [], total: 0 };
+      const s = stats[statKey(o.id)] || { done: [], total: 0 };
       const level = s.total && s.done.length >= s.total ? 'sitter' : s.done.length ? 'pagar' : 'ny';
       const levelTxt = { sitter: 'Learned', pagar: `${s.done.length}/${s.total} lines`, ny: 'New' }[level];
       const moves = numbered(o.root).split(' ');
@@ -216,11 +220,7 @@ function renderList() {
       </article>`;
     }).join('')}</div></section>`;
   }).join('');
-  const seen = new IntersectionObserver((entries) => entries.forEach((e) => {
-    if (!e.isIntersecting) return;
-    seen.unobserve(e.target);
-    playPreview(e.target);
-  }), { threshold: 0.6 });
+  seen.disconnect();
   listEl.querySelectorAll('.ocard').forEach((c) => {
     const op = list.find((o) => o.id === c.dataset.id);
     const go = () => start(op);
@@ -237,6 +237,12 @@ function renderList() {
 
 // ---------- Animated previews ----------
 const REDUCE_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Plays each card's preview the first time it is mostly on screen.
+const seen = new IntersectionObserver((entries) => entries.forEach((e) => {
+  if (!e.isIntersecting) return;
+  seen.unobserve(e.target);
+  playPreview(e.target);
+}), { threshold: 0.6 });
 
 // Draws a card's mini board after its first n moves.
 function previewAt(card, n) {
@@ -306,7 +312,7 @@ function start(op) {
   if (!rating) return say(`Enter your Lichess ${speed} rating at the top.`);
   lines = buildLines(op);
   if (!lines.length) return say('Not enough games at your rating for this opening.', 'bad');
-  const s = stats[op.id] = { done: [], ...stats[op.id], total: lines.length };
+  const s = stats[statKey(op.id)] = { done: [], ...stats[statKey(op.id)], total: lines.length };
   store(STORE, stats);
   const next = lines.findIndex((l) => !s.done.includes(lineKey(l.moves)));
   play(next === -1 ? 0 : next);
@@ -425,7 +431,7 @@ function finish() {
     $('#restart').textContent = 'Next line';
     return say(`Line ${lineIdx + 1} of ${lines.length} learned. Press Next line, or switch to Try to test yourself.`, 'good');
   }
-  const s = stats[cur.id];
+  const s = stats[statKey(cur.id)];
   const key = lineKey(line);
   if (misses === 0 && !s.done.includes(key)) s.done.push(key);
   store(STORE, stats);
@@ -455,7 +461,7 @@ boardEl.addEventListener('click', (e) => {
 $('#restart').addEventListener('click', () => {
   if (!lines.length) return start(cur);
   if (mode === 'learn') return play(ply >= line.length ? (lineIdx + 1) % lines.length : lineIdx);
-  const next = lines.findIndex((l) => !stats[cur.id].done.includes(lineKey(l.moves)));
+  const next = lines.findIndex((l) => !stats[statKey(cur.id)].done.includes(lineKey(l.moves)));
   play(ply >= line.length && misses === 0 && next !== -1 ? next : lineIdx);
 });
 $('#hint').addEventListener('click', () => { if (userTurn() && inLine()) { showHint(); say('The piece to move is highlighted.'); } });
@@ -477,7 +483,7 @@ async function showPicker() {
   if (!rating) return ($('#pick-msg').textContent = 'The openings you see depend on what players at your level actually play.');
   $('#pick-msg').textContent = `Loading ${speed} games…`;
   try { await loadTree(); } catch { return say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .'); }
-  OPENINGS = popularOpenings();
+  OPENINGS = POPULAR[`${speed}:${rating}`] ??= popularOpenings();
   $('#pick-msg').textContent = `The most played openings in ${speed} at ${rating} ± 200${style === 'any' ? '' : `, ${STYLES[style].label.toLowerCase()} ones first`}. Pick one to practise.`;
   renderList();
 }
@@ -506,7 +512,7 @@ $('#back').addEventListener('click', showPicker);
 $('#weakest').addEventListener('click', () => {
   const list = shown();
   if (!list.length) return;
-  const score = (o) => { const s = stats[o.id]; return s && s.total ? s.done.length / s.total : 0; };
+  const score = (o) => { const s = stats[statKey(o.id)]; return s && s.total ? s.done.length / s.total : 0; };
   start([...list].sort((a, b) => score(a) - score(b))[0]);
 });
 function setMode(m) {
@@ -531,5 +537,7 @@ try { await loadBook(); } catch {
   say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .', 'bad');
   throw new Error('opening data failed to load');
 }
+// Left over from when the page logged in to Lichess and cached its API answers.
+try { for (const k of Object.keys(localStorage)) if (k === STORE + '-token' || k.startsWith(STORE + '-x')) localStorage.removeItem(k); } catch {}
 setMode(mode);
 showPicker();
