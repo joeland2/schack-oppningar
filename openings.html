@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261027211807">
+  <link rel="stylesheet" href="style.css?v=20261027214753">
 </head>
 <body>
   <header class="top">
@@ -88,15 +88,21 @@
 
   <main id="trainer" class="wrap layout" hidden>
     <section class="play">
+      <div class="progress">
+        <div class="track"><div id="bar" class="fill"></div></div>
+        <span id="progress"></span>
+      </div>
       <div id="cap-top" class="captured"></div>
-      <div class="board-frame">
-        <div id="board" class="board" role="grid" aria-label="Chessboard"></div>
+      <div class="board-row">
+        <div id="evalbar" class="evalbar" role="img" aria-label="No evaluation yet">
+          <span class="evalbar-white"></span>
+          <span class="evalbar-num"></span>
+        </div>
+        <div class="board-frame">
+          <div id="board" class="board" role="grid" aria-label="Chessboard"></div>
+        </div>
       </div>
       <div id="cap-bottom" class="captured"></div>
-      <div id="evalbar" class="evalbar" role="img" aria-label="No evaluation yet">
-        <div class="evalbar-track"><span class="evalbar-white"></span></div>
-        <span class="evalbar-num"></span>
-      </div>
       <div class="controls">
         <button id="step-back" type="button" aria-label="Step back one move (left arrow)" title="Step back (←)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
         <button id="step-fwd" type="button" aria-label="Step forward one move (right arrow)" title="Step forward (→)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
@@ -118,34 +124,34 @@
           <span class="choice-label">Mode</span>
           <div class="seg" role="group" aria-label="Mode">
             <button id="mode-learn" type="button" aria-pressed="true">Learn</button>
-            <button id="mode-try" type="button" aria-pressed="false">Try</button>
+            <button id="mode-try" type="button" aria-pressed="false">Practice</button>
             <button id="mode-explore" type="button" aria-pressed="false">Explore</button>
           </div>
           <p id="mode-about" class="choice-about"></p>
         </div>
       </div>
-      <div class="p-feedback">
-        <p id="message" class="message" aria-live="polite"></p>
-        <div id="why" class="why"></div>
-      </div>
-      <div class="p-progress">
-        <div id="line-box" class="line-box"></div>
-        <div class="progress">
-          <div class="track"><div id="bar" class="fill"></div></div>
-          <span id="progress"></span>
+      <div class="coach">
+        <img class="coach-face" src="pieces/wN.svg" alt="">
+        <div class="coach-body">
+          <p id="message" class="message" aria-live="polite"></p>
+          <div id="why" class="why"></div>
         </div>
-        <ol id="moves" class="moves"></ol>
       </div>
-      <details class="lines" open>
+      <div id="line-box" class="line-box"></div>
+      <details class="lines">
         <summary id="lines-sum"></summary>
         <ol id="lines-list"></ol>
+      </details>
+      <details class="moves-box">
+        <summary>Moves so far</summary>
+        <ol id="moves" class="moves"></ol>
       </details>
     </aside>
   </main>
 
-  <footer class="wrap foot">Click a piece, then the square to move it to. Your opponent plays the replies real Lichess players within 200 of your rating choose in your time control, most common first. Style tags are our own judgement; popularity comes from real games. Learn shows every move; Try tests you, and a line clears when you play it without mistakes.</footer>
+  <footer class="wrap foot">Click a piece, then the square to move it to. Your opponent plays the replies real Lichess players within 200 of your rating choose in your time control, most common first. Style tags are our own judgement; popularity comes from real games. Learn shows every move; Practice tests you, and cleared lines come back for review.</footer>
 
-  <script type="module" src="app.js?v=20261027211807"></script>
+  <script type="module" src="app.js?v=20261027214753"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>

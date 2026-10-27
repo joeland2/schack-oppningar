@@ -2,7 +2,8 @@
 const FILES = 'abcdefgh';
 
 // arrow: [from, to] draws a move arrow over the board, like the arrows on Lichess.
-export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint = [], wrong = null, arrow = null } = {}) {
+// mark: { sq, ok } puts a green tick (right move) or red cross (wrong move) on a square.
+export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint = [], wrong = null, arrow = null, mark = null } = {}) {
   const targets = sel ? game.moves({ square: sel, verbose: true }).map((m) => m.to) : [];
   let html = '';
   for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
@@ -18,7 +19,9 @@ export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint 
     const fileLbl = r === 7 ? `<span class="lbl f">${sq[0]}</span>` : '';
     const rankLbl = f === 0 ? `<span class="lbl r">${sq[1]}</span>` : '';
     const piece = p ? `<img class="pc" src="pieces/${p.color}${p.type.toUpperCase()}.svg" alt="">` : '';
-    html += `<button class="${cls.join(' ')}" data-sq="${sq}" aria-label="${sq}${p ? ' ' + p.color + p.type : ''}">${piece}${fileLbl}${rankLbl}</button>`;
+    const badge = mark && mark.sq === sq
+      ? `<span class="mark ${mark.ok ? 'ok' : 'bad'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${mark.ok ? 'M5 12.5l4.5 4.5L19 7.5' : 'M7 7l10 10M17 7L7 17'}"/></svg></span>` : '';
+    html += `<button class="${cls.join(' ')}" data-sq="${sq}" aria-label="${sq}${p ? ' ' + p.color + p.type : ''}">${piece}${badge}${fileLbl}${rankLbl}</button>`;
   }
   el.innerHTML = html + (arrow ? arrowSvg(arrow, side) : '');
 }
@@ -81,6 +84,23 @@ export function enableDrag(el, { canDrag, onDrop }) {
   el.addEventListener('pointerup', end);
   el.addEventListener('pointercancel', end);
   el.addEventListener('click', (e) => { if (skipClick) { skipClick = false; e.stopImmediatePropagation(); } }, true);
+}
+
+// A move in plain words, e.g. "knight to f3 (Nf3)", from a chess.js move object.
+const NAME = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
+export function moveWords(m) {
+  if (m.flags.includes('k')) return `castling kingside (${m.san})`;
+  if (m.flags.includes('q')) return `castling queenside (${m.san})`;
+  const promo = m.promotion ? `, making a ${NAME[m.promotion]}` : '';
+  if (m.captured) return `the ${NAME[m.piece]} taking the ${NAME[m.captured]} on ${m.to}${promo} (${m.san})`;
+  return `${NAME[m.piece]} to ${m.to}${promo} (${m.san})`;
+}
+// The same as an instruction: "Play knight to f3 (Nf3)", "Take the bishop on c4 with the knight (Nxc4)".
+export function instruction(m) {
+  if (m.flags.includes('k') || m.flags.includes('q')) return `Castle ${m.flags.includes('k') ? 'kingside' : 'queenside'} (${m.san})`;
+  const promo = m.promotion ? ` and make a ${NAME[m.promotion]}` : '';
+  if (m.captured) return `Take the ${NAME[m.captured]} on ${m.to} with the ${NAME[m.piece]}${promo} (${m.san})`;
+  return `Play ${NAME[m.piece]} to ${m.to}${promo} (${m.san})`;
 }
 
 export function shake(el) {

@@ -61,7 +61,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 
 .layout {
   display: grid; gap: clamp(20px, 3vw, 40px); padding-block: 28px; align-items: start;
-  grid-template-columns: minmax(0, min(calc(100vh - 210px), 820px)) minmax(300px, 1fr);
+  grid-template-columns: minmax(0, min(calc(100vh - 230px), 860px)) minmax(300px, 1fr);
   grid-template-areas: "play panel" "list list";
 }
 .play { grid-area: play; display: grid; gap: 14px; }
@@ -145,7 +145,7 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
   .board-frame { padding: 6px; }
   .top { position: static; }
   /* On a phone the feedback comes first, right under the board. */
-  .p-feedback { order: -1; }
+  .coach { order: -1; }
 }
 @media (prefers-reduced-motion: reduce) { .board.shake { animation: none; } .fill { transition: none; } }
 
@@ -333,8 +333,19 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 /* Board view panel: context, feedback, progress, then the long list */
 .p-head { display: grid; gap: var(--gap-group); }
 .p-head .op-head h1 { margin-bottom: 4px; }
-.p-feedback { display: grid; gap: var(--gap-tight); }
-.p-progress { display: grid; gap: var(--gap-group); }
+/* The coach: one box with what to do now and why */
+.coach { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: var(--gap-group); align-items: start;
+  padding: 14px 16px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); transition: border-color .2s; }
+.coach:has(.message.good) { border-color: var(--good); }
+.coach:has(.message.bad) { border-color: var(--bad); }
+.coach-face { width: 40px; height: 40px; padding: 4px; border-radius: 50%; background: #f0d9b5; }
+.coach-body { display: grid; gap: var(--gap-tight); min-width: 0; }
+.coach .message { padding: 0; border: 0; background: none; min-height: 0; font-weight: 600; font-size: 1.02rem; }
+.coach .message.good, .coach .message.bad { background: none; }
+.coach .why p { padding: 0; border: 0; background: none; color: var(--muted); font-size: .92rem; }
+.coach .why b { color: var(--ink); }
+.moves-box summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+.moves-box .moves { margin-top: 8px; }
 /* Desktop: the board stays in view while the panel scrolls */
 @media (min-width: 821px) {
   .play { position: sticky; top: 84px; align-self: start; }
@@ -382,14 +393,31 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .captured img { width: 20px; height: 20px; margin-right: -6px; }
 .captured b { margin-left: 12px; font: 600 .85rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 
-/* Evaluation bar */
-.evalbar { display: flex; align-items: center; gap: 10px; }
-.evalbar-track { flex: 1; height: 10px; border-radius: 5px; overflow: hidden; background: #2a2724; border: 1px solid var(--line); }
-.evalbar-white { display: block; height: 100%; width: 50%; background: #f2efe8; transition: width .3s ease-out; }
-.evalbar-num { min-width: 3.4em; text-align: right; font: 600 .85rem var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+/* Evaluation bar, upright beside the board like on Lichess: White's share fills from White's side */
+.board-row { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; }
+.evalbar { position: relative; border-radius: 6px; overflow: hidden; background: #2a2724; border: 1px solid var(--line); }
+.evalbar-white { position: absolute; left: 0; right: 0; bottom: 0; height: 50%; background: #f2efe8; transition: height .3s ease-out; }
+.evalbar.flip .evalbar-white { bottom: auto; top: 0; }
+.evalbar-num { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font: 700 .58rem var(--font-mono); letter-spacing: -0.04em;
+  color: #1b1d1c; font-variant-numeric: tabular-nums; }
+.evalbar.flip .evalbar-num { bottom: auto; top: 6px; }
+.evalbar.behind .evalbar-num { color: #f2efe8; }
 .evalbar.stale { opacity: .45; }
 @media (prefers-reduced-motion: reduce) { .evalbar-white { transition: none; } }
 /* Black taken pieces need a light edge to show on the dark page */
 .captured img[src*="/bP"], .captured img[src*="/bN"], .captured img[src*="/bB"], .captured img[src*="/bR"], .captured img[src*="/bQ"] {
   filter: drop-shadow(0 0 1px rgb(255 255 255 / .75)) drop-shadow(0 0 1px rgb(255 255 255 / .5));
+}
+
+/* Right / wrong mark on a square */
+.mark { position: absolute; top: 3%; right: 3%; width: 34%; height: 34%; border-radius: 50%; display: grid; place-items: center; z-index: 5;
+  box-shadow: 0 1px 3px rgb(0 0 0 / .35); animation: mark-in .2s ease-out; }
+.mark.ok { background: #2f9e5b; }
+.mark.bad { background: #c8473a; }
+.mark svg { width: 70%; height: 70%; fill: none; stroke: #fff; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+@keyframes mark-in { from { transform: scale(.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .mark { animation: none; } }
+/* The board column holds progress, taken pieces, board and buttons; the board gives way so all fit on screen */
+@media (min-width: 821px) {
+  .board-row { width: min(100%, calc(100vh - 300px)); }
 }

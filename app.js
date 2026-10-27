@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake } from './board.js?v=20261027211807';
-import { STYLES, STYLE_OF } from './styles.js?v=20261027211807';
+import { drawBoard, enableDrag, shake, moveWords, instruction } from './board.js?v=20261027214753';
+import { STYLES, STYLE_OF } from './styles.js?v=20261027214753';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -43,6 +43,7 @@ let sel = null;
 let hintSq = [];     // highlighted squares
 let mode = load(STORE + '-mode', 'learn'); // learn: every move is shown; try: test yourself
 let wrongSq = null;
+let markSq = null;   // { sq, ok }: a tick on the square of a right move, for a moment
 let lastMove = null;
 let misses = 0;      // mistakes in this run
 let missesHere = 0;  // mistakes on the current move
@@ -244,8 +245,9 @@ function shown() {
 // ---------- Opening list ----------
 function card(o) {
   const s = stats[statKey(o.id)] || { done: [], total: 0 };
-  const level = s.total && s.done.length >= s.total ? 'sitter' : s.done.length ? 'pagar' : 'ny';
-  const levelTxt = { sitter: 'Learned', pagar: `${s.done.length}/${s.total} lines`, ny: 'New' }[level];
+  const due = dueCount(s);
+  const level = due ? 'pagar' : s.total && s.done.length >= s.total ? 'sitter' : s.done.length ? 'pagar' : 'ny';
+  const levelTxt = due ? `${due} due` : { sitter: 'Cleared', pagar: `${s.done.length}/${s.total} lines`, ny: 'New' }[level];
   const moves = numbered(o.root).split(' ');
   const tags = (STYLE_OF[o.family] || []).map((t) => `<span class="tag">${STYLES[t].label}</span>`).join('');
   return `<article class="ocard" role="button" tabindex="0" data-id="${o.id}" aria-label="${o.name}">
@@ -466,7 +468,8 @@ $('#search').addEventListener('input', (e) => { query = e.target.value; if (OPEN
 
 // ---------- Board ----------
 function renderBoard() {
-  drawBoard(boardEl, game, { side: cur.side, sel, last: lastMove, hint: hintSq, wrong: wrongSq, arrow: hintSq.length === 2 ? hintSq : null });
+  drawBoard(boardEl, game, { side: cur.side, sel, last: lastMove, hint: hintSq, wrong: wrongSq, arrow: hintSq.length === 2 ? hintSq : null,
+    mark: markSq || (wrongSq && { sq: wrongSq, ok: false }) });
 }
 
 function renderMoves() {
@@ -524,9 +527,14 @@ function renderEval() {
   if (!sc) return;
   const cp = (game.turn() === 'w' ? 1 : -1) * toCp(sc);
   const share = 'mate' in sc ? (cp > 0 ? 100 : 0) : 100 / (1 + Math.exp(-cp / 250));
-  const text = 'mate' in sc ? `M${Math.abs(sc.mate)}` : `${cp >= 0 ? '+' : '−'}${pawns(Math.abs(cp))}`;
-  el.querySelector('.evalbar-white').style.width = `${share}%`;
+  // No sign: the fill already shows who is ahead, and the bar is narrow.
+  const text = 'mate' in sc ? `M${Math.abs(sc.mate)}` : pawns(Math.abs(cp));
+  el.querySelector('.evalbar-white').style.height = `${share}%`;
   el.querySelector('.evalbar-num').textContent = text;
+  // White's end of the bar sits on White's side of the board, and so does the number:
+  // dark on the white fill, light when White's share is too thin to hold it.
+  el.classList.toggle('flip', cur.side === 'b');
+  el.classList.toggle('behind', share < 12);
   el.setAttribute('aria-label', `Stockfish: ${'mate' in sc ? `mate for ${cp > 0 ? 'White' : 'Black'}` : Math.abs(cp) < 30 ? 'equal' : `${cp > 0 ? 'White' : 'Black'} is better by ${pawns(Math.abs(cp))} pawns`}`);
 }
 
@@ -698,8 +706,7 @@ function start(op) {
   const s = stats[statKey(op.id)] = { done: [], played: [], ...stats[statKey(op.id)], total: lines.length };
   s.played ??= [];
   store(STORE, stats);
-  const next = lines.findIndex((l) => !s.done.includes(lineKey(l.moves)));
-  play(next === -1 ? 0 : next);
+  play(nextLine());
 }
 
 function play(i) {
@@ -745,7 +752,7 @@ function showAnalysis(verdict = '', tone = '') {
   hintSq = [analysis.best.from, analysis.best.to];
   renderBoard();
   const bestIdea = ideaAt(new Chess(analysis.fen), analysis.best.san);
-  say(`${verdict ? verdict + ' ' : ''}Stockfish: ${evalText(analysis)}. Best for ${sideName(game.turn())} now: ${analysis.best.san}.${bestIdea ? ' ' + bestIdea : ''}`, tone);
+  say(`${verdict ? verdict + ' ' : ''}Stockfish: ${evalText(analysis)}. Best for ${sideName(game.turn())} now: ${moveWords(analysis.best)}.${bestIdea ? ' ' + bestIdea : ''}`, tone);
 }
 
 async function enterExplore() {
@@ -781,7 +788,7 @@ async function exploreMove(from, to, promotion = 'q', keepRedo = false, prefix =
   const seen = real.moves.find((x) => x.san === clean(m.san));
   const often = seen ? ` ${pct(seen.n / real.total)} of players at your level play it here.` : '';
   const better = before && loss > 50 && before.best.san !== m.san
-    ? ` Better was ${before.best.san}.${ideaAt(new Chess(before.fen), before.best.san) ? ' ' + ideaAt(new Chess(before.fen), before.best.san) : ''}` : '';
+    ? ` Better was ${moveWords(before.best)}.${ideaAt(new Chess(before.fen), before.best.san) ? ' ' + ideaAt(new Chess(before.fen), before.best.san) : ''}` : '';
   const moveIdea = ideaAt(new Chess(before?.fen ?? new Chess().fen()), m.san);
   const verdict = `${m.san} is ${label}${loss > 50 ? `, giving away about ${pawns(loss)} pawns` : ''}.${moveIdea && loss <= 50 ? ' ' + moveIdea : ''}${often}${better}`;
   showAnalysis(prefix + verdict, loss <= 50 ? 'good' : loss <= 100 ? '' : 'bad');
@@ -950,7 +957,7 @@ async function suggest(asked = false) {
   const bestIdea = ideaAt(new Chess(at), best.san);
   hintSq = [best.from, best.to];
   renderBoard();
-  say(`Play ${best.san}.${bestIdea ? ' ' + bestIdea : ''}${r.score?.mate > 0 ? ` Mate in ${r.score.mate}.` : ''}`);
+  say(`${instruction(best)}.${bestIdea ? ' ' + bestIdea : ''}${r.score?.mate > 0 ? ` Mate in ${r.score.mate}.` : ''}`);
 }
 
 // Your last move gave away a lot: explain Stockfish's answer to it, take it back, and help.
@@ -973,7 +980,7 @@ async function takeBack(loss, refutation) {
   if (mode === 'learn') {
     hintSq = [best.from, best.to];
     const bestIdea = ideaAt(new Chess(game.fen()), best.san);
-    say(`${why} Stockfish suggests ${best.san}.${bestIdea ? ' ' + bestIdea : ''}`, 'bad');
+    say(`${why} Stockfish suggests: ${instruction(best)}.${bestIdea ? ' ' + bestIdea : ''}`, 'bad');
   } else {
     misses++;
     hintSq = [best.from];
@@ -986,9 +993,8 @@ async function takeBack(loss, refutation) {
 function failLine(score) {
   failedNow = true;
   misses++; // so Restart replays this line instead of moving on
-  const s = stats[statKey(cur.id)];
-  s.done = s.done.filter((k) => k !== lineKey(line));
-  store(STORE, stats);
+  review(false);
+  renderLineBox();
   $('#restart').textContent = 'Restart';
   const how = 'mate' in score ? `has mate in ${score.mate}` : `is ${pawns(score.cp)} pawns ahead`;
   say(`Stockfish ${how}, so this line counts as failed. Play on, or press Restart to try the line again.`, 'bad');
@@ -1020,7 +1026,7 @@ async function explainWrong(san) {
   const want = expectedMove();
   if (mode === 'learn') {
     const wantIdea = idea(before, want.san);
-    parts.push(`The line plays ${want.san}.${wantIdea ? ' ' + wantIdea : ''}`);
+    parts.push(`The line plays ${moveWords(want)}.${wantIdea ? ' ' + wantIdea : ''}`);
   } else if (missesHere >= 2) parts.push('The piece to move is highlighted.');
   else parts.push('Try again.');
   say(`${san} is not the move here. ${parts.join(' ')}`, 'bad');
@@ -1042,17 +1048,59 @@ function wonLine(score = null) {
     : `You are ${pawns(-score.cp)} pawns ahead: a clear win.`;
   const s = stats[statKey(cur.id)];
   const wasComplete = cleared() === lines.length;
-  if (mode === 'try' && misses === 0 && !s.done.includes(lineKey(line))) s.done.push(lineKey(line));
-  store(STORE, stats);
+  const r = mode === 'try' ? review(misses === 0) : null;
   renderLines();
   renderLineBox();
   if (!wasComplete && cleared() === lines.length) showComplete();
   const left = lines.findIndex((l) => !s.done.includes(lineKey(l.moves)));
   $('#restart').textContent = mode === 'try' && misses ? 'Restart' : 'Next line';
-  if (mode === 'learn') return say(`${how} Press Next line for the next most common line, or switch to Try.`, 'good');
-  if (misses) return say(`${how} But with ${misses} mistake${misses === 1 ? '' : 's'} the line is not cleared yet. Press Restart to try again.`, 'good');
-  say(left === -1 ? `${how} Every common line at your level is cleared.`
-    : `${how} Line cleared: ${cleared()} of ${lines.length}. Press Next line for the next most common one.`, 'good');
+  if (mode === 'learn') return say(`${how} Line learned. Press Next line, or switch to Practice to test it.`, 'good');
+  if (misses) return say(`${how} But with ${plural(misses, 'mistake')} the line is not cleared; practise it again today. Press Restart.`, 'good');
+  const back = `It comes back for review in ${plural(INTERVALS[r.box], 'day')}.`;
+  say(left === -1 ? `${how} Every common line at your level is cleared. ${back}`
+    : `${how} Line cleared, ${cleared()} of ${lines.length}. ${back} Press Next line.`, 'good');
+}
+
+// ---------- Practice: lines come back for review ----------
+// A line cleared in Practice moves up a box and comes back after the box's interval; a mistake sends it
+// back to the start, to be practised again today.
+const DAY = 864e5;
+const INTERVALS = [0, 1, 3, 7, 14, 30]; // days, per box
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+function review(ok) {
+  const s = stats[statKey(cur.id)];
+  s.rep ??= {};
+  const key = lineKey(line);
+  const r = s.rep[key] ?? { box: 0, due: 0 };
+  r.box = ok ? Math.min(r.box + 1, INTERVALS.length - 1) : 0;
+  r.due = Date.now() + INTERVALS[r.box] * DAY;
+  s.rep[key] = r;
+  s.done = s.done.filter((k) => k !== key);
+  if (r.box > 0) s.done.push(key);
+  store(STORE, stats);
+  return r;
+}
+
+// Cleared lines whose review date has come, across all of an opening's saved lines.
+const dueCount = (s) => Object.values(s?.rep || {}).filter((r) => r.box > 0 && r.due <= Date.now()).length;
+
+// Learn: the first line not yet played through. Practice: lines due for review first, then lines you
+// have learned but not cleared, then any line not cleared.
+function nextLine() {
+  const s = stats[statKey(cur.id)];
+  const key = (l) => lineKey(l.moves);
+  if (mode === 'learn') {
+    const i = lines.findIndex((l) => !s.played.includes(key(l)));
+    return i === -1 ? (lineIdx + 1) % lines.length : i;
+  }
+  const due = lines.map((l, i) => [i, s.rep?.[key(l)]]).filter(([, r]) => r && r.box > 0 && r.due <= Date.now())
+    .sort((a, b) => a[1].due - b[1].due);
+  if (due.length) return due[0][0];
+  const learned = lines.findIndex((l) => s.played.includes(key(l)) && !s.done.includes(key(l)));
+  if (learned !== -1) return learned;
+  const fresh = lines.findIndex((l) => !s.done.includes(key(l)));
+  return fresh !== -1 ? fresh : lineIdx;
 }
 
 // ---------- Lines overview and the "opening complete" approval ----------
@@ -1070,17 +1118,20 @@ function renderLineBox() {
   const n = lines.length;
   const played = lines.filter((x) => s.played?.includes(lineKey(x.moves))).length;
   const done = cleared();
+  const due = dueCount(s);
+  const r = s.rep?.[lineKey(l.moves)];
+  const nextReview = r?.box > 0 ? (r.due <= Date.now() ? 'This line is due for review today.' : `Next review of this line in ${plural(Math.ceil((r.due - Date.now()) / DAY), 'day')}.`) : '';
   const oneIn = Math.max(1, Math.round(1 / (cur.share * l.share)));
   $('#line-box').innerHTML = `
     <h2 class="lb-name">Line ${lineIdx + 1} of ${n}: ${lineName(l)} <small>${lineEnd(l)}</small></h2>
     <div class="lb-stats">
       <div><b>${pctOf(l.share)}</b><span>of games in this opening go this way</span></div>
       <div><b>1 in ${oneIn.toLocaleString('en')}</b><span>of all your ${speed} games reach it</span></div>
-      <div><b>${played}/${n}</b><span>lines played through</span></div>
-      <div><b>${done}/${n}</b><span>lines cleared</span></div>
+      <div><b>${played}/${n}</b><span>lines learned</span></div>
+      <div><b>${done}/${n}</b><span>lines cleared${due ? `, ${due} due for review` : ''}</span></div>
     </div>
     <div class="lb-bar" aria-hidden="true"><span class="lb-done" style="width:${(done / n) * 100}%"></span><span class="lb-played" style="width:${(Math.max(0, played - done) / n) * 100}%"></span></div>
-    <p class="lb-note">Progress is saved in this browser. Pick any line in the list below.</p>`;
+    <p class="lb-note">${nextReview ? nextReview + ' ' : ''}Progress is saved in this browser.</p>`;
 }
 
 function renderLines() {
@@ -1141,7 +1192,9 @@ function tryMove(from, to) {
     return true;
   }
   lastMove = m; ply++; sel = null; hintSq = []; missesHere = 0;
-  say(`Correct: ${m.san}`, 'good');
+  say(`Right: ${moveWords(m)}.`, 'good');
+  markSq = { sq: m.to, ok: true };
+  setTimeout(() => { if (markSq?.sq === m.to) { markSq = null; renderBoard(); } }, 900);
   render();
   if (ply >= line.length) finish(); else reply();
   return true;
@@ -1157,7 +1210,7 @@ function prompt(text) {
   const m = expectedMove();
   hintSq = [m.from, m.to];
   renderBoard();
-  say(`Play ${m.san}.`);
+  say(`${instruction(m)}.`);
 }
 
 function showHint() {
@@ -1233,9 +1286,8 @@ document.addEventListener('keydown', (e) => {
 
 $('#restart').addEventListener('click', () => {
   if (!lines.length) return start(cur);
-  if (mode === 'learn') return play(ply >= line.length ? (lineIdx + 1) % lines.length : lineIdx);
-  const next = lines.findIndex((l) => !stats[statKey(cur.id)].done.includes(lineKey(l.moves)));
-  play(won && misses === 0 && next !== -1 ? next : lineIdx);
+  if (mode === 'learn') return play(ply >= line.length ? nextLine() : lineIdx);
+  play(won && misses === 0 ? nextLine() : lineIdx);
 });
 $('#hint').addEventListener('click', () => { if (userTurn() && inLine()) { showHint(); say('The piece to move is highlighted.'); } });
 $('#show').addEventListener('click', () => {
@@ -1243,7 +1295,7 @@ $('#show').addEventListener('click', () => {
   if (!userTurn() || !inLine()) return;
   const m = expectedMove();
   misses++;
-  say(`The move is ${m.san}.`);
+  say(`The move: ${instruction(m)}.`);
   hintSq = [m.from, m.to]; renderBoard();
 });
 // Opening picker, shown before the board.
@@ -1296,7 +1348,7 @@ function setMode(m, restart = true, remember = true) {
   for (const k of ['learn', 'try', 'explore']) $(`#mode-${k}`).setAttribute('aria-pressed', m === k);
   $('#mode-about').textContent = {
     learn: 'Every move is shown and explained. Nothing is scored.',
-    try: 'Find the moves yourself. A line clears when you win it, 3 pawns up or mate, without mistakes.',
+    try: 'Practice: find the moves yourself. A line clears when you win it without mistakes, then comes back for review after 1, 3, 7, 14 and 30 days.',
     explore: 'Play your moves and the opponent answers like players at your level. Stockfish rates every move. To try another answer, step back and move their piece.',
   }[m];
   $('#hint').hidden = $('#show').hidden = m === 'explore';
