@@ -24,6 +24,19 @@
   <section id="picker" class="wrap picker">
     <h1>Practise openings</h1>
     <p id="pick-msg" class="info" aria-live="polite"></p>
+    <form id="rating-form" class="rating-ask" hidden>
+      <label for="rating-big">What is your Lichess blitz rating?</label>
+      <div class="rating-row">
+        <input id="rating-big" type="number" min="400" max="3200" step="1" inputmode="numeric" placeholder="e.g. 1200" required>
+        <button type="submit" class="cta">Show my openings</button>
+      </div>
+      <p class="info">Not on Lichess? Pick a level:
+        <button type="button" class="pill" data-r="800">New to chess</button>
+        <button type="button" class="pill" data-r="1200">Casual</button>
+        <button type="button" class="pill" data-r="1600">Club player</button>
+        <button type="button" class="pill" data-r="2000">Strong</button>
+      </p>
+    </form>
     <nav id="openings" class="picks" aria-label="Openings"></nav>
   </section>
 

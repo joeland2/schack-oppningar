@@ -414,7 +414,8 @@ function showPicker() {
   $('#trainer').hidden = true;
   $('#picker').hidden = false;
   listEl.innerHTML = '';
-  if (!rating) return ($('#pick-msg').textContent = 'Enter your Lichess blitz rating at the top to see the openings played at your level.');
+  $('#rating-form').hidden = !!rating;
+  if (!rating) return ($('#pick-msg').textContent = 'The openings you see depend on what players at your level actually play.');
   OPENINGS = popularOpenings();
   $('#pick-msg').textContent = `The most played openings in blitz at ${rating} ± 200. Pick one to practise.`;
   renderList();
@@ -434,11 +435,15 @@ function setMode(m) {
 }
 $('#mode-learn').addEventListener('click', () => setMode('learn'));
 $('#mode-try').addEventListener('click', () => setMode('try'));
-$('#rating').addEventListener('change', (e) => {
-  rating = Number(e.target.value) || null;
+function setRating(r) {
+  rating = r >= 400 && r <= 3200 ? Math.round(r) : null;
   store(STORE + '-blitz-rating', rating);
+  $('#rating').value = rating || '';
   showPicker();
-});
+}
+$('#rating').addEventListener('change', (e) => setRating(Number(e.target.value)));
+$('#rating-form').addEventListener('submit', (e) => { e.preventDefault(); setRating(Number($('#rating-big').value)); });
+document.querySelectorAll('#rating-form .pill').forEach((b) => b.addEventListener('click', () => setRating(Number(b.dataset.r))));
 
 try { await loadData(); } catch {
   say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .', 'bad');
