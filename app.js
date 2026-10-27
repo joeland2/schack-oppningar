@@ -551,6 +551,7 @@ function play(i) {
   misses = 0; missesHere = 0; busy = false;
   engineGen++; // ignore a Stockfish reply still on its way from the previous game
   failedNow = false;
+  won = false;
   lastEval = null;
   $('#op-var').textContent = `Line ${i + 1} of ${lines.length} · ${l.share < 0.01 ? '<1' : Math.round(l.share * 100)}% of games at ${rating} ± 200${l.name ? ' · ' + l.name : ''}`;
   $('#restart').textContent = 'Restart';
@@ -560,6 +561,7 @@ function play(i) {
 }
 
 let failedNow = false; // Try: this play-on game already fell clearly behind and failed the line
+let won = false;       // you checkmated Stockfish in this game
 let lastEval = null;    // Stockfish's evaluation after its last move, from its side, in centipawns
 const userTurn = () => line.length > 0 && !game.isGameOver() && game.turn() === cur.side;
 const inLine = () => ply < line.length;
@@ -620,6 +622,21 @@ async function engineMove() {
   if (gameOver()) return;
   if (mode === 'try' && !failedNow && r.score && (r.score.mate > 0 || r.score.cp >= LOST)) return failLine(r.score);
   say('Your move.');
+  suggest();
+}
+
+// Learn, after the line: show Stockfish's best move for you, all the way to checkmate.
+// Show move does the same in Try (and counts as a mistake).
+async function suggest(asked = false) {
+  if ((mode !== 'learn' && !asked) || !userTurn() || inLine()) return;
+  const at = game.fen();
+  const r = await think(at, { ms: 500 });
+  if (!r || game.fen() !== at) return;
+  const best = new Chess(at).move(uciMove(r.uci));
+  const bestIdea = ideaAt(new Chess(at), best.san);
+  hintSq = [best.from, best.to];
+  renderBoard();
+  say(`Play ${best.san}.${bestIdea ? ' ' + bestIdea : ''}${r.score?.mate > 0 ? ` Mate in ${r.score.mate}.` : ''}`);
 }
 
 // Your last move gave away a lot: explain Stockfish's answer to it, take it back, and help.
@@ -697,9 +714,24 @@ async function explainWrong(san) {
 
 function gameOver() {
   if (!game.isGameOver()) return false;
-  if (game.isCheckmate()) say(game.turn() === cur.side ? 'Checkmate. Stockfish wins this one.' : 'Checkmate! You win.', game.turn() === cur.side ? 'bad' : 'good');
-  else say('Draw.');
+  if (!game.isCheckmate()) say('Draw. Press Restart to try the line again.');
+  else if (game.turn() === cur.side) say('Checkmate: Stockfish wins this one. Press Restart to try the line again.', 'bad');
+  else wonLine();
   return true;
+}
+
+// You checkmated Stockfish. In Try the line is cleared if you made no mistakes on the way.
+function wonLine() {
+  won = true;
+  const s = stats[statKey(cur.id)];
+  if (mode === 'try' && misses === 0 && !s.done.includes(lineKey(line))) s.done.push(lineKey(line));
+  store(STORE, stats);
+  const left = lines.findIndex((l) => !s.done.includes(lineKey(l.moves)));
+  $('#restart').textContent = mode === 'try' && misses ? 'Restart' : 'Next line';
+  if (mode === 'learn') return say('Checkmate! Press Next line for the next most common line, or switch to Try.', 'good');
+  if (misses) return say(`Checkmate! But with ${misses} mistake${misses === 1 ? '' : 's'} the line is not cleared yet. Press Restart to try again.`, 'good');
+  say(left === -1 ? 'Checkmate! Every common line at your level is cleared.'
+    : `Checkmate! Line cleared: ${s.done.length} of ${lines.length}. Press Next line for the next most common one.`, 'good');
 }
 
 function reply() {
@@ -764,26 +796,14 @@ function showHint() {
 }
 
 function finish() {
+  if (gameOver()) return;
   if (mode === 'learn') {
     $('#restart').textContent = 'Next line';
-    say(`Line ${lineIdx + 1} of ${lines.length} learned. Keep playing against Stockfish to checkmate, or press Next line.`, 'good');
-    if (!gameOver() && game.turn() !== cur.side) engineMove();
-    return;
+    say('Opening done. Keep following the moves to checkmate.', 'good');
   }
-  const s = stats[statKey(cur.id)];
-  const key = lineKey(line);
-  if (misses === 0 && !s.done.includes(key)) s.done.push(key);
-  store(STORE, stats);
-  renderList();
-  const left = lines.findIndex((l) => !s.done.includes(lineKey(l.moves)));
-  const on = ' Now play on against Stockfish to checkmate. Fall 3 pawns behind and the line fails.';
-  if (misses) say(`Opening done with ${misses} mistake${misses === 1 ? '' : 's'}; Restart tries this line again.${on}`);
-  else if (left === -1) say(`Flawless! Every common line at your level is cleared.${on}`, 'good');
-  else {
-    $('#restart').textContent = 'Next line';
-    say(`Flawless! ${s.done.length} of ${lines.length} lines cleared.${on}`, 'good');
-  }
-  if (!gameOver() && game.turn() !== cur.side) engineMove();
+  else if (misses) say(`Opening done with ${misses} mistake${misses === 1 ? '' : 's'}. Play on to checkmate, or press Restart to try again.`);
+  else say('Opening played without mistakes. Now checkmate Stockfish to clear the line. Fall 3 pawns behind and it fails.', 'good');
+  if (game.turn() !== cur.side) engineMove(); else suggest();
 }
 
 boardEl.addEventListener('click', (e) => {
@@ -801,10 +821,11 @@ $('#restart').addEventListener('click', () => {
   if (!lines.length) return start(cur);
   if (mode === 'learn') return play(ply >= line.length ? (lineIdx + 1) % lines.length : lineIdx);
   const next = lines.findIndex((l) => !stats[statKey(cur.id)].done.includes(lineKey(l.moves)));
-  play(ply >= line.length && misses === 0 && next !== -1 ? next : lineIdx);
+  play(won && misses === 0 && next !== -1 ? next : lineIdx);
 });
 $('#hint').addEventListener('click', () => { if (userTurn() && inLine()) { showHint(); say('The piece to move is highlighted.'); } });
 $('#show').addEventListener('click', () => {
+  if (userTurn() && !inLine() && !busy) { if (mode === 'try') misses++; return suggest(true); }
   if (!userTurn() || !inLine()) return;
   const m = expectedMove();
   misses++;
