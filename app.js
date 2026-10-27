@@ -62,7 +62,7 @@ function ratingsAround(r) {
 console.assert(ratingsAround(1500).join() === '2,3,4' && ratingsAround(2400).join() === '7,8', 'ratingsAround');
 
 // ---------- Data (all local, nothing is fetched from Lichess) ----------
-let TREE, BOOK, NAMES;
+let TREE, BOOK, NAMES, IN_BOOK;
 const TREES = {};
 const POPULAR = {};   // popularOpenings() per time control and rating; it takes a moment to compute
 
@@ -82,6 +82,7 @@ async function loadBook() {
     return { eco, name, moves: pgn.replace(/\d+\.\s*/g, '').trim().split(/\s+/).map(clean) };
   });
   NAMES = new Map(BOOK.map((l) => [lineKey(l.moves), l]));
+  IN_BOOK = new Set(BOOK.flatMap((l) => l.moves.map((_, i) => lineKey(l.moves.slice(0, i + 1)))));
 }
 
 // Every book position in the opening's family, as move-sequence keys.
@@ -265,6 +266,120 @@ function playPreview(card) {
   };
   step();
 }
+
+// ---------- Your own games ----------
+// The one live call: your public games from Lichess, fetched only when you ask. No login needed.
+// A slip: a move outside every named opening line that strong players choose in under 5% of their games.
+// Rare but named moves (2.f4, the King's Gambit) are a choice of opening, not a slip.
+const RARE = 0.05;
+const JUDGE_GAMES = 100;  // strong-player games a position needs before we judge a move there
+
+async function fetchGames(name) {
+  const res = await fetch(`https://lichess.org/api/games/user/${encodeURIComponent(name)}?` + new URLSearchParams({
+    max: 100, rated: 'true', perfType: speed, moves: 'true', opening: 'true', clocks: 'false', evals: 'false',
+  }), { headers: { Accept: 'application/x-ndjson' } });
+  if (res.status === 404) throw new Error(`Lichess has no player called ${name}.`);
+  if (res.status === 429) throw new Error('Lichess is busy right now. Try again in a minute.');
+  if (!res.ok) throw new Error(`Lichess answered with an error (${res.status}).`);
+  return (await res.text()).split('\n').filter(Boolean).map((l) => JSON.parse(l));
+}
+
+// For each game: the first of your moves that strong players rarely play, plus your score per opening.
+function analyse(games, name) {
+  const me = name.toLowerCase();
+  const slips = new Map();
+  const openings = new Map();
+  let counted = 0;
+  for (const g of games) {
+    const side = g.players.white.user?.id === me ? 'w' : g.players.black.user?.id === me ? 'b' : null;
+    if (!side || !g.moves) continue;
+    counted++;
+    const points = !g.winner ? 0.5 : g.winner === (side === 'w' ? 'white' : 'black') ? 1 : 0;
+    const family = g.opening?.name && familyOf(g.opening.name);
+    if (family) {
+      const o = openings.get(`${side}:${family}`) ?? { family, side, games: 0, points: 0 };
+      o.games++; o.points += points;
+      openings.set(`${side}:${family}`, o);
+    }
+    const moves = g.moves.split(' ').map(clean).slice(0, MAX_PLY);
+    for (let i = side === 'w' ? 0 : 1; i < moves.length; i += 2) {
+      const before = moves.slice(0, i);
+      const strong = explore(before, STRONG[speed]);
+      if (strong.total < JUDGE_GAMES) break; // past what the data can judge
+      const mine = strong.moves.find((m) => m.san === moves[i]);
+      const key = lineKey([...before, moves[i]]);
+      if ((mine && mine.n / strong.total >= RARE) || IN_BOOK.has(key)) continue;
+      const slip = slips.get(key) ?? { before, side, family, played: moves[i], playedShare: (mine?.n ?? 0) / strong.total,
+        best: strong.moves[0].san, bestShare: strong.moves[0].n / strong.total, games: 0, points: 0 };
+      slip.games++; slip.points += points;
+      slips.set(key, slip);
+      break;
+    }
+  }
+  return {
+    counted,
+    slips: [...slips.values()].sort((a, b) => b.games - a.games || a.points - b.points).slice(0, 6),
+    openings: [...openings.values()].sort((a, b) => b.games - a.games).slice(0, 8),
+  };
+}
+console.assert(analyse([], 'x').counted === 0, 'analyse');
+
+const pct = (x) => `${Math.round(x * 100)}%`;
+
+function renderMine({ counted, slips, openings }, name) {
+  const out = $('#mine-out');
+  if (!counted) {
+    out.innerHTML = '';
+    return ($('#mine-msg').textContent = `No rated ${speed} games found for ${name}.`);
+  }
+  $('#mine-msg').textContent = `Checked your last ${counted} rated ${speed} games against what players rated ${speed === 'blitz' ? '2200' : '2000'}+ play.`;
+  out.innerHTML = `
+    <h3 class="mine-h">Where you go off track</h3>
+    ${slips.length ? '' : '<p class="info">No repeated slips: in every position we could judge, you played a move strong players also choose.</p>'}
+    <div class="slips">${slips.map((s, n) => {
+      const moves = numbered(lineKey([...s.before, s.played])).split(' ');
+      const bestMoves = numbered(lineKey([...s.before, s.best])).split(' ');
+      return `<article class="slip">
+        <div class="board mini" data-slip="${n}" inert></div>
+        <div class="slip-body">
+          <p class="slip-count">${s.games} game${s.games === 1 ? '' : 's'} · you scored ${pct(s.points / s.games)}</p>
+          <p class="omoves">${moves.slice(0, -1).join(' ')} <b class="bad">${moves.at(-1)}</b></p>
+          <p>Players rated ${speed === 'blitz' ? '2200' : '2000'}+ play <b>${bestMoves.at(-1)}</b> here (${pct(s.bestShare)} of their games) and ${s.played} in ${s.playedShare ? pct(s.playedShare) : 'none'}.</p>
+          ${OPENINGS.some((o) => o.family === s.family && o.side === s.side) ? `<button type="button" class="cta" data-practise="${n}">Practise ${s.family.split(': ').at(-1)}</button>` : ''}
+        </div>
+      </article>`;
+    }).join('')}</div>
+    <h3 class="mine-h">Your openings</h3>
+    <ul class="mine-ops">${openings.map((o) => `<li><span>${o.family.split(': ').at(-1)} <small>as ${o.side === 'w' ? 'White' : 'Black'}</small></span><span>${o.games} games · ${pct(o.points / o.games)}</span></li>`).join('')}</ul>`;
+  slips.forEach((s, n) => {
+    const g = new Chess();
+    s.before.forEach((m) => g.move(m));
+    const best = new Chess(g.fen()).move(s.best);
+    drawBoard(out.querySelector(`[data-slip="${n}"]`), g, { side: s.side, last: g.history({ verbose: true }).at(-1), hint: [best.from, best.to] });
+  });
+  out.querySelectorAll('[data-practise]').forEach((b) => b.addEventListener('click', () => {
+    const s = slips[Number(b.dataset.practise)];
+    start(OPENINGS.find((o) => o.family === s.family && o.side === s.side));
+    const want = lineKey([...s.before, s.best]);
+    const i = lines.findIndex((l) => lineKey(l.moves).startsWith(want));
+    if (i >= 0) play(i);
+  }));
+}
+
+$('#mine-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = $('#mine-name').value.trim();
+  store(STORE + '-lichess-name', name);
+  $('#mine-msg').textContent = `Fetching ${name}'s last 100 rated ${speed} games from Lichess…`;
+  $('#mine-out').innerHTML = '';
+  try {
+    await loadTree();
+    renderMine(analyse(await fetchGames(name), name), name);
+  } catch (err) {
+    $('#mine-msg').textContent = err.message;
+  }
+});
+$('#mine-name').value = load(STORE + '-lichess-name', '');
 
 // ---------- Board ----------
 function renderBoard() {

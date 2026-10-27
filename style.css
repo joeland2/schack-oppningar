@@ -225,3 +225,21 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .choice-about { margin: 0; color: var(--muted); font-size: .9rem; min-height: 1.4em; }
 .tags { margin: 0; display: flex; flex-wrap: wrap; gap: 4px; }
 .tag { font-size: .7rem; font-weight: 600; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
+
+/* Your own games */
+.mine { margin: 6px 0 18px; padding: 14px clamp(14px, 2vw, 22px); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.mine[open] { box-shadow: var(--shadow); }
+.mine summary { cursor: pointer; font-weight: 700; }
+.mine form { margin-top: 12px; }
+.mine .info { margin-top: 8px; }
+.mine-h { margin: 18px 0 10px; font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.slips { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); }
+.slip { display: grid; grid-template-columns: minmax(110px, 160px) 1fr; gap: 14px; align-items: start; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.slip-body { display: grid; gap: 6px; align-content: start; }
+.slip-body p { margin: 0; }
+.slip-count { font-weight: 700; }
+.slip .bad { color: var(--bad); }
+.slip .cta { justify-self: start; margin-top: 4px; }
+.mine-ops { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; max-width: 520px; }
+.mine-ops li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.mine-ops small { color: var(--muted); }

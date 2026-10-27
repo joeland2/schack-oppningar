@@ -41,7 +41,7 @@ Opening lines are built from what real players at the user's own rating (±200) 
 
 - Plain static HTML, CSS and JavaScript with no build step. chess.js and stockfish.js are loaded from jsDelivr.
 - Must be served over HTTP; it does not work from `file://`.
-- All game data is precomputed and committed to the repo. The site makes no calls to Lichess or chess.com at runtime:
+- Opening and puzzle data is precomputed and committed to the repo. The only runtime call is "Check my own games": it fetches the player's last 100 rated games of the chosen time control from Lichess's public games API by username (no login). It then flags the first move in each game that leaves every named opening line and that 2200+ players (2000+ in classical) choose in under 5% of games:
   - `data/explorer-blitz.json` and `data/explorer-classical.json`: move counts per Lichess rating group from 2,000,000 rated blitz games and 400,000 rated classical games, Lichess database September 2026, up to 20 plies deep. Rebuild with `tools/make_explorer.py <blitz|classical>`.
   - `styles.js`: which play styles each opening suits. This is editorial judgement, not game data.
   - `data/*.tsv`: named opening lines from lichess-org/chess-openings.
@@ -71,7 +71,7 @@ Opening lines are built from what real players at the user's own rating (±200) 
 ## Product Principles
 
 1. **Real games only.** Opening statistics come from real players' games, never invented lines. The engine is used only to explain positions and to play on after the opening.
-2. **No account, no live API.** Everything works without logging in and without calling Lichess. Data is precomputed and shipped with the site.
+2. **No account, almost no live API.** Everything works without logging in. Game statistics are precomputed and shipped with the site. The only live call is fetching the player's own public Lichess games, and only when they type their username and ask for it.
 3. **No invented quotes.** Never put words in real players' mouths. Explanations of pro moves come from engine analysis and are labelled as such.
 4. **Practise what you will actually meet.** Order and filter content by how often it occurs at the player's own level.
 5. **English interface.**

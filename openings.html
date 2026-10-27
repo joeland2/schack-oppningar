@@ -43,6 +43,16 @@
         <p id="style-about" class="choice-about"></p>
       </div>
     </div>
+    <details class="mine">
+      <summary>Check my own games for opening slips</summary>
+      <form id="mine-form" class="rating-row">
+        <input id="mine-name" type="text" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Lichess username">
+        <button type="submit" class="cta">Check my last 100 games</button>
+      </form>
+      <p class="info">Uses your public games in the time control picked above. No login. Your games are only read in this browser.</p>
+      <p id="mine-msg" class="info" aria-live="polite"></p>
+      <div id="mine-out"></div>
+    </details>
     <p id="pick-msg" class="info" aria-live="polite"></p>
     <form id="rating-form" class="rating-ask" hidden>
       <label for="rating-big">What is your Lichess <span class="speed-name">blitz</span> rating?</label>
