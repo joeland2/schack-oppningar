@@ -556,6 +556,7 @@ function play(i) {
   $('#op-var').textContent = `Line ${i + 1} of ${lines.length} · ${l.share < 0.01 ? '<1' : Math.round(l.share * 100)}% of games at ${rating} ± 200${l.name ? ' · ' + l.name : ''}`;
   $('#restart').textContent = 'Restart';
   render();
+  renderLines();
   if (mode === 'explore') return enterExplore();
   if (userTurn()) prompt('Your move. Play the first move.');
   else { say('Your opponent starts…'); reply(); }
@@ -788,15 +789,46 @@ function gameOver() {
 function wonLine() {
   won = true;
   const s = stats[statKey(cur.id)];
+  const wasComplete = cleared() === lines.length;
   if (mode === 'try' && misses === 0 && !s.done.includes(lineKey(line))) s.done.push(lineKey(line));
   store(STORE, stats);
+  renderLines();
+  if (!wasComplete && cleared() === lines.length) showComplete();
   const left = lines.findIndex((l) => !s.done.includes(lineKey(l.moves)));
   $('#restart').textContent = mode === 'try' && misses ? 'Restart' : 'Next line';
   if (mode === 'learn') return say('Checkmate! Press Next line for the next most common line, or switch to Try.', 'good');
   if (misses) return say(`Checkmate! But with ${misses} mistake${misses === 1 ? '' : 's'} the line is not cleared yet. Press Restart to try again.`, 'good');
   say(left === -1 ? 'Checkmate! Every common line at your level is cleared.'
-    : `Checkmate! Line cleared: ${s.done.length} of ${lines.length}. Press Next line for the next most common one.`, 'good');
+    : `Checkmate! Line cleared: ${cleared()} of ${lines.length}. Press Next line for the next most common one.`, 'good');
 }
+
+// ---------- Lines overview and the "opening complete" approval ----------
+// Lines of the current list that are cleared (progress saved for other ratings may hold other lines).
+const cleared = () => lines.filter((l) => stats[statKey(cur.id)]?.done.includes(lineKey(l.moves))).length;
+const lineName = (l) => (l.name ? l.name.split(' · ').at(-1).split(': ').at(-1) : 'Unnamed line');
+// The line's last two moves with their real move numbers, e.g. "5.O-O d6", so same-named lines can be told apart.
+const lineEnd = (l) => numbered(lineKey(l.moves)).split(' ').slice(l.moves.length % 2 ? -1 : -2).join(' ');
+
+function renderLines() {
+  const done = stats[statKey(cur.id)]?.done || [];
+  $('#lines-sum').textContent = `Lines · ${cleared()} of ${lines.length} cleared`;
+  $('#lines-list').innerHTML = lines.map((l, i) => `<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}" data-i="${i}">
+      <span class="line-n">${i + 1}.</span><span class="line-name">${lineName(l)}<small>${lineEnd(l)}</small></span>
+      <span class="line-share">${pctOf(l.share)}</span>${done.includes(lineKey(l.moves)) ? '<span class="line-ok" title="Cleared">✓</span>' : '<span class="line-ok"></span>'}
+    </button></li>`).join('');
+}
+$('#lines-list').addEventListener('click', (e) => {
+  const b = e.target.closest('.line-btn');
+  if (b) play(Number(b.dataset.i));
+});
+
+function showComplete() {
+  $('#complete-title').textContent = (cur.side === 'b' ? 'vs ' : '') + cur.name;
+  $('#complete-text').textContent = `You cleared all ${lines.length} lines: every common reply at ${rating} ± 200 in ${speed}, each played to checkmate without a mistake.`;
+  $('#complete').showModal();
+}
+$('#complete-more').addEventListener('click', () => { $('#complete').close(); play((lineIdx + 1) % lines.length); });
+$('#complete-back').addEventListener('click', () => { $('#complete').close(); showPicker(); });
 
 function reply() {
   busy = true;
