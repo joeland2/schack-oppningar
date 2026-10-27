@@ -11,6 +11,10 @@
   --bad: #b23a2e;
   --hint: #e0b23a;
   --radius: 10px;
+  /* Spacing roles: inside a group, between related parts, between groups. */
+  --gap-tight: 8px;
+  --gap-group: 12px;
+  --gap-section: 24px;
   --shadow: 0 1px 2px rgb(16 32 30 / .06), 0 8px 24px rgb(16 32 30 / .08);
   --glow: rgb(29 90 72 / .10);
   --gutter: max(clamp(16px, 4vw, 56px), env(safe-area-inset-left, 0px));
@@ -62,7 +66,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 }
 .play { grid-area: play; display: grid; gap: 14px; }
 .panel {
-  grid-area: panel; min-width: 0; display: grid; gap: 16px; align-content: start;
+  grid-area: panel; min-width: 0; display: grid; gap: var(--gap-section); align-content: start;
   padding: clamp(16px, 2vw, 28px); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
 }
 .list { grid-area: list; }
@@ -140,9 +144,8 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
   .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "play" "panel" "list"; gap: 20px; padding-block: 16px; }
   .board-frame { padding: 6px; }
   .top { position: static; }
-  /* On a phone the message and the move explanation come first, right under the board. */
-  .panel #message { order: -2; }
-  .panel #why { order: -1; }
+  /* On a phone the feedback comes first, right under the board. */
+  .p-feedback { order: -1; }
 }
 @media (prefers-reduced-motion: reduce) { .board.shake { animation: none; } .fill { transition: none; } }
 
@@ -278,7 +281,6 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .complete { max-width: min(460px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 14px; padding: 28px;
   background: var(--surface); color: var(--ink); box-shadow: var(--shadow); text-align: center; }
 .complete::backdrop { background: rgb(0 0 0 / .55); }
-.complete-kicker { margin: 0; font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: var(--good); font-weight: 700; }
 .complete h2 { margin: 8px 0 10px; font-size: 1.8rem; letter-spacing: -0.02em; }
 .complete p { color: var(--muted); }
 .complete-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
@@ -310,7 +312,6 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 /* Current line */
 .line-box { display: grid; gap: 8px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
 .line-box:empty { display: none; }
-.lb-kicker { margin: 0; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
 .lb-name { margin: 0; font-size: 1.15rem; line-height: 1.25; }
 .lb-name small { font: .8rem var(--font-mono); color: var(--muted); }
 .lb-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
@@ -328,3 +329,23 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
   .controls button { padding: 8px 10px; font-size: .9rem; }
 }
 .lb-note { margin: 0; font-size: .78rem; color: var(--muted); }
+
+/* Board view panel: context, feedback, progress, then the long list */
+.p-head { display: grid; gap: var(--gap-group); }
+.p-head .op-head h1 { margin-bottom: 4px; }
+.p-feedback { display: grid; gap: var(--gap-tight); }
+.p-progress { display: grid; gap: var(--gap-group); }
+/* Desktop: the board stays in view while the panel scrolls */
+@media (min-width: 821px) {
+  .play { position: sticky; top: 84px; align-self: start; }
+}
+
+/* Drawn icons */
+.ico { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.back { display: inline-flex; align-items: center; gap: 6px; }
+#step-back, #step-fwd { display: inline-grid; place-items: center; min-width: 44px; }
+.line-ok .ico { width: 16px; height: 16px; stroke: var(--good); stroke-width: 3; }
+
+/* Picker filters in one band */
+.choice-search { flex: 1 1 260px; }
+.choice-search .search { margin: 0; max-width: 420px; }

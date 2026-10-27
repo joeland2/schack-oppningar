@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake } from './board.js?v=20261027195522';
-import { STYLES, STYLE_OF } from './styles.js?v=20261027195522';
+import { drawBoard, enableDrag, shake } from './board.js?v=20261027200734';
+import { STYLES, STYLE_OF } from './styles.js?v=20261027200734';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -964,8 +964,7 @@ function renderLineBox() {
   const done = cleared();
   const oneIn = Math.max(1, Math.round(1 / (cur.share * l.share)));
   $('#line-box').innerHTML = `
-    <p class="lb-kicker">Line ${lineIdx + 1} of ${n}</p>
-    <h2 class="lb-name">${lineName(l)} <small>${lineEnd(l)}</small></h2>
+    <h2 class="lb-name">Line ${lineIdx + 1} of ${n}: ${lineName(l)} <small>${lineEnd(l)}</small></h2>
     <div class="lb-stats">
       <div><b>${pctOf(l.share)}</b><span>of games in this opening go this way</span></div>
       <div><b>1 in ${oneIn.toLocaleString('en')}</b><span>of all your ${speed} games reach it</span></div>
@@ -981,7 +980,7 @@ function renderLines() {
   $('#lines-sum').textContent = `Lines · ${cleared()} of ${lines.length} cleared`;
   $('#lines-list').innerHTML = lines.map((l, i) => `<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}" data-i="${i}">
       <span class="line-n">${i + 1}.</span><span class="line-name">${lineName(l)}<small>${lineEnd(l)}</small></span>
-      <span class="line-share">${pctOf(l.share)}</span>${done.includes(lineKey(l.moves)) ? '<span class="line-ok" title="Cleared">✓</span>' : '<span class="line-ok"></span>'}
+      <span class="line-share">${pctOf(l.share)}</span><span class="line-ok">${done.includes(lineKey(l.moves)) ? '<svg class="ico" viewBox="0 0 24 24" role="img" aria-label="Cleared"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}</span>
     </button></li>`).join('');
 }
 $('#lines-list').addEventListener('click', (e) => {
@@ -990,7 +989,7 @@ $('#lines-list').addEventListener('click', (e) => {
 });
 
 function showComplete() {
-  $('#complete-title').textContent = (isVs(cur) ? 'vs ' : '') + cur.name;
+  $('#complete-title').textContent = `${isVs(cur) ? 'vs ' : ''}${cur.name}: complete`;
   $('#complete-text').textContent = `You cleared all ${lines.length} lines: every common reply at ${rating} ± 200 in ${speed}, each played to a clear win without a mistake.`;
   $('#complete').showModal();
 }
@@ -1107,7 +1106,7 @@ async function stepBack() {
   render();
   say('Stepped back. Stockfish is thinking…');
   analysis = await analyseHere();
-  showAnalysis(mode === 'explore' && redo.length ? `Move any piece, for either side, to see what Stockfish thinks of it. ▶ goes forward again.` : '');
+  showAnalysis(mode === 'explore' && redo.length ? `Move any piece, for either side, to see what Stockfish thinks of it. Step forward replays the moves.` : '');
 }
 
 function stepForward() {
@@ -1147,7 +1146,7 @@ async function showPicker() {
   listEl.innerHTML = '';
   renderChoices();
   $('#rating-step').hidden = !!rating;
-  $('#search').hidden = !rating;
+  $('.choice-search').hidden = !rating;
   if (!rating) return ($('#pick-msg').textContent = 'The openings you see depend on what players at your level actually play.');
   $('#pick-msg').textContent = `Loading ${speed} games…`;
   try { await loadTree(); } catch { return say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .'); }
