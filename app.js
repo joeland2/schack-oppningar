@@ -200,7 +200,7 @@ function popularOpenings() {
       if (family && !named.has(family)) {
         named.add(family);
         const o = { id: family, name: shortName(family), family, eco: m.eco, side: 'w', root: moves.join(' '), share, win: m.win, draw: m.draw, score: m.score };
-        if (moves.length % 2) found.set(family, o);
+        if (moves.length % 2 && !BLACKS.test(family)) found.set(family, o);
         else defences.set(family, { ...o, id: `b:${family}`, side: 'b' });
       }
       open.push({ moves, share });
@@ -213,6 +213,10 @@ function popularOpenings() {
 }
 
 const isVs = (o) => o.id.startsWith('vs:'); // a White opening practised from Black's side
+// Black's openings by name, whichever move first gave them their name ("King's Indian Defense" can first
+// appear after a White move, but it is still Black's choice).
+const BLACKS = /(Defen[cs]e|Countergambit|Gambit Accepted|Gambit Declined)$/;
+console.assert(BLACKS.test("King's Indian Defense") && !BLACKS.test("King's Gambit") && !BLACKS.test('Italian Game'), 'BLACKS');
 
 // "Queen's Pawn Game: London System" → "London System", but "Queen's Pawn Game: Chigorin Variation" stays whole.
 const shortName = (family) => (/Variation$/.test(family) ? family : family.split(': ').at(-1));

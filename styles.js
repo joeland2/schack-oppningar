@@ -2,7 +2,7 @@
 // the openings themselves and their popularity still come from real games.
 export const STYLES = {
   attacking: { label: 'Attacking', about: 'Early initiative, sharp positions, gambits.' },
-  solid: { label: 'Solid', about: 'Safe structures and few early risks.' },
+  solid: { label: 'Defensive', about: 'Safe, solid set-ups with few early risks, like the London System.' },
   positional: { label: 'Positional', about: 'Flexible setups and long-term plans.' },
   tricky: { label: 'Tricky', about: 'Offbeat moves and traps your opponent may not know.' },
 };
@@ -52,6 +52,11 @@ export const STYLE_OF = {
   'Van Geet Opening': ['tricky'],
   'Ware Opening': ['tricky'],
   'Englund Gambit Declined': ['solid'],
+  "King's Pawn Game: Wayward Queen Attack": ['attacking', 'tricky'],
+  "Queen's Pawn Game: Zukertort Variation": ['solid', 'positional'],
+  "Queen's Pawn Game: Chigorin Variation": ['attacking', 'tricky'],
+  "King's Pawn Game: Leonardis Variation": ['solid'],
+  'Danish Gambit Accepted': ['attacking', 'tricky'],
   // Black
   'Sicilian Defense': ['attacking'],
   'French Defense': ['solid', 'positional'],
@@ -101,4 +106,11 @@ export const STYLE_OF = {
   'Ware Defense': ['tricky'],
   'English Defense': ['tricky'],
   'Mikenas Defense': ['tricky'],
+  "King's Knight Opening: Normal Variation": ['solid'],
+  "King's Pawn Game: Busch-Gass Gambit": ['attacking', 'tricky'],
+  "Queen's Pawn Game: Symmetrical Variation": ['solid'],
+  "Queen's Pawn Game: Modern Defense": ['positional'],
+  "King's Pawn Game: Damiano Defense": ['tricky'],
+  "King's Pawn Game: McConnell Defense": ['tricky'],
+  'Benko Gambit': ['attacking'],
 };
