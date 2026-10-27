@@ -455,6 +455,11 @@ const PIECE = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: '
 function idea(before, san) {
   const g = new Chess();
   before.forEach((x) => g.move(x));
+  return ideaAt(g, san);
+}
+
+// Same, from a position (a Chess game) rather than a move list. Plays the move on g.
+function ideaAt(g, san) {
   const prev = g.history({ verbose: true }).at(-1);
   const m = g.move(san);
   const out = [];
@@ -545,7 +550,7 @@ function play(i) {
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   misses = 0; missesHere = 0; busy = false;
   engineGen++; // ignore a Stockfish reply still on its way from the previous game
-  stopped = false;
+  failedNow = false;
   lastEval = null;
   $('#op-var').textContent = `Line ${i + 1} of ${lines.length} · ${l.share < 0.01 ? '<1' : Math.round(l.share * 100)}% of games at ${rating} ± 200${l.name ? ' · ' + l.name : ''}`;
   $('#restart').textContent = 'Restart';
@@ -554,89 +559,140 @@ function play(i) {
   else { say('Your opponent starts…'); reply(); }
 }
 
-let stopped = false;  // the play-on game was stopped because you fell clearly behind
-let lastEval = null;  // Stockfish's evaluation after its last move, from its side, in centipawns
-const userTurn = () => line.length > 0 && !stopped && !game.isGameOver() && game.turn() === cur.side;
+let failedNow = false; // Try: this play-on game already fell clearly behind and failed the line
+let lastEval = null;    // Stockfish's evaluation after its last move, from its side, in centipawns
+const userTurn = () => line.length > 0 && !game.isGameOver() && game.turn() === cur.side;
 const inLine = () => ply < line.length;
 
-// ---------- Play on vs Stockfish after the line ----------
+// ---------- Stockfish ----------
 // Same-origin rule for workers: load the CDN script through a blob worker.
 const ENGINE_SRC = 'https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js';
 let engine = null;
 let engineGen = 0;
+let searching = false;
+let skipBest = 0;      // bestmoves still owed by searches that were stopped early
 // shortcut: Skill Level 0–20 mapped linearly from rating, rough at best; upgrade to UCI_Elo with Stockfish 11+.
 const skill = () => Math.max(0, Math.min(20, Math.round((rating - 800) / 85)));
-
-function engineMove() {
-  engine ??= new Worker(URL.createObjectURL(new Blob([`importScripts('${ENGINE_SRC}')`], { type: 'text/javascript' })));
-  const gen = ++engineGen;
-  busy = true;
-  let score = null; // Stockfish's latest evaluation, from its own side
-  engine.onmessage = (e) => {
-    if (typeof e.data !== 'string' || gen !== engineGen) return;
-    const sc = e.data.match(/ score (cp|mate) (-?\d+)/);
-    if (sc) score = { [sc[1]]: Number(sc[2]) };
-    if (!e.data.startsWith('bestmove')) return;
-    const now = score && toCp(score);
-    if (score && lastEval !== null && now - lastEval >= BLUNDER) return takeBack(now - lastEval);
-    if (score) lastEval = now;
-    const uci = e.data.split(' ')[1];
-    lastMove = game.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
-    ply++; busy = false; hintSq = [];
-    render();
-    if (gameOver()) return;
-    if (score && (score.mate > 0 || score.cp >= LOST)) return failed(score);
-    say('Your move.');
-  };
-  engine.postMessage(`setoption name Skill Level value ${skill()}`);
-  engine.postMessage(`position fen ${game.fen()}`);
-  engine.postMessage('go movetime 600');
-}
-
-// When Stockfish is this far ahead (in centipawns, 100 = a pawn), the game stops and the line fails.
+// When Stockfish is this far ahead (in centipawns, 100 = a pawn), a Try line fails; you still play on to mate.
 const LOST = 300;
 // A move of yours that gives away this much is taken back, and you get help to find a better one.
 const BLUNDER = 150;
 const toCp = (s) => ('mate' in s ? Math.sign(s.mate || 1) * 10000 : s.cp);
+const uciMove = (uci) => ({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
+const pawns = (cp) => (Math.min(cp, 2000) / 100).toFixed(1);
+const sideName = (c) => (c === 'w' ? 'White' : 'Black');
 
-function takeBack(loss) {
+// One Stockfish search. Resolves { uci, score } (score from the side to move), or null if something newer
+// (another search, a restart, leaving the board) came first.
+function think(fen, { ms = 600, level = 20 } = {}) {
+  engine ??= new Worker(URL.createObjectURL(new Blob([`importScripts('${ENGINE_SRC}')`], { type: 'text/javascript' })));
+  const gen = ++engineGen;
+  if (searching) { engine.postMessage('stop'); skipBest++; }
+  searching = true;
+  return new Promise((resolve) => {
+    let score = null;
+    engine.onmessage = (e) => {
+      if (typeof e.data !== 'string') return;
+      if (e.data.startsWith('bestmove') && skipBest) { skipBest--; return; }
+      const sc = e.data.match(/ score (cp|mate) (-?\d+)/);
+      if (sc) score = { [sc[1]]: Number(sc[2]) };
+      if (!e.data.startsWith('bestmove')) return;
+      searching = false;
+      resolve(gen === engineGen ? { uci: e.data.split(' ')[1], score } : null);
+    };
+    engine.postMessage(`setoption name Skill Level value ${level}`);
+    engine.postMessage(`position fen ${fen}`);
+    engine.postMessage(`go movetime ${ms}`);
+  });
+}
+
+// ---------- Play on vs Stockfish after the line ----------
+async function engineMove() {
+  busy = true;
+  const r = await think(game.fen(), { level: skill() });
+  if (!r) return;
+  const now = r.score && toCp(r.score);
+  if (r.score && lastEval !== null && now - lastEval >= BLUNDER) return takeBack(now - lastEval, r.uci);
+  if (r.score) lastEval = now;
+  lastMove = game.move(uciMove(r.uci));
+  ply++; busy = false; hintSq = [];
+  render();
+  if (gameOver()) return;
+  if (mode === 'try' && !failedNow && r.score && (r.score.mate > 0 || r.score.cp >= LOST)) return failLine(r.score);
+  say('Your move.');
+}
+
+// Your last move gave away a lot: explain Stockfish's answer to it, take it back, and help.
+async function takeBack(loss, refutation) {
+  const bad = game.history().at(-1);
+  const after = new Chess(game.fen());
+  const reply = after.move(uciMove(refutation)).san;
+  const replyIdea = ideaAt(new Chess(game.fen()), reply);
   game.undo();
   ply--;
   lastMove = game.history({ verbose: true }).at(-1) || null;
   render();
-  // Ask Stockfish at full strength for your best move in the position before the mistake.
-  const gen = ++engineGen;
-  engine.onmessage = (e) => {
-    if (typeof e.data !== 'string' || !e.data.startsWith('bestmove') || gen !== engineGen) return;
-    const uci = e.data.split(' ')[1];
-    const best = new Chess(game.fen()).move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
-    busy = false;
-    const lost = `That move gave away about ${(Math.min(loss, 2000) / 100).toFixed(1)} pawns, so it was taken back.`;
-    if (mode === 'learn') {
-      hintSq = [best.from, best.to];
-      say(`${lost} Stockfish suggests ${best.san}.`, 'bad');
-    } else {
-      misses++;
-      hintSq = [best.from];
-      say(`${lost} Find a better move: the piece to move is highlighted.`, 'bad');
-    }
-    renderBoard();
-  };
-  engine.postMessage('setoption name Skill Level value 20');
-  engine.postMessage(`position fen ${game.fen()}`);
-  engine.postMessage('go movetime 500');
+  const opp = sideName(cur.side === 'w' ? 'b' : 'w');
+  const why = `${bad} gives away about ${pawns(loss)} pawns: ${opp} answers ${reply}.${replyIdea ? ' ' + replyIdea : ''} The move was taken back.`;
+  say(`${why} Looking for a better move…`, 'bad');
+  const r = await think(game.fen(), { ms: 500 });
+  if (!r) return;
+  const best = new Chess(game.fen()).move(uciMove(r.uci));
+  busy = false;
+  if (mode === 'learn') {
+    hintSq = [best.from, best.to];
+    const bestIdea = ideaAt(new Chess(game.fen()), best.san);
+    say(`${why} Stockfish suggests ${best.san}.${bestIdea ? ' ' + bestIdea : ''}`, 'bad');
+  } else {
+    misses++;
+    hintSq = [best.from];
+    say(`${why} Find a better move: the piece to move is highlighted.`, 'bad');
+  }
+  renderBoard();
 }
 
-function failed(score) {
-  stopped = true;
-  if (mode === 'try') {
-    const s = stats[statKey(cur.id)];
-    s.done = s.done.filter((k) => k !== lineKey(line));
-    store(STORE, stats);
-  }
+// Try: Stockfish is clearly winning, so the line fails. The game goes on to checkmate.
+function failLine(score) {
+  failedNow = true;
+  misses++; // so Restart replays this line instead of moving on
+  const s = stats[statKey(cur.id)];
+  s.done = s.done.filter((k) => k !== lineKey(line));
+  store(STORE, stats);
   $('#restart').textContent = 'Restart';
-  const how = 'mate' in score ? `it has mate in ${score.mate}` : `it is ${(score.cp / 100).toFixed(1)} pawns ahead`;
-  say(`Stockfish is clearly winning: ${how}. Game stopped${mode === 'try' ? ', and this line counts as failed' : ''}. Press Restart to try again.`, 'bad');
+  const how = 'mate' in score ? `has mate in ${score.mate}` : `is ${pawns(score.cp)} pawns ahead`;
+  say(`Stockfish ${how}, so this line counts as failed. Play on to checkmate, or press Restart to try the line again.`, 'bad');
+}
+
+// A move that is not the line's: say whether strong players play it too, and what Stockfish answers.
+async function explainWrong(san) {
+  const before = line.slice(0, ply);
+  const at = game.fen();
+  const strong = strongGroups(before);
+  const alt = strong.x.moves.find((x) => x.san === clean(san));
+  const parts = [];
+  if (alt && alt.n / strong.x.total >= RARE) {
+    parts.push(`${san} is a real option: players rated ${BUCKETS[strong.groups[0]]}+ choose it here in ${pct(alt.n / strong.x.total)} of games, but this line practises another move.`);
+  }
+  const g = new Chess(at);
+  g.move(san);
+  const r = await think(g.fen(), { ms: 400 });
+  if (!r || game.fen() !== at) return; // you have moved on meanwhile
+  const opp = sideName(cur.side === 'w' ? 'b' : 'w');
+  const cp = r.score ? toCp(r.score) : 0;
+  if (cp >= 100) {
+    const reply = new Chess(g.fen()).move(uciMove(r.uci)).san;
+    const replyIdea = ideaAt(new Chess(g.fen()), reply);
+    parts.push(`After ${san}, ${opp} answers ${reply}.${replyIdea ? ' ' + replyIdea : ''} Stockfish puts you about ${pawns(cp)} pawns behind.`);
+  } else if (!parts.length) {
+    parts.push(`Stockfish finds ${san} playable, but strong players rarely choose it here.`);
+  }
+  const want = expectedMove();
+  if (mode === 'learn') {
+    const wantIdea = idea(before, want.san);
+    parts.push(`The line plays ${want.san}.${wantIdea ? ' ' + wantIdea : ''}`);
+  } else if (missesHere >= 2) parts.push('The piece to move is highlighted.');
+  else parts.push('Try again.');
+  say(`${san} is not the move here. ${parts.join(' ')}`, 'bad');
 }
 
 function gameOver() {
@@ -675,8 +731,9 @@ function tryMove(from, to) {
     wrongSq = to; sel = null;
     renderBoard();
     shake(boardEl);
-    if (missesHere >= 2) { showHint(); say(`${m.san} is not the move here. The piece to move is highlighted.`, 'bad'); }
-    else say(`${m.san} is not the move here. Try again.`, 'bad');
+    if (missesHere >= 2) showHint();
+    say(`${m.san} is not the move here. Looking at why…`, 'bad');
+    explainWrong(m.san);
     setTimeout(() => { wrongSq = null; renderBoard(); }, 700);
     return true;
   }
@@ -719,7 +776,7 @@ function finish() {
   store(STORE, stats);
   renderList();
   const left = lines.findIndex((l) => !s.done.includes(lineKey(l.moves)));
-  const on = ' Now play on against Stockfish. Fall 3 pawns behind and the line fails.';
+  const on = ' Now play on against Stockfish to checkmate. Fall 3 pawns behind and the line fails.';
   if (misses) say(`Opening done with ${misses} mistake${misses === 1 ? '' : 's'}; Restart tries this line again.${on}`);
   else if (left === -1) say(`Flawless! Every common line at your level is cleared.${on}`, 'good');
   else {
@@ -742,7 +799,6 @@ boardEl.addEventListener('click', (e) => {
 
 $('#restart').addEventListener('click', () => {
   if (!lines.length) return start(cur);
-  if (stopped) return play(lineIdx);
   if (mode === 'learn') return play(ply >= line.length ? (lineIdx + 1) % lines.length : lineIdx);
   const next = lines.findIndex((l) => !stats[statKey(cur.id)].done.includes(lineKey(l.moves)));
   play(ply >= line.length && misses === 0 && next !== -1 ? next : lineIdx);
