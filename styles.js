@@ -22,7 +22,7 @@ export const STYLE_OF = {
   'Danish Gambit': ['attacking', 'tricky'],
   'Ponziani Opening': ['tricky'],
   'Blackmar-Diemer Gambit': ['attacking', 'tricky'],
-  "Queen's Gambit": ['positional', 'solid'],
+  "Queen's Gambit": ['positional', 'attacking'],
   'Catalan Opening': ['positional'],
   'English Opening': ['positional'],
   'Réti Opening': ['positional'],
@@ -114,3 +114,8 @@ export const STYLE_OF = {
   "King's Pawn Game: McConnell Defense": ['tricky'],
   'Benko Gambit': ['attacking'],
 };
+
+// A gambit gives up material for the initiative, so it is always attacking and never defensive.
+// "…Accepted" and "…Declined" are the other side's answer to the gambit, so they are exempt.
+console.assert(Object.entries(STYLE_OF).every(([name, tags]) => !/Gambit(?! Accepted| Declined)/.test(name)
+  || (tags.includes('attacking') && !tags.includes('solid'))), 'gambits are attacking');
