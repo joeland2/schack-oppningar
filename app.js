@@ -128,8 +128,20 @@ function explore(moves, groups) {
 }
 
 // Your move: what strong players play most here, preferring moves from this opening's book.
+// The strongest players with enough games here: 2200+ in blitz (2000+ in classical), stepping down
+// one rating group at a time where they are too few, but never below your own level.
+function strongGroups(moves) {
+  let groups = STRONG[speed];
+  for (;;) {
+    const x = explore(moves, groups);
+    const next = groups[0] - 1;
+    if (x.moves.some((m) => m.n >= MIN_GAMES) || next < 0 || BUCKETS[next] < rating) return { groups, x };
+    groups = [next, ...groups];
+  }
+}
+
 function userMove(moves, book) {
-  const strong = explore(moves, STRONG[speed]).moves.filter((m) => m.n >= MIN_GAMES);
+  const strong = strongGroups(moves).x.moves.filter((m) => m.n >= MIN_GAMES);
   return (strong.find((m) => book.has(lineKey([...moves, m.san]))) || strong[0])?.san;
 }
 
@@ -473,11 +485,12 @@ console.assert(idea(['e4', 'e5'], 'Nf3') === 'Develops the knight. Attacks the p
 function why(before, san) {
   const yours = (before.length % 2 === 0) === (cur.side === 'w');
   const mine = ratingsAround(rating);
-  const pick = explore(before, yours ? STRONG[speed] : mine);
+  const strong = yours && strongGroups(before);
+  const pick = yours ? strong.x : explore(before, mine);
   const chosen = pick.moves.find((x) => x.san === san);
   const after = explore(before, mine).moves.find((x) => x.san === san);
   const stat = chosen ? (yours
-    ? ` Players rated ${speed === 'blitz' ? '2200' : '2000'}+ choose it here in ${pct(chosen.n / pick.total)} of games.`
+    ? ` Players rated ${BUCKETS[strong.groups[0]]}+ choose it here in ${pct(chosen.n / pick.total)} of games.`
     : ` At your level, ${pct(chosen.n / pick.total)} of players choose it here.`) : '';
   const res = after ? ` You win ${pct(cur.side === 'w' ? after.win : 1 - after.win - after.draw)} of games after it.` : '';
   return (idea(before, san) + stat + res).trim();
@@ -533,6 +546,7 @@ function play(i) {
   misses = 0; missesHere = 0; busy = false;
   engineGen++; // ignore a Stockfish reply still on its way from the previous game
   stopped = false;
+  lastEval = null;
   $('#op-var').textContent = `Line ${i + 1} of ${lines.length} · ${l.share < 0.01 ? '<1' : Math.round(l.share * 100)}% of games at ${rating} ± 200${l.name ? ' · ' + l.name : ''}`;
   $('#restart').textContent = 'Restart';
   render();
@@ -541,6 +555,7 @@ function play(i) {
 }
 
 let stopped = false;  // the play-on game was stopped because you fell clearly behind
+let lastEval = null;  // Stockfish's evaluation after its last move, from its side, in centipawns
 const userTurn = () => line.length > 0 && !stopped && !game.isGameOver() && game.turn() === cur.side;
 const inLine = () => ply < line.length;
 
@@ -562,9 +577,12 @@ function engineMove() {
     const sc = e.data.match(/ score (cp|mate) (-?\d+)/);
     if (sc) score = { [sc[1]]: Number(sc[2]) };
     if (!e.data.startsWith('bestmove')) return;
+    const now = score && toCp(score);
+    if (score && lastEval !== null && now - lastEval >= BLUNDER) return takeBack(now - lastEval);
+    if (score) lastEval = now;
     const uci = e.data.split(' ')[1];
     lastMove = game.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
-    ply++; busy = false;
+    ply++; busy = false; hintSq = [];
     render();
     if (gameOver()) return;
     if (score && (score.mate > 0 || score.cp >= LOST)) return failed(score);
@@ -577,16 +595,48 @@ function engineMove() {
 
 // When Stockfish is this far ahead (in centipawns, 100 = a pawn), the game stops and the line fails.
 const LOST = 300;
+// A move of yours that gives away this much is taken back, and you get help to find a better one.
+const BLUNDER = 150;
+const toCp = (s) => ('mate' in s ? Math.sign(s.mate || 1) * 10000 : s.cp);
+
+function takeBack(loss) {
+  game.undo();
+  ply--;
+  lastMove = game.history({ verbose: true }).at(-1) || null;
+  render();
+  // Ask Stockfish at full strength for your best move in the position before the mistake.
+  const gen = ++engineGen;
+  engine.onmessage = (e) => {
+    if (typeof e.data !== 'string' || !e.data.startsWith('bestmove') || gen !== engineGen) return;
+    const uci = e.data.split(' ')[1];
+    const best = new Chess(game.fen()).move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
+    busy = false;
+    const lost = `That move gave away about ${(Math.min(loss, 2000) / 100).toFixed(1)} pawns, so it was taken back.`;
+    if (mode === 'learn') {
+      hintSq = [best.from, best.to];
+      say(`${lost} Stockfish suggests ${best.san}.`, 'bad');
+    } else {
+      misses++;
+      hintSq = [best.from];
+      say(`${lost} Find a better move: the piece to move is highlighted.`, 'bad');
+    }
+    renderBoard();
+  };
+  engine.postMessage('setoption name Skill Level value 20');
+  engine.postMessage(`position fen ${game.fen()}`);
+  engine.postMessage('go movetime 500');
+}
 
 function failed(score) {
   stopped = true;
-  misses++; // so Restart replays this line instead of moving on
-  const s = stats[statKey(cur.id)];
-  s.done = s.done.filter((k) => k !== lineKey(line));
-  store(STORE, stats);
+  if (mode === 'try') {
+    const s = stats[statKey(cur.id)];
+    s.done = s.done.filter((k) => k !== lineKey(line));
+    store(STORE, stats);
+  }
   $('#restart').textContent = 'Restart';
   const how = 'mate' in score ? `it has mate in ${score.mate}` : `it is ${(score.cp / 100).toFixed(1)} pawns ahead`;
-  say(`Stockfish is clearly winning: ${how}. Game stopped, and this line counts as failed. Press Restart to try again.`, 'bad');
+  say(`Stockfish is clearly winning: ${how}. Game stopped${mode === 'try' ? ', and this line counts as failed' : ''}. Press Restart to try again.`, 'bad');
 }
 
 function gameOver() {
@@ -659,7 +709,9 @@ function showHint() {
 function finish() {
   if (mode === 'learn') {
     $('#restart').textContent = 'Next line';
-    return say(`Line ${lineIdx + 1} of ${lines.length} learned. Press Next line, or switch to Try to test yourself.`, 'good');
+    say(`Line ${lineIdx + 1} of ${lines.length} learned. Keep playing against Stockfish to checkmate, or press Next line.`, 'good');
+    if (!gameOver() && game.turn() !== cur.side) engineMove();
+    return;
   }
   const s = stats[statKey(cur.id)];
   const key = lineKey(line);
@@ -690,6 +742,7 @@ boardEl.addEventListener('click', (e) => {
 
 $('#restart').addEventListener('click', () => {
   if (!lines.length) return start(cur);
+  if (stopped) return play(lineIdx);
   if (mode === 'learn') return play(ply >= line.length ? (lineIdx + 1) % lines.length : lineIdx);
   const next = lines.findIndex((l) => !stats[statKey(cur.id)].done.includes(lineKey(l.moves)));
   play(ply >= line.length && misses === 0 && next !== -1 ? next : lineIdx);
