@@ -389,3 +389,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .evalbar-num { min-width: 3.4em; text-align: right; font: 600 .85rem var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
 .evalbar.stale { opacity: .45; }
 @media (prefers-reduced-motion: reduce) { .evalbar-white { transition: none; } }
+/* Black taken pieces need a light edge to show on the dark page */
+.captured img[src*="/bP"], .captured img[src*="/bN"], .captured img[src*="/bB"], .captured img[src*="/bR"], .captured img[src*="/bQ"] {
+  filter: drop-shadow(0 0 1px rgb(255 255 255 / .75)) drop-shadow(0 0 1px rgb(255 255 255 / .5));
+}

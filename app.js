@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake } from './board.js?v=20261027211635';
-import { STYLES, STYLE_OF } from './styles.js?v=20261027211635';
+import { drawBoard, enableDrag, shake } from './board.js?v=20261027211807';
+import { STYLES, STYLE_OF } from './styles.js?v=20261027211807';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
