@@ -39,7 +39,7 @@ Opening lines are built from what real players at the user's own rating (±200) 
 
 ## Capabilities and Constraints
 
-- Plain static HTML, CSS and JavaScript with no build step. chess.js and stockfish.js are loaded from jsDelivr.
+- Plain static HTML, CSS and JavaScript with no build step. chess.js is loaded from jsDelivr; Stockfish 18 lite (WebAssembly, about 7 MB) is served from `engine/`.
 - Must be served over HTTP; it does not work from `file://`.
 - Opening and puzzle data is precomputed and committed to the repo. The only runtime call is "Check my own games": it fetches the player's last 100 rated games of the chosen time control from Lichess's public games API by username (no login). It then flags the first move in each game that leaves every named opening line and that 2200+ players (2000+ in classical) choose in under 5% of games:
   - `data/explorer-blitz.json` and `data/explorer-classical.json`: games, White wins and draws per Lichess rating group from 2,000,000 rated blitz games and 400,000 rated classical games, Lichess database September 2026, up to 20 plies deep. Rebuild with `tools/make_explorer.py <blitz|classical>`.
@@ -50,7 +50,7 @@ Opening lines are built from what real players at the user's own rating (±200) 
 - Known limits:
   - Opening names come only from exact move-order matches with the named-lines list, so transpositions are missed.
   - Data for 2200+ players is thin deep into lines.
-  - Stockfish strength is a rough mapping from rating.
+  - Stockfish plays at your rating via UCI_Elo, but never below 1320, its lowest setting.
 - Terminology: Learn / Try (practice modes), line (one sequence of moves from the opening's root), cleared (played without mistakes in Try).
 - Hosted publicly on GitHub Pages from the `main` branch: https://joeland2.github.io/schack-oppningar/. Every push to `main` redeploys it.
 

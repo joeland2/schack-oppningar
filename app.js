@@ -436,7 +436,7 @@ function renderMoves() {
   }
   movesEl.innerHTML = html;
   const free = line.length && ply >= line.length;
-  $('#progress').textContent = free ? 'Opening done · playing on vs Stockfish' : line.length ? `${ply} of ${line.length} moves` : '';
+  $('#progress').textContent = mode === 'explore' ? 'Exploring' : free ? 'Opening done · playing on vs Stockfish' : line.length ? `${ply} of ${line.length} moves` : '';
   $('#bar').style.width = line.length ? `${Math.min(ply / line.length, 1) * 100}%` : '0';
 }
 
@@ -469,7 +469,7 @@ function ideaAt(g, san) {
     if ('nb'.includes(m.piece) && m.from[1] === (m.color === 'w' ? '1' : '8')) out.push(`Develops the ${PIECE[m.piece]}`);
     if (m.piece === 'p' && !m.captured && 'de'.includes(m.to[0])) out.push('Claims the centre');
     else if (m.piece === 'p' && !m.captured && 'cf'.includes(m.to[0])) out.push('Fights for the centre from the side');
-    if (m.piece === 'q' && g.history().length < 12) out.push('Brings the queen out early');
+    if (m.piece === 'q' && g.moveNumber() <= 7) out.push('Brings the queen out early');
   }
   if (g.inCheck()) out.push('Gives check');
   // Pieces the moved piece now hits: look at its moves as if it could move again.
@@ -503,7 +503,7 @@ function why(before, san) {
 
 function renderWhy() {
   const el = $('#why');
-  if (!cur || !line.length) return (el.innerHTML = '');
+  if (!cur || !line.length || mode === 'explore') return (el.innerHTML = ''); // Explore explains in the message
   const hist = game.history();
   const label = (n, san) => `${Math.floor(n / 2) + 1}.${n % 2 ? '..' : ''}${san}`;
   const parts = [];
@@ -556,8 +556,71 @@ function play(i) {
   $('#op-var').textContent = `Line ${i + 1} of ${lines.length} · ${l.share < 0.01 ? '<1' : Math.round(l.share * 100)}% of games at ${rating} ± 200${l.name ? ' · ' + l.name : ''}`;
   $('#restart').textContent = 'Restart';
   render();
+  if (mode === 'explore') return enterExplore();
   if (userTurn()) prompt('Your move. Play the first move.');
   else { say('Your opponent starts…'); reply(); }
+}
+
+// ---------- Explore: any move for either side, rated by Stockfish ----------
+let analysis = null; // Stockfish on the current position: { fen, best (a chess.js move), cp from the side to move }
+
+async function analyseHere() {
+  const at = game.fen();
+  const r = await think(at, { ms: 700 });
+  if (!r || game.fen() !== at) return null;
+  return { fen: at, best: new Chess(at).move(uciMove(r.uci)), cp: r.score ? toCp(r.score) : 0, mate: r.score?.mate };
+}
+
+// "+0.4 for White", from the side to move's evaluation.
+function evalText(a) {
+  const forWhite = game.turn() === 'w' ? a.cp : -a.cp;
+  if (a.mate) return `mate in ${Math.abs(a.mate)} for ${sideName((a.mate > 0) === (game.turn() === 'w') ? 'w' : 'b')}`;
+  return `${forWhite >= 0 ? '+' : '−'}${pawns(Math.abs(forWhite))} (${Math.abs(forWhite) < 30 ? 'equal' : forWhite > 0 ? 'White is better' : 'Black is better'})`;
+}
+
+function showAnalysis(verdict = '', tone = '') {
+  if (!analysis) return;
+  hintSq = [analysis.best.from, analysis.best.to];
+  renderBoard();
+  const bestIdea = ideaAt(new Chess(analysis.fen), analysis.best.san);
+  say(`${verdict ? verdict + ' ' : ''}Stockfish: ${evalText(analysis)}. Best for ${sideName(game.turn())} now: ${analysis.best.san}.${bestIdea ? ' ' + bestIdea : ''}`, tone);
+}
+
+async function enterExplore() {
+  busy = false; sel = null; hintSq = []; analysis = null;
+  renderBoard();
+  say('Explore: play any move for White or Black. Stockfish rates each one.');
+  analysis = await analyseHere();
+  showAnalysis();
+}
+
+async function exploreMove(from, to) {
+  let m;
+  try { m = game.move({ from, to, promotion: 'q' }); } catch { return false; }
+  if (!m) return false;
+  const before = analysis;
+  const hist = game.history().slice(0, -1).map(clean);
+  lastMove = m; ply = hist.length + 1; sel = null; hintSq = []; analysis = null; busy = true;
+  render();
+  say(`${m.san}: Stockfish is thinking…`);
+  const after = await analyseHere();
+  if (!after) return true;
+  busy = false;
+  analysis = after;
+  if (game.isCheckmate()) return say(`${m.san} is checkmate. ${sideName(m.color)} wins.`, 'good');
+  if (game.isGameOver()) return say(`${m.san}: the game is drawn.`);
+  // How much the move gave away, from the mover's side: their evaluation before minus after.
+  const loss = before ? before.cp + after.cp : 0;
+  const label = loss <= 20 ? 'excellent' : loss <= 50 ? 'good' : loss <= 100 ? 'an inaccuracy' : loss <= 250 ? 'a mistake' : 'a blunder';
+  const real = explore(hist, ratingsAround(rating));
+  const seen = real.moves.find((x) => x.san === clean(m.san));
+  const often = seen ? ` ${pct(seen.n / real.total)} of players at your level play it here.` : '';
+  const better = before && loss > 50 && before.best.san !== m.san
+    ? ` Better was ${before.best.san}.${ideaAt(new Chess(before.fen), before.best.san) ? ' ' + ideaAt(new Chess(before.fen), before.best.san) : ''}` : '';
+  const moveIdea = ideaAt(new Chess(before?.fen ?? new Chess().fen()), m.san);
+  showAnalysis(`${m.san} is ${label}${loss > 50 ? `, giving away about ${pawns(loss)} pawns` : ''}.${moveIdea && loss <= 50 ? ' ' + moveIdea : ''}${often}${better}`,
+    loss <= 50 ? 'good' : loss <= 100 ? '' : 'bad');
+  return true;
 }
 
 let failedNow = false; // Try: this play-on game already fell clearly behind and failed the line
@@ -567,14 +630,14 @@ const userTurn = () => line.length > 0 && !game.isGameOver() && game.turn() === 
 const inLine = () => ply < line.length;
 
 // ---------- Stockfish ----------
-// Same-origin rule for workers: load the CDN script through a blob worker.
-const ENGINE_SRC = 'https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js';
+// Stockfish 18 lite (WebAssembly, single-threaded) from github.com/nmrugg/stockfish.js, GPLv3, in engine/.
+const ENGINE_SRC = 'engine/stockfish-18-lite-single.js';
 let engine = null;
 let engineGen = 0;
 let searching = false;
 let skipBest = 0;      // bestmoves still owed by searches that were stopped early
-// shortcut: Skill Level 0–20 mapped linearly from rating, rough at best; upgrade to UCI_Elo with Stockfish 11+.
-const skill = () => Math.max(0, Math.min(20, Math.round((rating - 800) / 85)));
+// The opponent plays at your rating; Stockfish's lowest setting is 1320, so below that it is a little stronger.
+const opponentElo = () => Math.max(1320, Math.min(3190, rating));
 // When Stockfish is this far ahead (in centipawns, 100 = a pawn), a Try line fails; you still play on to mate.
 const LOST = 300;
 // A move of yours that gives away this much is taken back, and you get help to find a better one.
@@ -584,10 +647,10 @@ const uciMove = (uci) => ({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotio
 const pawns = (cp) => (Math.min(cp, 2000) / 100).toFixed(1);
 const sideName = (c) => (c === 'w' ? 'White' : 'Black');
 
-// One Stockfish search. Resolves { uci, score } (score from the side to move), or null if something newer
-// (another search, a restart, leaving the board) came first.
-function think(fen, { ms = 600, level = 20 } = {}) {
-  engine ??= new Worker(URL.createObjectURL(new Blob([`importScripts('${ENGINE_SRC}')`], { type: 'text/javascript' })));
+// One Stockfish search, at full strength unless elo is given. Resolves { uci, score } (score from the side
+// to move), or null if something newer (another search, a restart, leaving the board) came first.
+function think(fen, { ms = 600, elo = null } = {}) {
+  engine ??= new Worker(ENGINE_SRC);
   const gen = ++engineGen;
   if (searching) { engine.postMessage('stop'); skipBest++; }
   searching = true;
@@ -602,7 +665,8 @@ function think(fen, { ms = 600, level = 20 } = {}) {
       searching = false;
       resolve(gen === engineGen ? { uci: e.data.split(' ')[1], score } : null);
     };
-    engine.postMessage(`setoption name Skill Level value ${level}`);
+    engine.postMessage(`setoption name UCI_LimitStrength value ${!!elo}`);
+    if (elo) engine.postMessage(`setoption name UCI_Elo value ${elo}`);
     engine.postMessage(`position fen ${fen}`);
     engine.postMessage(`go movetime ${ms}`);
   });
@@ -611,7 +675,7 @@ function think(fen, { ms = 600, level = 20 } = {}) {
 // ---------- Play on vs Stockfish after the line ----------
 async function engineMove() {
   busy = true;
-  const r = await think(game.fen(), { level: skill() });
+  const r = await think(game.fen(), { elo: opponentElo() });
   if (!r) return;
   const now = r.score && toCp(r.score);
   if (r.score && lastEval !== null && now - lastEval >= BLUNDER) return takeBack(now - lastEval, r.uci);
@@ -806,19 +870,33 @@ function finish() {
   if (game.turn() !== cur.side) engineMove(); else suggest();
 }
 
+// In Explore you move whichever side is to move; otherwise only your own side, on your turn.
+const canMove = () => !busy && (mode === 'explore' ? cur && !game.isGameOver() : userTurn());
+const mover = () => (mode === 'explore' ? game.turn() : cur.side);
+const move = (from, to) => (mode === 'explore' ? exploreMove(from, to) : tryMove(from, to));
 enableDrag(boardEl, {
-  canDrag: (sq) => !busy && userTurn() && game.get(sq)?.color === cur.side,
-  onDrop: (from, to) => { sel = null; if (!tryMove(from, to)) renderBoard(); },
+  canDrag: (sq) => canMove() && game.get(sq)?.color === mover(),
+  onDrop: (from, to) => { sel = null; if (!move(from, to)) renderBoard(); },
 });
 boardEl.addEventListener('click', (e) => {
   const b = e.target.closest('.sq');
-  if (!b || busy || !userTurn()) return;
+  if (!b || !canMove()) return;
   const sq = b.dataset.sq;
   const p = game.get(sq);
-  if (sel && sel !== sq && tryMove(sel, sq)) return;
-  if (p && p.color === cur.side) sel = sel === sq ? null : sq;
+  if (sel && sel !== sq && move(sel, sq)) return;
+  if (p && p.color === mover()) sel = sel === sq ? null : sq;
   else sel = null;
   renderBoard();
+});
+$('#undo').addEventListener('click', async () => {
+  if (mode !== 'explore' || busy || !game.history().length) return;
+  game.undo();
+  lastMove = game.history({ verbose: true }).at(-1) || null;
+  ply = game.history().length;
+  render();
+  say('Move taken back. Stockfish is thinking…');
+  analysis = await analyseHere();
+  showAnalysis();
 });
 
 $('#restart').addEventListener('click', () => {
@@ -882,15 +960,21 @@ $('#weakest').addEventListener('click', () => {
 function setMode(m) {
   mode = m;
   store(STORE + '-mode', m);
-  $('#mode-learn').setAttribute('aria-pressed', m === 'learn');
-  $('#mode-try').setAttribute('aria-pressed', m === 'try');
-  $('#mode-about').textContent = m === 'learn'
-    ? 'Every move is shown and explained. Nothing is scored.'
-    : 'Find the moves yourself. A line clears when you play it without mistakes.';
-  if (lines.length) play(lineIdx);
+  for (const k of ['learn', 'try', 'explore']) $(`#mode-${k}`).setAttribute('aria-pressed', m === k);
+  $('#mode-about').textContent = {
+    learn: 'Every move is shown and explained. Nothing is scored.',
+    try: 'Find the moves yourself. A line clears when you checkmate without mistakes.',
+    explore: 'Play any move for White or Black. Stockfish rates each move and shows the best one.',
+  }[m];
+  $('#hint').hidden = $('#show').hidden = m === 'explore';
+  $('#undo').hidden = m !== 'explore';
+  if (!lines.length) return;
+  if (m === 'explore') enterExplore(); // carry on from the current position
+  else play(lineIdx);
 }
 $('#mode-learn').addEventListener('click', () => setMode('learn'));
 $('#mode-try').addEventListener('click', () => setMode('try'));
+$('#mode-explore').addEventListener('click', () => setMode('explore'));
 function setRating(r) {
   rating = r >= 400 && r <= 3200 ? Math.round(r) : null;
   store(ratingKey(), rating);

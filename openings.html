@@ -76,6 +76,7 @@
         <div id="board" class="board" role="grid" aria-label="Chessboard"></div>
       </div>
       <div class="controls">
+        <button id="undo" type="button" hidden>Undo</button>
         <button id="hint" type="button">Hint</button>
         <button id="show" type="button">Show move</button>
         <button id="restart" type="button" class="primary">Restart</button>
@@ -89,6 +90,7 @@
         <div class="seg" role="group" aria-label="Mode">
           <button id="mode-learn" type="button" aria-pressed="true">Learn</button>
           <button id="mode-try" type="button" aria-pressed="false">Try</button>
+          <button id="mode-explore" type="button" aria-pressed="false">Explore</button>
         </div>
         <p id="mode-about" class="choice-about"></p>
       </div>
