@@ -370,7 +370,9 @@ function gameOver() {
 
 function reply() {
   busy = true;
+  const gen = engineGen; // play() bumps it, so a reply meant for an earlier game is dropped
   setTimeout(() => {
+    if (gen !== engineGen) return;
     const m = game.move(line[ply]);
     lastMove = m; ply++; busy = false; hintSq = [];
     render();
