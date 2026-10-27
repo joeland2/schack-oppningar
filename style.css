@@ -166,3 +166,21 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .back { justify-self: start; }
 [hidden] { display: none !important; }
 #items { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+/* Opening picker cards */
+.picks { display: grid; gap: 28px; padding-block: 8px 32px; }
+.og h2 { margin: 0 0 12px; font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.ocards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.ocard { display: grid; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; cursor: pointer; transition: border-color .15s, transform .15s; }
+.ocard:hover, .ocard:focus-visible { border-color: var(--accent); transform: translateY(-2px); outline: none; }
+.board.mini { pointer-events: none; }
+.board.mini .lbl { display: none; }
+.ocard-body { display: grid; gap: 6px; padding: 10px 12px 12px; }
+.ocard-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ocard h3 { margin: 0; font-size: 1rem; line-height: 1.25; }
+.omoves { margin: 0; font: .78rem/1.4 var(--font-mono); color: var(--muted); }
+.omoves b { color: var(--ink); }
+.share { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.share span { display: block; height: 100%; background: var(--accent); }
+.ocard small { color: var(--muted); font-size: .75rem; }
+@media (prefers-reduced-motion: reduce) { .ocard { transition: none; } .ocard:hover { transform: none; } }

@@ -169,20 +169,37 @@ function top(found) {
 // ---------- Opening list ----------
 function renderList() {
   const groups = [['w', 'You play White'], ['b', 'You play Black']];
-  listEl.innerHTML = groups.map(([side, label]) => `
-    <h3 class="group">${label}</h3>
-    <ul>${OPENINGS.filter((o) => o.side === side).map((o) => {
+  listEl.innerHTML = groups.map(([side, label]) => {
+    const ops = OPENINGS.filter((o) => o.side === side);
+    const max = Math.max(...ops.map((o) => o.share));
+    return `<section class="og"><h2>${label}</h2><div class="ocards">${ops.map((o) => {
       const s = stats[o.id] || { done: [], total: 0 };
       const level = s.total && s.done.length >= s.total ? 'sitter' : s.done.length ? 'pagar' : 'ny';
       const levelTxt = { sitter: 'Learned', pagar: `${s.done.length}/${s.total} lines`, ny: 'New' }[level];
-      return `<li><button class="op" data-id="${o.id}">
-        <span class="eco">${o.eco}</span>
-        <span class="op-name">${o.name}<small>${o.share < 0.01 ? '<1' : Math.round(o.share * 100)}% of games · ${o.root.split(' ').length} moves in</small></span>
-        <span class="chip ${level}">${levelTxt}</span>
-      </button></li>`;
-    }).join('')}</ul>`).join('');
-  listEl.querySelectorAll('.op').forEach((b) =>
-    b.addEventListener('click', () => start(OPENINGS.find((o) => o.id === b.dataset.id))));
+      const moves = numbered(o.root).split(' ');
+      return `<article class="ocard" role="button" tabindex="0" data-id="${o.id}" aria-label="${o.name}">
+        <div class="board mini" data-mini="${o.id}" inert></div>
+        <div class="ocard-body">
+          <div class="ocard-top"><span class="eco">${o.eco}</span><span class="chip ${level}">${levelTxt}</span></div>
+          <h3>${o.name}</h3>
+          <p class="omoves">${moves.slice(0, -1).join(' ')} <b>${moves.at(-1)}</b></p>
+          <div class="share"><span style="width:${(o.share / max) * 100}%"></span></div>
+          <small>${o.share < 0.01 ? '<1' : Math.round(o.share * 100)}% of games at your level</small>
+        </div>
+      </article>`;
+    }).join('')}</div></section>`;
+  }).join('');
+  for (const o of OPENINGS) {
+    const g = new Chess();
+    o.root.split(' ').forEach((m) => g.move(m));
+    const last = g.history({ verbose: true }).at(-1);
+    drawBoard(listEl.querySelector(`[data-mini="${CSS.escape(o.id)}"]`), g, { side: o.side, last });
+  }
+  listEl.querySelectorAll('.ocard').forEach((c) => {
+    const go = () => start(OPENINGS.find((o) => o.id === c.dataset.id));
+    c.addEventListener('click', go);
+    c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
 }
 
 // ---------- Board ----------
