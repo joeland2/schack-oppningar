@@ -305,4 +305,4 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 }
 .og h2 { display: flex; align-items: center; gap: 8px; color: var(--ink); }
 .og-n { font: 600 .75rem var(--font-mono); padding: 1px 8px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); letter-spacing: 0; }
-.og-w .ocards, .og-b .ocards { grid-template-columns: repeat(auto-fill, minmax(min(170px, 42vw), 1fr)); }
+.og-w .ocards, .og-b .ocards { grid-template-columns: repeat(auto-fill, minmax(min(170px, 38vw), 1fr)); }
