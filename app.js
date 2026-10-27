@@ -11,7 +11,10 @@ const BUCKETS = [0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]; // Lichess 
 // Rating groups whose moves count as yours: 2200+ in blitz; 2000+ in classical, where 2200+ games are scarce.
 const STRONG = { blitz: [7, 8], classical: [6, 7, 8] };
 const WANT = { w: 30, b: 15 };   // openings listed per colour
-const POOL = { w: 80, b: 40 };   // candidates collected, so a style filter still has enough to show
+const POOL = 80;          // White openings collected, so a style filter still has enough to show
+// White openings listed must occur in at least 1% of games at your level: rarer ones are often hard to reach
+// or played mostly by specialists, so their score says little about what you would get.
+const MIN_REACH = 0.01;
 // First-move names that are not an opening plan of their own.
 const GENERIC = new Set(["King's Pawn Game", "Queen's Pawn Game", "King's Knight Opening"]);
 
@@ -53,6 +56,17 @@ function store(key, value) {
 }
 const clean = (san) => san.replace(/[+#]/g, '');
 const lineKey = (moves) => moves.join(' ');
+const pct = (x) => `${Math.round(x * 100)}%`;
+const pctOf = (x) => (x < 0.01 ? '<1%' : pct(x));
+// Win / draw / loss bar from the player's side.
+function wdl(o, side) {
+  const win = side === 'w' ? o.win : 1 - o.win - o.draw, loss = 1 - win - o.draw;
+  return `<div class="wdl" role="img" aria-label="You win ${pct(win)}, draw ${pct(o.draw)}, lose ${pct(loss)}">
+      <span class="w" style="width:${win * 100}%"></span><span class="d" style="width:${o.draw * 100}%"></span><span class="l" style="width:${loss * 100}%"></span>
+    </div>
+    <p class="wdl-key"><span>Win <b>${pct(win)}</b></span><span>Draw ${pct(o.draw)}</span><span>Loss ${pct(loss)}</span></p>`;
+}
+
 const numbered = (moves) => moves.split(' ').map((m, i) => (i % 2 ? m : `${i / 2 + 1}.${m}`)).join(' ');
 
 // Indexes of the rating groups overlapping rating ± 200.
@@ -96,16 +110,19 @@ function familyBook(op) {
 }
 
 // Games and replies after a move sequence, counted over the given rating groups.
+// A tree node is [games, White wins, draws (each per rating group), {san: child}].
+// win and draw are White's shares; score is White's share of the points (a draw is half a point).
 function explore(moves, groups) {
   let node = TREE;
   for (const m of moves) {
-    node = node[1]?.[m];
+    node = node[3]?.[m];
     if (!node) return { total: 0, moves: [] };
   }
   const sum = (c) => groups.reduce((s, i) => s + c[i], 0);
-  const replies = Object.entries(node[1] || {}).map(([san, child]) => {
+  const replies = Object.entries(node[3] || {}).map(([san, child]) => {
     const named = NAMES.get(lineKey([...moves, san]));
-    return { san, n: sum(child[0]), eco: named?.eco, name: named?.name };
+    const n = sum(child[0]), win = sum(child[1]) / n, draw = sum(child[2]) / n;
+    return { san, n, win, draw, score: win + draw / 2, eco: named?.eco, name: named?.name };
   });
   return { total: sum(node[0]), moves: replies.filter((m) => m.n > 0).sort((a, b) => b.n - a.n) };
 }
@@ -151,14 +168,14 @@ function buildLines(op) {
   return [...done, ...open].sort((a, b) => b.share - a.share);
 }
 
-// The most played openings at your level, found by walking real games from the start position,
-// most common positions first. An opening belongs to the side whose move first gives it its name.
+// The most played White openings at your level, found by walking real games from the start position,
+// most common positions first. An opening is White's when White's move first gives it its name.
 function popularOpenings() {
   const mine = ratingsAround(rating);
   const found = new Map();
+  const named = new Set(); // every family seen so far; the first sighting decides whose opening it is
   const open = [{ moves: [], share: 1 }];
-  const count = (side) => [...found.values()].filter((o) => o.side === side).length;
-  while (open.length && (count('w') < POOL.w || count('b') < POOL.b)) {
+  while (open.length && found.size < POOL) {
     open.sort((a, b) => b.share - a.share);
     const p = open.shift();
     const x = explore(p.moves, mine);
@@ -167,14 +184,21 @@ function popularOpenings() {
       if (share < 0.0005 || m.n < MIN_GAMES) continue;
       const moves = [...p.moves, m.san];
       const family = m.name && familyOf(m.name);
-      if (family && !found.has(family)) {
-        found.set(family, { id: family, name: family.split(': ').at(-1), family, eco: m.eco, side: moves.length % 2 ? 'w' : 'b', root: moves.join(' '), share });
+      if (family && !named.has(family)) {
+        named.add(family);
+        if (moves.length % 2) found.set(family, { id: family, name: shortName(family), family, eco: m.eco, side: 'w', root: moves.join(' '), share, win: m.win, draw: m.draw, score: m.score });
       }
       open.push({ moves, share });
     }
   }
-  return [...found.values()].sort((a, b) => b.share - a.share);
+  const white = [...found.values()].sort((a, b) => b.share - a.share);
+  // As Black you face White's openings: the same ones, practised from the other side.
+  const meet = white.slice(0, WANT.b).map((o) => ({ ...o, id: `vs:${o.family}`, side: 'b' }));
+  return [...white, ...meet];
 }
+
+// "Queen's Pawn Game: London System" → "London System", but "Queen's Pawn Game: Chigorin Variation" stays whole.
+const shortName = (family) => (/Variation$/.test(family) ? family : family.split(': ').at(-1));
 
 // "Sicilian Defense: Najdorf Variation" → "Sicilian Defense". Generic first-move names keep their
 // variation instead ("Queen's Pawn Game: London System"), or are skipped when they have none.
@@ -188,21 +212,25 @@ console.assert(familyOf("Queen's Pawn Game: London System, with e6") === "Queen'
 
 const fitsStyle = (o) => style === 'any' || (STYLE_OF[o.family] || []).includes(style);
 
-// The openings shown: the most played ones that fit the chosen style.
+// The openings shown. White: the best-scoring common ones that fit your style.
+// Black: the White openings you meet most often, whatever your style.
 function shown() {
-  const fit = OPENINGS.filter(fitsStyle);
-  return [...fit.filter((o) => o.side === 'w').slice(0, WANT.w), ...fit.filter((o) => o.side === 'b').slice(0, WANT.b)];
+  const white = OPENINGS.filter((o) => o.side === 'w' && o.share >= MIN_REACH && fitsStyle(o))
+    .sort((a, b) => b.score - a.score).slice(0, WANT.w);
+  return [...white, ...OPENINGS.filter((o) => o.side === 'b')];
 }
 
 // ---------- Opening list ----------
 function renderList() {
-  const groups = [['w', 'You play White'], ['b', 'You play Black']];
+  const groups = [
+    ['w', 'You play White', 'Best results first (a draw counts as half a win), from real games at your level. Openings reached in under 1% of games are left out.'],
+    ['b', 'You play Black', 'The White openings you meet most often at your level, with how Black does against them.'],
+  ];
   const list = shown();
-  listEl.innerHTML = groups.map(([side, label]) => {
+  listEl.innerHTML = groups.map(([side, label, about]) => {
     const ops = list.filter((o) => o.side === side);
-    const max = Math.max(...ops.map((o) => o.share));
-    const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for ${side === 'w' ? 'White' : 'Black'} at your level. Try another style.</p>`;
-    return `<section class="og"><h2>${label}</h2>${ops.length ? '' : empty}<div class="ocards">${ops.map((o) => {
+    const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for White at your level. Try another style.</p>`;
+    return `<section class="og"><h2>${label}</h2><p class="og-about">${about}</p>${ops.length ? '' : empty}<div class="ocards">${ops.map((o) => {
       const s = stats[statKey(o.id)] || { done: [], total: 0 };
       const level = s.total && s.done.length >= s.total ? 'sitter' : s.done.length ? 'pagar' : 'ny';
       const levelTxt = { sitter: 'Learned', pagar: `${s.done.length}/${s.total} lines`, ny: 'New' }[level];
@@ -212,11 +240,11 @@ function renderList() {
         <div class="board mini" data-mini="${o.id}" inert></div>
         <div class="ocard-body">
           <div class="ocard-top"><span class="eco">${o.eco}</span><span class="chip ${level}">${levelTxt}</span></div>
-          <h3>${o.name}</h3>
+          <h3>${side === 'b' ? 'vs ' : ''}${o.name}</h3>
           <p class="omoves">${moves.slice(0, -1).join(' ')} <b>${moves.at(-1)}</b></p>
           ${tags ? `<p class="tags">${tags}</p>` : ''}
-          <div class="share"><span style="width:${(o.share / max) * 100}%"></span></div>
-          <small>${o.share < 0.01 ? '<1' : Math.round(o.share * 100)}% of ${speed} games at your level</small>
+          <p class="played">${side === 'w' ? 'Played' : 'You meet it'} in <b>${pctOf(o.share)}</b> of games</p>
+          ${wdl(o, side)}
         </div>
       </article>`;
     }).join('')}</div></section>`;
@@ -324,7 +352,6 @@ function analyse(games, name) {
 }
 console.assert(analyse([], 'x').counted === 0, 'analyse');
 
-const pct = (x) => `${Math.round(x * 100)}%`;
 
 function renderMine({ counted, slips, openings }, name) {
   const out = $('#mine-out');
@@ -345,12 +372,12 @@ function renderMine({ counted, slips, openings }, name) {
           <p class="slip-count">${s.games} game${s.games === 1 ? '' : 's'} · you scored ${pct(s.points / s.games)}</p>
           <p class="omoves">${moves.slice(0, -1).join(' ')} <b class="bad">${moves.at(-1)}</b></p>
           <p>Players rated ${speed === 'blitz' ? '2200' : '2000'}+ play <b>${bestMoves.at(-1)}</b> here (${pct(s.bestShare)} of their games) and ${s.played} in ${s.playedShare ? pct(s.playedShare) : 'none'}.</p>
-          ${OPENINGS.some((o) => o.family === s.family && o.side === s.side) ? `<button type="button" class="cta" data-practise="${n}">Practise ${s.family.split(': ').at(-1)}</button>` : ''}
+          ${OPENINGS.some((o) => o.family === s.family && o.side === s.side) ? `<button type="button" class="cta" data-practise="${n}">Practise ${shortName(s.family)}</button>` : ''}
         </div>
       </article>`;
     }).join('')}</div>
     <h3 class="mine-h">Your openings</h3>
-    <ul class="mine-ops">${openings.map((o) => `<li><span>${o.family.split(': ').at(-1)} <small>as ${o.side === 'w' ? 'White' : 'Black'}</small></span><span>${o.games} games · ${pct(o.points / o.games)}</span></li>`).join('')}</ul>`;
+    <ul class="mine-ops">${openings.map((o) => `<li><span>${shortName(o.family)} <small>as ${o.side === 'w' ? 'White' : 'Black'}</small></span><span>${o.games} games · ${pct(o.points / o.games)}</span></li>`).join('')}</ul>`;
   slips.forEach((s, n) => {
     const g = new Chess();
     s.before.forEach((m) => g.move(m));
@@ -415,9 +442,9 @@ function start(op) {
   line = []; lines = []; game = new Chess();
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   misses = 0; missesHere = 0; busy = true;
-  $('#op-title').textContent = op.name;
+  $('#op-title').textContent = (op.side === 'b' ? 'vs ' : '') + op.name;
   $('#op-eco').textContent = op.eco;
-  $('#op-info').textContent = `Starts ${numbered(op.root)}. Played in ${op.share < 0.01 ? 'under 1' : Math.round(op.share * 100)}% of ${speed} games at your level.`;
+  $('#op-info').textContent = `Starts ${numbered(op.root)}. ${op.side === 'b' ? `You meet it in ${pctOf(op.share)} of ${speed} games at your level; Black wins ${pct(1 - op.win - op.draw)}.` : `Played in ${pctOf(op.share)} of ${speed} games at your level; White wins ${pct(op.win)}.`}`;
   $('#op-var').textContent = '';
   $('#op-side').textContent = op.side === 'w' ? 'You play White' : 'You play Black';
   $('#restart').textContent = 'Restart';
@@ -601,7 +628,7 @@ async function showPicker() {
   $('#pick-msg').textContent = `Loading ${speed} games…`;
   try { await loadTree(); } catch { return say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .'); }
   OPENINGS = POPULAR[`${speed}:${rating}`] ??= popularOpenings();
-  $('#pick-msg').textContent = `The most played openings in ${speed} at ${rating} ± 200${style === 'any' ? '' : `, ${STYLES[style].label.toLowerCase()} ones first`}. Pick one to practise.`;
+  $('#pick-msg').textContent = `Real ${speed} games at ${rating} ± 200${style === 'any' ? '' : `, ${STYLES[style].label.toLowerCase()} White openings only`}. Pick one to practise.`;
   renderList();
 }
 

@@ -195,9 +195,6 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .ocard h3 { margin: 0; font-size: 1rem; line-height: 1.25; }
 .omoves { margin: 0; font: .78rem/1.4 var(--font-mono); color: var(--muted); }
 .omoves b { color: var(--ink); }
-.share { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
-.share span { display: block; height: 100%; background: var(--accent); }
-.ocard small { color: var(--muted); font-size: .75rem; }
 @media (prefers-reduced-motion: reduce) {
   .ocard, .card, .controls button, .ghost { transition: none; }
   .ocard:hover, .card:hover { transform: none; }
@@ -243,3 +240,12 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .mine-ops { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; max-width: 520px; }
 .mine-ops li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
 .mine-ops small { color: var(--muted); }
+.og-about { margin: -6px 0 12px; color: var(--muted); font-size: .9rem; }
+.played { margin: 0; font-size: .8rem; color: var(--muted); }
+.played b { color: var(--ink); }
+.wdl { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); }
+.wdl .w { background: var(--good); }
+.wdl .d { background: var(--muted); opacity: .55; }
+.wdl .l { background: var(--bad); opacity: .75; }
+.wdl-key { margin: 0; display: flex; justify-content: space-between; gap: 6px; font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wdl-key b { color: var(--good); }

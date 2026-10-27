@@ -3,7 +3,7 @@
 Three ways to practise, picked from the start page:
 
 - **Basics** (`basics.html`): how each piece moves, special moves, check and mate.
-- **Openings** (`openings.html`): the 30 most played white and 15 most played black openings in blitz or classical at your Lichess rating, filtered by play style if you like. Practise them against real games.
+- **Openings** (`openings.html`): in blitz or classical at your Lichess rating: as White the best-scoring openings that are played in at least 1% of games (filtered by play style if you like), as Black the White openings you meet most often. Each shows how often it is played and its win/draw/loss split. Practise them against real games.
 - **Think like the pros** (`pros.html`): find the move Magnus Carlsen, Hikaru Nakamura or Alireza Firouzja found in a real chess.com game, with Stockfish's explanation.
 
 Openings: pick Blitz or Classical and enter your Lichess rating for it. Lines come from games of that time control played by people within ±200 of it. Style tags (attacking, solid, positional, tricky) in `styles.js` are editorial; popularity is from real games. Every opponent reply played in at least 5% of games becomes its own line (up to 20), most common first. Your moves are what 2200+ players play most, preferring moves from the opening's book. Learn shows every move; Try tests you, and a line clears when you play it without mistakes. When the line ends you play on against Stockfish, scaled to your rating, until checkmate. Progress is saved in the browser.
