@@ -33,7 +33,7 @@ Opening lines are built from what real players at the user's own rating (±200) 
 ## Operating Context
 
 - Used in a browser on desktop and phone; no install and no account.
-- The player picks a time control (Blitz or Classical) and enters their Lichess rating for it by hand. Both are stored in the browser.
+- The player picks a time control (Blitz or Classical) and either types their Lichess username (their public profile supplies the rating, and their recent games are checked for opening slips) or enters a rating by hand. Both are stored in the browser.
 - Progress (cleared lines, solved lessons and puzzles, Learn/Try mode) lives in the browser's local storage only.
 - Players typically go back and forth between practising here and playing blitz on Lichess.
 
@@ -41,7 +41,7 @@ Opening lines are built from what real players at the user's own rating (±200) 
 
 - Plain static HTML, CSS and JavaScript with no build step. chess.js is loaded from jsDelivr; Stockfish 18 lite (WebAssembly, about 7 MB) is served from `engine/`.
 - Must be served over HTTP; it does not work from `file://`.
-- Opening and puzzle data is precomputed and committed to the repo. The only runtime call is "Check my own games": it fetches the player's last 100 rated games of the chosen time control from Lichess's public games API by username (no login). It then flags the first move in each game that leaves every named opening line and that 2200+ players (2000+ in classical) choose in under 5% of games:
+- Opening and puzzle data is precomputed and committed to the repo. The only runtime calls are reading the player's public Lichess profile for their rating, and "Check my own games": it fetches the player's last 100 rated games of the chosen time control from Lichess's public games API by username (no login). It then flags the first move in each game that leaves every named opening line and that 2200+ players (2000+ in classical) choose in under 5% of games:
   - `data/explorer-blitz.json` and `data/explorer-classical.json`: games, White wins and draws per Lichess rating group from 2,000,000 rated blitz games and 400,000 rated classical games, Lichess database September 2026, up to 20 plies deep. Rebuild with `tools/make_explorer.py <blitz|classical>`.
   - `styles.js`: which play styles each opening suits. This is editorial judgement, not game data.
   - `data/*.tsv`: named opening lines from lichess-org/chess-openings.

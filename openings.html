@@ -44,7 +44,7 @@
       </div>
     </div>
     <details class="mine">
-      <summary>Check my own games for opening slips</summary>
+      <summary>Your opening mistakes, from your Lichess games</summary>
       <form id="mine-form" class="rating-row">
         <input id="mine-name" type="text" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Lichess username">
         <button type="submit" class="cta">Check my last 100 games</button>
@@ -54,7 +54,18 @@
       <div id="mine-out"></div>
     </details>
     <p id="pick-msg" class="info" aria-live="polite"></p>
-    <form id="rating-form" class="rating-ask" hidden>
+    <div id="rating-step" class="rating-ask" hidden>
+    <form id="rating-user-form">
+      <label for="rating-user">Your Lichess username</label>
+      <div class="rating-row">
+        <input id="rating-user" type="text" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="e.g. DrNykterstein" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button type="submit" class="cta">Use my Lichess</button>
+      </div>
+      <p class="info">Fills in your rating and checks your last 100 games for opening slips. Public data only, no login.</p>
+      <p id="rating-user-msg" class="info" aria-live="polite"></p>
+    </form>
+    <p class="or">or</p>
+    <form id="rating-form">
       <label for="rating-big">What is your Lichess <span class="speed-name">blitz</span> rating?</label>
       <div class="rating-row">
         <input id="rating-big" type="number" min="400" max="3200" step="1" inputmode="numeric" placeholder="e.g. 1200" required>
@@ -67,6 +78,8 @@
         <button type="button" class="pill" data-r="2000">Strong</button>
       </p>
     </form>
+    </div>
+    <input id="search" class="search" type="search" placeholder="Search openings, e.g. Sicilian, London, Scotch" aria-label="Search openings" autocomplete="off">
     <nav id="openings" class="picks" aria-label="Openings"></nav>
   </section>
 

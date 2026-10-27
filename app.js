@@ -185,6 +185,7 @@ function buildLines(op) {
 function popularOpenings() {
   const mine = ratingsAround(rating);
   const found = new Map();
+  const defences = new Map(); // Black's own openings (Sicilian, French…); only shown when searched for
   const named = new Set(); // every family seen so far; the first sighting decides whose opening it is
   const open = [{ moves: [], share: 1 }];
   while (open.length && found.size < POOL) {
@@ -198,7 +199,9 @@ function popularOpenings() {
       const family = m.name && familyOf(m.name);
       if (family && !named.has(family)) {
         named.add(family);
-        if (moves.length % 2) found.set(family, { id: family, name: shortName(family), family, eco: m.eco, side: 'w', root: moves.join(' '), share, win: m.win, draw: m.draw, score: m.score });
+        const o = { id: family, name: shortName(family), family, eco: m.eco, side: 'w', root: moves.join(' '), share, win: m.win, draw: m.draw, score: m.score };
+        if (moves.length % 2) found.set(family, o);
+        else defences.set(family, { ...o, id: `b:${family}`, side: 'b' });
       }
       open.push({ moves, share });
     }
@@ -206,8 +209,10 @@ function popularOpenings() {
   const white = [...found.values()].sort((a, b) => b.share - a.share);
   // As Black you face White's openings: the same ones, practised from the other side.
   const meet = white.slice(0, WANT.b).map((o) => ({ ...o, id: `vs:${o.family}`, side: 'b' }));
-  return [...white, ...meet];
+  return [...white, ...meet, ...defences.values()];
 }
+
+const isVs = (o) => o.id.startsWith('vs:'); // a White opening practised from Black's side
 
 // "Queen's Pawn Game: London System" → "London System", but "Queen's Pawn Game: Chigorin Variation" stays whole.
 const shortName = (family) => (/Variation$/.test(family) ? family : family.split(': ').at(-1));
@@ -229,38 +234,48 @@ const fitsStyle = (o) => style === 'any' || (STYLE_OF[o.family] || []).includes(
 function shown() {
   const white = OPENINGS.filter((o) => o.side === 'w' && o.share >= MIN_REACH && fitsStyle(o))
     .sort((a, b) => b.score - a.score).slice(0, WANT.w);
-  return [...white, ...OPENINGS.filter((o) => o.side === 'b')];
+  return [...white, ...OPENINGS.filter(isVs)];
 }
 
 // ---------- Opening list ----------
+function card(o) {
+  const s = stats[statKey(o.id)] || { done: [], total: 0 };
+  const level = s.total && s.done.length >= s.total ? 'sitter' : s.done.length ? 'pagar' : 'ny';
+  const levelTxt = { sitter: 'Learned', pagar: `${s.done.length}/${s.total} lines`, ny: 'New' }[level];
+  const moves = numbered(o.root).split(' ');
+  const tags = (STYLE_OF[o.family] || []).map((t) => `<span class="tag">${STYLES[t].label}</span>`).join('');
+  return `<article class="ocard" role="button" tabindex="0" data-id="${o.id}" aria-label="${o.name}">
+    <div class="board mini" data-mini="${o.id}" inert></div>
+    <div class="ocard-body">
+      <div class="ocard-top"><span class="eco">${o.eco}</span><span class="chip ${level}">${levelTxt}</span></div>
+      <h3>${isVs(o) ? 'vs ' : ''}${o.name}</h3>
+      <p class="omoves">${moves.slice(0, -1).join(' ')} <b>${moves.at(-1)}</b></p>
+      ${tags ? `<p class="tags">${tags}</p>` : ''}
+      <p class="played">${isVs(o) ? 'You meet it' : 'Played'} in <b>${pctOf(o.share)}</b> of games</p>
+      ${wdl(o, o.side)}
+    </div>
+  </article>`;
+}
+
+let query = '';
+
 function renderList() {
   const groups = [
     ['w', 'You play White', 'Best results first (a draw counts as half a win), from real games at your level. Openings reached in under 1% of games are left out.'],
-    ['b', 'You play Black', 'The White openings you meet most often at your level, with how Black does against them.'],
+    ['b', 'You play Black', 'The White openings you meet most often at your level, with how Black does against them. Search to practise your own defences, like the Sicilian.'],
   ];
-  const list = shown();
-  listEl.innerHTML = groups.map(([side, label, about]) => {
-    const ops = list.filter((o) => o.side === side);
-    const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for White at your level. Try another style.</p>`;
-    return `<section class="og"><h2>${label}</h2><p class="og-about">${about}</p>${ops.length ? '' : empty}<div class="ocards">${ops.map((o) => {
-      const s = stats[statKey(o.id)] || { done: [], total: 0 };
-      const level = s.total && s.done.length >= s.total ? 'sitter' : s.done.length ? 'pagar' : 'ny';
-      const levelTxt = { sitter: 'Learned', pagar: `${s.done.length}/${s.total} lines`, ny: 'New' }[level];
-      const moves = numbered(o.root).split(' ');
-      const tags = (STYLE_OF[o.family] || []).map((t) => `<span class="tag">${STYLES[t].label}</span>`).join('');
-      return `<article class="ocard" role="button" tabindex="0" data-id="${o.id}" aria-label="${o.name}">
-        <div class="board mini" data-mini="${o.id}" inert></div>
-        <div class="ocard-body">
-          <div class="ocard-top"><span class="eco">${o.eco}</span><span class="chip ${level}">${levelTxt}</span></div>
-          <h3>${side === 'b' ? 'vs ' : ''}${o.name}</h3>
-          <p class="omoves">${moves.slice(0, -1).join(' ')} <b>${moves.at(-1)}</b></p>
-          ${tags ? `<p class="tags">${tags}</p>` : ''}
-          <p class="played">${side === 'w' ? 'Played' : 'You meet it'} in <b>${pctOf(o.share)}</b> of games</p>
-          ${wdl(o, side)}
-        </div>
-      </article>`;
-    }).join('')}</div></section>`;
-  }).join('');
+  const q = query.trim().toLowerCase();
+  const list = q ? OPENINGS.filter((o) => o.family.toLowerCase().includes(q)).sort((a, b) => b.share - a.share) : shown();
+  const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for White at your level. Try another style.</p>`;
+  listEl.innerHTML = q
+    ? `<section class="og"><h2>Search results</h2><p class="og-about">${list.length
+      ? 'Openings played at your level whose name matches. "as Black" means your own defence; "vs" means a White opening you answer.'
+      : `No opening at your level matches "${q.replace(/[<&"]/g, '')}".`}</p>
+      <div class="ocards">${list.map((o) => card(o).replace('</h3>', `<small class="as">${isVs(o) ? 'you play Black' : `you play ${sideName(o.side)}`}</small></h3>`)).join('')}</div></section>`
+    : groups.map(([side, label, about]) => {
+      const ops = list.filter((o) => o.side === side);
+      return `<section class="og"><h2>${label}</h2><p class="og-about">${about}</p>${ops.length ? '' : empty}<div class="ocards">${ops.map(card).join('')}</div></section>`;
+    }).join('');
   seen.disconnect();
   listEl.querySelectorAll('.ocard').forEach((c) => {
     const op = list.find((o) => o.id === c.dataset.id);
@@ -405,10 +420,10 @@ function renderMine({ counted, slips, openings }, name) {
   }));
 }
 
-$('#mine-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = $('#mine-name').value.trim();
+async function checkMyGames(name) {
   store(STORE + '-lichess-name', name);
+  $('#mine-name').value = name;
+  $('details.mine').open = true;
   $('#mine-msg').textContent = `Fetching ${name}'s last 100 rated ${speed} games from Lichess…`;
   $('#mine-out').innerHTML = '';
   try {
@@ -417,8 +432,30 @@ $('#mine-form').addEventListener('submit', async (e) => {
   } catch (err) {
     $('#mine-msg').textContent = err.message;
   }
+}
+$('#mine-form').addEventListener('submit', (e) => { e.preventDefault(); checkMyGames($('#mine-name').value.trim()); });
+
+// Your Lichess username instead of typing a rating: your public profile gives your blitz and classical
+// ratings, then your own games are checked for slips. Public data only, so no login is needed.
+async function useLichess(name) {
+  const res = await fetch(`https://lichess.org/api/user/${encodeURIComponent(name)}`);
+  if (res.status === 404) throw new Error(`Lichess has no player called ${name}.`);
+  if (!res.ok) throw new Error(`Lichess answered with an error (${res.status}).`);
+  const perfs = (await res.json()).perfs || {};
+  for (const sp of ['blitz', 'classical']) if (perfs[sp]?.rating) store(`${STORE}-${sp}-rating`, perfs[sp].rating);
+  rating = load(ratingKey(), null);
+  if (!rating) throw new Error(`${name} has no ${speed} rating on Lichess yet. Enter a rating instead.`);
+  await showPicker();
+  checkMyGames(name);
+}
+$('#rating-user-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = $('#rating-user').value.trim();
+  $('#rating-user-msg').textContent = `Looking up ${name} on Lichess…`;
+  try { await useLichess(name); } catch (err) { $('#rating-user-msg').textContent = err.message; }
 });
-$('#mine-name').value = load(STORE + '-lichess-name', '');
+$('#mine-name').value = $('#rating-user').value = load(STORE + '-lichess-name', '');
+$('#search').addEventListener('input', (e) => { query = e.target.value; if (OPENINGS.length) renderList(); });
 
 // ---------- Board ----------
 function renderBoard() {
@@ -524,9 +561,9 @@ function start(op) {
   line = []; lines = []; game = new Chess();
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   misses = 0; missesHere = 0; busy = true;
-  $('#op-title').textContent = (op.side === 'b' ? 'vs ' : '') + op.name;
+  $('#op-title').textContent = (isVs(op) ? 'vs ' : '') + op.name;
   $('#op-eco').textContent = op.eco;
-  $('#op-info').textContent = `Starts ${numbered(op.root)}. ${op.side === 'b' ? `You meet it in ${pctOf(op.share)} of ${speed} games at your level; Black wins ${pct(1 - op.win - op.draw)}.` : `Played in ${pctOf(op.share)} of ${speed} games at your level; White wins ${pct(op.win)}.`}`;
+  $('#op-info').textContent = `Starts ${numbered(op.root)}. ${isVs(op) ? 'You meet it' : 'Played'} in ${pctOf(op.share)} of ${speed} games at your level; ${sideName(op.side)} wins ${pct(op.side === 'w' ? op.win : 1 - op.win - op.draw)}.`;
   $('#op-var').textContent = '';
   $('#op-side').textContent = op.side === 'w' ? 'You play White' : 'You play Black';
   $('#restart').textContent = 'Restart';
@@ -823,7 +860,7 @@ $('#lines-list').addEventListener('click', (e) => {
 });
 
 function showComplete() {
-  $('#complete-title').textContent = (cur.side === 'b' ? 'vs ' : '') + cur.name;
+  $('#complete-title').textContent = (isVs(cur) ? 'vs ' : '') + cur.name;
   $('#complete-text').textContent = `You cleared all ${lines.length} lines: every common reply at ${rating} ± 200 in ${speed}, each played to checkmate without a mistake.`;
   $('#complete').showModal();
 }
@@ -953,7 +990,8 @@ async function showPicker() {
   $('#picker').hidden = false;
   listEl.innerHTML = '';
   renderChoices();
-  $('#rating-form').hidden = !!rating;
+  $('#rating-step').hidden = !!rating;
+  $('#search').hidden = !rating;
   if (!rating) return ($('#pick-msg').textContent = 'The openings you see depend on what players at your level actually play.');
   $('#pick-msg').textContent = `Loading ${speed} games…`;
   try { await loadTree(); } catch { return say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .'); }
