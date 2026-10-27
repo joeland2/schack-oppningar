@@ -376,3 +376,16 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .account .ghost { white-space: nowrap; }
 .account .ghost::first-letter { text-transform: uppercase; }
 @media (max-width: 560px) { .wide-only { display: none; } }
+
+/* Taken pieces and material lead */
+.captured { display: flex; align-items: center; min-height: 22px; padding: 0 4px; gap: 0; }
+.captured img { width: 20px; height: 20px; margin-right: -6px; }
+.captured b { margin-left: 12px; font: 600 .85rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Evaluation bar */
+.evalbar { display: flex; align-items: center; gap: 10px; }
+.evalbar-track { flex: 1; height: 10px; border-radius: 5px; overflow: hidden; background: #2a2724; border: 1px solid var(--line); }
+.evalbar-white { display: block; height: 100%; width: 50%; background: #f2efe8; transition: width .3s ease-out; }
+.evalbar-num { min-width: 3.4em; text-align: right; font: 600 .85rem var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+.evalbar.stale { opacity: .45; }
+@media (prefers-reduced-motion: reduce) { .evalbar-white { transition: none; } }

@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake } from './board.js?v=20261027202635';
-import { STYLES, STYLE_OF } from './styles.js?v=20261027202635';
+import { drawBoard, enableDrag, shake } from './board.js?v=20261027211635';
+import { STYLES, STYLE_OF } from './styles.js?v=20261027211635';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -490,7 +490,45 @@ function say(text, tone = '') {
   msgEl.className = 'message ' + tone;
 }
 
-function render() { renderBoard(); renderMoves(); renderWhy(); renderControls(); }
+function render() { renderBoard(); renderMoves(); renderWhy(); renderControls(); renderMaterial(); renderEval(); }
+
+// ---------- Material and evaluation ----------
+const START = { q: 1, r: 2, b: 2, n: 2, p: 8 };
+const VALUE = { q: 9, r: 5, b: 3, n: 3, p: 1 };
+
+// Taken pieces on each side of the board, with the material lead next to the side that is ahead.
+function renderMaterial() {
+  if (!cur) return;
+  const count = { w: { q: 0, r: 0, b: 0, n: 0, p: 0 }, b: { q: 0, r: 0, b: 0, n: 0, p: 0 } };
+  for (const row of game.board()) for (const p of row) if (p && p.type !== 'k') count[p.color][p.type]++;
+  const points = (c) => Object.entries(count[c]).reduce((sum, [t, n]) => sum + VALUE[t] * n, 0);
+  const lost = (c) => Object.entries(START).flatMap(([t, n]) => Array(Math.max(0, n - count[c][t])).fill(t));
+  const opp = cur.side === 'w' ? 'b' : 'w';
+  const lead = points(cur.side) - points(opp);
+  const row = (taken, ahead, who) => {
+    const pieces = lost(taken);
+    const el = $(who === 'you' ? '#cap-bottom' : '#cap-top');
+    el.innerHTML = pieces.map((t) => `<img src="pieces/${taken}${t.toUpperCase()}.svg" alt="">`).join('') + (ahead > 0 ? `<b>+${ahead}</b>` : '');
+    el.setAttribute('aria-label', `${who === 'you' ? 'You have' : 'Your opponent has'} taken ${pieces.length ? pieces.map((t) => PIECE[t]).join(', ') : 'nothing'}${ahead > 0 ? `, ${ahead} ahead in material` : ''}`);
+  };
+  row(opp, lead, 'you');
+  row(cur.side, -lead, 'them');
+}
+
+// Stockfish's verdict on the current position as a bar: White's share fills from the left.
+function renderEval() {
+  if (!cur) return;
+  const el = $('#evalbar');
+  const sc = knownEval(game.fen());
+  el.classList.toggle('stale', !sc);
+  if (!sc) return;
+  const cp = (game.turn() === 'w' ? 1 : -1) * toCp(sc);
+  const share = 'mate' in sc ? (cp > 0 ? 100 : 0) : 100 / (1 + Math.exp(-cp / 250));
+  const text = 'mate' in sc ? `M${Math.abs(sc.mate)}` : `${cp >= 0 ? '+' : '−'}${pawns(Math.abs(cp))}`;
+  el.querySelector('.evalbar-white').style.width = `${share}%`;
+  el.querySelector('.evalbar-num').textContent = text;
+  el.setAttribute('aria-label', `Stockfish: ${'mate' in sc ? `mate for ${cp > 0 ? 'White' : 'Black'}` : Math.abs(cp) < 30 ? 'equal' : `${cp > 0 ? 'White' : 'Black'} is better by ${pawns(Math.abs(cp))} pawns`}`);
+}
 
 // Buttons that cannot do anything right now say so, instead of silently ignoring a press.
 function renderControls() {
@@ -602,14 +640,14 @@ async function makePlan(fen, san) {
   const want = new Chess(fen).move(san);
   const uci = want.from + want.to + (want.promotion || '');
   const white = new Chess(fen).turn() === 'w';
-  const best = await think(fen, { ms: 700 });
+  const best = await think(fen, { ms: 400 });
   if (!best) return null;
   let text;
   if (best.uci === uci) {
     text = `Stockfish's top choice here (${evalFor(toCp(best.score), white)}). The plan: ${pvText(fen, best.pv)}.`;
   } else {
     if (game.fen() !== fen) return null; // you have moved on; a second search would only get in the way
-    const alt = await think(fen, { ms: 500, only: uci });
+    const alt = await think(fen, { ms: 300, only: uci });
     if (!alt) return null;
     const diff = toCp(best.score) - toCp(alt.score);
     const bestSan = new Chess(fen).move(uciMove(best.uci)).san;
@@ -690,7 +728,7 @@ let analysis = null; // Stockfish on the current position: { fen, best (a chess.
 
 async function analyseHere() {
   const at = game.fen();
-  const r = await think(at, { ms: 700 });
+  const r = await think(at, { ms: 400 });
   if (!r || game.fen() !== at) return null;
   return { fen: at, best: new Chess(at).move(uciMove(r.uci)), cp: r.score ? toCp(r.score) : 0, mate: r.score?.mate };
 }
@@ -800,7 +838,29 @@ const sideName = (c) => (c === 'w' ? 'White' : 'Black');
 // Stockfish answers every "go" with exactly one bestmove, even when it is stopped early, and a stopped
 // search can still answer after a newer one was sent. So each search skips the answers still owed to
 // the searches before it, and ignores their info lines too.
-function think(fen, { ms = 600, elo = null, only = null } = {}) {
+// Full-strength answers are kept by position, so a position seen before answers at once, even next visit.
+const sfKey = (fen, ms, only) => `${fen.split(' ').slice(0, 4).join(' ')}|${ms}|${only || ''}`;
+const SF_CACHE = new Map(Object.entries(load(STORE + '-sf', {})));
+const SF_KEEP = 3000; // about 0.5 MB in the browser
+let sfSave = null;
+function remember(key, value) {
+  SF_CACHE.delete(key);
+  SF_CACHE.set(key, value);
+  while (SF_CACHE.size > SF_KEEP) SF_CACHE.delete(SF_CACHE.keys().next().value);
+  clearTimeout(sfSave);
+  sfSave = setTimeout(() => store(STORE + '-sf', Object.fromEntries(SF_CACHE)), 1000);
+}
+// The latest full-strength evaluation of a position, from the side to move, if one has been made.
+const knownEval = (fen) => [...['400', '500', '700']].map((ms) => SF_CACHE.get(sfKey(fen, ms)))
+  .find(Boolean)?.score ?? null;
+
+function think(fen, { ms = 400, elo = null, only = null } = {}) {
+  const key = sfKey(fen, ms, only) + (elo ? `|elo${elo}` : '');
+  if (key && SF_CACHE.has(key)) return Promise.resolve(SF_CACHE.get(key));
+  return search(fen, { ms, elo, only }).then((r) => { if (r && key) { remember(key, r); renderEval(); } return r; });
+}
+
+function search(fen, { ms, elo, only }) {
   if (!engine) {
     engine = new Worker(ENGINE_SRC);
     // If the engine ever crashes, start a fresh one on the next search.
@@ -844,21 +904,38 @@ function think(fen, { ms = 600, elo = null, only = null } = {}) {
 }
 
 // ---------- Play on vs Stockfish after the line ----------
+// The opponent's move after the line: what players at your level play most, while real games reach
+// this far; Stockfish at your level once they run out. A full-strength look first rates your last move.
 async function engineMove() {
   busy = true;
-  const r = await think(game.fen(), { elo: opponentElo() });
-  if (!r) return;
+  const t0 = performance.now();
+  const at = game.fen();
+  const r = await think(at);
+  if (!r || game.fen() !== at) return;
   const now = r.score && toCp(r.score);
   if (r.score && lastEval !== null && now - lastEval >= BLUNDER) return takeBack(now - lastEval, r.uci);
-  if (r.score) lastEval = now;
-  try { lastMove = game.move(uciMove(r.uci)); } catch { return engineMove(); } // a stale answer: ask again
+  const real = explore(game.history().map(clean), ratingsAround(rating)).moves.filter((x) => x.n >= MIN_GAMES);
+  let move = real[0] && { san: real[0].san };
+  if (!move) {
+    const e = await think(at, { elo: opponentElo() });
+    if (!e || game.fen() !== at) return;
+    move = uciMove(e.uci);
+  }
+  // At least 0.4 s in all, so a cached answer does not feel instant; no extra wait after a real search.
+  await new Promise((x) => setTimeout(x, Math.max(0, 400 - (performance.now() - t0))));
+  if (game.fen() !== at) return;
+  try { lastMove = game.move(move.san ?? move); } catch { busy = false; return; }
   ply++; busy = false; hintSq = [];
   render();
   if (gameOver()) return;
   // Stockfish's score is from its own side, so a big minus is a big plus for you.
   if (r.score && (r.score.mate < 0 || r.score.cp <= -LOST)) return wonLine(r.score);
   if (mode === 'try' && !failedNow && r.score && (r.score.mate > 0 || r.score.cp >= LOST)) return failLine(r.score);
-  say('Your move.');
+  say(real.length ? 'Your move. (Black played what players at your level play most.)'.replace('Black', sideName(lastMove.color)) : 'Your move.');
+  // The new position's evaluation becomes the yardstick for your next move.
+  const here = game.fen();
+  const base = await think(here);
+  if (base?.score && game.fen() === here) lastEval = -toCp(base.score);
   suggest();
 }
 
@@ -867,7 +944,7 @@ async function engineMove() {
 async function suggest(asked = false) {
   if ((mode !== 'learn' && !asked) || !userTurn() || inLine()) return;
   const at = game.fen();
-  const r = await think(at, { ms: 500 });
+  const r = await think(at, { ms: 400 });
   if (!r || game.fen() !== at) return;
   const best = new Chess(at).move(uciMove(r.uci));
   const bestIdea = ideaAt(new Chess(at), best.san);
@@ -889,7 +966,7 @@ async function takeBack(loss, refutation) {
   const opp = sideName(cur.side === 'w' ? 'b' : 'w');
   const why = `${bad} gives away about ${pawns(loss)} pawns: ${opp} answers ${reply}.${replyIdea ? ' ' + replyIdea : ''} The move was taken back.`;
   say(`${why} Looking for a better move…`, 'bad');
-  const r = await think(game.fen(), { ms: 500 });
+  const r = await think(game.fen(), { ms: 400 });
   if (!r) return;
   const best = new Chess(game.fen()).move(uciMove(r.uci));
   busy = false;

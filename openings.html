@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261027202635">
+  <link rel="stylesheet" href="style.css?v=20261027211635">
 </head>
 <body>
   <header class="top">
@@ -88,8 +88,14 @@
 
   <main id="trainer" class="wrap layout" hidden>
     <section class="play">
+      <div id="cap-top" class="captured"></div>
       <div class="board-frame">
         <div id="board" class="board" role="grid" aria-label="Chessboard"></div>
+      </div>
+      <div id="cap-bottom" class="captured"></div>
+      <div id="evalbar" class="evalbar" role="img" aria-label="No evaluation yet">
+        <div class="evalbar-track"><span class="evalbar-white"></span></div>
+        <span class="evalbar-num"></span>
       </div>
       <div class="controls">
         <button id="step-back" type="button" aria-label="Step back one move (left arrow)" title="Step back (←)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
@@ -139,7 +145,7 @@
 
   <footer class="wrap foot">Click a piece, then the square to move it to. Your opponent plays the replies real Lichess players within 200 of your rating choose in your time control, most common first. Style tags are our own judgement; popularity comes from real games. Learn shows every move; Try tests you, and a line clears when you play it without mistakes.</footer>
 
-  <script type="module" src="app.js?v=20261027202635"></script>
+  <script type="module" src="app.js?v=20261027211635"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>
