@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="sv">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Öppningsboken</title>
-  <meta name="description" content="Öva schacköppningar drag för drag. Spela huvudlinjen, få direkt feedback och se vilka öppningar som sitter.">
+  <title>Opening Book</title>
+  <meta name="description" content="Practise chess openings move by move against every Lichess book variation, with instant feedback.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -13,20 +13,20 @@
 <body>
   <header class="top">
     <div class="wrap top-in">
-      <a class="brand" href="./">Öppnings<span>boken</span></a>
-      <button id="weakest" class="ghost" type="button">Öva svagaste</button>
+      <a class="brand" href="./">Opening<span>Book</span></a>
+      <button id="weakest" class="ghost" type="button">Practise weakest</button>
     </div>
   </header>
 
   <main class="wrap layout">
     <section class="play">
       <div class="board-frame">
-        <div id="board" class="board" role="grid" aria-label="Schackbräde"></div>
+        <div id="board" class="board" role="grid" aria-label="Chessboard"></div>
       </div>
       <div class="controls">
-        <button id="hint" type="button">Ledtråd</button>
-        <button id="show" type="button">Visa draget</button>
-        <button id="restart" type="button" class="primary">Börja om</button>
+        <button id="hint" type="button">Hint</button>
+        <button id="show" type="button">Show move</button>
+        <button id="restart" type="button" class="primary">Restart</button>
       </div>
     </section>
 
@@ -35,6 +35,7 @@
         <p class="meta"><span id="op-eco" class="eco"></span> <span id="op-side"></span></p>
         <h1 id="op-title"></h1>
         <p id="op-info" class="info"></p>
+        <p id="op-var" class="meta"></p>
       </div>
       <p id="message" class="message" aria-live="polite"></p>
       <div class="progress">
@@ -44,10 +45,10 @@
       <ol id="moves" class="moves"></ol>
     </aside>
 
-    <nav id="openings" class="list" aria-label="Öppningar"></nav>
+    <nav id="openings" class="list" aria-label="Openings"></nav>
   </main>
 
-  <footer class="wrap foot">Klicka på en pjäs och sedan på rutan du vill flytta till. Tre felfria genomgångar så sitter öppningen.</footer>
+  <footer class="wrap foot">Click a piece, then the square to move it to. Your opponent picks a random book variation, weighted by how many Lichess lines follow it. Three clean runs and the opening is learned.</footer>
 
   <script type="module" src="app.js"></script>
 </body>

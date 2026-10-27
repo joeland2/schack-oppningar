@@ -1,11 +1,12 @@
-# Öppningsboken
+# Opening Book
 
-Öva schacköppningar drag för drag. Välj en öppning, spela huvudlinjen och få direkt besked om draget är rätt. Tre felfria genomgångar så räknas öppningen som inlärd. Framstegen sparas i webbläsaren.
+Practise chess openings move by move. Pick an opening and play it against an opponent who chooses a random book variation, so you learn how to answer every line, not just the main one. Any book move counts as correct. Three clean runs and the opening counts as learned. Progress is saved in the browser.
 
-Ren HTML, CSS och JavaScript utan byggsteg. Draglogiken kommer från [chess.js](https://github.com/jhlywa/chess.js).
+Plain HTML, CSS and JavaScript with no build step. Move logic comes from [chess.js](https://github.com/jhlywa/chess.js). The variations are the [Lichess opening database](https://github.com/lichess-org/chess-openings) (CC0), stored in `data/`.
 
-- `openings.js` – öppningarna (lägg till nya här)
-- `app.js` – bräde och övningslogik
-- `style.css` – utseende
+- `openings.js` – the openings (add new ones here; `family` is the Lichess opening name)
+- `app.js` – board and practice logic
+- `style.css` – styling
+- `data/*.tsv` – Lichess openings (eco, name, pgn)
 
-Kör lokalt: `npx serve .` och öppna adressen som visas.
+Run locally: `npx serve .` and open the address shown.

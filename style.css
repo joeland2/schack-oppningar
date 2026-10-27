@@ -1,4 +1,4 @@
-/* Layout: bräde till vänster, öppningspanel till höger, öppningslistan under. En kolumn på mobil. */
+/* Layout: board on the left, opening panel on the right, opening list below. One column on mobile. */
 :root {
   --bg: #eef2f2;
   --surface: #ffffff;
@@ -54,7 +54,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .panel { grid-area: panel; min-width: 0; display: grid; gap: 16px; align-content: start; }
 .list { grid-area: list; }
 
-/* Bräde */
+/* Board */
 .board-frame { padding: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
 .board { display: grid; grid-template-columns: repeat(8, 1fr); aspect-ratio: 1; max-width: 100%; user-select: none; }
 .board.shake { animation: shake .3s; }
@@ -101,7 +101,7 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .mv.todo { color: var(--muted); }
 .mv.now { color: var(--accent); font-weight: 600; }
 
-/* Öppningslista */
+/* Opening list */
 .list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; border-top: 1px solid var(--line); padding-top: 8px; }
 .list ul { margin: 0 0 8px; padding: 0; list-style: none; display: grid; gap: 4px; }
 .list li { display: contents; }
