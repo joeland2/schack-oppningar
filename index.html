@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Opening Book</title>
-  <meta name="description" content="Practise chess openings move by move against every Lichess book variation, with instant feedback.">
+  <meta name="description" content="Practise chess openings move by move against the replies real Lichess players at your level play, with instant feedback.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -14,7 +14,11 @@
   <header class="top">
     <div class="wrap top-in">
       <a class="brand" href="./">Opening<span>Book</span></a>
-      <button id="weakest" class="ghost" type="button">Practise weakest</button>
+      <div class="account">
+        <label>Lichess blitz rating <input id="rating" type="number" min="400" max="3200" step="50" inputmode="numeric"></label>
+        <button id="login" class="ghost" type="button">Log in with Lichess</button>
+        <button id="weakest" class="ghost" type="button">Practise weakest</button>
+      </div>
     </div>
   </header>
 
@@ -24,6 +28,10 @@
         <div id="board" class="board" role="grid" aria-label="Chessboard"></div>
       </div>
       <div class="controls">
+        <div class="mode" role="group" aria-label="Mode">
+          <button id="mode-learn" type="button" aria-pressed="true">Learn</button>
+          <button id="mode-try" type="button" aria-pressed="false">Try</button>
+        </div>
         <button id="hint" type="button">Hint</button>
         <button id="show" type="button">Show move</button>
         <button id="restart" type="button" class="primary">Restart</button>
@@ -48,7 +56,7 @@
     <nav id="openings" class="list" aria-label="Openings"></nav>
   </main>
 
-  <footer class="wrap foot">Click a piece, then the square to move it to. Your opponent picks a random book variation, weighted by how many Lichess lines follow it. Three clean runs and the opening is learned.</footer>
+  <footer class="wrap foot">Click a piece, then the square to move it to. Your opponent plays the replies real Lichess players at your blitz rating ± 200 play in blitz, most common first. Learn shows every move; Try tests you, and a line clears when you play it without mistakes.</footer>
 
   <script type="module" src="app.js"></script>
 </body>
