@@ -592,6 +592,7 @@ function play(i) {
   engineGen++; // ignore a Stockfish reply still on its way from the previous game
   failedNow = false;
   won = false;
+  redo = [];
   lastEval = null;
   $('#op-var').textContent = `Line ${i + 1} of ${lines.length} · ${l.share < 0.01 ? '<1' : Math.round(l.share * 100)}% of games at ${rating} ± 200${l.name ? ' · ' + l.name : ''}`;
   $('#restart').textContent = 'Restart';
@@ -635,10 +636,11 @@ async function enterExplore() {
   showAnalysis();
 }
 
-async function exploreMove(from, to) {
+async function exploreMove(from, to, promotion = 'q', keepRedo = false) {
   let m;
-  try { m = game.move({ from, to, promotion: 'q' }); } catch { return false; }
+  try { m = game.move({ from, to, promotion }); } catch { return false; }
   if (!m) return false;
+  if (!keepRedo) redo = []; // a new move starts a new branch
   const before = analysis;
   const hist = game.history().slice(0, -1).map(clean);
   lastMove = m; ply = hist.length + 1; sel = null; hintSq = []; analysis = null; busy = true;
@@ -960,15 +962,37 @@ boardEl.addEventListener('click', (e) => {
   else sel = null;
   renderBoard();
 });
-$('#undo').addEventListener('click', async () => {
-  if (mode !== 'explore' || busy || !game.history().length) return;
-  game.undo();
+// ---------- Stepping back and forward ----------
+// Back always works: in Learn or Try it switches to Explore at that position, so you can try the
+// opponent's other moves and see how to answer them. Forward replays the moves you stepped back over.
+let redo = [];
+
+async function stepBack() {
+  if (!cur || !lines.length || !game.history().length) return;
+  if (mode !== 'explore') setMode('explore', false);
+  else if (busy) return;
+  redo.push(game.undo());
   lastMove = game.history({ verbose: true }).at(-1) || null;
   ply = game.history().length;
+  busy = false; analysis = null; sel = null;
   render();
-  say('Move taken back. Stockfish is thinking…');
+  say('Stepped back. Stockfish is thinking…');
   analysis = await analyseHere();
-  showAnalysis();
+  showAnalysis(mode === 'explore' && redo.length ? `Move any piece, for either side, to see what Stockfish thinks of it. ▶ goes forward again.` : '');
+}
+
+function stepForward() {
+  if (mode !== 'explore' || busy || !redo.length) return;
+  const m = redo.pop();
+  exploreMove(m.from, m.to, m.promotion, true);
+}
+
+$('#step-back').addEventListener('click', stepBack);
+$('#step-fwd').addEventListener('click', stepForward);
+document.addEventListener('keydown', (e) => {
+  if ($('#trainer').hidden || e.target.closest?.('input, textarea, select') || e.altKey || e.metaKey || e.ctrlKey) return;
+  if (e.key === 'ArrowLeft') { e.preventDefault(); stepBack(); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); stepForward(); }
 });
 
 $('#restart').addEventListener('click', () => {
@@ -1030,7 +1054,7 @@ $('#weakest').addEventListener('click', () => {
   const score = (o) => { const s = stats[statKey(o.id)]; return s && s.total ? s.done.length / s.total : 0; };
   start([...list].sort((a, b) => score(a) - score(b))[0]);
 });
-function setMode(m) {
+function setMode(m, restart = true) {
   mode = m;
   store(STORE + '-mode', m);
   for (const k of ['learn', 'try', 'explore']) $(`#mode-${k}`).setAttribute('aria-pressed', m === k);
@@ -1040,8 +1064,8 @@ function setMode(m) {
     explore: 'Play any move for White or Black. Stockfish rates each move and shows the best one.',
   }[m];
   $('#hint').hidden = $('#show').hidden = m === 'explore';
-  $('#undo').hidden = m !== 'explore';
   if (!lines.length) return;
+  if (!restart) return;
   if (m === 'explore') enterExplore(); // carry on from the current position
   else play(lineIdx);
 }
