@@ -8,15 +8,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261027200734">
+  <link rel="stylesheet" href="style.css?v=20261027201700">
 </head>
 <body>
   <header class="top">
     <div class="wrap top-in">
       <a class="brand" href="./">Chess<span>Trainer</span></a>
       <div class="account">
-        <label>Lichess <span class="speed-name">blitz</span> rating <input id="rating" type="number" min="400" max="3200" step="50" inputmode="numeric"></label>
-        <button id="weakest" class="ghost" type="button">Practise weakest</button>
+        <label><span class="account-label">Lichess <span class="speed-name">blitz</span> rating</span> <input id="rating" type="number" min="400" max="3200" step="50" inputmode="numeric" placeholder="Rating" title="Your Lichess rating"></label>
+        <button id="weakest" class="ghost" type="button" title="Practise your weakest opening"><span class="wide-only">Practise </span>weakest</button>
       </div>
     </div>
   </header>
@@ -139,7 +139,7 @@
 
   <footer class="wrap foot">Click a piece, then the square to move it to. Your opponent plays the replies real Lichess players within 200 of your rating choose in your time control, most common first. Style tags are our own judgement; popularity comes from real games. Learn shows every move; Try tests you, and a line clears when you play it without mistakes.</footer>
 
-  <script type="module" src="app.js?v=20261027200734"></script>
+  <script type="module" src="app.js?v=20261027201700"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>

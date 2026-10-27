@@ -2,7 +2,7 @@
 // item: { id, group, title, tag, side, fen, solution: [san…], intro, explain (html), wrong?(san) }
 // Moves at odd positions in solution are the opponent's replies and are played automatically.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake } from './board.js?v=20261027200734';
+import { drawBoard, enableDrag, shake } from './board.js?v=20261027201700';
 
 const $ = (s) => document.querySelector(s);
 const clean = (san) => san.replace(/[+#]/g, '');

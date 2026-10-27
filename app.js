@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake } from './board.js?v=20261027200734';
-import { STYLES, STYLE_OF } from './styles.js?v=20261027200734';
+import { drawBoard, enableDrag, shake } from './board.js?v=20261027201700';
+import { STYLES, STYLE_OF } from './styles.js?v=20261027201700';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -490,7 +490,16 @@ function say(text, tone = '') {
   msgEl.className = 'message ' + tone;
 }
 
-function render() { renderBoard(); renderMoves(); renderWhy(); }
+function render() { renderBoard(); renderMoves(); renderWhy(); renderControls(); }
+
+// Buttons that cannot do anything right now say so, instead of silently ignoring a press.
+function renderControls() {
+  if (!cur) return;
+  $('#step-back').disabled = !game.history().length;
+  $('#step-fwd').disabled = mode !== 'explore' || !redo.length;
+  $('#hint').disabled = !(userTurn() && inLine());
+  $('#show').disabled = !userTurn();
+}
 
 // ---------- Move explanations ----------
 const PIECE = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
@@ -820,7 +829,7 @@ async function engineMove() {
   const now = r.score && toCp(r.score);
   if (r.score && lastEval !== null && now - lastEval >= BLUNDER) return takeBack(now - lastEval, r.uci);
   if (r.score) lastEval = now;
-  lastMove = game.move(uciMove(r.uci));
+  try { lastMove = game.move(uciMove(r.uci)); } catch { return engineMove(); } // a stale answer: ask again
   ply++; busy = false; hintSq = [];
   render();
   if (gameOver()) return;
