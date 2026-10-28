@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028225954';
-import { STYLE_OF } from './styles.js?v=20261028225954';
+import { account, login, finishLogin } from './lichess.js?v=20261028230135';
+import { STYLE_OF } from './styles.js?v=20261028230135';
 
 const MAX = 500;
-const PV = 11;
+const PV = 12;
 const ENOUGH = 20;
 const WHY_ANALYSE = 'Lichess only analyses games you ask it to. Analysed games give your blunders, accuracy and four of the skills, and become puzzles in My practice. Stockfish runs in your browser; no game is done twice.'; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -102,7 +102,7 @@ export function profileOf(games) {
     for (const g of games.filter((x) => x.side === side)) m.set(g.family, [...(m.get(g.family) || []), g]);
     // Lichess names the position: a Defense is Black's choice, the rest White's, so "vs" marks the other side's.
     const vs = (fam) => (/Defen[cs]e/.test(fam) === (side === 'w') ? `vs ${fam}` : fam);
-    return [...m].filter(([, gs]) => gs.length >= 5).map(([fam, gs]) => ({ fam: vs(fam), n: gs.length, score: score(gs) })).sort((a, b) => b.n - a.n);
+    return [...m].filter(([, gs]) => gs.length >= 5).map(([fam, gs]) => ({ fam: vs(fam), n: gs.length, score: score(gs), win: gs.filter((g) => g.result === 1).length / gs.length })).sort((a, b) => b.n - a.n);
   };
   const ups = an.filter((g) => g.best >= 300), downs = an.filter((g) => g.worst <= -300);
   const slips = { opening: 0, middlegame: 0, endgame: 0 };
@@ -113,7 +113,7 @@ export function profileOf(games) {
     winRate: share(games, (g) => g.result === 1), winW: share(games.filter((g) => g.side === 'w'), (g) => g.result === 1), winB: share(games.filter((g) => g.side === 'b'), (g) => g.result === 1),
     nWhite: games.filter((g) => g.side === 'w').length,
     speeds: Object.entries(games.reduce((m, g) => ({ ...m, [g.speed]: [...(m[g.speed] || []), g] }), {}))
-      .map(([speed, gs]) => ({ speed, n: gs.length, score: score(gs), rating: gs[0].rating + gs[0].diff, change: gs[0].rating + gs[0].diff - gs[gs.length - 1].rating })) // newest game first
+      .map(([speed, gs]) => ({ speed, n: gs.length, score: score(gs), win: gs.filter((g) => g.result === 1).length / gs.length, rating: gs[0].rating + gs[0].diff, change: gs[0].rating + gs[0].diff - gs[gs.length - 1].rating })) // newest game first
       .sort((a, b) => b.n - a.n),
     ends: {
       won: { mate: share(wins, (g) => g.status === 'mate'), resign: share(wins, (g) => g.status === 'resign'), time: share(wins, (g) => g.status === 'outoftime' || g.status === 'timeout') },
@@ -224,9 +224,9 @@ function verdicts(p) {
   const diff = (p.white ?? 0) - (p.black ?? 0);
   if (Math.abs(diff) >= 0.08) {
     const [hi, lo] = diff > 0 ? ['White', 'Black'] : ['Black', 'White'];
-    const [sHi, sLo] = diff > 0 ? [p.white, p.black] : [p.black, p.white];
-    good.push({ title: `Playing ${hi}`, why: `You score ${pct(sHi)} as ${hi}.` });
-    work.push({ title: `Playing ${lo}`, why: `As ${lo} you score ${pct(sLo)}, ${Math.round(Math.abs(diff) * 100)} points less than as ${hi}. Train your openings for that side.`, href: './' });
+    const [sHi, sLo] = diff > 0 ? [p.winW ?? p.white, p.winB ?? p.black] : [p.winB ?? p.black, p.winW ?? p.white]; // shown as wins, the one measure the page uses
+    good.push({ title: `Playing ${hi}`, why: `You win ${pct(sHi)} of your games as ${hi}.` });
+    work.push({ title: `Playing ${lo}`, why: `As ${lo} you win ${pct(sLo)} of your games, against ${pct(sHi)} as ${hi}. Train your openings for that side.`, href: './' });
   }
   if (p.analysed >= ENOUGH && p.ups >= 5) add(p.converted >= 0.8, p.converted < 0.65,
     { title: 'Winning when ahead', why: `When you were clearly better (3 pawns or more), you won ${pct(p.converted)} of ${p.ups} games.`, href: './mistakes.html' });
@@ -243,8 +243,8 @@ function verdicts(p) {
   const ops = [...p.openings.w.map((o) => ({ ...o, side: 'White' })), ...p.openings.b.map((o) => ({ ...o, side: 'Black' }))].filter((o) => o.n >= 8);
   const weight = (o) => (o.score - 0.5) * Math.sqrt(o.n); // a clear result over many games beats an extreme over few
   const top = [...ops].sort((a, b) => weight(b) - weight(a))[0], low = [...ops].sort((a, b) => weight(a) - weight(b))[0];
-  if (top && top.score >= 0.6) good.push({ title: top.fam, why: `You score ${pct(top.score)} in ${top.n} games with it as ${top.side}.` });
-  if (low && low !== top && low.score <= 0.4) work.push({ title: low.fam, why: `You score ${pct(low.score)} in ${low.n} games with it as ${low.side}. Practise its lines.`, href: './' });
+  if (top && top.score >= 0.6) good.push({ title: top.fam, why: `You win ${pct(top.win)} of ${top.n} games with it as ${top.side}.` });
+  if (low && low !== top && low.score <= 0.4) work.push({ title: low.fam, why: `You win only ${pct(low.win)} of ${low.n} games with it as ${low.side}. Practise its lines.`, href: './' });
   return [good.slice(0, 4), work.slice(0, 4)];
 }
 // Skill bars, 0-100, each read from one thing in the games; null when there are too few games to say.
@@ -541,7 +541,7 @@ function verdictList(items, empty) {
   return items.length ? `<ul class="pf-list">${items.map((i) => `<li><b>${esc(i.title)}</b><span>${esc(i.why)}${i.href ? ` <a href="${i.href}">Train it</a>` : ''}</span></li>`).join('')}</ul>` : `<p class="info">${empty}</p>`;
 }
 function openingRows(list) {
-  return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><span>${esc(o.fam)}</span><small>${o.n} games · ${pct(o.score)}</small>${bar(o.score)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
+  return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><span>${esc(o.fam)}</span><small>${o.n} games · ${pct(o.win ?? o.score)} wins</small>${bar(o.win ?? o.score)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
 }
 // Each bar: what it measures, what the games show, and below 50 how to train it; the words show on request.
 let showSkillText = false;
@@ -630,6 +630,7 @@ function cardNote(name, p, me) {
 }
 function render(name, at, p) {
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
+  document.title = me ? 'Your Profile' : `${name} · Profile`;
   const list = (items, empty) => verdictList(items.map((i) => ({ ...i, why: say(i.why), href: me ? i.href : null })), empty);
   const known = skills.filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], p.acc !== null && p.analysed >= ENOUGH && ['Accuracy', `${p.acc}%`], p.blunders !== null && p.analysed >= ENOUGH && ['Blunders / game', p.blunders.toFixed(1)], ['Draws', pct(p.draws)]].filter(Boolean);
@@ -662,12 +663,12 @@ function render(name, at, p) {
     <section class="pf-card">
       <h2>Results</h2>
       <dl class="pf-stats">
-        <div><dt>As White</dt><dd>${p.white === null ? '–' : pct(p.white)}</dd></div>
-        <div><dt>As Black</dt><dd>${p.black === null ? '–' : pct(p.black)}</dd></div>
+        <div><dt>Wins as White</dt><dd>${p.winW == null ? '–' : pct(p.winW)}</dd></div>
+        <div><dt>Wins as Black</dt><dd>${p.winB == null ? '–' : pct(p.winB)}</dd></div>
         <div><dt>Moves a game</dt><dd>${p.moves}</dd></div>
       </dl>
       <h3>By time control</h3>
-      <ul class="pf-rows">${p.speeds.map((x) => `<li><span>${x.speed[0].toUpperCase() + x.speed.slice(1)}</span><small>${x.n} games · ${pct(x.score)} · now ${x.rating} (${x.change >= 0 ? '+' : ''}${x.change})</small>${bar(x.score)}</li>`).join('')}</ul>
+      <ul class="pf-rows">${p.speeds.map((x) => `<li><span>${x.speed[0].toUpperCase() + x.speed.slice(1)}</span><small>${x.n} games · ${pct(x.win ?? x.score)} wins · now ${x.rating} (${x.change >= 0 ? '+' : ''}${x.change})</small>${bar(x.win ?? x.score)}</li>`).join('')}</ul>
       <h3>How ${me ? 'your' : 'their'} games end</h3>
       ${endsGrid(p.ends)}
     </section>
@@ -903,6 +904,7 @@ async function compare(a, b, speed = new URLSearchParams(location.search).get('s
   } catch (err) { $('#profile-msg').textContent = err.message; }
 }
 function renderCompare(A, B, speed = 'all', avail = []) {
+  document.title = `${A.name} vs ${B.name}`;
   const sa = skillsOf(A.p), sb = skillsOf(B.p);
   const num = (v, f = (x) => x) => (v === null || v === undefined ? '–' : f(v));
   const main = (p) => p.speeds[0];
@@ -920,7 +922,8 @@ function renderCompare(A, B, speed = 'all', avail = []) {
   $('#profile').innerHTML = `
     <div class="pf-players"><a class="ghost" href="${profileLink(A.name)}">← ${esc(A.name)}</a><a class="ghost" href="${profileLink(B.name)}">${esc(B.name)} →</a></div>
     <header class="cmp-head"><h1 class="pf-h1"><a href="${profileLink(A.name)}">${esc(A.name)}</a> <span>vs</span> <a href="${profileLink(B.name)}">${esc(B.name)}</a></h1>
-      <div class="pf-seg cmp-speeds" role="group" aria-label="Time control">${['all', ...SPEEDS].map((sp) => `<button type="button" data-speed="${sp}" aria-pressed="${sp === speed}" ${sp === 'all' || avail.includes(sp) ? '' : `disabled title="Fewer than ${MIN_SPEED} ${sp} games for one of you"`}>${sp === 'all' ? 'All games' : sp[0].toUpperCase() + sp.slice(1)}</button>`).join('')}</div></header>
+      <div class="pf-seg cmp-speeds" role="group" aria-label="Time control">${['all', ...SPEEDS].map((sp) => `<button type="button" data-speed="${sp}" aria-pressed="${sp === speed}" ${sp === 'all' || avail.includes(sp) ? '' : `disabled title="Fewer than ${MIN_SPEED} ${sp} games for one of you"`}>${sp === 'all' ? 'All games' : sp[0].toUpperCase() + sp.slice(1)}</button>`).join('')}</div>
+      <p class="info cmp-scope">${speed === 'all' ? 'Every number below is from all rated games.' : `Every number below is from ${speed} games only, so it can differ a little from the profiles, which use all games.`}</p></header>
     <section class="cmp-cards">
       <div><a class="cmp-card" href="${profileLink(A.name)}" title="Open ${esc(A.name)}'s profile">${playerCard(A.name, A.p, A.p.type, sa)}</a><p class="cmp-type"><b>${A.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
       <div><a class="cmp-card" href="${profileLink(B.name)}" title="Open ${esc(B.name)}'s profile">${playerCard(B.name, B.p, B.p.type, sb)}</a><p class="cmp-type"><b>${B.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>

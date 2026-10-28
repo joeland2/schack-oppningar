@@ -2,9 +2,9 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261028225954';
-import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028225954';
-import { build, cache, myName, skillsOf, loadDists, storedGames, PV } from './profile.js?v=20261028225954';
+import { login } from './lichess.js?v=20261028230135';
+import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028230135';
+import { build, cache, myName, skillsOf, loadDists, storedGames, PV } from './profile.js?v=20261028230135';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -54,7 +54,7 @@ function render(name, p) {
   const ops = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))]
     .filter((o) => o.n >= 8 && o.score <= 0.47).sort((a, b) => (a.score - 0.5) * Math.sqrt(a.n) - (b.score - 0.5) * Math.sqrt(b.n)).slice(0, 3);
   if (ops.length) {
-    steps.push(['<span id="pr-openings">Openings that cost you points</span>', `<ul class="pr-list">${ops.map((o) => `<li><a href="${practise(o.side, o.fam)}"><b>${esc(o.fam)}</b> as ${o.side === 'w' ? 'White' : 'Black'}</a><small>${pct(o.score)} in ${o.n} games</small></li>`).join('')}</ul>`,
+    steps.push(['<span id="pr-openings">Openings that cost you points</span>', `<ul class="pr-list">${ops.map((o) => `<li><a href="${practise(o.side, o.fam)}"><b>${esc(o.fam)}</b> as ${o.side === 'w' ? 'White' : 'Black'}</a><small>${pct(o.win ?? o.score)} wins in ${o.n} games</small></li>`).join('')}</ul>`,
       '<small class="info">Each opens that opening\'s lines in the trainer.</small>']);
   }
   steps.push(['Traps in your openings', '<p>The traps players at your level fall into in the openings you play, one after another: spot the slip and punish it.</p>',
@@ -62,7 +62,7 @@ function render(name, p) {
   const best = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))]
     .filter((o) => o.n >= 8).sort((a, b) => (b.score - 0.5) * Math.sqrt(b.n) - (a.score - 0.5) * Math.sqrt(a.n))[0];
   if (best && best.score >= 0.55) {
-    steps.push(['Keep your best opening sharp', `<p><b>${esc(best.fam)}</b> as ${best.side === 'w' ? 'White' : 'Black'}: you score ${pct(best.score)} in ${best.n} games. A short review keeps it that way.</p>`,
+    steps.push(['Keep your best opening sharp', `<p><b>${esc(best.fam)}</b> as ${best.side === 'w' ? 'White' : 'Black'}: you win ${pct(best.win ?? best.score)} of ${best.n} games. A short review keeps it that way.</p>`,
       `<a class="ghost pr-ghost" href="${practise(best.side, best.fam)}">Review it</a>`]);
   }
   $('#practice').innerHTML = `

@@ -9,8 +9,8 @@ colors:
   ink: "#141414"
   ink-muted: "#62594c"
   signal-orange: "#ff5a1f"
-  signal-orange-text: "#c2410c"
-  result-green: "#2f7d4f"
+  signal-orange-text: "#9c330a"
+  result-green: "#226039"
   result-red: "#b42318"
   hint-gold: "#e0b23a"
   night-paper: "#12100e"
@@ -20,6 +20,7 @@ colors:
   night-ink: "#f4efe6"
   night-muted: "#a8a093"
   night-orange: "#ff6a2f"
+  night-orange-text: "#ff7a45"
 typography:
   display:
     fontFamily: "Anton, Impact, sans-serif"
