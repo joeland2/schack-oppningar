@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028160549';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028160549';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028160549';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028160549';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028161350';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028161350';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028161350';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028161350';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -758,10 +758,11 @@ function renderBoard() {
     if (better) return drawBoard(boardEl, g, { side: cur.side, last: hist[view - 2] || null, arrows: [[m.from, m.to, '#c4242a'], [better.from, better.to, '#15781b']] });
     return drawBoard(boardEl, g, { side: cur.side, last: m || null, mark: m && notes[view - 1] && { sq: m.to, kind: notes[view - 1] } });
   }
+  if (trapShow && lastMove) return drawBoard(boardEl, game, { side: cur.side, last: lastMove, wrong: lastMove.to, arrows: [[lastMove.from, lastMove.to, '#c4242a']] });
   const n = game.history().length - 1, note = notes[n];
   // At the line's end every offered move gets an arrow (green: real games, blue: Stockfish), unless
   // one is pointed at.
-  const offered = ply >= line.length && game.history().length === line.length && userTurn() && !(tipHint !== null) ? tipArrows : [];
+  const offered = ply >= line.length && game.history().length === endLen && userTurn() && !(tipHint !== null) ? tipArrows : [];
   drawBoard(boardEl, game, { side: cur.side, sel, last: lastMove, hint: hintSq, wrong: wrongSq,
     arrow: hintSq.length === 2 && !offered.length ? hintSq : null, arrows: offered,
     mark: (wrongSq && { sq: wrongSq, ok: false }) || (note && lastMove && { sq: lastMove.to, kind: note }),
@@ -923,19 +924,19 @@ function renderWhy() {
   }
   // The line-done summary is made at the line's end and stays while you play on from there. The tips
   // are about the move to play at the line's end, so they go once you have played on.
-  if (ply >= line.length && hist.length === line.length) {
+  if (ply >= line.length && hist.length === endLen) {
     lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p>${lineWhy()}${lineFacts()}`;
   }
   // "How to go on" is for the moment you start playing on: shown at the line's end, gone once you move.
   let tips = '';
-  if (ply >= line.length && hist.length === line.length && userTurn()) {
+  if (ply >= line.length && hist.length === endLen && userTurn()) {
     const t = lineTips();
     const arrows = t.map((x) => [x.move.from, x.move.to, x.engine ? '#1d5fbf' : '#15781b']);
     if (JSON.stringify(arrows) !== JSON.stringify(tipArrows)) { tipArrows = arrows; renderBoard(); }
     tips = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x) => `<li><button type="button" class="tip" data-from="${x.move.from}" data-to="${x.move.to}">${x.html}</button></li>`).join('')}</ul>` : '';
   }
   el.innerHTML = parts.join('');
-  $('#line-done').innerHTML = ply >= line.length && lineDone
+  $('#line-done').innerHTML = ply >= line.length && lineDone && !trapShow // the trap's pause first
     ? `<div class="summary">${lineDone}${tips}<button type="button" class="cta done-next">${$('#restart').textContent}</button></div>` : '';
   $('#line-done').hidden = !$('#line-done').innerHTML;
 }
@@ -999,6 +1000,8 @@ function lineWhy() {
       : cp > -30 ? 'Stockfish rates it as equal: a full game, where the better plan wins.'
       : `Stockfish gives ${them} ${cp > -100 ? 'a small' : 'an'} edge${scoresWell() ? ', but players at your level win more than they lose from here' : ', so play carefully'}.`);
   }
+  const trap = lines[lineIdx]?.trap;
+  if (trap) why.push(`${them} fell for the trap ${trapMove(trap)}: players at your level score ${pct(1 - trap.score)} from here.`);
   if (p.out > p.theirOut) why.push(`You are ahead in development: ${p.out} knights and bishops out against ${p.theirOut}, so open the game before ${them} catches up.`);
   else if (p.out < p.theirOut) why.push(`${them} is ahead in development (${p.theirOut} pieces out against your ${p.out}), so catch up before you start anything.`);
   if (p.theirKingInCentre && !p.theyCastled) why.push(`${them}'s king is still in the centre: if the centre opens, it is a target.`);
@@ -1006,9 +1009,13 @@ function lineWhy() {
   if (p.lead < 0) why.push(`You gave ${p.lead === -1 ? 'a pawn' : 'material'} for quick development and open lines. Keep the pace up: in a slow game the material counts.`);
   const file = p.files[0];
   if (file) why.push(`The ${file.f}-file is ${file.open ? 'open' : 'half-open for you'}: a rook belongs there.`);
-  // Goals, in the order to reach them.
-  if (p.undeveloped.length) aims.push(`bring out your ${andList(p.undeveloped.map((x) => `${PIECE[x.type]} on ${x.square}`))}`);
-  if (!p.castled && p.kingHome) aims.push('castle');
+  // Goals, in the order to reach them, starting with the first move offered under How to go on, so the
+  // plan and the arrows say the same thing.
+  const first = game.turn() === p.me ? lineTips()[0] : null;
+  if (first) aims.push(`start with ${first.move.san} (the ${first.engine ? 'blue' : 'green'} arrow)`);
+  const rest = p.undeveloped.filter((x) => x.square !== first?.move.from);
+  if (rest.length) aims.push(`${first ? 'then ' : ''}bring out your ${andList(rest.map((x) => `${PIECE[x.type]} on ${x.square}`))}`);
+  if (!p.castled && p.kingHome && !first?.move.san.startsWith('O-O')) aims.push('castle');
   if (file) aims.push(`put a rook on the ${file.f}-file`);
   if (p.theirKingInCentre && !p.theyCastled) aims.push(`open the centre before ${them} castles`);
   else if (p.lead > 0) aims.push('trade pieces');
@@ -1096,7 +1103,8 @@ function play(i, again = false) {
   const l = lines[i];
   line = l.moves;
   game = new Chess();
-  ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
+  ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null; trapShow = false;
+  punish = 0; punishDone = false; endLen = 0;
   misses = again ? misses : 0; missesHere = 0; busy = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
   playing = false;
@@ -1355,6 +1363,7 @@ async function opponentPlays() {
   if (playPremove()) return;
   const note = !real && !engineSaid ? ' Real games at your level run out here, so Stockfish plays the opponent now, at your rating.' : '';
   if (!real) engineSaid = true;
+  if (punishDone && !endLen) return punish > 0 ? (say('Your move: keep punishing it.', 'good'), guide()) : finish();
   say(`Your move.${note}`);
 }
 
@@ -1387,10 +1396,10 @@ $('#why').addEventListener('click', (e) => {
 const BOOK_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c3-1.5 5.5-1.5 8 0 2.5-1.5 5-1.5 8 0v12c-3-1.5-5.5-1.5-8 0-2.5-1.5-5-1.5-8 0zM12 6v12"/></svg>';
 
 // A short banner over the board, for the end of a line.
-function flash(text) {
+function flash(text, kind = 'line') {
   const frame = $('.board-frame');
   frame.querySelector('.mate-banner')?.remove();
-  frame.insertAdjacentHTML('beforeend', `<div class="mate-banner line-banner" role="status">${text}</div>`);
+  frame.insertAdjacentHTML('beforeend', `<div class="mate-banner line-banner ${kind}-banner" role="status">${text}</div>`);
   setTimeout(() => frame.querySelector('.line-banner')?.remove(), 1800);
 }
 
@@ -1603,6 +1612,8 @@ function showComplete() {
 $('#complete-more').addEventListener('click', () => { $('#complete').close(); play((lineIdx + 1) % lines.length); });
 $('#complete-back').addEventListener('click', () => { $('#complete').close(); showPicker(); });
 
+const TRAP_PAUSE = 1500; // ms the board stops when the opponent falls into the line's trap
+let trapShow = false;
 function reply() {
   busy = true;
   // A newer game or a switch to Explore cancels this, through the game counter.
@@ -1612,6 +1623,19 @@ function reply() {
     const m = game.move(line[ply]);
     lastMove = m; ply++; busy = false; hintSq = [];
     notes[ply - 1] = 'book';
+    // The trap's slip: the board stops for a moment with the move in red, so it cannot be missed.
+    if (mode !== 'time' && lines[lineIdx]?.trap?.ply === ply - 1) {
+      busy = true; trapShow = true;
+      render();
+      flash(`Trap! ${trapMove(lines[lineIdx].trap)}`, 'trap');
+      return setTimeout(() => {
+        if (gen !== gameGen) return;
+        busy = false; trapShow = false;
+        render();
+        if (ply >= line.length) return finish();
+        if (!playPremove()) prompt('Your move: punish it.');
+      }, TRAP_PAUSE);
+    }
     render();
     if (ply >= line.length) return finish();
     if (playPremove()) return;
@@ -1654,6 +1678,7 @@ function tryMove(from, to) {
   try { m = game.move({ from, to, promotion: 'q' }); } catch { return false; }
   if (!m) return false;
   if (playing) {
+    if (punish > 0) punish--;
     lastMove = m; ply++; sel = null; hintSq = [];
     rate(ply - 1, game.history({ verbose: true }).at(-1).before, m);
     render();
@@ -1719,8 +1744,29 @@ function showHint() {
 
 // The end of the line. Learn: the line counts as learned. Practice: without a mistake it is cleared
 // and comes back for review later; with one it stays to be practised again today.
+// A trap line whose games stop soon after the slip goes on with help: two of your moves after the trap,
+// with the best move as an arrow in Learn (Hint in Practice) and the opponent from real games, then
+// Stockfish; only then is the line done. punish: your moves still to make; endLen: where the line ended.
+let punish = 0, punishDone = false, endLen = 0;
+function punishMoves() {
+  const t = lines[lineIdx]?.trap;
+  return t ? Math.max(0, 2 - Math.floor((line.length - 1 - t.ply) / 2)) : 0;
+}
+function guide() {
+  if (mode !== 'learn') return;
+  const at = game.fen();
+  goodMove().then((m) => { if (m && punish > 0 && game.fen() === at) { hintSq = [m.from, m.to]; renderBoard(); } });
+}
 function finish() {
   if (mode === 'time') { trial.done++; return setTimeout(() => { if (mode === 'time' && trial.end > Date.now()) play((lineIdx + 1 + Math.floor(Math.random() * (lines.length - 1))) % lines.length); }, 300); }
+  if (!punishDone && punishMoves() > 0 && !game.isGameOver()) {
+    punish = punishMoves(); punishDone = true; playing = true; engineSaid = true;
+    renderControls(); // Hint works while you punish it
+    say(mode === 'learn' ? 'Now punish the trap: follow the arrow.' : 'Now punish the trap. Press Hint if you need help.', 'good');
+    if (game.turn() !== cur.side) return opponentPlays();
+    return guide();
+  }
+  endLen = game.history().length;
   const s = stats[statKey(cur.id)];
   if (!s.played.includes(lineKey(line))) s.played.push(lineKey(line));
   store(STORE, stats);
