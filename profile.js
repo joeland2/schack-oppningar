@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, so the page opens at once next time; Refresh reads the games again.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028205818';
-import { STYLE_OF } from './styles.js?v=20261028205818';
+import { account, login, finishLogin } from './lichess.js?v=20261028210020';
+import { STYLE_OF } from './styles.js?v=20261028210020';
 
 const MAX = 500;
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -92,6 +92,9 @@ export function profileOf(games) {
     downs: downs.length, saved: score(downs.map((g) => ({ result: g.result > 0 ? 1 : 0 }))),
     badStarts: share(an.filter((g) => g.after12 !== null), (g) => g.after12 <= -150),
     openings: { w: byOpening('w'), b: byOpening('b') },
+    // Rating after each game, oldest first, per time control: the graph's fallback when Lichess's
+    // own rating history is not available.
+    history: games.reduce((h, g) => (g.at ? { ...h, [g.speed]: [[g.at, g.rating + g.diff], ...(h[g.speed] || [])] } : h), {}),
   };
   p.type = typeOf(p);
   [p.good, p.work] = verdicts(p);
@@ -293,6 +296,7 @@ function render(name, at, p) {
         ${known.length >= 2 ? `<p class="pf-best">Strongest: <b>${known[0].label}</b> · To train: <b>${known[known.length - 1].label}</b></p>` : ''}
       </div>
     </section>
+    <section class="pf-card pf-chart" id="pf-chart"></section>
     <dl class="pf-kpis">${kpis.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
     <section class="pf-card">
       <h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
@@ -323,6 +327,89 @@ function render(name, at, p) {
     <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Score counts a win as 1 and a draw as a half.</p>`;
   $('#refresh').addEventListener('click', () => run(name));
   bindSearch();
+  ratingChart(name, p);
+}
+
+// ---------- Rating over time ----------
+// Lichess's own rating history (all time, every time control) when it answers, else the ratings after
+// the games read here, which reach back as far as those 500 games do.
+const RANGES = [['1W', 7], ['1M', 30], ['6M', 182], ['1Y', 365], ['All', Infinity]];
+const DAY = 864e5;
+async function historyOf(name, p) {
+  try {
+    const a = account();
+    const res = await fetch(`https://lichess.org/api/user/${encodeURIComponent(name)}/rating-history`, a ? { headers: { Authorization: `Bearer ${a.token}` } } : {});
+    const perfs = res.ok ? await res.json() : [];
+    const h = {};
+    for (const x of perfs) if (x.points.length) h[x.name.toLowerCase()] = x.points.map(([y, m, d, r]) => [Date.UTC(y, m, d), r]);
+    if (Object.keys(h).length) return { h, full: true };
+  } catch {}
+  return { h: p.history || {}, full: false };
+}
+let chartState = { speed: null, range: '1M' };
+async function ratingChart(name, p) {
+  const el = $('#pf-chart');
+  el.innerHTML = '<h2>Rating</h2><p class="info">Loading the rating history…</p>';
+  const { h, full } = await historyOf(name, p);
+  const speeds = ['bullet', 'blitz', 'rapid', 'classical'].filter((k) => h[k]?.length > 1);
+  if (!el.isConnected) return;
+  if (!speeds.length) { el.innerHTML = '<h2>Rating</h2><p class="info">No rating history yet. Press Refresh to read the games again.</p>'; return; }
+  if (!speeds.includes(chartState.speed)) chartState.speed = speeds.includes(p.speeds[0]?.speed) ? p.speeds[0].speed : speeds[0];
+  const draw = () => {
+    const all = h[chartState.speed], days = RANGES.find(([k]) => k === chartState.range)[1];
+    const end = Date.now(), from = days === Infinity ? all[0][0] : end - days * DAY;
+    // The rating going into the range, then every change inside it.
+    const before = all.filter(([t]) => t < from).pop();
+    const pts = [...(before ? [[from, before[1]]] : []), ...all.filter(([t]) => t >= from)];
+    const first = all[0][0];
+    const covers = full || from >= first;
+    el.innerHTML = `<div class="pf-chart-head"><h2>Rating</h2>
+      <div class="pf-seg" role="group" aria-label="Time control">${speeds.map((k) => `<button type="button" data-speed="${k}" aria-pressed="${k === chartState.speed}">${k[0].toUpperCase() + k.slice(1)}</button>`).join('')}</div>
+      <div class="pf-seg" role="group" aria-label="Period">${RANGES.map(([k]) => `<button type="button" data-range="${k}" aria-pressed="${k === chartState.range}">${k}</button>`).join('')}</div></div>
+      ${pts.length < 2 ? '<p class="info">No rated games in this period.</p>' : lineChart(pts, from, end)}
+      ${covers ? '' : `<p class="info pf-note">The graph starts at ${new Date(first).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}, the oldest of the games read here. Log in with Lichess for the full history.</p>`}`;
+    el.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('click', () => { chartState.speed = b.dataset.speed; draw(); }));
+    el.querySelectorAll('[data-range]').forEach((b) => b.addEventListener('click', () => { chartState.range = b.dataset.range; draw(); }));
+    hover(el);
+  };
+  draw();
+}
+const fmtDay = (t) => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+// One line, one axis: rating against time, with the change over the period in the corner.
+function lineChart(pts, from, end) {
+  const W = 760, H = 240, L = 44, R = 12, T = 14, B = 26;
+  const lo = Math.min(...pts.map((x) => x[1])), hi = Math.max(...pts.map((x) => x[1]));
+  const pad = Math.max(10, (hi - lo) * 0.12), y0 = Math.floor((lo - pad) / 10) * 10, y1 = Math.ceil((hi + pad) / 10) * 10;
+  const x = (t) => L + ((t - from) / Math.max(1, end - from)) * (W - L - R), y = (r) => T + (1 - (r - y0) / (y1 - y0)) * (H - T - B);
+  const ticks = [0, 1, 2, 3].map((k) => Math.round(y0 + ((y1 - y0) * k) / 3));
+  const line = pts.map(([t, r], k) => `${k ? 'L' : 'M'}${x(t).toFixed(1)},${y(r).toFixed(1)}`).join('') + `L${x(end).toFixed(1)},${y(pts[pts.length - 1][1]).toFixed(1)}`;
+  const change = pts[pts.length - 1][1] - pts[0][1];
+  return `<p class="pf-chart-now"><b>${pts[pts.length - 1][1]}</b> <span class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</span> <small>since ${fmtDay(pts[0][0])}</small></p>
+    <svg class="pf-line" viewBox="0 0 ${W} ${H}" role="img" aria-label="Rating from ${pts[0][1]} to ${pts[pts.length - 1][1]} between ${fmtDay(from)} and ${fmtDay(end)}"
+      data-pts='${JSON.stringify(pts.map(([t, r]) => [Math.round(x(t)), Math.round(y(r)), r, t]))}'>
+      ${ticks.map((r) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(r)}" y2="${y(r)}"/><text class="ax" x="${L - 8}" y="${y(r) + 4}" text-anchor="end">${r}</text>`).join('')}
+      <text class="ax" x="${L}" y="${H - 6}">${fmtDay(from)}</text><text class="ax" x="${W - R}" y="${H - 6}" text-anchor="end">Today</text>
+      <path class="ln" d="${line}"/>
+      <g class="hov" visibility="hidden"><line class="cross" y1="${T}" y2="${H - B}"/><circle r="5"/></g>
+      <rect class="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}"/>
+    </svg><p class="pf-tip" aria-live="polite"></p>`;
+}
+// Crosshair and tooltip: the nearest game to the pointer.
+function hover(el) {
+  const svg = el.querySelector('.pf-line');
+  if (!svg) return;
+  const pts = JSON.parse(svg.dataset.pts), g = svg.querySelector('.hov'), tip = el.querySelector('.pf-tip');
+  const move = (e) => {
+    const b = svg.getBoundingClientRect(), px = ((e.clientX - b.left) / b.width) * 760;
+    const near = pts.reduce((a, q) => (Math.abs(q[0] - px) < Math.abs(a[0] - px) ? q : a));
+    g.setAttribute('visibility', 'visible');
+    g.querySelector('line').setAttribute('x1', near[0]); g.querySelector('line').setAttribute('x2', near[0]);
+    g.querySelector('circle').setAttribute('cx', near[0]); g.querySelector('circle').setAttribute('cy', near[1]);
+    tip.textContent = `${near[2]} on ${fmtDay(near[3])}`;
+    tip.style.left = `${b.left - el.getBoundingClientRect().left + (near[0] / 760) * b.width}px`; // an SVG has no offsetLeft
+  };
+  svg.addEventListener('pointermove', move);
+  svg.addEventListener('pointerleave', () => { g.setAttribute('visibility', 'hidden'); tip.textContent = ''; });
 }
 
 function ask() {
