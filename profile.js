@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028232234';
-import { STYLE_OF } from './styles.js?v=20261028232234';
+import { account, login, finishLogin } from './lichess.js?v=20261028232421';
+import { STYLE_OF } from './styles.js?v=20261028232421';
 
 const MAX = 500;
 const PV = 13;
@@ -420,7 +420,11 @@ function keepGame(name, g) {
   const games = storedGames(name);
   if (!games) return;
   const i = games.findIndex((x) => x.id === g.id);
-  if (i >= 0) { games[i] = g; saveGames(name, games); }
+  if (i >= 0) { games[i] = g; saveGames(name, games); forget(name); }
+}
+function forget(name) {
+  const all = cache(); delete all[name.toLowerCase()];
+  try { localStorage.setItem(KEY, JSON.stringify(all)); } catch {}
 }
 // A player's games as kept here, in Lichess's shape, or null.
 function storedGames(name) {
@@ -440,6 +444,13 @@ async function build(name) {
   RAW = raw; RAW_NAME = name;
   return readAll(name, raw);
 }
+// The profile every page shows: read just now (within FRESH), else new games fetched and all read again,
+// so the profile, compare and the practice plan always agree and follow new games and analyses.
+const FRESH = 5 * 60e3;
+async function current(name) {
+  const c = cache()[name.toLowerCase()];
+  return c && c.v === PV && Date.now() - c.at < FRESH && storedGames(name) ? c.p : build(name);
+}
 async function readAll(name, raw) {
   const msg = $('#profile-msg');
   const me = name.toLowerCase(), games = [];
@@ -447,6 +458,7 @@ async function readAll(name, raw) {
     games.push(readGame(raw[i], me));
     if (i % 25 === 24) { msg.textContent = `Reading the games… ${i + 1} of ${raw.length}`; await new Promise((r) => setTimeout(r)); }
   }
+  RECORDS.set(`${me}:${raw.length}:${raw[0]?.id}`, games); // compare's per-time-control reading reuses these
   const p = profileOf(games);
   const keep = Object.entries(cache()).sort((a, b) => b[1].at - a[1].at).slice(0, 9);
   try { localStorage.setItem(KEY, JSON.stringify(Object.fromEntries([[me, { name, at: Date.now(), p, v: PV }], ...keep.filter(([k]) => k !== me)]))); } catch {}
@@ -942,7 +954,7 @@ function failed(name, err) {
   $('[data-retry]').addEventListener('click', () => run(name));
 }
 
-export { build, cache, myName, skillsOf, loadDists, storedGames, keepGame, engineEval, applyEvals, winPct, PV };
+export { build, current, cache, myName, skillsOf, loadDists, storedGames, keepGame, engineEval, applyEvals, winPct, PV };
 if ($('#profile')) { // the practice page imports this module for the above; only the profile page draws itself
   try { await finishLogin(); } catch (err) { $('#profile-msg').textContent = err.message; } // back from logging in on this page
   await loadDists();
@@ -1002,8 +1014,7 @@ function bindPlayerBar(name) {
 }
 // A profile ready to show: kept here, else read from the player's games.
 async function profileFor(name) {
-  const c = cache()[name.toLowerCase()];
-  return c && c.v === PV ? { name: c.name, p: c.p } : { name, p: await build(name) };
+  return { name: cache()[name.toLowerCase()]?.name || name, p: await current(name) };
 }
 // Two players side by side: cards, types, skills as paired bars, the key numbers and opening taste.
 // Compare in one time control (bullet, blitz, rapid, classical) or all games: the profile is read

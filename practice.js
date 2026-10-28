@@ -2,9 +2,9 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261028232234';
-import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028232234';
-import { build, cache, myName, skillsOf, loadDists, storedGames, PV } from './profile.js?v=20261028232234';
+import { login } from './lichess.js?v=20261028232421';
+import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028232421';
+import { current, cache, myName, skillsOf, loadDists, storedGames } from './profile.js?v=20261028232421';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -83,7 +83,5 @@ await loadDists(); // the skill scale: where ratings rank on Lichess
 const name = myName();
 if (!name) ask();
 else {
-  const c = cache()[name.toLowerCase()];
-  const ready = c && c.v === PV && storedGames(name) ? Promise.resolve(c.p) : build(name);
-  ready.then(async (p) => { await puzzlesFromGames(name); render(c?.name || name, p); }).catch((err) => { $('#profile-msg').textContent = err.message; });
+  current(name).then(async (p) => { await puzzlesFromGames(name); render(cache()[name.toLowerCase()]?.name || name, p); }).catch((err) => { $('#profile-msg').textContent = err.message; });
 }
