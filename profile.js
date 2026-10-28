@@ -1,13 +1,13 @@
 // Your profile: your last 500 rated Lichess games read move by move, then what kind of player they
 // show, what you are good at, what to work on, and the numbers behind it. Lichess's own computer
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
-// in this browser, so the page opens at once next time; Refresh reads the games again.
+// in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028211801';
-import { STYLE_OF } from './styles.js?v=20261028211801';
+import { account, login, finishLogin } from './lichess.js?v=20261028212610';
+import { STYLE_OF } from './styles.js?v=20261028212610';
 
 const MAX = 500;
-const PV = 3; // bumped when the profile gains something new: older saved profiles are read again
+const PV = 4; // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
 const $ = (s) => document.querySelector(s);
 const pct = (x) => `${Math.round(x * 100)}%`;
@@ -38,14 +38,14 @@ function readGame(g, me) {
   const slips = { opening: 0, middlegame: 0, endgame: 0 };
   (g.analysis || []).forEach((a, i) => { if (i % 2 === myPly && a.judgment?.name === 'Blunder') slips[phase(i)]++; });
   // Your clock after your last move, against the time you started with.
-  const clocks = (g.clocks || []).filter((_, i) => i % 2 === myPly);
-  const left = clocks.length ? clocks[clocks.length - 1] / 100 : null;
+  const end = g.end || endClocks(g.clocks);
+  const left = end && end[myPly] != null ? end[myPly] / 100 : null;
   return {
     side, speed: g.speed, at: g.createdAt, status: g.status, plies: moves.length,
     result: !g.winner ? 0.5 : (g.winner === 'white') === (side === 'w') ? 1 : 0,
     family: (g.opening?.name || 'Unknown').split(':')[0], rating: mine.rating, diff: mine.ratingDiff || 0, them: theirs.rating,
     castled, queensOff, endgame: endgameAt !== null,
-    analysed: v.length > 0, acc: mine.analysis?.accuracy ?? null, blunders: mine.analysis?.blunder ?? null, mistakes: mine.analysis?.mistake ?? null,
+    analysed: v.length > 0, ours: !!g.ours, acc: mine.analysis?.accuracy ?? null, blunders: mine.analysis?.blunder ?? null, mistakes: mine.analysis?.mistake ?? null,
     best: v.length ? Math.max(...v) : null, worst: v.length ? Math.min(...v) : null, after12: v.length > 23 ? v[23] : null, slips,
     lowTime: left !== null && g.clock ? left < Math.max(10, g.clock.initial * 0.1) : false,
   };
@@ -96,7 +96,9 @@ export function profileOf(games) {
     queensOff: share(games, (g) => g.queensOff !== null && g.queensOff < 50),
     endgames: games.filter((g) => g.endgame).length, endgameScore: score(games.filter((g) => g.endgame)),
     lowTime: share(games, (g) => g.lowTime), timeLosses: share(losses, (g) => g.status === 'outoftime'),
-    analysed: an.length,
+    analysed: an.length, ours: games.filter((g) => g.ours).length,
+    // Moves in each game without any analysis (0 when analysed), newest first: what analysing here would cost.
+    todo: games.map((g) => (g.analysed ? 0 : g.plies)),
     acc: an.length ? Math.round(sum(an.filter((g) => g.acc !== null), (g) => g.acc) / Math.max(1, an.filter((g) => g.acc !== null).length)) : null,
     blunders: an.length ? sum(an, (g) => g.blunders || 0) / an.length : null,
     slips, ups: ups.length, converted: score(ups.map((g) => ({ result: g.result === 1 ? 1 : 0 }))),
@@ -208,10 +210,10 @@ const worstPhase = (p) => Object.entries(p.slips).sort((a, b) => b[1] - a[1])[0]
 }
 
 // ---------- Fetching ----------
-async function fetchGames(name, onGame) {
+async function fetchGames(name, onGame, since = null) {
   const a = account();
   const res = await fetch(`https://lichess.org/api/games/user/${encodeURIComponent(name)}?` + new URLSearchParams({
-    max: MAX, rated: 'true', perfType: 'bullet,blitz,rapid,classical', moves: 'true', opening: 'true', clocks: 'true', evals: 'true', accuracy: 'true',
+    max: MAX, ...(since ? { since } : {}), rated: 'true', perfType: 'bullet,blitz,rapid,classical', moves: 'true', opening: 'true', clocks: 'true', evals: 'true', accuracy: 'true',
   }), { headers: { Accept: 'application/x-ndjson', ...(a ? { Authorization: `Bearer ${a.token}` } : {}) } });
   if (res.status === 404) throw new Error(`Lichess has no player called ${name}.`);
   if (res.status === 429) throw new Error('Lichess is busy right now. Try again in a minute.');
@@ -229,11 +231,54 @@ async function fetchGames(name, onGame) {
   return games.filter((g) => g.variant === 'standard').slice(0, MAX);
 }
 
+// ---------- Games kept in this browser ----------
+// Each player's games are kept (packed small: the analysis as numbers), so a later visit or Refresh
+// fetches only the games played since. Kept for the 3 players looked at last.
+const GAMES = 'opening-book-v2-games'; // { [lower-case name]: { at, games: [packed game, newest first] } }
+const endClocks = (cl) => (cl?.length ? [cl.filter((_, i) => i % 2 === 0).at(-1) ?? null, cl.filter((_, i) => i % 2 === 1).at(-1) ?? null] : null);
+const player = (x) => ({ user: x.user ? { id: x.user.id } : undefined, rating: x.rating, ratingDiff: x.ratingDiff, analysis: x.analysis });
+const J = { B: 'Blunder', M: 'Mistake', I: 'Inaccuracy' };
+function pack(g) {
+  const an = g.analysis;
+  return { id: g.id, variant: 'standard', speed: g.speed, createdAt: g.createdAt, status: g.status, winner: g.winner, moves: g.moves,
+    opening: g.opening ? { name: g.opening.name } : undefined, clock: g.clock ? { initial: g.clock.initial } : undefined,
+    end: g.end || endClocks(g.clocks), ours: g.ours || undefined, players: { white: player(g.players.white), black: player(g.players.black) },
+    an: an && { cp: an.map((x) => cpOf(x) ?? 0), j: an.map((x) => x.judgment?.name?.[0] || '.').join(''),
+      best: Object.fromEntries(an.flatMap((x, i) => (x.best ? [[i, x.best]] : []))), v: Object.fromEntries(an.flatMap((x, i) => (x.variation ? [[i, x.variation]] : []))) } };
+}
+function unpack(t) {
+  const { an, ...g } = t;
+  if (an) g.analysis = an.cp.map((cp, i) => ({ eval: cp, ...(J[an.j[i]] ? { judgment: { name: J[an.j[i]] } } : {}), ...(an.best[i] ? { best: an.best[i] } : {}), ...(an.v[i] ? { variation: an.v[i] } : {}) }));
+  return g;
+}
+console.assert(((g) => unpack(pack(g)).analysis[1].judgment.name === 'Blunder' && unpack(pack(g)).end[1] === 50)({ id: 'x', players: { white: {}, black: {} }, clocks: [100, 90, 80, 50, 70],
+  analysis: [{ eval: 20 }, { eval: 400, judgment: { name: 'Blunder' }, best: 'e7e5' }] }), 'pack');
+function gamesStore() { try { return JSON.parse(localStorage.getItem(GAMES)) || {}; } catch { return {}; } }
+function saveGames(name, games) {
+  const all = gamesStore(), me = name.toLowerCase();
+  const keep = Object.entries(all).filter(([k]) => k !== me).sort((a, b) => b[1].at - a[1].at).slice(0, 2);
+  try { localStorage.setItem(GAMES, JSON.stringify(Object.fromEntries([[me, { at: Date.now(), games: games.map(pack) }], ...keep]))); } catch {}
+}
+// A player's games as kept here, in Lichess's shape, or null.
+function storedGames(name) {
+  const t = gamesStore()[name.toLowerCase()];
+  return t ? t.games.map(unpack) : null;
+}
+
+let RAW = null, RAW_NAME = ''; // the games in use, kept for analysing them here
 async function build(name) {
-  const msg = $('#profile-msg');
-  msg.textContent = `Fetching ${name}'s last ${MAX} rated games from Lichess…`;
-  const raw = await fetchGames(name, (k) => { msg.textContent = `Fetching ${name}'s games from Lichess… ${k}`; });
+  const msg = $('#profile-msg'), have = storedGames(name) || [];
+  msg.textContent = have.length ? `Fetching ${name}'s new games from Lichess…` : `Fetching ${name}'s last ${MAX} rated games from Lichess…`;
+  const fresh = await fetchGames(name, (k) => { msg.textContent = `Fetching ${name}'s games from Lichess… ${k}`; }, have.length ? have[0].createdAt + 1 : null);
+  const ids = new Set(fresh.map((g) => g.id));
+  const raw = [...fresh, ...have.filter((g) => !ids.has(g.id))].slice(0, MAX);
   if (!raw.length) throw new Error(`${name} has no rated games on Lichess yet.`);
+  saveGames(name, raw);
+  RAW = raw; RAW_NAME = name;
+  return readAll(name, raw);
+}
+async function readAll(name, raw) {
+  const msg = $('#profile-msg');
   const me = name.toLowerCase(), games = [];
   for (let i = 0; i < raw.length; i++) {
     games.push(readGame(raw[i], me));
@@ -246,6 +291,114 @@ async function build(name) {
   return p;
 }
 
+// ---------- Analysing games here ----------
+// Games Lichess has not analysed can be analysed in this browser with Stockfish: the evaluation after
+// every move, then blunders, mistakes and accuracy by Lichess's own formulas, so the profile reads
+// them like Lichess's analysis. Results are kept per game, so a game is only ever analysed once.
+const MS = 40;                          // per position: plenty to see blunders
+const PER_POS = 0.035;                  // seconds per position, measured on a laptop (search plus overhead); phones are slower
+const ENGINE_SRC = 'engine/stockfish-18-lite-single.js';
+const winPct = (cp) => 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
+function applyEvals(g, cps, best = []) {
+  g.analysis = cps.map((cp, i) => ({ eval: cp, ...(best[i] ? { best: best[i] } : {}) }));
+  const tally = { white: { blunder: 0, mistake: 0, inaccuracy: 0, acc: [] }, black: { blunder: 0, mistake: 0, inaccuracy: 0, acc: [] } };
+  let prev = 20; // the start position
+  cps.forEach((cp, i) => {
+    const who = i % 2 ? 'black' : 'white', sign = who === 'white' ? 1 : -1, t = tally[who];
+    const drop = Math.max(0, winPct(sign * prev) - winPct(sign * cp)); // winning chances the move gave away
+    const kind = drop >= 15 ? 'Blunder' : drop >= 10 ? 'Mistake' : drop >= 5 ? 'Inaccuracy' : null;
+    if (kind) { t[kind.toLowerCase()]++; g.analysis[i].judgment = { name: kind }; }
+    t.acc.push(Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * drop) - 3.1669)));
+    prev = cp;
+  });
+  for (const who of ['white', 'black']) {
+    const t = tally[who];
+    g.players[who].analysis = { blunder: t.blunder, mistake: t.mistake, inaccuracy: t.inaccuracy, accuracy: t.acc.length ? Math.round(sum(t.acc, (x) => x) / t.acc.length) : null };
+  }
+  g.ours = true;
+}
+console.assert(((g) => (applyEvals(g, [30, 25, -600]), g.players.white.analysis.blunder === 1 && g.analysis[2].judgment.name === 'Blunder'))({ players: { white: {}, black: {} } }), 'applyEvals');
+
+let engine = null;
+// Stockfish's verdict on one position: centipawns from White (a mate counts as 1000) and its best move.
+function engineEval(fen) {
+  engine ??= new Worker(ENGINE_SRC);
+  const white = fen.split(' ')[1] === 'w';
+  return new Promise((resolve) => {
+    let cp = 0;
+    engine.onmessage = (e) => {
+      if (typeof e.data !== 'string') return;
+      const m = e.data.match(/ score (cp|mate) (-?\d+)/);
+      if (m && !/ (lower|upper)bound/.test(e.data)) {
+        const n = Number(m[2]);
+        cp = m[1] === 'cp' ? Math.max(-1000, Math.min(1000, n)) : n > 0 ? 1000 : -1000; // mate 0: the side to move is mated
+      }
+      if (e.data.startsWith('bestmove')) { const b = e.data.split(' ')[1]; resolve({ cp: white ? cp : -cp, best: b && b !== '(none)' ? b : null }); }
+    };
+    engine.postMessage(`position fen ${fen}`);
+    engine.postMessage(`go movetime ${MS}`);
+  });
+}
+const minutes = (sec) => (sec < 90 ? `about ${Math.max(1, Math.round(sec / 60))} min` : `about ${Math.round(sec / 60)} min`);
+// What analysing the newest n games here would take: the games without analysis, and the time.
+function costOf(p, n) {
+  const todo = (p.todo || []).slice(0, n).filter(Boolean);
+  return { games: todo.length, sec: sum(todo, (x) => x) * PER_POS };
+}
+let analysing = null; // { stop } while a run is going
+async function analyse(name, n) {
+  const el = $('#pf-analyse');
+  if (!RAW || RAW_NAME.toLowerCase() !== name.toLowerCase()) { RAW = storedGames(name); RAW_NAME = name; }
+  if (!RAW) await build(name);
+  const todo = RAW.slice(0, n).filter((g) => !g.analysis && g.moves);
+  const total = sum(todo, (g) => g.moves.split(' ').length), t0 = Date.now();
+  let done = 0;
+  analysing = { stop: false };
+  for (let k = 0; k < todo.length && !analysing.stop; k++) {
+    const g = todo[k], c = new Chess(), cps = [], best = [];
+    for (const mv of g.moves.split(' ')) {
+      if (analysing.stop) break;
+      try { c.move(mv); } catch { break; }
+      const r = await engineEval(c.fen());
+      cps.push(r.cp);
+      best[cps.length] = r.best; // the best move here is the best instead of the next move
+      done++;
+      if (done % 10 === 0 && el) {
+        const left = ((Date.now() - t0) / done) * (total - done) / 1000;
+        el.querySelector('.pf-an-progress').textContent = `Analysing game ${k + 1} of ${todo.length} · ${minutes(left)} left`;
+        el.querySelector('.pf-an-bar i').style.width = `${(done / total) * 100}%`;
+      }
+    }
+    if (analysing.stop) break;
+    applyEvals(g, cps, best);
+    saveGames(name, RAW); // a finished game is kept even if the run stops
+  }
+  analysing = null;
+  const mine = runs;
+  const p = await readAll(name, RAW);
+  if (mine === runs) render(name, Date.now(), p); // unless another player was looked up meanwhile
+}
+function analysePanel(name, p) {
+  if (analysing) return `<div id="pf-analyse" class="pf-analyse"><p class="pf-an-progress">Analysing…</p><div class="pf-an-bar"><i></i></div><button type="button" class="ghost" data-stop>Stop</button></div>`;
+  if (!p.todo) return '';
+  const opts = [100, 250, 500].filter((n) => n <= Math.max(100, p.n)).map((n) => ({ n, ...costOf(p, n) }));
+  return `<div id="pf-analyse" class="pf-analyse">
+    <p><b>${p.analysed} of ${p.n} games are analysed</b>${p.ours ? ` (${p.ours} of them here)` : ''}. Accuracy, blunders and the Openings, Tactics, Finishing and Defending skills come from analysed games, so more of them make those numbers more reliable. Analyse the newest games here, with Stockfish in your browser; games already analysed are skipped:</p>
+    <div class="pf-an-opts">${opts.map((o) => `<button type="button" class="ghost" data-analyse="${o.n}" ${o.games ? '' : 'disabled'}><b>Newest ${o.n}</b><small>${o.games ? `${o.games} to analyse · ${minutes(o.sec)}` : 'all analysed'}</small></button>`).join('')}</div>
+    <p class="info">Keep this page open while it runs. You can stop at any time; finished games are kept.</p></div>`;
+}
+function bindAnalyse(name) {
+  const el = $('#pf-analyse');
+  if (!el) return;
+  el.querySelectorAll('[data-analyse]').forEach((b) => b.addEventListener('click', async () => {
+    const n = Number(b.dataset.analyse);
+    analysing = { stop: false };
+    el.outerHTML = analysePanel(name, {});
+    $('#pf-analyse').querySelector('[data-stop]').addEventListener('click', () => { if (analysing) analysing.stop = true; });
+    try { await analyse(name, n); } catch (err) { analysing = null; $('#profile-msg').textContent = err.message; }
+  }));
+}
+
 // ---------- The page ----------
 function cache() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
 const myName = () => account()?.name || (() => { try { return JSON.parse(localStorage.getItem('opening-book-v2-lichess-name')); } catch { return null; } })();
@@ -255,7 +408,7 @@ const they = (t) => t.replace(/\b(Y|y)our\b/g, (_, y) => (y === 'Y' ? 'Their' : 
 console.assert(they('You score 50%; your games, you were') === 'They score 50%; their games, they were', 'they');
 const search = (label) => `<form id="pf-form" class="rating-row pf-search" role="search"><input id="pf-name" type="text" required maxlength="30" pattern="[A-Za-z0-9_\\-]{2,30}" placeholder="Lichess username" aria-label="Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="ghost" type="submit">${label}</button></form>`;
 function bindSearch() {
-  $('#pf-form').addEventListener('submit', (e) => { e.preventDefault(); show($('#pf-name').value.trim(), true); });
+  $('#pf-form')?.addEventListener('submit', (e) => { e.preventDefault(); show($('#pf-name').value.trim(), true); });
 }
 const bar = (s) => `<div class="wdl" role="img" aria-label="Score ${pct(s)}"><span class="w" style="width:${s * 100}%"></span><span class="l" style="width:${(1 - s) * 100}%"></span></div>`;
 const ago = (t) => { const h = (Date.now() - t) / 3.6e6; return h < 1 ? 'less than an hour ago' : h < 48 ? `${Math.round(h)} hours ago` : `${Math.round(h / 24)} days ago`; };
@@ -330,6 +483,7 @@ function render(name, at, p) {
       <h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
       <p class="info pf-note">Each bar is read from one thing in the games. 50 is a so-so result.</p>
       ${skillBars(skills, say, me)}
+      ${analysePanel(name, p)}
     </section>
     <div class="pf-two">
       <section class="pf-card"><h2 class="pf-good">Strengths</h2>${list(p.good, 'Nothing stands out yet. More games give a clearer picture.')}</section>
@@ -358,11 +512,12 @@ function render(name, at, p) {
       <p class="info">Read from ${me ? 'your' : `${esc(name)}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
       <p class="info">Results, openings, opening style, the clock, endgames and the rating graph use all ${p.n} games.
         Accuracy, blunders and the Openings, Tactics, Finishing and Defending skills need a computer's verdict on every move, so they use only the
-        ${p.analysed} game${p.analysed === 1 ? '' : 's'} Lichess has analysed${p.analysed < 50 ? ` (on Lichess, Request a computer analysis after a game to add more)` : ''}.</p>
+        ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'}${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. Analyse more under Skills.</p>
       <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Score counts a win as 1 and a draw as a half.</p>
     </section>`;
   $('#refresh').addEventListener('click', () => run(name));
   bindSearch();
+  bindAnalyse(name);
   ratingChart(name, p);
 }
 
@@ -463,7 +618,7 @@ async function run(name) {
   try { const p = await build(name); if (mine === runs) render(name, Date.now(), p); } catch (err) { if (mine === runs) $('#profile-msg').textContent = err.message; }
 }
 
-export { build, cache, myName, skillsOf, PV };
+export { build, cache, myName, skillsOf, storedGames, PV };
 if ($('#profile')) { // the practice page imports this module for the above; only the profile page draws itself
   try { await finishLogin(); } catch (err) { $('#profile-msg').textContent = err.message; } // back from logging in on this page
   start();

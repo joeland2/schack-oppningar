@@ -2,13 +2,26 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261028211801';
-import { build, cache, myName, skillsOf, PV } from './profile.js?v=20261028211801';
+import { login } from './lichess.js?v=20261028212610';
+import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028212610';
+import { build, cache, myName, skillsOf, storedGames, PV } from './profile.js?v=20261028212610';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const pct = (x) => `${Math.round(x * 100)}%`;
-const puzzles = () => { try { return JSON.parse(localStorage.getItem('opening-book-v2-mistakes')) || []; } catch { return []; } };
+const PUZZLES = 'opening-book-v2-mistakes';
+const puzzles = () => { try { return JSON.parse(localStorage.getItem(PUZZLES)) || []; } catch { return []; } };
+// Puzzles straight from your analysed games (by Lichess or on your profile): every mistake and
+// blunder of yours with the better move, added to the ones Find my mistakes has found. No engine
+// needed, so they are there at once.
+async function puzzlesFromGames(name) {
+  const games = (storedGames(name) || []).filter((g) => g.analysis);
+  if (!games.length) return;
+  const found = await findMistakes(games, name, { evaluate: async () => null });
+  const have = puzzles(), seen = new Set(found.map((f) => f.fen));
+  const all = pickPuzzles([...found, ...have.filter((f) => !seen.has(f.fen))]);
+  try { localStorage.setItem(PUZZLES, JSON.stringify(all)); } catch {}
+}
 const practise = (side, fam) => `./?practise=${side}~${encodeURIComponent(fam.replace(/^vs /, ''))}`;
 
 // Where each weak skill is trained on this site.
@@ -35,7 +48,7 @@ function render(name, p) {
   }
   const mine = puzzles();
   steps.push(['Puzzles from your own games', mine.length
-    ? `<p>${mine.length} positions from your games where you went wrong. Find the move you missed.</p>`
+    ? `<p>${mine.length} positions from your games where you went wrong. Find the move you missed. <a href="profile.html#pf-analyse">Analyse more games</a> for more.</p>`
     : '<p>The positions in your games where you went wrong, as puzzles: blunders, missed wins and missed mates.</p>',
   mine.length ? '<a class="cta" href="mistakes.html">Solve them</a>' : '<a class="cta" href="./?do=mistakes">Find my mistakes</a>']);
   const ops = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))]
@@ -65,10 +78,11 @@ function ask() {
   $('#pr-login').addEventListener('click', login);
 }
 
+// Your games are kept in this browser, so the plan opens at once; only the first visit fetches them.
 const name = myName();
 if (!name) ask();
 else {
   const c = cache()[name.toLowerCase()];
-  if (c && c.v === PV) render(c.name, c.p);
-  else build(name).then((p) => render(name, p)).catch((err) => { $('#profile-msg').textContent = err.message; });
+  const ready = c && c.v === PV && storedGames(name) ? Promise.resolve(c.p) : build(name);
+  ready.then(async (p) => { await puzzlesFromGames(name); render(c?.name || name, p); }).catch((err) => { $('#profile-msg').textContent = err.message; });
 }

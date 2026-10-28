@@ -1,10 +1,10 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028211801';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028211801';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028211801';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028211801';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028211801';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028211801';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028212610';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028212610';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028212610';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028212610';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028212610';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028212610';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -382,7 +382,7 @@ function card(o) {
     <div class="board mini" data-mini="${o.id}" inert></div>
     <div class="ocard-body">
       <div class="ocard-top"><h3>${isVs(o) ? 'vs ' : ''}${o.name}</h3><span class="ocard-tags">${tags}<span class="chip ${level}">${levelTxt}</span>
-        <button type="button" class="star" data-star="${o.id}" aria-pressed="${repertoire.has(o.id)}" title="${repertoire.has(o.id) ? 'In your repertoire' : 'Add to your repertoire'}" aria-label="${repertoire.has(o.id) ? 'Remove from' : 'Add to'} my repertoire">★</button></span></div>
+        <button type="button" class="star" data-star="${o.id}" aria-pressed="${repertoire.has(o.id)}" title="${repertoire.has(o.id) ? 'In your favorites' : 'Add to your favorites'}" aria-label="${repertoire.has(o.id) ? 'Remove from' : 'Add to'} my favorites">★</button></span></div>
       ${about ? `<p class="odesc">${about}</p>` : ''}
       <div class="ostats">
         <span>${popularity(o)}</span>
@@ -394,7 +394,7 @@ function card(o) {
 }
 
 let query = '';
-// My repertoire: the openings you star, from either side, in a list of their own.
+// My favorites: the openings you star, from either side, in a list of their own.
 const repertoire = new Set(load(STORE + '-rep', []));
 let listSide = load(STORE + '-side', 'w'); // which list shows: openings you play as White, or as Black
 const FIRST = 8; // the first few openings show, with a button for the rest
@@ -422,7 +422,7 @@ function renderList() {
       : `No opening at your level matches "${q.replace(/[<&"]/g, '')}".`}</p>
       <div class="olist">${list.map((o) => card(o).replace('</h3>', `<small class="as">you play ${sideName(o.side)}</small></h3>`)).join('')}</div>`;
   } else if (listSide === 'r') {
-    body = `<p class="og-about">${mineList.length ? 'The openings you have starred, from both sides. <button type="button" class="link" data-traps>Practise their traps</button>' : 'Nothing here yet. Star (★) an opening as White and the defences you want as Black to build your repertoire.'}</p>
+    body = `<p class="og-about">${mineList.length ? 'The openings you have starred, from both sides. <button type="button" class="link" data-traps>Practise their traps</button>' : 'Nothing here yet. Star (★) an opening as White and the defences you want as Black to keep it here.'}</p>
       <div class="olist">${mineList.map(card).join('')}</div>`;
   } else {
     // Your starred openings of this side come first, pinned, even ones the style or the cut would hide.
@@ -436,7 +436,7 @@ function renderList() {
       ${cut ? `<button type="button" class="ghost more" data-more="${listSide}">Show all ${ops.length}</button>` : ''}`;
   }
   listEl.innerHTML = `${q ? '<h2 class="og-h">Search results</h2>' : `<div class="seg side-seg" role="group" aria-label="Your side">
-      ${['w', 'b', 'r'].map((side) => `<button type="button" data-side="${side}" aria-pressed="${side === listSide}">${side === 'r' ? '<span class="wide-only">My </span>Repertoire' : `<span class="wide-only">You play </span>${sideName(side)}`} <span class="og-n">${count(side)}</span></button>`).join('')}
+      ${['w', 'b', 'r'].map((side) => `<button type="button" data-side="${side}" aria-pressed="${side === listSide}">${side === 'r' ? '<span class="wide-only">My </span>Favorites' : `<span class="wide-only">You play </span>${sideName(side)}`} <span class="og-n">${count(side)}</span></button>`).join('')}
     </div>`}${body}`;
   seen.disconnect();
   listEl.querySelectorAll('.ocard').forEach((c) => {
@@ -2556,7 +2556,7 @@ $('#mode-explore').addEventListener('click', () => setMode('explore'));
 $('#mode-time').addEventListener('click', () => setMode('time'));
 // ---------- Progress to a file and back ----------
 // Everything the site keeps in this browser except the engine cache (it rebuilds itself), as JSON.
-const KEEP_KEY = (k) => (k.startsWith(STORE) && k !== STORE + '-sf') || k.endsWith('-solved-v1') || k === 'chess-theme';
+const KEEP_KEY = (k) => (k.startsWith(STORE) && k !== STORE + '-sf' && k !== STORE + '-games') || k.endsWith('-solved-v1') || k === 'chess-theme';
 $('#export').addEventListener('click', () => {
   const data = {};
   for (const k of Object.keys(localStorage)) if (KEEP_KEY(k)) data[k] = localStorage.getItem(k);

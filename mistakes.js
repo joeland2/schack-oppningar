@@ -2,7 +2,7 @@
 // sorted by what kind of slip it was, so the ones you keep repeating stand out. Lichess's own computer
 // analysis is used where a game has one; the rest are checked here with Stockfish (evaluate).
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { hanging, mateInOne } from './ideas.js?v=20261028211801';
+import { hanging, mateInOne } from './ideas.js?v=20261028212610';
 
 const VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 // Lichess's winning chances, 0-100; a move that costs 10 points or more is a mistake, 15 a blunder.
@@ -79,7 +79,10 @@ export async function findMistakes(games, name, { evaluate, onProgress = () => {
         const view = (e, s) => (e ? { cp: s * (e.eval ?? 0), mate: e.mate === undefined ? null : s * e.mate } : { cp: 0, mate: null });
         sb = view(game.analysis[i - 1], sign);
         sa = view(a, -sign);
-        best = a.best ? { from: a.best.slice(0, 2), to: a.best.slice(2, 4), promotion: a.best[4] } : null;
+        // Lichess writes castling as the king taking its rook (e1h1); chess.js wants the king's square (e1g1).
+        const castle = { e1h1: 'e1g1', e1a1: 'e1c1', e8h8: 'e8g8', e8a8: 'e8c8' }[a.best?.slice(0, 4)];
+        const uci = castle && before.get(a.best.slice(0, 2))?.type === 'k' ? castle : a.best;
+        best = uci ? { from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] } : null;
         line = (a.variation || '').split(' ').filter(Boolean); // SAN, starting with the better move
       } else {
         if (!suspicious(before, g, m)) continue;
@@ -89,7 +92,8 @@ export async function findMistakes(games, name, { evaluate, onProgress = () => {
         best = sb.move;
         line = sb.pv || [];
       }
-      const bestMove = best && new Chess(before.fen()).move(best);
+      let bestMove = null;
+      try { bestMove = best && new Chess(before.fen()).move(best); } catch {} // a move that does not fit the position is skipped
       if (!bestMove || bestMove.san === m.san) continue;
       found.push({
         theme: themeOf(before, m.san, best, sb, sa, i), fen: before.fen(), side, ply: i,
