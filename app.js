@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028173931';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028173931';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028173931';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028173931';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028174353';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028174353';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028174353';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028174353';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -902,7 +902,7 @@ function renderWhy() {
   if (!hist.length && lines[lineIdx]) {
     const l = lines[lineIdx], about = ABOUT[cur.family] || ABOUT[shortName(cur.family)] || '';
     const plan = planOf(cur);
-    parts.push(`<p class="intro"><b>${isVs(cur) ? 'vs ' : ''}${cur.name}.</b> ${about} This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level${bigShare(l.share) ? ` (${bigShare(l.share)})` : ''}. It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap ? ` <b>A trap.</b> ${trapStory(l)}` : ''}</p>${plan ? `<p class="intro plan"><b>Your plan:</b> ${plan}</p>` : ''}`);
+    parts.push(`<p class="intro"><b>${isVs(cur) ? 'vs ' : ''}${cur.name}.</b> ${about} This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level${bigShare(l.share) ? ` (${bigShare(l.share)})` : ''}. It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap ? ` <b>${l.trap.kind === 'mistake' ? 'A common mistake' : 'A trap'}.</b> ${trapStory(l)}` : ''}</p>${plan ? `<p class="intro plan"><b>Your plan:</b> ${plan}</p>` : ''}`);
   }
   // First what to play and why (Learn), then a quiet line on the last move, then the other replies
   // folded away: the board and the move to make come first.
@@ -1007,7 +1007,7 @@ function lineWhy() {
       : `Stockfish gives ${them} ${cp > -100 ? 'a small' : 'an'} edge${scoresWell() ? ', but players at your level win more than they lose from here' : ', so play carefully'}.`);
   }
   const trap = lines[lineIdx]?.trap;
-  if (trap) why.push(`${them} fell for the trap ${trapMove(trap)}: players at your level score ${pct(1 - trap.score)} from here.`);
+  if (trap) why.push(`${them} ${trap.kind === 'mistake' ? 'made the common mistake' : 'fell for the trap'} ${trapMove(trap)}${trap.win ? `, which loses ${trap.win}` : ''}: players at your level score ${pct(1 - trap.score)} from here.`);
   if (p.out > p.theirOut) why.push(`You are ahead in development: ${p.out} knights and bishops out against ${p.theirOut}, so open the game before ${them} catches up.`);
   else if (p.out < p.theirOut) why.push(`${them} is ahead in development (${p.theirOut} pieces out against your ${p.out}), so catch up before you start anything.`);
   if (p.theirKingInCentre && !p.theyCastled) why.push(`${them}'s king is still in the centre: if the centre opens, it is a target.`);
@@ -1096,6 +1096,7 @@ function start(op) {
   render();
   if (!rating) return say(`Enter your Lichess ${speed} rating at the top.`);
   lines = buildLines(op);
+  setTimeout(classifyTraps, 1500); // after the board's first evaluation
   if (!lines.length) return say('Not enough games at your rating for this opening.', 'bad');
   const s = stats[statKey(op.id)] = { done: [], played: [], ...stats[statKey(op.id)], total: lines.length };
   s.played ??= [];
@@ -1540,6 +1541,7 @@ function unchoose(key) {
 }
 function rebuildLines() {
   lines = buildLines(cur);
+  classifyTraps();
   stats[statKey(cur.id)].total = lines.length;
   store(STORE, stats);
 }
@@ -1621,6 +1623,14 @@ function punishArrow(t) {
   const m = new Chess(game.fen()).move(san);
   return [[m.from, m.to, GREEN]];
 }
+// Right after you punish the line's slip: why your move was right, and what it brings.
+function punished(m) {
+  const t = lines[lineIdx]?.trap, i = game.history().length - 1;
+  if (!t || i !== t.ply + 1 || mode === 'time') return;
+  const idea = ideaAt(new Chess(m.before), m.san), them = sideName(m.color === 'w' ? 'b' : 'w');
+  moment('good', 'Punished!', `<b>${moveLabel(i, m.san)}</b> is the answer to ${trapMove(t)}${idea ? `: ${idea.replace(/^./, (c) => c.toLowerCase())}` : '.'} ${t.kind === 'trap' && t.win
+    ? `Now ${them} cannot hold everything: you win ${t.win}.` : `${them} is now behind in time and development: you have the easier game.`}`, [{ label: 'Got it', run: () => {} }], null, null, null);
+}
 function punishText(t) {
   const l = lines[lineIdx], san = l.moves[t.ply + 1];
   if (!san) return '';
@@ -1629,7 +1639,52 @@ function punishText(t) {
   const idea = ideaAt(g, san);
   return `The answer is <b>${san}!</b>${idea ? `: ${idea.replace(/^./, (c) => c.toLowerCase())}` : '.'}`;
 }
-const trapStory = (l) => `At your level your opponent often plays <b>${trapMove(l.trap)}</b>. It looks natural, but you score ${pct(1 - l.trap.score)} after it. This line shows how to punish it.`;
+// A trap or a common mistake: a trap loses something concrete (material, or mate) by Stockfish's best
+// line after it; a common mistake only gives you the easier game (time, development, a weak king).
+// t.kind is 'trap' or 'mistake' once Stockfish has looked (classifyTraps), t.win what you win.
+const trapWord = (t) => (t.kind === 'mistake' ? 'Common mistake' : 'Trap');
+const trapStory = (l) => `At your level your opponent often plays <b>${trapMove(l.trap)}</b>. ${l.trap.kind === 'trap' && l.trap.win
+  ? `It looks natural, but it loses ${l.trap.win}` : l.trap.kind === 'mistake' ? 'It is no blunder, but it costs time and hands you the easier game' : 'It looks natural, but it lets you win'}: you score ${pct(1 - l.trap.score)} after it. This line shows how to punish it.`;
+const TRAPS_KEY = STORE + '-traps'; // { [fen before | move]: { kind, win } }, so Stockfish looks once
+// What a run of moves wins for the side to move at its start: the pieces each side loses, as words.
+function winOf(fen, pv) {
+  const g = new Chess(fen), me = g.turn(), lost = { [me]: [], other: [] };
+  for (let i = 0; i < pv.length && (i < 6 || g.history({ verbose: true }).at(-1)?.captured); i++) { // a capture at the end is answered first
+    let m;
+    try { m = g.move({ from: pv[i].slice(0, 2), to: pv[i].slice(2, 4), promotion: pv[i][4] }); } catch { break; }
+    if (m.captured) (m.color === me ? lost.other : lost[me]).push(m.captured);
+    if (g.isCheckmate()) return { mate: m.color === me };
+  }
+  const pts = (xs) => xs.reduce((s, t) => s + VALUE_OF[t], 0);
+  const net = pts(lost.other) - pts(lost[me]);
+  const top = [...lost.other].sort((a, b) => VALUE_OF[b] - VALUE_OF[a])[0], mine = [...lost[me]].sort((a, b) => VALUE_OF[b] - VALUE_OF[a])[0];
+  return { net, text: top ? `${top === 'p' && net >= 2 ? `${net} pawns` : `a ${PIECE[top]}`}${mine && VALUE_OF[mine] >= 3 ? ` for a ${PIECE[mine]}` : ''}` : '' };
+}
+console.assert(winOf('4k3/8/8/8/8/8/3n4/3QK3 w - - 0 1', ['d1d2']).net === 3, 'winOf: Qxd2 wins a knight');
+async function classifyTraps() {
+  const known = load(TRAPS_KEY, {}), mine = lines;
+  for (const l of mine) {
+    const t = l.trap;
+    if (!t || t.kind) continue;
+    const g = new Chess();
+    l.moves.slice(0, t.ply).forEach((m) => g.move(m));
+    const key = `${evalKey(g.fen())}|${t.san}`;
+    if (!known[key]) {
+      const before = await search(g.fen(), { ms: 400 });
+      g.move(t.san);
+      const after = await search(g.fen(), { ms: 600 });
+      if (!before || !after) return;
+      const drop = toCp(before) + toCp(after); // what the slip cost its player, in centipawns
+      const w = after.mate > 0 ? { mate: true } : winOf(g.fen(), after.pv);
+      known[key] = w.mate ? { kind: 'trap', win: 'the game: there is a mate' }
+        : w.net >= 1 && drop >= 100 ? { kind: 'trap', win: w.text } : { kind: 'mistake' };
+      store(TRAPS_KEY, known);
+    }
+    for (const x of mine) if (x.trap && x.trap.ply === t.ply && x.trap.san === t.san && lineKey(x.moves.slice(0, t.ply)) === lineKey(l.moves.slice(0, t.ply))) Object.assign(x.trap, known[key]);
+    if (lines !== mine) return; // another opening or rebuilt lines: they get their own run
+    renderLines(); renderLineBox(); renderWhy();
+  }
+}
 const lineEnd = (l) => numbered(lineKey(l.moves)).split(' ').slice(l.moves.length % 2 ? -1 : -2).join(' ');
 
 // Which line this is, how far through the opening you are, and how likely the line is to come up.
@@ -1650,7 +1705,7 @@ function renderLineBox() {
     ${s.done?.includes(lineKey(l.moves)) ? '<p class="lb-status cleared"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>You have cleared this line</p>'
       : s.played?.includes(lineKey(l.moves)) ? '<p class="lb-status"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>You have learned this line</p>' : ''}
     <div class="lb-stats">
-      ${l.trap ? `<div class="lb-trap"><b>${trapMove(l.trap)}</b><span>the trap: you score ${pct(1 - l.trap.score)} after it</span></div>` : bigShare(l.share) ? `<div><b>${bigShare(l.share)}</b><span>of games in this opening go this way</span></div>` : ''}
+      ${l.trap ? `<div class="lb-trap"><b>${trapMove(l.trap)}</b><span>the ${trapWord(l.trap).toLowerCase()}${l.trap.win ? `: it loses ${l.trap.win}` : `: you score ${pct(1 - l.trap.score)} after it`}</span></div>` : bigShare(l.share) ? `<div><b>${bigShare(l.share)}</b><span>of games in this opening go this way</span></div>` : ''}
       <div><b>${played}/${n}</b><span>lines learned</span></div>
       <div><b>${done}/${n}</b><span>lines cleared${due ? `, ${due} due for review` : ''}</span></div>
     </div>
@@ -1667,7 +1722,7 @@ function renderLines() {
   // Green once you have played a line through (Learn), stronger with a tick once cleared (Practice).
   const state = (l) => (done.includes(lineKey(l.moves)) ? ' cleared' : learned.includes(lineKey(l.moves)) ? ' learned' : '');
   $('#lines-list').innerHTML = lines.map((l, i) => `<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}" data-i="${i}">
-      <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? '<span class="trap-tag">Trap</span> ' : ''}${lineName(l)}<small>${lineTag(l)}</small></span>
+      <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? `<span class="trap-tag${l.trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(l.trap)}</span> ` : ''}${lineName(l)}<small>${lineTag(l)}</small></span>
       <span class="line-share">${bigShare(l.share)}</span><span class="line-ok">${state(l) ? `<span class="done-tag"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${state(l) === ' cleared' ? 'Cleared' : 'Learned'}</span>` : ''}</span>
     </button></li>`).join('');
   if (linesView === 'tree') renderTree();
@@ -1691,7 +1746,7 @@ function renderTree() {
   const label = (ply, san, first) => (ply % 2 === 0 ? `${ply / 2 + 1}.${san}` : first ? `${(ply + 1) / 2}...${san}` : san);
   const end = (i) => {
     const k = lineKey(lines[i].moves), st = done.includes(k) ? 'cleared' : learned.includes(k) ? 'learned' : 'new';
-    return `<button type="button" class="tree-end ${st}${i === lineIdx ? ' now' : ''}" data-i="${i}">${lines[i].trap ? '<span class="trap-tag">Trap</span> ' : ''}Line ${i + 1}<small>${st === 'new' ? 'not played' : st}</small></button>`;
+    return `<button type="button" class="tree-end ${st}${i === lineIdx ? ' now' : ''}" data-i="${i}">${lines[i].trap ? `<span class="trap-tag${lines[i].trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(lines[i].trap)}</span> ` : ''}Line ${i + 1}<small>${st === 'new' ? 'not played' : st}</small></button>`;
   };
   // One branch: its moves up to the next fork or line end, then what follows.
   const branch = (san, node, ply) => {
@@ -1746,7 +1801,7 @@ function reply() {
         if (ply >= line.length) return finish();
         if (!playPremove()) prompt('Your move: punish it.');
       };
-      moment('trap', 'Trap!', `${sideName(m.color)} played <b>${trapMove(t)}</b>, the mistake this line is about. It looks natural, but it lets you win: players at your level score ${pct(1 - t.score)} after it. ${mode === 'learn' ? punishText(t) || 'The green arrow shows how to punish it.' : 'This is the moment: find the move that punishes it.'}`,
+      moment('trap', `${trapWord(t)}!`, `${sideName(m.color)} played <b>${trapMove(t)}</b>, the move this line is about. ${t.kind === 'trap' && t.win ? `It loses ${t.win}.` : t.kind === 'mistake' ? 'No blunder, but it costs time and hands you the easier game.' : 'It looks natural, but it lets you win.'} Players at your level score ${pct(1 - t.score)} after it. ${mode === 'learn' ? punishText(t) || 'The green arrow shows how to punish it.' : 'This is the moment: find the move that punishes it.'}`,
         [{ label: 'Punish it', run: go }], was === null ? null : [was, 1 - t.score], [[m.from, m.to, RED], ...punishArrow(t)], go);
       // Where the line stops at the slip, Stockfish's best move is the punishment to show.
       if (mode === 'learn' && momentArrows.length === 1) {
@@ -1797,6 +1852,8 @@ function tryMove(from, to) {
   try { m = game.move({ from, to, promotion: 'q' }); } catch { return false; }
   if (!m) return false;
   if (playing) {
+    const best = EVALS.get(evalKey(m.before))?.move;
+    if (punish > 0 && best?.from === m.from && best?.to === m.to) punished(m);
     if (punish > 0) punish--;
     // Playing on from the line's end is practice: the mode says so (without starting the line again).
     if (mode === 'learn' && endLen && ply === endLen) setMode('try', false, false);
@@ -1842,6 +1899,7 @@ function tryMove(from, to) {
   say(mode === 'time' ? `Right: ${m.san}. +${TRIAL_RIGHT} s` : moved === 'swap' ? `${m.san} first is fine: same moves, another order. The line goes on.` : moved ? `${m.san} reaches the same position by another move order. Fine: the line goes on from here.` : `Right: ${moveWords(m)}.`, 'good');
   notes[ply - 1] = 'book';
   render();
+  punished(m);
   if (ply >= line.length) finish(); else reply();
   return true;
 }
@@ -1951,7 +2009,7 @@ function finish() {
     punish = Math.max(mateIn, punishMoves()); punishDone = true; playing = true; engineSaid = true;
     renderControls(); // Hint works while you play it out
     say(mateIn ? `There is a mate in ${mateIn}! ${mode === 'learn' ? 'Follow the arrow.' : 'Find it. Press Hint if you need help.'}`
-      : mode === 'learn' ? 'Now punish the trap: follow the arrow.' : 'Now punish the trap. Press Hint if you need help.', 'good');
+      : mode === 'learn' ? 'Now punish it: follow the arrow.' : 'Now punish it. Press Hint if you need help.', 'good');
     if (game.turn() !== cur.side) return opponentPlays();
     return guide();
   }
