@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028143434';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028143434';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028143434';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028143434';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028143531';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028143531';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028143531';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028143531';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1180,7 +1180,8 @@ let engineSaid = false; // the switch to Stockfish is mentioned once per game
 async function opponentPlays() {
   busy = true;
   const gen = gameGen, at = game.fen();
-  const real = gamesAt(game.history().map(clean)).moves.find((m) => m.n >= MIN_GAMES);
+  // Follow the real games as long as any reach this position: the reply played most there.
+  const real = gamesAt(game.history().map(clean)).moves[0];
   const m = real ? { san: real.san } : await bestMove(at, { elo: opponentElo() });
   await new Promise((x) => setTimeout(x, 450));
   if (gen !== gameGen || game.fen() !== at || !m) { if (gen === gameGen) busy = false; return; }
