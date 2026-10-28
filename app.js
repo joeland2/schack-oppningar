@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028140300';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028140300';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028140300';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028140300';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028140957';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028140957';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028140957';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028140957';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -164,9 +164,22 @@ function strongGroups(moves) {
   }
 }
 
+// Your move in a line: among the moves strong players really play here (at least STRONG_SHARE of
+// their games), the one that scores best for you in games at your level. Sound moves that also win:
+// a trap that only works on weak players never makes the list. A move of the opening's own book wins a
+// near tie, so the line stays in its opening.
+const STRONG_SHARE = 0.1;
 function userMove(moves, book) {
-  const strong = strongGroups(moves).x.moves.filter((m) => m.n >= MIN_GAMES);
-  return (strong.find((m) => book.has(lineKey([...moves, m.san]))) || strong[0])?.san;
+  const { x } = strongGroups(moves);
+  const sound = x.moves.filter((m) => m.n >= MIN_GAMES && m.n / x.total >= STRONG_SHARE);
+  if (!sound.length) return x.moves.find((m) => m.n >= MIN_GAMES)?.san;
+  const me = moves.length % 2 ? 'b' : 'w';
+  const here = gamesAt(moves).moves;
+  const score = (m) => {
+    const mine = here.find((h) => h.san === m.san && h.n >= MIN_GAMES);
+    return scoreFor(mine || m, me) + (book.has(lineKey([...moves, m.san])) ? 0.01 : 0);
+  };
+  return sound.reduce((best, m) => (score(m) > score(best) ? m : best)).san;
 }
 
 // Grow lines from the root, most common first. Each opponent reply played in ≥ MIN_SHARE of games
@@ -713,7 +726,7 @@ console.assert(idea(['e4', 'e5'], 'Nf3').startsWith('Develops the knight. Attack
 
 // The idea plus what real games say: how often the move is chosen here, and how you do after it.
 function why(before, san) {
-  return idea(before, san) || 'The move strong players choose most here.';
+  return idea(before, san) || 'A sound move that scores well at your level.';
 }
 
 // A side's share of the points after a move (a draw is half a point); explore() gives White's.
