@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028144102';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028144102';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028144102';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028144102';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028144706';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028144706';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028144706';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028144706';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -10,6 +10,9 @@ const MAX_LINES = 20;
 const MIN_LINE = 0.03;   // a side line needs 3% of the opening's games to become a line of its own
 const THEORY = 0.15;     // a reply strong players choose this often is a main line, rare at your level or not
 const THEORY_GROUPS = [6, 7, 8]; // 2000+
+// A trap: a reply players at your level make in at least TRAP_SHARE of games (and MIN_GAMES), after which
+// they score TRAP_SCORE or less (in TRAP_GAMES games or more). It gets a line of its own, so you learn how to punish it.
+const TRAP_SHARE = 0.02, TRAP_SCORE = 0.35, TRAP_GAMES = 40;
 const MIN_GAMES = 20;     // below this, real-game data is too thin to trust
 const MAX_PLY = 20;       // data/explorer-*.json goes this deep
 const DATA = '2026-10-28-k8'; // version of data/explorer-*.json
@@ -217,16 +220,21 @@ function buildLines(op) {
     // players (THEORY of games at 2000+), where players at your level reach them at all.
     const strong = explore(moves, THEORY_GROUPS);
     const theory = new Set(strong.moves.filter((m) => m.n >= MIN_GAMES && m.n / strong.total >= THEORY).map((m) => m.san));
-    const replies = x.total < MIN_GAMES ? [] : x.moves.filter((m) => (m.n >= MIN_GAMES && m.n / x.total >= MIN_SHARE) || (theory.has(m.san) && m.n >= 3));
-    if (!replies.length) { done.push({ moves, share: l.share, name, branch: l.branch }); continue; }
+    const opp = op.side === 'w' ? 'b' : 'w';
+    const trap = (m) => m.n >= TRAP_GAMES && m.n / x.total >= TRAP_SHARE && scoreFor(m, opp) <= TRAP_SCORE;
+    const replies = x.total < MIN_GAMES ? [] : x.moves.filter((m) => (m.n >= MIN_GAMES && m.n / x.total >= MIN_SHARE) || (theory.has(m.san) && m.n >= 3) || trap(m));
+    if (!replies.length) { done.push({ moves, share: l.share, name, branch: l.branch, trap: l.trap }); continue; }
     const room = Math.max(1, MAX_LINES - done.length - open.length);
     // The most common reply always carries the line on; others branch off only if they come up in at
     // least MIN_LINE of games in this opening, so the line budget goes to depth, not to rarities.
     // branch: how many of the opening's games reach the point where this line leaves its parent; the
     // main line (always the most common reply) keeps 1, so it is learned first.
-    for (const [i, m] of replies.filter((m, i) => i === 0 || theory.has(m.san) || l.share * m.n / x.total >= MIN_LINE).slice(0, room).entries()) {
+    for (const [i, m] of replies.filter((m, i) => i === 0 || theory.has(m.san) || trap(m) || l.share * m.n / x.total >= MIN_LINE).slice(0, room).entries()) {
       const share = l.share * m.n / x.total;
-      open.push({ moves: [...moves, m.san], share, name: nameOf([...moves, m.san], name), branch: i ? share : l.branch });
+      open.push({ moves: [...moves, m.san], share, name: nameOf([...moves, m.san], name), branch: i ? share : l.branch,
+        // a trap is the line where the mistake is made (never the main reply); the line keeps it as it
+        // goes on, but lines branching off it later are lines of their own
+        trap: i === 0 ? l.trap : trap(m) ? { ply: moves.length, san: m.san, score: scoreFor(m, opp) } : null });
     }
   }
   // Every line ends on the opponent's move: you see their answer, then play on from there. A line that
@@ -237,8 +245,9 @@ function buildLines(op) {
     const reply = gamesAt(l.moves).moves[0];
     return { ...l, moves: reply ? [...l.moves, reply.san] : l.moves.slice(0, -1) };
   }).filter((l) => l.moves.length && !seen.has(lineKey(l.moves)) && seen.add(lineKey(l.moves)))
-    // As a course does it: the main line first, then the lines that leave it, the most common first.
-    .sort((a, b) => b.branch - a.branch || b.share - a.share);
+    // As a course does it: the main line first, then the traps to punish, then the lines that leave the
+    // main line, the most common first.
+    .sort((a, b) => (b.branch === 1) - (a.branch === 1) || !!b.trap - !!a.trap || b.branch - a.branch || b.share - a.share);
 }
 
 // The most played White openings at your level, found by walking real games from the start position,
@@ -802,7 +811,8 @@ function renderWhy() {
   // Before the first move, an introduction: what the opening is about and which line this is.
   if (!hist.length && lines[lineIdx]) {
     const l = lines[lineIdx], about = ABOUT[cur.family] || ABOUT[shortName(cur.family)] || '';
-    parts.push(`<p class="intro"><b>${isVs(cur) ? 'vs ' : ''}${cur.name}.</b> ${about} This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level (${pctOf(l.share)}). It runs to move ${Math.ceil(l.moves.length / 2)}.</p>`);
+    parts.push(`<p class="intro"><b>${isVs(cur) ? 'vs ' : ''}${cur.name}.</b> ${about} This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level (${pctOf(l.share)}). It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap
+      ? ` <b>A trap:</b> at your level your opponent often plays ${numbered(lineKey(l.moves.slice(0, l.trap.ply + 1))).split(' ').at(-1)} here and scores only ${pct(l.trap.score)} after it. Learn how to punish it.` : ''}</p>`);
   }
   // First what to play and why (Learn), then a quiet line on the last move, then the other replies
   // folded away: the board and the move to make come first.
@@ -813,6 +823,8 @@ function renderWhy() {
     const yours = (n % 2 === 0) === (cur.side === 'w');
     const text = yours ? why(before, san) : idea(before, san);
     parts.push(`<p class="prev">${yours ? 'You' : sideName(n % 2 ? 'b' : 'w')} played <b>${label(n, hist[n])}</b>${text ? `: ${lower(text)}` : ''}</p>`);
+    const t = lines[lineIdx]?.trap;
+    if (t && n === t.ply && mode !== 'explore') parts.push(`<p class="trap-now"><b>That is the mistake.</b> Players at your level score only ${pct(t.score)} after ${san}. Now punish it.</p>`);
     const reps = !yours && repliesText(before, san);
     if (reps) parts.push(`<details class="reps-box"><summary>What players at your level answer here</summary>${reps}</details>`);
   }
@@ -1357,7 +1369,7 @@ function renderLines() {
   // Green once you have played a line through (Learn), stronger with a tick once cleared (Practice).
   const state = (l) => (done.includes(lineKey(l.moves)) ? ' cleared' : learned.includes(lineKey(l.moves)) ? ' learned' : '');
   $('#lines-list').innerHTML = lines.map((l, i) => `<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}" data-i="${i}">
-      <span class="line-n">${i + 1}.</span><span class="line-name">${lineName(l)}<small>${lineEnd(l)}</small></span>
+      <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? '<span class="trap-tag">Trap</span> ' : ''}${lineName(l)}<small>${lineEnd(l)}</small></span>
       <span class="line-share">${pctOf(l.share)}</span><span class="line-ok">${state(l) ? `<span class="done-tag"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${state(l) === ' cleared' ? 'Cleared' : 'Learned'}</span>` : ''}</span>
     </button></li>`).join('');
 }
