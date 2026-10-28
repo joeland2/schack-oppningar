@@ -778,7 +778,9 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 
 /* Skill bars: one orange, the value in ink beside it */
 .pf-note { margin: -4px 0 16px; font-size: 13px; }
-.pf-skills { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px 32px; }
+.pf-skills { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px 32px; }
+@media (max-width: 860px) { .pf-skills { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .pf-skills { grid-template-columns: 1fr; } }
 .pf-skills li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: baseline; align-content: start; }
 .pf-skill-name { font-weight: 600; }
 .pf-skill-val { font: 400 26px/1 var(--font-poster); }
@@ -916,3 +918,16 @@ a.cta { color: var(--accent-ink); }
 .cmp-table small { color: var(--muted); font-weight: 400; }
 @media (max-width: 640px) { .cmp-skills li { grid-template-columns: 1fr auto; } .cmp-bars { grid-column: 1 / -1; grid-row: 2; } }
 .cmp-head .pf-h1 { font-size: clamp(2rem, 5.5vw, 3.6rem); overflow-wrap: anywhere; }
+
+/* Skills: six equal tiles; the explanations open together from one button */
+.pf-skills-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.pf-skills-head h2 { margin: 0; }
+.pf-skill-more { display: none; grid-column: 1 / -1; }
+.pf-skills-card.open .pf-skill-more { display: grid; gap: 4px; }
+.pf-skill-val { font-size: 34px; }
+.pf-skills .pf-meter { height: 8px; border-radius: 4px; }
+.pf-skills .pf-meter i { border-radius: 4px; }
+/* the analyse bar above the skills, a little larger */
+.pf-analyse { font-size: 14.5px; gap: 8px 10px; }
+.pf-an-opt { padding: 6px 14px; font-size: 14px; }
+.pf-an-opt small { font-size: 12.5px; }

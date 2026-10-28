@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028213816';
-import { STYLE_OF } from './styles.js?v=20261028213816';
+import { account, login, finishLogin } from './lichess.js?v=20261028214139';
+import { STYLE_OF } from './styles.js?v=20261028214139';
 
 const MAX = 500;
 const PV = 4; // bumped when the profile gains something new: older saved profiles are read again
@@ -424,14 +424,15 @@ function verdictList(items, empty) {
 function openingRows(list) {
   return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><span>${esc(o.fam)}</span><small>${o.n} games · ${pct(o.score)}</small>${bar(o.score)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
 }
-// Each bar: what it measures, what the games show, and below 50 how to train it.
+// Each bar: what it measures, what the games show, and below 50 how to train it; the words show on request.
+let showSkillText = false;
 function skillBars(skills, say, me) {
   return `<ul class="pf-skills">${skills.map((x) => `<li${x.v === null ? ' class="pf-skill-none"' : ''}>
       <span class="pf-skill-name">${x.label}</span><span class="pf-skill-val">${x.v ?? '–'}</span>
       <div class="pf-meter" role="img" aria-label="${x.label}: ${x.v === null ? 'not enough games' : `${x.v} of 100`}"><i style="width:${x.v ?? 0}%"></i></div>
-      <p class="pf-means">${esc(x.means)}</p>
+      <div class="pf-skill-more"><p class="pf-means">${esc(x.means)}</p>
       <small>${x.v === null ? 'Not enough games to say.' : esc(say(x.why))}</small>
-      ${x.v !== null && x.v < 50 ? `<p class="pf-train"><b>How to train:</b> ${esc(x.train)}${me && x.href ? ` <a href="${x.href}">Start</a>` : ''}</p>` : ''}</li>`).join('')}</ul>`;
+      ${x.v !== null && x.v < 50 ? `<p class="pf-train"><b>How to train:</b> ${esc(x.train)}${me && x.href ? ` <a href="${x.href}">Start</a>` : ''}</p>` : ''}</div></li>`).join('')}</ul>`;
 }
 // Which kind of opening each side mostly picks: the top style when it is a quarter or more of them.
 const taste = (m) => (m && m.n >= 10 ? m.parts.find((x) => x.k !== 'other' && x.share >= 0.25) || null : null);
@@ -473,7 +474,6 @@ function render(name, at, p) {
   const kpis = [['Score', pct(p.score)], p.acc !== null && ['Accuracy', `${p.acc}%`], p.blunders !== null && ['Blunders / game', p.blunders.toFixed(1)], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
     ${playerBar(name)}
-    ${analysePanel(name, p)}
     <section class="pf-hero">
       ${playerCard(name, p, t, skills)}
       <div class="pf-hero-text">
@@ -487,10 +487,12 @@ function render(name, at, p) {
     </section>
     <section class="pf-card pf-chart" id="pf-chart"></section>
     <dl class="pf-kpis">${kpis.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
-    <section class="pf-card">
-      <h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
-      <p class="info pf-note">Each bar is read from one thing in the games. 50 is a so-so result.</p>
+    ${analysePanel(name, p)}
+    <section class="pf-card pf-skills-card${showSkillText ? ' open' : ''}">
+      <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
+        <button type="button" class="link" data-skill-text aria-expanded="${showSkillText}">${showSkillText ? 'Hide explanations' : 'What each one means'}</button></div>
       ${skillBars(skills, say, me)}
+      <p class="info pf-note pf-skill-more">Each bar is read from one thing in the games. 50 is a so-so result.</p>
     </section>
     <div class="pf-two">
       <section class="pf-card"><h2 class="pf-good">Strengths</h2>${list(p.good, 'Nothing stands out yet. More games give a clearer picture.')}</section>
@@ -526,6 +528,12 @@ function render(name, at, p) {
   bindSearch();
   bindAnalyse(name);
   bindPlayerBar(name);
+  $('[data-skill-text]').addEventListener('click', (e) => {
+    showSkillText = !showSkillText;
+    $('.pf-skills-card').classList.toggle('open', showSkillText);
+    e.currentTarget.setAttribute('aria-expanded', showSkillText);
+    e.currentTarget.textContent = showSkillText ? 'Hide explanations' : 'What each one means';
+  });
   ratingChart(name, p);
 }
 
