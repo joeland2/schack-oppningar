@@ -1,0 +1,267 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T21:39:27.608062+00:00",
+  "title": "Design System: Chess Trainer",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Newsprint",
+        "tonalRamp": [
+          "#2b2720",
+          "#4a4438",
+          "#6b6352",
+          "#8e856f",
+          "#b2a88f",
+          "#cfc6b1",
+          "#e6dfd1",
+          "#f6f2ea"
+        ]
+      },
+      "paper-panel": {
+        "role": "neutral",
+        "displayName": "Clean Sheet",
+        "tonalRamp": [
+          "#2e2a23",
+          "#4e483c",
+          "#706856",
+          "#958c77",
+          "#b9b09b",
+          "#d7cfbe",
+          "#efe8db",
+          "#faf7f1"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "tonalRamp": [
+          "#141414",
+          "#262626",
+          "#3b3b3b",
+          "#525252",
+          "#6b6b6b",
+          "#8a8a8a",
+          "#b0b0b0",
+          "#d9d9d9"
+        ]
+      },
+      "signal-orange": {
+        "role": "primary",
+        "displayName": "Signal Orange",
+        "tonalRamp": [
+          "#4a1504",
+          "#7a240a",
+          "#a8340f",
+          "#d64614",
+          "#ff5a1f",
+          "#ff825a",
+          "#ffab91",
+          "#ffd6c7"
+        ]
+      },
+      "signal-orange-text": {
+        "role": "primary",
+        "displayName": "Readable Orange"
+      },
+      "result-green": {
+        "role": "semantic",
+        "displayName": "Result Green"
+      },
+      "result-red": {
+        "role": "semantic",
+        "displayName": "Result Red"
+      },
+      "night-paper": {
+        "role": "neutral",
+        "displayName": "Night Paper"
+      },
+      "night-ink": {
+        "role": "neutral",
+        "displayName": "Night Ink"
+      },
+      "night-orange": {
+        "role": "primary",
+        "displayName": "Night Orange"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The player type and page titles; one per view."
+      },
+      "stat": {
+        "displayName": "Stat",
+        "purpose": "Every big number: overall, skills, KPIs, ratings."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase tracked panel headings and stat labels."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-on-table",
+        "value": "0 22px 44px rgb(20 20 20 / .25)",
+        "purpose": "The player card only."
+      },
+      {
+        "name": "floating-menu",
+        "value": "0 12px 30px rgb(0 0 0 / .25)",
+        "purpose": "Dropdowns and help popovers."
+      }
+    ],
+    "motion": [
+      {
+        "name": "hover-lift",
+        "value": "transform .15s",
+        "purpose": "Compare cards lift 3px on hover; off with reduced motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "560px"
+      },
+      {
+        "name": "profile-hero",
+        "value": "640px"
+      },
+      {
+        "name": "skills-two-up",
+        "value": "860px"
+      },
+      {
+        "name": "header-two-rows",
+        "value": "1360px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action: Solve them, Analyse it now.",
+      "html": "<button class=\"ds-btn-primary\">Solve them</button>",
+      "css": ".ds-btn-primary{background:var(--accent,#141414);color:var(--accent-ink,#efe8db);border:0;border-radius:4px;padding:10px 18px;font:700 15px Geist,system-ui,sans-serif;cursor:pointer}.ds-btn-primary:hover{background:color-mix(in srgb,var(--accent,#141414) 88%,#666)}.ds-btn-primary:focus-visible{outline:2px solid var(--accent,#141414);outline-offset:2px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary action: Star player, Compare with me.",
+      "html": "<button class=\"ds-btn-ghost\">☆ Star player</button>",
+      "css": ".ds-btn-ghost{background:var(--surface,#efe8db);color:var(--ink,#141414);border:1px solid var(--line,#d3c8b3);border-radius:8px;padding:9px 16px;font:500 15px Geist,system-ui,sans-serif;cursor:pointer}.ds-btn-ghost:hover{border-color:var(--hot,#c2410c)}.ds-btn-ghost:focus-visible{outline:2px solid var(--accent,#141414);outline-offset:2px}"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "chip",
+      "refersTo": "segment-selected",
+      "description": "Sides, time controls, periods.",
+      "html": "<div class=\"ds-seg\"><button aria-pressed=\"false\">Bullet</button><button aria-pressed=\"true\">Blitz</button><button aria-pressed=\"false\">Rapid</button></div>",
+      "css": ".ds-seg{display:inline-flex;border:1px solid var(--line,#d3c8b3);border-radius:2px;overflow:hidden}.ds-seg button{border:0;background:none;color:var(--muted,#62594c);font:600 12px Geist,system-ui,sans-serif;padding:6px 10px;cursor:pointer}.ds-seg button[aria-pressed=true]{background:var(--ink,#141414);color:var(--bg,#e6dfd1)}"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Every section: paper under a heavy ink rule.",
+      "html": "<section class=\"ds-panel\"><h2>Skills</h2><p>Each bar is read from one thing in the games.</p></section>",
+      "css": ".ds-panel{background:var(--surface,#efe8db);border-top:3px solid var(--rule,#141414);border-radius:4px;padding:24px;color:var(--ink,#141414);font:16px/1.5 Geist,system-ui,sans-serif}.ds-panel h2{margin:0 0 10px;font:600 12px Geist,system-ui,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:var(--muted,#62594c)}"
+    },
+    {
+      "name": "Player Card",
+      "kind": "custom",
+      "refersTo": "player-card",
+      "description": "The collector's card on the profile and in Compare.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-top\"><div><b class=\"ds-ovr\">52</b><span class=\"ds-type\">Attacker</span></div><span class=\"ds-rating\">1226 <small>blitz</small></span></div><p class=\"ds-name\">joelandersson</p><div class=\"ds-stats\"><span><b>22</b>OPN</span><span><b>19</b>TAC</span><span><b>58</b>WIN</span><span><b>75</b>DEF</span><span><b>66</b>END</span><span><b>69</b>CLK</span></div></div>",
+      "css": ".ds-card{width:300px;padding:20px;background:var(--card,#141414);color:var(--card-ink,#f4efe6);border-radius:4px;box-shadow:0 22px 44px rgb(20 20 20/.25);font-family:Anton,Impact,sans-serif}.ds-top{display:flex;justify-content:space-between}.ds-ovr{display:block;font-size:72px;line-height:.9;color:var(--card-hot,#ff5a1f);font-weight:400}.ds-type{font-size:17px;text-transform:uppercase}.ds-rating{font-size:20px}.ds-rating small{font-size:13px;opacity:.7;text-transform:uppercase}.ds-name{text-align:center;font-size:26px;text-transform:uppercase;margin:12px 0 8px;padding:6px 0;border-block:1px solid rgb(244 239 230/.3)}.ds-stats{display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;padding:2px 10px}.ds-stats span{display:flex;gap:8px;align-items:baseline;font-size:16px;opacity:.85}.ds-stats b{font-size:26px;font-weight:400;min-width:1.6em}"
+    },
+    {
+      "name": "Stat Tile",
+      "kind": "custom",
+      "description": "A number with its label.",
+      "html": "<div class=\"ds-stat\"><dt>Win rate</dt><dd>49%</dd></div>",
+      "css": ".ds-stat{background:var(--surface,#efe8db);border-top:3px solid var(--rule,#141414);padding:16px}.ds-stat dt{font:600 11px Geist,system-ui,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:var(--muted,#62594c)}.ds-stat dd{margin:4px 0 0;font:400 34px/1 Anton,Impact,sans-serif}"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Find a player, find an opening.",
+      "html": "<input class=\"ds-input\" type=\"search\" placeholder=\"Find a player\">",
+      "css": ".ds-input{font:14px Geist,system-ui,sans-serif;color:var(--ink,#141414);background:var(--surface,#efe8db);border:1px solid var(--line,#d3c8b3);border-radius:8px;padding:8px 10px}.ds-input:focus-visible{outline:2px solid var(--accent,#141414);outline-offset:1px}"
+    },
+    {
+      "name": "Navigation",
+      "kind": "nav",
+      "description": "Header sections with the current one underlined in orange.",
+      "html": "<nav class=\"ds-nav\"><a>Openings</a><a>My practice</a><a aria-current=\"page\">Profile</a></nav>",
+      "css": ".ds-nav{display:flex;gap:4px;font:500 15px Geist,system-ui,sans-serif}.ds-nav a{padding:6px 10px;color:var(--muted,#62594c);cursor:pointer}.ds-nav a:hover{color:var(--ink,#141414)}.ds-nav a[aria-current=page]{color:var(--ink,#141414);box-shadow:inset 0 -2px 0 var(--hot,#c2410c)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Sports Pages",
+    "overview": "The site reads like the sports section of a newspaper about one player: you. Headlines are set big and condensed, numbers are the stars, and every panel sits under a thick black rule. The mood is cocky but clear: poster type and big numbers give it swagger, while body text, labels and tables stay calm and plain. There is a light edition on warm newsprint and a dark edition on near-black paper; the same paper with ink and stock swapped.",
+    "keyCharacteristics": [
+      "Anton poster type for headlines, player types and every big number; Geist for everything you read.",
+      "Warm newsprint (or night paper), ink, and one signal orange.",
+      "A heavy rule across the top of each panel instead of boxes and shadows.",
+      "Stats with labels: small uppercase tracked labels over large condensed numbers.",
+      "Green and red only ever mean won/right and lost/wrong."
+    ],
+    "rules": [
+      {
+        "name": "The One Signal Rule",
+        "body": "Orange is the only accent. Anything orange is either what you are working on or a link; nothing is orange for decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Results Only Rule",
+        "body": "Green and red are reserved for won/lost and right/wrong, always with a label, number or letter beside them.",
+        "section": "colors"
+      },
+      {
+        "name": "The No White Rule",
+        "body": "Paper is never pure white and night paper is never pure black; the warmth is the newsprint.",
+        "section": "colors"
+      },
+      {
+        "name": "The Number Leads Rule",
+        "body": "A stat is a large Anton number with a small uppercase label; never a number without its label.",
+        "section": "typography"
+      },
+      {
+        "name": "The Shout Once Rule",
+        "body": "One display line per view; everything under it is body or label.",
+        "section": "typography"
+      },
+      {
+        "name": "The Even Grid Rule",
+        "body": "Repeated items are equal tiles in a grid; explanations open from one button rather than making tiles uneven.",
+        "section": "layout"
+      },
+      {
+        "name": "The Rule Not Box Rule",
+        "body": "A panel is defined by its 3px ink rule on top and its paper tone; no outlines or shadows on panels.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do set every headline, player type and big number in Anton, uppercase, and everything else in Geist.",
+      "Do put a 3px ink rule across the top of every panel and keep panels flat.",
+      "Do keep orange for what the player is working on and for links, and darken it to Readable Orange when it is text.",
+      "Do give every number a label and every colour a word or letter beside it.",
+      "Do keep the dark edition as the same paper with ink and stock swapped.",
+      "Do keep the board Lichess's brown board with cburnett pieces."
+    ],
+    "donts": [
+      "Don't use pure white or pure black backgrounds.",
+      "Don't add a second accent colour or use green and red for anything but results.",
+      "Don't put shadows or outlines around panels; only the player card and floating menus lift off the page.",
+      "Don't go \"gamer\": no neon, glows, pixel fonts or holographic effects (tried and rejected).",
+      "Don't let a long explanation make tiles uneven; hide it behind one button instead."
+    ]
+  }
+}
