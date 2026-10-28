@@ -706,3 +706,4 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .moment-quiz .moment-actions { display: grid; gap: 6px; }
 .moment-quiz .moment-actions button { text-align: left; font-weight: 500; background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
 .moment-quiz .moment-actions button:hover { border-color: var(--ink); }
+.coach .why .careful { color: var(--ink); border-left: 3px solid #e07b00; padding-left: 8px !important; }

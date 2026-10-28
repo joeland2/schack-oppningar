@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028180455';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028180455';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028180455';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028180455';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028180947';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028180947';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028180947';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028180947';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -12,7 +12,7 @@ const THEORY = 0.15;     // a reply strong players choose this often is a main l
 const THEORY_GROUPS = [6, 7, 8]; // 2000+
 // A trap: a reply players at your level make in at least TRAP_SHARE of games (and MIN_GAMES), after which
 // they score TRAP_SCORE or less (in TRAP_GAMES games or more). It gets a line of its own, so you learn how to punish it.
-const TRAP_SHARE = 0.02, TRAP_SCORE = 0.35, TRAP_GAMES = 40;
+const TRAP_SHARE = 0.015, TRAP_SCORE = 0.38, TRAP_GAMES = 30;
 const MIN_GAMES = 20;     // below this, real-game data is too thin to trust
 const MAX_PLY = 20;       // data/explorer-*.json goes this deep
 const DATA = '2026-10-28-k8c'; // version of data/explorer-*.json
@@ -909,7 +909,11 @@ function renderWhy() {
   }
   // First what to play and why (Learn), then a quiet line on the last move, then the other replies
   // folded away: the board and the move to make come first.
-  if (mode === 'learn' && userTurn() && ply < line.length) parts.push(`<p class="why-now"><b>Why</b> ${why(line.slice(0, ply), line[ply])}</p>`);
+  if (mode === 'learn' && userTurn() && ply < line.length) {
+    parts.push(`<p class="why-now"><b>Why</b> ${why(line.slice(0, ply), line[ply])}</p>`);
+    const c = careful(line.slice(0, ply), line[ply]);
+    if (c) parts.push(`<p class="careful"><b>Careful:</b> many players at your level play ${c.san} here and score only ${pct(scoreFor(c, cur.side))}. Don't fall for it.</p>`);
+  }
   if (hist.length) {
     const n = hist.length - 1;
     const before = hist.slice(0, n).map(clean), san = clean(hist[n]);
@@ -1083,7 +1087,8 @@ function lineTips() {
 }
 
 // ---------- Game ----------
-function start(op) {
+function start(op, keepTraps = false) {
+  if (!keepTraps) trapRun = null; // choosing an opening ends trap training
   if (mode === 'explore') setMode('learn', false);
   cur = op;
   line = []; lines = []; game = new Chess();
@@ -1462,7 +1467,10 @@ let boardHeld = false;
 boardEl.addEventListener('pointerdown', () => { boardHeld = true; });
 for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, () => { boardHeld = false; setTimeout(leaveMoment); });
 function leaveMoment() {
-  if (momentOpen && momentOnBoard !== undefined && !boardHeld && game.history().join(' ') !== momentAt) closeMoment();
+  if (!momentOpen || momentOnBoard === undefined || boardHeld) return;
+  const now = game.history({ verbose: true }), at = momentAt ? momentAt.split(' ') : [];
+  const same = at.every((m, i) => now[i] && clean(now[i].san) === clean(m));
+  if (!same || now.slice(at.length).some((m) => m.color === cur.side)) closeMoment(); // taken back, or a move of yours since
 }
 const boardBlocked = () => momentOpen && momentOnBoard === undefined;
 const RED = '#c4242a', ORANGE = '#e07b00', GREEN = '#15781b';
@@ -1559,6 +1567,53 @@ function rebuildLines() {
 }
 msgEl.addEventListener('click', (e) => { const b = e.target.closest('[data-choose]'); if (b && !busy) chooseMove(b.dataset.choose); });
 
+// A trap against you: a move your side often plays here at your level (a tenth of the games or more,
+// TRAP_GAMES at least) that scores TRAP_SCORE or less, other than the line's.
+function careful(before, want) {
+  const x = explore(before, ratingsAround(rating));
+  return x.moves.filter((m) => m.san !== want && m.n >= TRAP_GAMES && m.n / x.total >= 0.1 && scoreFor(m, cur.side) <= TRAP_SCORE).sort((a, b) => b.n - a.n)[0];
+}
+
+// ---------- Trap training: the traps of your openings, one after another ----------
+// The traps (and common mistakes) of your starred openings, or of the ten most played White openings,
+// in a random order. Each starts right before the opponent's slip; you punish it, then Next trap.
+// It does not count towards clearing lines (you did not play them from the start).
+let trapRun = null; // { queue: [{ op, key, ply }], now, done, total }
+function startTraps() {
+  const trapsOf = (ops) => ops.flatMap((op) => buildLines(op).filter((l) => l.trap).map((l) => ({ op, key: lineKey(l.moves), ply: l.trap.ply })))
+    .sort(() => Math.random() - 0.5).slice(0, 15);
+  let queue = trapsOf(OPENINGS.filter((o) => repertoire.has(o.id)));
+  if (!queue.length) queue = trapsOf(shown().filter((o) => o.side === 'w').slice(0, 10)); // starred ones without traps: the most played
+  if (!queue.length) return say('No traps in these openings at your level.');
+  trapRun = { queue, done: 0, total: queue.length };
+  nextTrap();
+}
+function nextTrap() {
+  closeMoment();
+  const t = trapRun.queue.shift();
+  if (!t) {
+    const n = trapRun.total;
+    trapRun = null;
+    renderLineBox();
+    return say(`Trap training done: ${plural(n, 'trap')}. Press Next line to go on with this opening.`, 'good');
+  }
+  trapRun.now = t; trapRun.done++;
+  setupTrap(t);
+}
+function setupTrap(t) {
+  if (cur?.id !== t.op.id) start(t.op, true);
+  if (mode !== 'try') setMode('try', false, false);
+  const i = lines.findIndex((l) => lineKey(l.moves) === t.key);
+  if (i < 0) return nextTrap();
+  play(i);
+  gameGen++; busy = false; hintSq = []; // play()'s own start no longer applies
+  for (const x of lines[i].moves.slice(0, t.ply)) { lastMove = game.move(x); notes[ply++] = 'book'; }
+  assisted = true;
+  render();
+  say(`Trap ${trapRun.done} of ${trapRun.total}: watch their next move.`);
+  reply(); // their move: the slip
+}
+
 // ---------- Idea questions: what your next move should do ----------
 // Now and then in Practice, before your move: what should it do? Three answers in words, from the
 // line's move and two other moves people play here (or other legal ones), so you think of the idea
@@ -1566,7 +1621,7 @@ msgEl.addEventListener('click', (e) => { const b = e.target.closest('[data-choos
 const IDEA_EVERY = 3; // about one of your moves in three, after the first two
 const short = (t) => t.split('. ').slice(0, 2).join('. ').replace(/\.?$/, '.');
 function askIdea() {
-  if (drill || ply < 4 || !userTurn() || Math.random() * IDEA_EVERY >= 1) return;
+  if (drill || momentOpen || ply < 4 || !userTurn() || Math.random() * IDEA_EVERY >= 1) return;
   const g = () => new Chess(game.fen());
   const right = ideaAt(g(), line[ply]);
   if (!right) return;
@@ -1794,6 +1849,7 @@ function renderLineBox() {
       <div><b>${done}/${n}</b><span>lines cleared${due ? `, ${due} due for review` : ''}</span></div>
     </div>
     <div class="lb-bar" aria-hidden="true"><span class="lb-done" style="width:${(done / n) * 100}%"></span><span class="lb-played" style="width:${(Math.max(0, played - done) / n) * 100}%"></span></div>
+    ${trapRun ? `<p class="lb-choice">Trap training: ${trapRun.done} of ${trapRun.total}</p>` : ''}
     ${hardDue().length && !drill ? `<p class="lb-choice">${plural(hardDue().length, 'hard move')} to drill <button type="button" class="link" data-drill>Drill them</button></p>` : ''}
     ${mode === 'try' && practiceSet().length ? `<p class="lb-note">Practising lines ${practiceSet().map((i) => i + 1).join(', ')}.</p>` : ''}
     <p class="lb-note">${nextReview ? nextReview + ' ' : ''}Progress is saved in this browser.</p>`;
@@ -1876,8 +1932,21 @@ function reply() {
     notes[ply - 1] = 'book';
     // The trap's slip: the board stops for a moment with the move in red, so it cannot be missed.
     const t = lines[lineIdx]?.trap;
-    if (mode !== 'time' && t?.ply === ply - 1) {
+    if (mode !== 'time' && t?.ply === ply - 1) return showTrap(t, m);
+    render();
+    if (ply >= line.length) return finish();
+    if (playPremove()) return;
+    // In Practice the "Right" note stays up with the prompt, since the reply comes before you can read it;
+    // in a trial the last right/wrong note stays up.
+    if (mode === 'try' && ply >= 2) { prompt(`Right: ${line[ply - 2]}. Your move.`, 'good'); askIdea(); }
+    else if (mode !== 'time') prompt('Your move.');
+  }, mode === 'time' ? 150 : 450);
+}
+
+// The line's slip has just been played (m): the board waits with the strip until you move or press on.
+function showTrap(t, m) {
       busy = true;
+      const gen = gameGen;
       const before = resultsAt(line.slice(0, t.ply)), was = before ? before.win + before.draw / 2 : null;
       const go = () => {
         if (gen !== gameGen) return;
@@ -1893,16 +1962,20 @@ function reply() {
         const at = game.fen();
         goodMove().then((x) => { if (x && momentOpen && game.fen() === at) { momentArrows = [...momentArrows, [x.from, x.to, GREEN]]; renderBoard(); } });
       }
-      return render();
-    }
-    render();
-    if (ply >= line.length) return finish();
-    if (playPremove()) return;
-    // In Practice the "Right" note stays up with the prompt, since the reply comes before you can read it;
-    // in a trial the last right/wrong note stays up.
-    if (mode === 'try' && ply >= 2) { prompt(`Right: ${line[ply - 2]}. Your move.`, 'good'); askIdea(); }
-    else if (mode !== 'time') prompt('Your move.');
-  }, mode === 'time' ? 150 : 450);
+      render();
+}
+// Back from your answer to the slip: the position right after it, with its strip, as it was, so
+// you can answer again (also from the guided moves after a line that stops at the slip).
+function backToTrap() {
+  const t = lines[lineIdx]?.trap, n = game.history().length;
+  if (!t || mode === 'time' || n <= t.ply + 1 || n > t.ply + 3 || endLen) return false;
+  gameGen++;
+  while (game.history().length > t.ply + 1) game.undo();
+  ply = t.ply + 1; notes.length = betters.length = ply; view = null;
+  playing = false; punish = 0; punishDone = false; premove = null; sel = null; hintSq = [];
+  lastMove = game.history({ verbose: true }).at(-1);
+  showTrap(t, lastMove);
+  return true;
 }
 
 // ---------- Time trial ----------
@@ -1979,7 +2052,7 @@ function tryMove(from, to) {
       }
       say(`${m.san} is not the move here. The line plays ${moveWords(want)}.`, 'bad');
       moment('wrong', 'Not this one', `You played <b>${m.san}</b> (red). The line plays <b>${want.san}</b> (green)${ideaAt(new Chess(game.fen()), want.san) ? `: ${ideaAt(new Chess(game.fen()), want.san).replace(/^./, (c) => c.toLowerCase())}` : '.'} Take a look, then play the line again from the start.`,
-        [{ label: 'OK, start again', run: () => play(lineIdx, true) }], null, [[m.from, m.to, RED], [want.from, want.to, GREEN]]);
+        [{ label: trapRun ? 'OK, try again' : 'OK, start again', run: () => (trapRun ? setupTrap(trapRun.now) : play(lineIdx, true)) }], null, [[m.from, m.to, RED], [want.from, want.to, GREEN]]);
       return true;
     }
     if (missesHere >= 2) showHint();
@@ -2123,7 +2196,7 @@ function finish() {
   const r = mode === 'try' && !assisted ? review(misses === 0) : null;
   renderLines();
   renderLineBox();
-  $('#restart').textContent = mode === 'try' && (misses || assisted) ? 'Try again' : 'Next line';
+  $('#restart').textContent = trapRun ? 'Next trap' : mode === 'try' && (misses || assisted) ? 'Try again' : 'Next line';
   const on = 'Play on if you like: the arrow shows a good next move.';
   if (mode === 'learn') say(`Line learned. ${on} Or press Next line, or switch to Practice to play it from memory.`, 'good');
   else if (assisted) say(`Line done. You switched to Practice on the way, so it does not count as cleared: press Try again to play it from the start. ${on}`, 'good');
@@ -2291,6 +2364,7 @@ movesEl.addEventListener('click', (e) => { const b = e.target.closest('.mv[data-
 
 function stepBack() {
   if (!cur || !lines.length || !game.history().length) return;
+  if (backToTrap()) return;
   if (reviewing()) return showMove((view ?? game.history().length) - 1);
   if (mode !== 'explore') { setMode('explore', false, false); gameGen++; } // the line's pending reply no longer applies
   else if (busy) return;
@@ -2319,6 +2393,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 $('#restart').addEventListener('click', () => {
+  if (trapRun) return nextTrap();
   if (!lines.length) return start(cur);
   if (mode === 'time') return startTrial();
   if (mode === 'learn') return play(ply >= line.length ? nextLine() : lineIdx);
@@ -2357,7 +2432,7 @@ $('#show').addEventListener('click', async () => {
 });
 // Opening picker, shown before the board.
 async function showPicker() {
-  cur = null; gameGen++; stopTrial(); // stops an opponent reply (or a time trial) still on its way
+  cur = null; gameGen++; stopTrial(); trapRun = null; // stops an opponent reply (or a time trial) still on its way
   $('#trainer').hidden = true;
   $('#picker').hidden = false;
   listEl.innerHTML = '';
@@ -2401,6 +2476,7 @@ document.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('clic
   if (OPENINGS.length) renderList();
 }));
 $('#back').addEventListener('click', showPicker);
+$('#traps').addEventListener('click', () => { if (rating && OPENINGS.length) startTraps(); });
 $('#weakest').addEventListener('click', () => {
   const list = repertoire.size ? OPENINGS.filter((o) => repertoire.has(o.id)) : shown();
   if (!list.length) return;
