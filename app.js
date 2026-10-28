@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028174601';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028174601';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028174601';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028174601';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028174957';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028174957';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028174957';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028174957';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1114,7 +1114,7 @@ function play(i, again = false) {
   line = l.moves;
   game = new Chess();
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
-  punish = 0; punishDone = false; endLen = 0;
+  punish = 0; punishDone = false; endLen = 0; assisted = false;
   closeMoment();
   misses = again ? misses : 0; missesHere = 0; busy = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
@@ -2023,12 +2023,13 @@ function finish() {
   if (!s.played.includes(k)) s.played.push(k);
   store(STORE, stats);
   const wasComplete = cleared() === lines.length;
-  const r = mode === 'try' ? review(misses === 0) : null;
+  const r = mode === 'try' && !assisted ? review(misses === 0) : null;
   renderLines();
   renderLineBox();
-  $('#restart').textContent = mode === 'try' && misses ? 'Try again' : 'Next line';
+  $('#restart').textContent = mode === 'try' && (misses || assisted) ? 'Try again' : 'Next line';
   const on = 'Play on if you like: the arrow shows a good next move.';
   if (mode === 'learn') say(`Line learned. ${on} Or press Next line, or switch to Practice to play it from memory.`, 'good');
+  else if (assisted) say(`Line done. You switched to Practice on the way, so it does not count as cleared: press Try again to play it from the start. ${on}`, 'good');
   else if (misses) say(`Line done with ${plural(misses, 'mistake')}, so it is not cleared. ${on} Or press Try again.`, 'bad');
   else {
     if (!wasComplete && cleared() === lines.length) showComplete();
@@ -2311,6 +2312,7 @@ $('#weakest').addEventListener('click', () => {
   start([...list].sort((a, b) => score(a) - score(b))[0]);
 });
 function setMode(m, restart = true, remember = true) {
+  const was = mode;
   mode = m; view = null;
   if (m !== 'time') stopTrial();
   if (remember && m !== 'explore' && m !== 'time') store(STORE + '-mode', m);
@@ -2324,9 +2326,30 @@ function setMode(m, restart = true, remember = true) {
   if (!lines.length) return;
   if (!restart) return;
   if (m === 'explore') enterExplore(); // carry on from the current position
-  else if (m === 'time') startTrial();
-  else play(lineIdx);
+  else if (m === 'time' || was === 'time') m === 'time' ? startTrial() : play(lineIdx);
+  else carryOn(was);
 }
+// Learn and Practice go on from where you are: in the line, or in the game after it. From Explore,
+// that works while the moves so far are still one of the lines (any of them); otherwise the line
+// starts again. Switching to Practice part way through a line means it cannot count as cleared.
+function carryOn(was) {
+  const hist = game.history().map(clean), n = hist.length;
+  if (was === 'explore') {
+    const on = (l) => n < l.moves.length && lineKey(l.moves.slice(0, n)) === lineKey(hist);
+    const j = on(lines[lineIdx]) ? lineIdx : lines.findIndex(on);
+    if (j < 0) return play(lineIdx);
+    gameGen++; // an Explore answer still on its way no longer applies
+    lineIdx = j; line = lines[j].moves; ply = n; playing = false; redo = []; busy = false;
+    renderLines(); renderLineBox();
+  }
+  if (mode === 'try' && n > 0 && !playing) assisted = true;
+  sel = null; hintSq = [];
+  render();
+  if (playing || busy) return;
+  if (userTurn()) prompt('Your move.');
+  else reply();
+}
+let assisted = false; // this run of the line was not all from memory (see carryOn)
 $('#mode-learn').addEventListener('click', () => setMode('learn'));
 $('#mode-try').addEventListener('click', () => setMode('try'));
 $('#mode-explore').addEventListener('click', () => setMode('explore'));
