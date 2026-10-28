@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261028234518';
-import { account } from './lichess.js?v=20261028234518';
-import { storedGames, keepGame, engineEval, applyEvals, winPct } from './profile.js?v=20261028234518';
+import { drawBoard } from './board.js?v=20261028235024';
+import { account } from './lichess.js?v=20261028235024';
+import { storedGames, keepGame, engineEval, applyEvals, winPct } from './profile.js?v=20261028235024';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -139,7 +139,9 @@ function drawPosition() {
     : idx ? `${moveNo(i)} <b>${moves[i].san}</b>${j ? ` <span class="gm-j j-${j}">${GLYPHS[j]} ${j.toLowerCase()}</span>` : ''}${g.analysis ? ` · your chances ${Math.round(chanceAt(i))}%` : ''}` : 'The start position.';
   document.querySelectorAll('.gm-move').forEach((b) => b.classList.toggle('on', Number(b.dataset.i) === idx - 1));
   const cur = document.querySelector('.gm-move.on');
-  cur?.scrollIntoView({ block: 'nearest' });
+  // Keep the current move in view inside the move list only, never scrolling the page
+  const list = cur?.closest('ol');
+  if (list) list.scrollTop = cur.offsetTop - list.offsetTop - list.clientHeight / 2;
   const dot = document.querySelector('.gm-graph .now');
   if (dot) dot.setAttribute('x1', gx(idx - 1)), dot.setAttribute('x2', gx(idx - 1));
 }

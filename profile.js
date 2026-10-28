@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028234518';
-import { STYLE_OF } from './styles.js?v=20261028234518';
+import { account, login, finishLogin } from './lichess.js?v=20261028235024';
+import { STYLE_OF } from './styles.js?v=20261028235024';
 
 const MAX = 500;
 const PV = 13;
@@ -586,7 +586,12 @@ function judge(p, skills) {
   const work = known.filter((x) => x.raw <= 45).sort((a, b) => a.raw - b.raw).slice(0, 2).map(item);
   const good = known.filter((x) => x.raw >= 56).sort((a, b) => b.raw - a.raw).slice(0, 2).map(item);
   const extra = (list) => (list || []).filter((x) => !SKILL_VERDICTS.has(x.title));
-  return { good: [...good, ...extra(p.good)].slice(0, 4), work: [...work, ...extra(p.work)].slice(0, 4), leak: work[0] || null };
+  const g = [...good, ...extra(p.good)].slice(0, 3), w = [...work, ...extra(p.work)].slice(0, 3);
+  const used = new Set([...g, ...w].map((x) => x.title)), byRaw = [...known].sort((a, b) => b.raw - a.raw);
+  // Fewer than three clear ones: fill with the next best (Strengths) and the next weakest (Train next) skills
+  for (const x of byRaw) if (g.length < 3 && !used.has(x.label) && x.raw >= 50) { g.push(item(x)); used.add(x.label); }
+  for (const x of byRaw.reverse()) if (w.length < 3 && !used.has(x.label)) { w.push(item(x)); used.add(x.label); }
+  return { good: g, work: w, leak: work[0] || null };
 }
 
 // A portrait in words, from this player's own games: the openings they actually choose, how their
@@ -634,6 +639,42 @@ function playerCard(name, p, t, skills) {
 }
 // Where a rating ranks among all Lichess players of that time control this week: "Top 27%".
 // The card explained in one go, under it.
+// The player card as a PNG, to save or share. Drawn onto a canvas from the card on screen: its
+// background, rules, piece and every line of text, each where the page put it (3x for sharpness).
+async function cardPng(name, btn) {
+  btn.disabled = true; btn.textContent = 'Making the image…';
+  try {
+    await document.fonts.ready;
+    const card = $('.pf-pcard'), box = card.getBoundingClientRect(), S = 3, pad = 12;
+    const canvas = Object.assign(document.createElement('canvas'), { width: (box.width + pad * 2) * S, height: (box.height + pad * 2) * S });
+    const ctx = canvas.getContext('2d'), at = (r) => [r.left - box.left + pad, r.top - box.top + pad];
+    ctx.scale(S, S);
+    const cs = getComputedStyle(card);
+    ctx.fillStyle = cs.backgroundColor; ctx.beginPath(); ctx.roundRect(pad, pad, box.width, box.height, parseFloat(cs.borderRadius) || 0); ctx.fill();
+    for (const el of card.querySelectorAll('*')) {
+      const st = getComputedStyle(el), r = el.getBoundingClientRect(), [x, y] = at(r);
+      for (const [side, w] of [['Top', st.borderTopWidth], ['Bottom', st.borderBottomWidth]]) if (parseFloat(w) > 0 && st[`border${side}Style`] !== 'none') {
+        ctx.fillStyle = st[`border${side}Color`]; ctx.fillRect(x, side === 'Top' ? y : y + r.height - parseFloat(w), r.width, parseFloat(w));
+      }
+      if (el.tagName === 'IMG') ctx.drawImage(el, x, y, r.width, r.height);
+    }
+    const walk = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const text = n.textContent.replace(/\s+/g, ' ').trim();
+      if (!text) continue;
+      const st = getComputedStyle(n.parentElement), range = document.createRange(); range.selectNodeContents(n);
+      const r = [...range.getClientRects()].find((q) => q.width > 0);
+      if (!r) continue;
+      ctx.font = `${st.fontWeight} ${st.fontSize} ${st.fontFamily}`; ctx.fillStyle = st.color; ctx.letterSpacing = st.letterSpacing === 'normal' ? '0px' : st.letterSpacing;
+      const t = st.textTransform === 'uppercase' ? text.toUpperCase() : text, m = ctx.measureText(t), [x, y] = at(r);
+      ctx.fillText(t, x + Math.max(0, (r.width - m.width) / 2), y + m.fontBoundingBoxAscent + (r.height - m.fontBoundingBoxAscent - m.fontBoundingBoxDescent) / 2);
+    }
+    const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${name}-chess-card.png`, { type: 'image/png' });
+    if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) await navigator.share({ files: [file], title: `${name}'s chess card` }).catch(() => {});
+    else { const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: file.name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+  } catch (err) { $('#profile-msg').textContent = `The card image could not be made: ${err.message}`; }
+  btn.disabled = false; btn.textContent = 'Download card';
+}
 function cardNote(name, p, me) {
   const main = p.speeds[0];
   if (!main) return '';
@@ -648,12 +689,11 @@ function render(name, at, p) {
   $('#profile').innerHTML = `
     ${playerBar(name)}
     <section class="pf-hero">
-      <div class="pf-card-col">${playerCard(name, p, t, skills)}${cardNote(name, p, me)}</div>
+      <div class="pf-card-col">${playerCard(name, p, t, skills)}<div class="pf-card-actions"><button type="button" class="link" data-card-png>Download card</button></div>${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
-        <h1 class="pf-h1">${esc(t[0].name)}</h1>
-        ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}
+        <div class="pf-type-row"><div><h1 class="pf-h1">${esc(t[0].name)}</h1>
+        ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}</div>${tasteLine(p.styleMix, me)}</div>
         <p class="pf-portrait">${portrait(name, p, skills, me)}</p>
-        ${tasteLine(p.styleMix, me)}
         <div class="pf-why-type">
           <div class="pf-about">${t.map((x) => `<p><b>${esc(x.name)}.</b> ${esc(TYPE_ABOUT[x.name] || '')} <span>${esc(say(x.why))}</span></p>`).join('')}</div>
           <p class="pf-more-portrait">${portrait(name, p, skills, me, 'more')}</p>
@@ -701,6 +741,7 @@ function render(name, at, p) {
     </section>
     ${nextActions(name, me)}`;
   $('#refresh').addEventListener('click', () => run(name));
+  $('[data-card-png]')?.addEventListener('click', (e) => cardPng(name, e.target));
   bindSearch();
   bindAnalyse(name);
   bindPlayerBar(name);

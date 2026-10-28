@@ -843,7 +843,7 @@ h1, .picker h1 { font-family: var(--font-poster); font-weight: 400; text-transfo
 .seg { border-radius: var(--radius); }
 .seg button { border-radius: 2px; }
 .ghost, .controls button { color: var(--ink); }
-main a:not(.cta):not(.ocard):not(.card), button.link { color: var(--hot); }
+main a:not(.cta):not(.ocard):not(.card):not(.pf-res), button.link { color: var(--hot); }
 .cta { border-radius: var(--radius); }
 a.cta { color: var(--accent-ink); }
 @media (max-width: 560px) { /* five sections on a phone: one row that scrolls sideways if it must */
@@ -1201,3 +1201,11 @@ a.pf-res { text-decoration: none; transition: transform .12s; }
 a.pf-res:hover, a.pf-res:focus-visible { transform: translateY(-2px); outline: 2px solid var(--ink); outline-offset: 1px; }
 /* Skills: the scale, in its own small box under the six */
 .pf-skills-card.open .pf-skill-scale { display: block; margin: 32px 0 0; max-width: 62ch; padding: 12px 16px; border: 1px solid var(--line); border-left: 3px solid var(--hot); color: var(--muted); font-size: 14px; }
+/* The type heading with the opening-taste tiles beside it */
+.pf-type-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 24px; }
+.pf-type-row .pf-taste-tiles { flex-direction: column; margin: 0 0 6px; }
+@media (max-width: 860px) { .pf-type-row { justify-content: center; } .pf-type-row .pf-taste-tiles { flex-direction: row; } }
+/* Result squares are links: black letters, not link orange */
+a.pf-res, a.pf-res:visited { color: #141414; }
+/* Download card */
+.pf-card-actions { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; justify-content: center; }
