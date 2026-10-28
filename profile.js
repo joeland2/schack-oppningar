@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028234001';
-import { STYLE_OF } from './styles.js?v=20261028234001';
+import { account, login, finishLogin } from './lichess.js?v=20261028234112';
+import { STYLE_OF } from './styles.js?v=20261028234112';
 
 const MAX = 500;
 const PV = 13;
@@ -797,7 +797,9 @@ function leadStory(name, p, skills, me) {
   const before = mine.find((g) => g.createdAt < week);
   const change = recent.length ? after(recent[0]) - (before ? after(before) : recent.at(-1).players[sideOf(recent.at(-1))].rating) : null;
   const form = games.slice(0, 10).map(res), wins = form.filter((x) => x === 'W').length, latest = games[0];
-  const { leak } = judge(p, skills);
+  // No clear leak: the lowest skill anyway, as the next step up
+  const { leak: clear } = judge(p, skills), least = skills.filter((x) => x.v !== null).sort((a, b) => a.v - b.v)[0];
+  const leak = clear || (least && { title: least.label, v: least.v, why: least.why, train: least.train, href: least.href });
   return `<section class="pf-lead">
     <div class="pf-news"><h2>Latest</h2>
       ${main ? `<p class="pf-news-big"><b>${after(mine[0])}</b> ${change !== null ? `<span class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</span> <small>${main} this week, ${recent.length} game${recent.length === 1 ? '' : 's'}</small>` : `<small>${main} · no games this week</small>`}</p>` : ''}
@@ -805,7 +807,7 @@ function leadStory(name, p, skills, me) {
         <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}, newest first · last played ${day(latest.createdAt)}</p>` : ''}
       ${tacticsList(name, games, p)}
     </div>
-    <div class="pf-leak${leak ? '' : ' none'}"><h2>${leak ? (me ? 'Your biggest leak' : 'Biggest leak') : 'No clear leak'}</h2>
+    <div class="pf-leak${clear ? '' : ' none'}"><h2>${clear ? (me ? 'Your biggest leak' : 'Biggest leak') : leak ? 'Room to grow' : 'No clear leak'}</h2>
       ${leak ? `<p class="pf-leak-title">${esc(leak.title)} <small>${leak.v}</small></p><p>${esc(say(leak.why))} ${esc(leak.train)}</p>${me ? `<a class="cta" href="${leak.href || 'practice.html'}">Train it</a>` : ''}`
         : `<p>${me ? 'You match or beat your' : 'They match or beat their'} opponents in every area: no skill is clearly below them.</p>${me ? '<a class="ghost" href="practice.html">See your training plan</a>' : ''}`}
     </div>
