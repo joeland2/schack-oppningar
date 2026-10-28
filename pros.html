@@ -8,14 +8,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261028210020">
-  <script src="theme.js?v=20261028210020"></script>
+  <link rel="stylesheet" href="style.css?v=20261028210533">
+  <script src="theme.js?v=20261028210533"></script>
 </head>
 <body>
   <header class="top">
     <div class="wrap top-in">
       <a class="brand" href="./">Chess<span>Trainer</span></a>
       <nav class="top-nav" aria-label="Sections"><a href="./">Openings</a><a href="basics.html">Basics</a><a href="pros.html" aria-current="page">Puzzles</a><a href="profile.html">Profile</a></nav>
+      <form class="top-search" action="profile.html" role="search"><input name="u" type="search" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="Find a player" aria-label="Find a Lichess player" title="A Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false"></form>
       <button id="theme" class="ghost theme" type="button" aria-label="Switch theme"></button>
     </div>
   </header>
@@ -44,6 +45,6 @@
     <nav id="items" class="list" aria-label="Exercises"></nav>
   </main>
 
-  <script type="module" src="pros.js?v=20261028210020"></script>
+  <script type="module" src="pros.js?v=20261028210533"></script>
 </body>
 </html>

@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, so the page opens at once next time; Refresh reads the games again.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028210020';
-import { STYLE_OF } from './styles.js?v=20261028210020';
+import { account, login, finishLogin } from './lichess.js?v=20261028210533';
+import { STYLE_OF } from './styles.js?v=20261028210533';
 
 const MAX = 500;
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -51,6 +51,16 @@ function readGame(g, me) {
 }
 
 // ---------- All games: the profile ----------
+// Opening taste: the openings you choose yourself (a Defense is Black's choice, the rest White's),
+// each counted once under its main style; any Gambit counts as a gambit.
+const KINDS = [['gambit', 'Gambits', 'gambits'], ['attacking', 'Attacking', 'attacking openings'], ['tricky', 'Tricky', 'offbeat, tricky openings'],
+  ['positional', 'Positional', 'positional openings'], ['solid', 'Solid', 'solid set-ups'], ['other', 'Other', 'other openings']];
+const kindOf = (fam) => (/Gambit/.test(fam) ? 'gambit' : (STYLE_OF[fam] || ['other'])[0]);
+function styleMix(games, side) {
+  const gs = games.filter((g) => g.side === side && /Defen[cs]e/.test(g.family) === (side === 'b'));
+  return { n: gs.length, parts: KINDS.map(([k, label, words]) => ({ k, label, words, share: gs.length ? gs.filter((g) => kindOf(g.family) === k).length / gs.length : 0 })).filter((x) => x.share > 0).sort((a, b) => b.share - a.share) };
+}
+console.assert(styleMix([{ side: 'w', family: 'Danish Gambit' }, { side: 'w', family: 'London System' }, { side: 'b', family: 'Italian Game' }], 'w').parts[0].share === 0.5, 'styleMix');
 const styleOf = (fam) => [...(STYLE_OF[fam] || []), ...(/Gambit/.test(fam) ? ['attacking'] : [])];
 export function profileOf(games) {
   const n = games.length, an = games.filter((g) => g.analysed);
@@ -92,6 +102,7 @@ export function profileOf(games) {
     downs: downs.length, saved: score(downs.map((g) => ({ result: g.result > 0 ? 1 : 0 }))),
     badStarts: share(an.filter((g) => g.after12 !== null), (g) => g.after12 <= -150),
     openings: { w: byOpening('w'), b: byOpening('b') },
+    styleMix: { w: styleMix(games, 'w'), b: styleMix(games, 'b') },
     // Rating after each game, oldest first, per time control: the graph's fallback when Lichess's
     // own rating history is not available.
     history: games.reduce((h, g) => (g.at ? { ...h, [g.speed]: [[g.at, g.rating + g.diff], ...(h[g.speed] || [])] } : h), {}),
@@ -262,6 +273,25 @@ function skillBars(skills, say, me) {
       <small>${x.v === null ? 'Not enough games to say.' : esc(say(x.why))}</small>
       ${x.v !== null && x.v < 50 ? `<p class="pf-train"><b>How to train:</b> ${esc(x.train)}${me && x.href ? ` <a href="${x.href}">Start</a>` : ''}</p>` : ''}</li>`).join('')}</ul>`;
 }
+// Which kind of opening each side mostly picks: the top style when it is a quarter or more of them.
+const taste = (m) => (m && m.n >= 10 ? m.parts.find((x) => x.k !== 'other' && x.share >= 0.25) || null : null);
+function tasteLine(mix, me) {
+  const w = taste(mix?.w), b = taste(mix?.b);
+  if (!w && !b) return '';
+  return `<p class="pf-taste">Opening taste: ${[w && `<b>${w.label}</b> as White`, b && `<b>${b.label}</b> as Black`].filter(Boolean).join(' · ')}</p>`;
+}
+function tastePanel(mix, me) {
+  if (!mix) return '';
+  const side = (m, name) => {
+    if (m.n < 10) return `<div><h3>As ${name}</h3><p class="info">Too few games in openings ${me ? 'you' : 'they'} choose as ${name}.</p></div>`;
+    const t = taste(m);
+    return `<div><h3>As ${name}</h3><p class="pf-taste-say">${t ? `Mostly <b>${t.words}</b> (${pct(t.share)} of the openings ${me ? 'you' : 'they'} choose).` : 'A mix of openings, no style stands out.'}</p>
+      <ul class="pf-rows">${m.parts.map((x) => `<li><span>${x.label}</span><small>${pct(x.share)}</small><div class="pf-meter"><i style="width:${x.share * 100}%"></i></div></li>`).join('')}</ul></div>`;
+  };
+  return `<section class="pf-card"><h2>Opening style</h2>
+    <p class="info pf-note">Gambits give material for attack, attacking openings go for the initiative, positional and solid ones build first. Counted from the openings ${me ? 'you pick yourself' : 'they pick themselves'}: the defence as Black, the opening as White.</p>
+    <div class="pf-two pf-taste-grid">${side(mix.w, 'White')}${side(mix.b, 'Black')}</div></section>`;
+}
 // The player card: the overall (the mean of the known skills), a short code for the type, the six skills.
 const CODE = { Attacker: 'ATK', 'Solid builder': 'SOL', 'Endgame player': 'EGP', Fighter: 'FTR', 'Comeback player': 'CMB', 'Time scrambler': 'TIM', 'King walker': 'KNG', 'All-rounder': 'ALL' };
 const ABBR = { Openings: 'OPN', Tactics: 'TAC', 'Finishing won games': 'FIN', Defending: 'DEF', Endgames: 'END', Clock: 'CLK' };
@@ -284,7 +314,6 @@ function render(name, at, p) {
   $('#profile').innerHTML = `
     <div class="pf-bar">
       <p class="info">${me ? 'Your profile, from your' : `${esc(name)}, from their`} last ${p.n} rated Lichess games${p.analysed ? ` (${p.analysed} with computer analysis)` : ''}. Updated ${ago(at)}. <button id="refresh" class="link" type="button">Refresh</button></p>
-      ${search('Look up a player')}
     </div>
     <section class="pf-hero">
       ${playerCard(name, p, t, skills)}
@@ -293,6 +322,7 @@ function render(name, at, p) {
         <h1 class="pf-h1">${esc(t[0].name)}</h1>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}
         <div class="pf-about">${t.map((x) => `<p><b>${esc(x.name)}:</b> ${esc(TYPE_ABOUT[x.name] || '')} <span>${esc(say(x.why))}</span></p>`).join('')}</div>
+        ${tasteLine(p.styleMix, me)}
         ${known.length >= 2 ? `<p class="pf-best">Strongest: <b>${known[0].label}</b> · To train: <b>${known[known.length - 1].label}</b></p>` : ''}
       </div>
     </section>
@@ -320,6 +350,7 @@ function render(name, at, p) {
       <p class="info">Wins: ${pct(p.ends.won.mate)} by mate, ${pct(p.ends.won.resign)} resigned, ${pct(p.ends.won.time)} on time.
         Losses: ${pct(p.ends.lost.mate)} by mate, ${pct(p.ends.lost.resign)} resigned, ${pct(p.ends.lost.time)} on time.</p>
     </section>
+    ${tastePanel(p.styleMix, me)}
     <div class="pf-two">
       <section class="pf-card"><h2>Openings as White</h2>${openingRows(p.openings.w)}</section>
       <section class="pf-card"><h2>Openings as Black</h2>${openingRows(p.openings.b)}</section>
