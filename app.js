@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028174957';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028174957';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028174957';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028174957';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028175303';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028175303';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028175303';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028175303';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -771,7 +771,7 @@ function renderBoard() {
   const n = game.history().length - 1, note = notes[n];
   // At the line's end every offered move gets an arrow (green: real games, blue: Stockfish), unless
   // one is pointed at.
-  const offered = ply >= line.length && game.history().length === endLen && userTurn() && !(tipHint !== null) ? tipArrows : [];
+  const offered = endLen && game.history().length >= endLen && userTurn() && !(tipHint !== null) ? tipArrows : []; // every move once the line is done
   drawBoard(boardEl, game, { side: cur.side, sel, last: lastMove, hint: hintSq, wrong: wrongSq,
     arrow: hintSq.length === 2 && !offered.length ? hintSq : null, arrows: offered,
     mark: (wrongSq && { sq: wrongSq, ok: false }) || (note && lastMove && { sq: lastMove.to, kind: note }),
@@ -936,9 +936,9 @@ function renderWhy() {
   if (ply >= line.length && hist.length === endLen) {
     lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p>${lineWhy()}${lineFacts()}`;
   }
-  // "How to go on" is for the moment you start playing on: shown at the line's end, gone once you move.
+  // "How to go on": from the line's end on, at every move of yours while you play on, with its arrows.
   let tips = '';
-  if (ply >= line.length && hist.length === endLen && userTurn()) {
+  if (endLen && hist.length >= endLen && userTurn()) {
     const t = lineTips();
     const arrows = t.map((x) => [x.move.from, x.move.to, x.engine ? '#1d5fbf' : '#15781b']);
     if (JSON.stringify(arrows) !== JSON.stringify(tipArrows)) { tipArrows = arrows; renderBoard(); }
