@@ -547,3 +547,12 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .ostats { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
 .olist { grid-auto-rows: 1fr; }
 @media (max-width: 560px) { .ocard-tags .tag { display: none; } .odesc { min-height: 0; } }
+
+/* Mistakes you repeat: one row per kind of slip */
+.mk-list { display: grid; }
+.mk-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 16px; align-items: start; padding: 12px 0; border-top: 1px solid var(--line); }
+.mk-row .board.mini { width: 96px; border-radius: 4px; overflow: hidden; }
+.mk-body p { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+.mk-body .mk-ex b { color: var(--ink); font-family: var(--font-mono); font-weight: 500; }
+.mk-body a { color: var(--ink); }
+#my-mistakes .cta { justify-self: start; text-decoration: none; }

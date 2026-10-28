@@ -1,6 +1,7 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028105614';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028105614';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028110306';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028110306';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028110306';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -414,12 +415,30 @@ const JUDGE_GAMES = 100;  // strong-player games a position needs before we judg
 
 async function fetchGames(name) {
   const res = await fetch(`https://lichess.org/api/games/user/${encodeURIComponent(name)}?` + new URLSearchParams({
-    max: 100, rated: 'true', perfType: speed, moves: 'true', opening: 'true', clocks: 'false', evals: 'false',
+    max: 100, rated: 'true', perfType: speed, moves: 'true', opening: 'true', clocks: 'false', evals: 'true',
   }), { headers: { Accept: 'application/x-ndjson' } });
   if (res.status === 404) throw new Error(`Lichess has no player called ${name}.`);
   if (res.status === 429) throw new Error('Lichess is busy right now. Try again in a minute.');
   if (!res.ok) throw new Error(`Lichess answered with an error (${res.status}).`);
   return (await res.text()).split('\n').filter(Boolean).map((l) => JSON.parse(l));
+}
+
+// The opening you played in a game: the last opening name your own colour's moves gave the position
+// (a White opening when you are White, a defence when you are Black), or, if your moves never named
+// one, the opponent's opening as "vs". root: the moves up to where that name first appears.
+function openingOf(moves, side) {
+  const roots = new Map();
+  let mine = null, theirs = null;
+  for (let i = 0; i < Math.min(moves.length, 24); i++) {
+    const seq = moves.slice(0, i + 1);
+    const name = NAMES.get(lineKey(seq))?.name;
+    const family = SYSTEMS.find((s) => s.test(seq, name))?.family ?? (name && familyOf(name));
+    if (!family) continue;
+    if (!roots.has(family)) roots.set(family, seq);
+    if ((BLACKS.test(family) ? 'b' : 'w') === side) mine = family; else theirs = family;
+  }
+  const family = mine ?? theirs;
+  return family && { family, vs: !mine, root: roots.get(family) };
 }
 
 // For each game: the first of your moves that strong players rarely play, plus your score per opening.
@@ -433,14 +452,15 @@ function analyse(games, name) {
     if (!side || !g.moves) continue;
     counted++;
     const points = !g.winner ? 0.5 : g.winner === (side === 'w' ? 'white' : 'black') ? 1 : 0;
-    const named = g.opening?.name;
-    const family = named && (SYSTEMS.find((s) => s.book.test(named))?.family ?? familyOf(named));
-    if (family) {
-      const o = openings.get(`${side}:${family}`) ?? { family, side, games: 0, points: 0, won: 0, drawn: 0 };
-      o.games++; o.points += points; o.won += points === 1; o.drawn += points === 0.5;
-      openings.set(`${side}:${family}`, o);
-    }
     const moves = g.moves.split(' ').map(clean).slice(0, MAX_PLY);
+    const mine = openingOf(moves, side);
+    const family = mine?.family;
+    if (mine) {
+      const key = `${side}:${mine.vs ? 'vs:' : ''}${family}`;
+      const o = openings.get(key) ?? { ...mine, side, games: 0, points: 0, won: 0, drawn: 0 };
+      o.games++; o.points += points; o.won += points === 1; o.drawn += points === 0.5;
+      openings.set(key, o);
+    }
     for (let i = side === 'w' ? 0 : 1; i < moves.length; i += 2) {
       const before = moves.slice(0, i);
       const strong = explore(before, STRONG[speed]);
@@ -509,24 +529,85 @@ function renderMyOpenings(openings, counted, name) {
   const el = $('#my-openings');
   el.hidden = !openings.length;
   if (!openings.length) return;
-  const find = (o) => OPENINGS.find((x) => x.family === o.family && x.side === o.side);
+  // The opening to practise: the listed one when there is one, otherwise one made from the game's moves.
+  const find = (o) => OPENINGS.find((x) => x.family === o.family && x.side === o.side && isVs(x) === o.vs) ?? practiceOpening(o);
   el.innerHTML = `<div class="my-head"><h2>Your openings on Lichess</h2><p class="info">${name}'s last ${counted} rated ${speed} games, most played first.</p></div>
     <div class="my-list">${openings.map((o, n) => {
       const op = find(o);
       const you = o.points / o.games, lost = o.games - o.won - o.drawn;
-      const avg = op ? (o.side === 'w' ? op.score : 1 - op.score) : null;
+      const avg = op.share ? (o.side === 'w' ? op.score : 1 - op.score) : null;
       const vs = avg === null ? '' : you - avg >= 0.05 ? 'better than' : avg - you >= 0.05 ? 'worse than' : 'about the same as';
       return `<div class="my-row">
-        <div class="my-name"><b>${(o.side === 'w') === BLACKS.test(o.family) ? 'vs ' : ''}${shortName(o.family)}</b><small>as ${sideName(o.side)} · ${plural(o.games, 'game')}</small></div>
+        <div class="my-name"><b>${o.vs ? `${o.side === 'w' ? `1.${o.root[0]} ` : ''}vs ` : ''}${shortName(o.family)}</b><small>as ${sideName(o.side)} · ${plural(o.games, 'game')}</small></div>
         <div class="my-score">
           <div class="wdl" role="img" aria-label="Won ${o.won}, drawn ${o.drawn}, lost ${lost}"><span class="w" style="width:${o.won / o.games * 100}%"></span><span class="d" style="width:${o.drawn / o.games * 100}%"></span><span class="l" style="width:${lost / o.games * 100}%"></span></div>
           <small>${o.won} won · ${o.drawn} drawn · ${lost} lost</small>
         </div>
         <p class="my-verdict">You score <b>${pct(you)}</b>${vs ? `, ${vs} players at your level (${pct(avg)})` : ''}.</p>
-        ${op ? `<button type="button" class="ghost" data-my="${n}">Practise</button>` : '<span></span>'}
+        <button type="button" class="ghost" data-my="${n}">Practise</button>
       </div>`;
     }).join('')}</div>`;
   el.querySelectorAll('[data-my]').forEach((b) => b.addEventListener('click', () => start(find(openings[Number(b.dataset.my)]))));
+}
+
+// An opening made from your own games' moves, for ones the list does not hold (a defence you face as
+// White, a rare line). Its figures come from games at your level that reached the same position.
+function practiceOpening(o) {
+  const mine = ratingsAround(rating);
+  let node = TREE;
+  for (const m of o.root) node = node?.[3]?.[m];
+  const sum = (c) => mine.reduce((s, i) => s + c[i], 0);
+  const n = node ? sum(node[0]) : 0;
+  const win = n ? sum(node[1]) / n : 0, draw = n ? sum(node[2]) / n : 0;
+  return { id: `${o.vs ? 'vs:' : ''}${o.side}~${o.family}`, name: shortName(o.family), family: o.family, side: o.side,
+    eco: NAMES.get(lineKey(o.root))?.eco || '', root: o.root.join(' '), share: reachOf(o.root, mine), win, draw, score: win + draw / 2 };
+}
+
+// ---------- Mistakes from whole games ----------
+let lastGames = null;   // the games fetched for "your games", kept for the whole-game check
+let mistakeRun = 0;     // bumped to stop a check that is still running
+const MISTAKES_KEY = STORE + '-mistakes';
+
+function renderMistakes(state = 'ready', found = [], checked = 0, total = 0) {
+  const el = $('#my-mistakes');
+  el.hidden = !lastGames;
+  if (!lastGames) return;
+  const analysed = lastGames.games.filter((g) => g.analysis).length;
+  const head = `<div class="my-head"><h2>Mistakes you repeat</h2><p class="info">${state === 'ready'
+    ? `Checks every move you played in whole games, not just the opening: ${analysed} games already analysed on Lichess are read at once; up to 15 more are checked here with Stockfish, which takes a couple of minutes.`
+    : state === 'running' ? `Checking game ${checked} of ${total}…` : `Checked ${checked} games: ${found.length} mistakes (moves that cost 10% or more of your winning chances).`}</p></div>`;
+  if (state === 'ready') {
+    el.innerHTML = `${head}<button type="button" class="cta" id="find-mistakes">Find my mistakes</button>`;
+    return $('#find-mistakes').addEventListener('click', runMistakes);
+  }
+  const groups = byTheme(found);
+  el.innerHTML = `${head}<div class="mk-list">${groups.map(([theme, list]) => `<div class="mk-row">
+      <div class="board mini" data-mk="${theme}" inert></div>
+      <div class="mk-body"><b>${THEMES[theme].title}</b> <span class="og-n">${list.length}</span>
+        <p>${THEMES[theme].tip}</p>
+        <p class="mk-ex">For example: you played <b>${list[0].played}</b>, better was <b>${list[0].best}</b>. <a href="${list[0].url}" target="_blank" rel="noopener">See the game</a></p></div>
+    </div>`).join('')}</div>
+    ${found.length ? `<a class="cta" href="mistakes.html">Train these ${found.length} positions</a>` : ''}`;
+  for (const [theme, list] of groups) {
+    const g = new Chess(list[0].fen), best = new Chess(list[0].fen).move(list[0].best);
+    drawBoard(el.querySelector(`[data-mk="${theme}"]`), g, { side: list[0].side, arrow: [best.from, best.to] });
+  }
+}
+
+async function runMistakes() {
+  const run = ++mistakeRun;
+  const { games, name } = lastGames;
+  renderMistakes('running', [], 0, 1);
+  let done = 0;
+  const found = await findMistakes(games, name, {
+    evaluate: (fen) => evaluate(fen, { keep: true, ms: 150 }),
+    // Stop when you open the board (the engine is needed there) or start another check.
+    stop: () => run !== mistakeRun || !$('#trainer').hidden,
+    onProgress: (checked, total, sofar) => { done = checked; if (run === mistakeRun) renderMistakes('running', sofar, checked, total); },
+  });
+  if (run !== mistakeRun) return;
+  store(MISTAKES_KEY, byTheme(found).flatMap(([, list]) => list).slice(0, 80)); // the kinds you repeat most first
+  renderMistakes('done', found, done);
 }
 
 async function checkMyGames(name) {
@@ -537,7 +618,9 @@ async function checkMyGames(name) {
   $('#mine-out').innerHTML = '';
   try {
     await loadTree();
-    renderMine(analyse(await fetchGames(name), name), name);
+    lastGames = { games: await fetchGames(name), name };
+    renderMine(analyse(lastGames.games, name), name);
+    renderMistakes();
   } catch (err) {
     $('#mine-msg').textContent = err.message;
   }
@@ -981,11 +1064,11 @@ const bestMove = (fen, opts) => search(fen, opts).then((r) => r?.move ?? null);
 // have moved on (a move being rated needs the position before it).
 const EVALS = new Map(), EVALS_PENDING = new Map();
 const evalKey = (fen) => fen.split(' ').slice(0, 4).join(' ');
-function evaluate(fen, { keep = false } = {}) {
+function evaluate(fen, { keep = false, ms = 350 } = {}) {
   const k = evalKey(fen);
   if (EVALS.has(k)) return Promise.resolve(EVALS.get(k));
   if (EVALS_PENDING.has(k)) return EVALS_PENDING.get(k);
-  const p = search(fen, { ms: 350, skip: () => !keep && (!cur || game.fen() !== fen) }).then((r) => {
+  const p = search(fen, { ms, skip: () => !keep && (!cur || game.fen() !== fen) }).then((r) => {
     EVALS_PENDING.delete(k);
     if (r) { EVALS.set(k, r); renderEval(); }
     return r;

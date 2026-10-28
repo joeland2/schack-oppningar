@@ -14,6 +14,7 @@ Plain HTML, CSS and JavaScript with no build step. Move logic comes from [chess.
 - `board.js` – board drawing shared by all pages
 - `drill.js` – the find-the-move trainer used by Basics and Pros
 - `basics.js` – the lessons
+- `mistakes.js` + `mistakes.html`/`mistakes-page.js` – mistakes from your whole Lichess games, trained as puzzles
 - `pros.js` + `data/pros.json` – pro puzzles; rebuild with `python tools/make_pros.py` (needs `pip install chess` and Stockfish)
 - `style.css` – styling
 - `data/*.tsv` – Lichess openings (eco, name, pgn)
