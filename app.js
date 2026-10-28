@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028170444';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028170444';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028170444';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028170444';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028171732';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028171732';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028171732';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028171732';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -755,10 +755,16 @@ function renderBoard() {
     const hist = game.history({ verbose: true }), g = new Chess();
     const m = hist[view - 1], better = betters[view - 1];
     hist.slice(0, better ? view - 1 : view).forEach((x) => g.move(x.san));
-    if (better) return drawBoard(boardEl, g, { side: cur.side, last: hist[view - 2] || null, arrows: [[m.from, m.to, '#c4242a'], [better.from, better.to, '#15781b']] });
+    if (better) {
+      const after = new Chess(m.before);
+      after.move(m.san);
+      const r = EVALS.get(evalKey(after.fen())), reply = r?.move && after.move(r.move);
+      return drawBoard(boardEl, g, { side: cur.side, last: hist[view - 2] || null,
+        arrows: [[m.from, m.to, RED], ...(reply ? [[reply.from, reply.to, ORANGE]] : []), [better.from, better.to, GREEN]] });
+    }
     return drawBoard(boardEl, g, { side: cur.side, last: m || null, mark: m && notes[view - 1] && { sq: m.to, kind: notes[view - 1] } });
   }
-  if (trapShow && lastMove) return drawBoard(boardEl, game, { side: cur.side, last: lastMove, wrong: lastMove.to, arrows: [[lastMove.from, lastMove.to, '#c4242a']] });
+  if (momentArrows && view === null) return drawBoard(boardEl, game, { side: cur.side, last: lastMove, wrong: lastMove?.to, arrows: momentArrows });
   const n = game.history().length - 1, note = notes[n];
   // At the line's end every offered move gets an arrow (green: real games, blue: Stockfish), unless
   // one is pointed at.
@@ -936,7 +942,7 @@ function renderWhy() {
     tips = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x) => `<li><button type="button" class="tip" data-from="${x.move.from}" data-to="${x.move.to}">${x.html}</button></li>`).join('')}</ul>` : '';
   }
   el.innerHTML = parts.join('');
-  $('#line-done').innerHTML = ply >= line.length && lineDone && !trapShow // the trap's pause first
+  $('#line-done').innerHTML = ply >= line.length && lineDone && !momentOpen // the trap's card first
     ? `<div class="summary">${lineDone}${tips}<button type="button" class="cta done-next">${$('#restart').textContent}</button></div>` : '';
   $('#line-done').hidden = !$('#line-done').innerHTML;
 }
@@ -1103,7 +1109,7 @@ function play(i, again = false) {
   const l = lines[i];
   line = l.moves;
   game = new Chess();
-  ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null; trapShow = false;
+  ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   punish = 0; punishDone = false; endLen = 0;
   closeMoment();
   misses = again ? misses : 0; missesHere = 0; busy = false;
@@ -1330,13 +1336,14 @@ async function rate(i, before, m) {
 function bigMoment(i, after) {
   const m = game.history({ verbose: true })[i], label = moveLabel(i, m.san);
   if (m.color === cur.side) {
-    return moment('blunder', 'Blunder', `<b>${label}</b> throws away a lot. ${slipWhy(i, false)}`,
-      [{ label: 'Take it back', run: () => takeBackTo(i) }, { label: 'Play on', run: () => {} }], null, m.to);
+    view = i + 1; // the board shows the position before the slip, with its arrows (see renderBoard)
+    return moment('blunder', 'Blunder', `<b>${label}</b> throws away a lot. ${slipWhy(i, false)} Red: your move, orange: their answer, green: better.`,
+      [{ label: 'Take it back', run: () => takeBackTo(i) }, { label: 'Play on', run: () => showMove(Infinity) }]);
   }
   if (i !== game.history().length - 1) return; // you have moved on already
   const best = after?.move && new Chess(game.fen()).move(after.move);
-  moment('chance', 'Chance!', `${sideName(m.color)}'s <b>${label}</b> was a blunder. There is a strong move for you now: look at checks, captures and threats.`,
-    [{ label: 'Find it', run: () => {} }, ...(best ? [{ label: 'Show me', run: () => { hintSq = [best.from, best.to]; renderBoard(); say(`${moveWords(best)}.`, 'good'); } }] : [])], null, m.to);
+  moment('chance', 'Chance!', `${sideName(m.color)}'s <b>${label}</b> (red arrow) was a blunder. There is a strong move for you now: look at checks, captures and threats.`,
+    [{ label: 'Find it', run: () => {} }, ...(best ? [{ label: 'Show me', run: () => { hintSq = [best.from, best.to]; renderBoard(); say(`${moveWords(best)}.`, 'good'); } }] : [])], null, [[m.from, m.to, RED]]);
 }
 function renderNotes(gen) { if (gen === gameGen && cur) { renderBoard(); renderMoves(); renderWhy(); } }
 
@@ -1414,26 +1421,33 @@ const BOOK_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c3-1
 // stays until you choose what to do. kind: trap | blunder | chance. actions: [{ label, run }], the
 // first is the main one. swing: [before, after] your score, drawn as a bar.
 let momentOpen = false;
-function moment(kind, title, html, actions, swing = null, sq = null) {
-  const frame = $('.board-frame');
-  // The card sits on the half of the board away from the move it is about, so the move stays in view.
-  const top = sq && (cur.side === 'w' ? Number(sq[1]) <= 4 : Number(sq[1]) >= 5);
-  frame.querySelector('.moment')?.remove();
-  momentOpen = true;
+function moment(kind, title, html, actions, swing = null, arrows = null) {
+  closeMoment();
+  momentOpen = true; momentArrows = arrows;
   const bar = swing ? `<div class="moment-swing"><span>Your chances</span><b>${pct(swing[0])}</b><i aria-hidden="true"><s style="width:${swing[0] * 100}%"></s><s class="to" style="width:${swing[1] * 100}%"></s></i><b>${pct(swing[1])}</b></div>` : '';
-  frame.insertAdjacentHTML('beforeend', `<div class="moment moment-${kind}${top ? ' at-top' : sq ? ' at-bottom' : ''}" role="alertdialog" aria-labelledby="moment-title"><div class="moment-card">
-    <p class="moment-title" id="moment-title">${title}</p><p>${html}</p>${bar}
-    <div class="moment-actions">${actions.map((a, i) => `<button type="button" class="${i ? 'ghost' : 'cta'}" data-act="${i}">${a.label}</button>`).join('')}</div></div></div>`);
-  const el = frame.querySelector('.moment');
+  // Above the board, not on it: the board stays in full view with the moment's arrows on it.
+  $('.board-row').insertAdjacentHTML('beforebegin', `<div class="moment moment-${kind}" role="alertdialog" aria-labelledby="moment-title">
+    <p class="moment-title" id="moment-title">${title}</p><p class="moment-text">${html}</p>${bar}
+    <div class="moment-actions">${actions.map((a, i) => `<button type="button" class="${i ? 'ghost' : 'cta'}" data-act="${i}">${a.label}</button>`).join('')}</div></div>`);
+  const el = $('.moment');
   el.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]');
     if (!b) return;
-    el.remove(); momentOpen = false;
+    closeMoment();
     actions[Number(b.dataset.act)].run();
   });
-  el.querySelector('[data-act]').focus();
+  el.querySelector('[data-act]').focus({ preventScroll: true });
+  renderBoard();
 }
-function closeMoment() { $('.board-frame .moment')?.remove(); momentOpen = false; }
+// Arrows for the moment on the board: [from, to, colour]; red for the move it is about.
+let momentArrows = null;
+const RED = '#c4242a', ORANGE = '#e07b00', GREEN = '#15781b';
+function closeMoment() {
+  $('.moment')?.remove();
+  if (!momentOpen) return;
+  momentOpen = false; momentArrows = null;
+  if (cur) renderBoard();
+}
 
 // A short banner over the board, for the end of a line.
 function flash(text, kind = 'line') {
@@ -1589,6 +1603,13 @@ function lineTag(l) {
 // A line's trap: the opponent's natural-looking slip, how well you do after it, and the move that
 // punishes it with what that move does.
 const trapMove = (t) => `${Math.floor(t.ply / 2) + 1}${t.ply % 2 ? '...' : '.'}${t.san}?`;
+// The punishing move as a green arrow, in Learn only (in Practice you find it yourself).
+function punishArrow(t) {
+  const san = lines[lineIdx].moves[t.ply + 1];
+  if (mode !== 'learn' || !san) return [];
+  const m = new Chess(game.fen()).move(san);
+  return [[m.from, m.to, GREEN]];
+}
 function punishText(t) {
   const l = lines[lineIdx], san = l.moves[t.ply + 1];
   if (!san) return '';
@@ -1652,7 +1673,6 @@ function showComplete() {
 $('#complete-more').addEventListener('click', () => { $('#complete').close(); play((lineIdx + 1) % lines.length); });
 $('#complete-back').addEventListener('click', () => { $('#complete').close(); showPicker(); });
 
-let trapShow = false; // the trap's move in red while its card is up
 function reply() {
   busy = true;
   // A newer game or a switch to Explore cancels this, through the game counter.
@@ -1665,18 +1685,23 @@ function reply() {
     // The trap's slip: the board stops for a moment with the move in red, so it cannot be missed.
     const t = lines[lineIdx]?.trap;
     if (mode !== 'time' && t?.ply === ply - 1) {
-      busy = true; trapShow = true;
-      render();
+      busy = true;
       const before = resultsAt(line.slice(0, t.ply)), was = before ? before.win + before.draw / 2 : null;
       const go = () => {
         if (gen !== gameGen) return;
-        busy = false; trapShow = false;
+        busy = false;
         render();
         if (ply >= line.length) return finish();
         if (!playPremove()) prompt('Your move: punish it.');
       };
-      return moment('trap', 'Trap!', `${sideName(m.color)} played <b>${trapMove(t)}</b>, the mistake this line is about. It looks natural, but it lets you win: players at your level score ${pct(1 - t.score)} after it. ${mode === 'learn' ? punishText(t) || 'The arrow will show how to punish it.' : 'Find the move that punishes it.'}`,
-        [{ label: 'Punish it', run: go }], was === null ? null : [was, 1 - t.score], m.to);
+      moment('trap', 'Trap!', `${sideName(m.color)} played <b>${trapMove(t)}</b>, the mistake this line is about. It looks natural, but it lets you win: players at your level score ${pct(1 - t.score)} after it. ${mode === 'learn' ? punishText(t) || 'The green arrow shows how to punish it.' : 'This is the moment: find the move that punishes it.'}`,
+        [{ label: 'Punish it', run: go }], was === null ? null : [was, 1 - t.score], [[m.from, m.to, RED], ...punishArrow(t)]);
+      // Where the line stops at the slip, Stockfish's best move is the punishment to show.
+      if (mode === 'learn' && momentArrows.length === 1) {
+        const at = game.fen();
+        goodMove().then((x) => { if (x && momentOpen && game.fen() === at) { momentArrows = [...momentArrows, [x.from, x.to, GREEN]]; renderBoard(); } });
+      }
+      return render();
     }
     render();
     if (ply >= line.length) return finish();
@@ -1835,14 +1860,14 @@ function finish() {
 }
 
 // In Explore you move whichever side is to move; otherwise only your own side, on your turn.
-const canMove = () => !busy && (mode === 'explore' ? cur && !game.isGameOver() : userTurn());
+const canMove = () => !busy && !momentOpen && (mode === 'explore' ? cur && !game.isGameOver() : userTurn());
 const mover = () => (mode === 'explore' ? game.turn() : cur.side);
 const move = (from, to) => (mode === 'explore' ? exploreMove(from, to) : tryMove(from, to));
 
 // Premove, as on Lichess: during the opponent's turn you may queue your next move (its squares are
 // marked blue); it is played the moment it is your turn, if it is still legal. A right-click cancels it.
 let premove = null;
-const canPremove = () => !!cur && mode !== 'explore' && line.length > 0 && (ply < line.length || playing)
+const canPremove = () => !!cur && !momentOpen && mode !== 'explore' && line.length > 0 && (ply < line.length || playing)
   && game.turn() !== cur.side && !game.isGameOver();
 // Where a piece may be premoved, as on Lichess: every square it could reach on an empty board, own
 // pieces included, so a recapture can be queued while your piece still stands there. Whether the move
@@ -1887,7 +1912,7 @@ boardEl._destsFor = (sq) => (canPremove() ? premoveDests(sq) : game.moves({ squa
 boardEl.addEventListener('contextmenu', () => { if (premove) { premove = null; renderBoard(); } });
 
 enableDrag(boardEl, {
-  canDrag: (sq) => leaveView(sq) && (canMove() || canPremove()) && game.get(sq)?.color === mover(),
+  canDrag: (sq) => !momentOpen && leaveView(sq) && (canMove() || canPremove()) && game.get(sq)?.color === mover(),
   onDrop: (from, to) => {
     sel = null;
     if (canPremove()) { if (!setPremove(from, to)) renderBoard(); return; }
@@ -1896,7 +1921,7 @@ enableDrag(boardEl, {
 });
 boardEl.addEventListener('click', (e) => {
   const b = e.target.closest('.sq');
-  if (!b) return;
+  if (!b || momentOpen) return;
   if (!leaveView(b.dataset.sq)) return;
   if (!canMove() && canPremove()) {
     const sq = b.dataset.sq, p = game.get(sq);
