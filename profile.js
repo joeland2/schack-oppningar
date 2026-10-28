@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029000723';
-import { STYLE_OF } from './styles.js?v=20261029000723';
+import { account, login, finishLogin } from './lichess.js?v=20261029001356';
+import { STYLE_OF } from './styles.js?v=20261029001356';
 
 const MAX = 500;
-const PV = 13;
+const PV = 14;
 const ENOUGH = 20;
 const WHY_ANALYSE = 'Lichess only analyses games you ask it to. Analysed games give your blunders, accuracy and four of the skills, and become puzzles in My practice. Stockfish runs in your browser; no game is done twice.'; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -245,7 +245,7 @@ function verdicts(p) {
   const weight = (o) => (o.score - 0.5) * Math.sqrt(o.n); // a clear result over many games beats an extreme over few
   const top = [...ops].sort((a, b) => weight(b) - weight(a))[0], low = [...ops].sort((a, b) => weight(a) - weight(b))[0];
   if (top && top.score >= 0.6) good.push({ title: top.fam, why: `You win ${pct(top.win)} of ${top.n} games with it as ${top.side}.` });
-  if (low && low !== top && low.score <= 0.4) work.push({ title: low.fam, why: `You win only ${pct(low.win)} of ${low.n} games with it as ${low.side}. Practise its lines.`, href: './' });
+  if (low && low !== top && low.score <= 0.4) work.push({ title: low.fam, why: `You win only ${pct(low.win)} of ${low.n} games with it as ${low.side}.`, href: './' });
   return [good.slice(0, 4), work.slice(0, 4)];
 }
 // Skill bars, 0-100, each read from one thing in the games; null when there are too few games to say.
@@ -683,13 +683,9 @@ function render(name, at, p) {
         </div>
       </div>
     </section>
-    <div class="pf-two pf-verdicts">
-      <section class="pf-card"><h2 class="pf-good">Strengths</h2>${verdictList(J.good.map((i) => ({ ...i, why: say(i.why), href: null })), `Nothing is clearly above ${me ? 'your' : 'their'} opponents yet.`)}</section>
-      <section class="pf-card"><h2 class="pf-bad">Train next</h2>${list(J.work, `Nothing is clearly below ${me ? 'your' : 'their'} opponents.`)}</section>
-    </div>
-    ${leadStory(name, p, skills, me)}
     <section class="pf-card pf-chart" id="pf-chart"></section>
     <dl class="pf-kpis">${kpis.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
+    ${leadStory(name, p, skills, me)}
     ${analysePanel(name, p)}
     <section class="pf-card pf-skills-card${showSkillText ? ' open' : ''}">
       <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
@@ -697,6 +693,10 @@ function render(name, at, p) {
       ${skillBars(skills, say, me)}
       <p class="pf-skill-more pf-skill-scale">Each skill compares ${me ? 'you' : 'the player'} with ${me ? 'your' : 'their'} own opponents rated within ${PEER} points, from the same games: 50 means as good as them, higher is better.</p>
     </section>
+    <div class="pf-two pf-verdicts">
+      <section class="pf-card"><h2 class="pf-good">Strengths</h2>${verdictList(J.good.map((i) => ({ ...i, why: say(i.why), href: null })), `Nothing is clearly above ${me ? 'your' : 'their'} opponents yet.`)}</section>
+      <section class="pf-card"><h2 class="pf-bad">Train next</h2>${list(J.work, `Nothing is clearly below ${me ? 'your' : 'their'} opponents.`)}</section>
+    </div>
     <section class="pf-card" id="pf-games"></section>
     <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From all ${p.n} games</span></div>
       <div class="pf-two pf-more-body">
@@ -769,9 +769,8 @@ function leadStory(name, p, skills, me) {
   const { leak } = judge(p, skills);
   return `<section class="pf-lead${leak ? '' : ' solo'}">
     <div class="pf-news"><h2>Latest</h2>
-      ${main ? `<p class="pf-news-big"><b>${after(mine[0])}</b> ${change !== null ? `<span class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</span> <small>${main} this week, ${recent.length} game${recent.length === 1 ? '' : 's'}</small>` : `<small>${main} · no games this week</small>`}</p>` : ''}
       ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${last.map((g, i) => `<a class="pf-res r-${form[i]}" href="game.html?u=${encodeURIComponent(name)}&id=${g.id}" title="${{ W: 'Won', L: 'Lost', D: 'Drew' }[form[i]]} against ${esc(g.players[sideOf(g) === 'white' ? 'black' : 'white'].user?.id || 'anonymous')}, ${day(g.createdAt)}: open the game">${form[i]}</a>`).join('')}</p>
-        <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}${main ? ` ${main}` : ''} games, newest first · last played ${day(latest.createdAt)}</p>` : ''}
+        <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}${main ? ` ${main}` : ''} games, newest first · last played ${day(latest.createdAt)}${change !== null ? ` · <b class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</b> this week in ${recent.length} game${recent.length === 1 ? '' : 's'}` : ''}</p>` : ''}
       ${last.length ? `<dl class="pf-facts">${recentFacts(last.map((g) => readGame(g, name.toLowerCase())), p).map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''}
     </div>
     ${leak ? `<div class="pf-leak"><h2>${me ? 'Your biggest leak' : 'Biggest leak'}</h2>
