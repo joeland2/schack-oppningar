@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028104905';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028104905';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028105516';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028105516';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -212,7 +212,7 @@ function popularOpenings() {
     const x = explore(p.moves, mine);
     for (const m of x.moves) {
       const share = p.share * m.n / x.total;
-      if (share < 0.0005 || m.n < MIN_GAMES) continue;
+      if (share < 0.0002 || m.n < MIN_GAMES) continue;
       const moves = [...p.moves, m.san];
       const sys = moves.length % 2 && SYSTEMS.find((s) => s.test(moves, m.name));
       if (sys) {
@@ -248,8 +248,9 @@ function popularOpenings() {
   const wide = BUCKETS.flatMap((b, i) => (b <= rating + 500 && (BUCKETS[i + 1] ?? Infinity) > rating - 500 ? [i] : []));
   const reach = (o) => (o.roots || [{ moves: o.root.split(' ') }]).reduce((s, r) => s + reachOf(r.moves, wide), 0);
   const common = white.filter((o) => o.share >= MIN_REACH);
-  const more = white.filter((o) => o.share < MIN_REACH).sort((a, b) => reach(b) - reach(a)).slice(0, Math.max(0, WANT.w - common.length));
-  for (const o of [...common, ...more]) o.listed = true;
+  const rest = white.filter((o) => o.share < MIN_REACH).sort((a, b) => reach(b) - reach(a));
+  // rank orders every White opening found; a style filter takes the first WANT.w of its own style
+  [...common, ...rest].forEach((o, i) => { o.rank = i; o.listed = i < WANT.w; });
   // As Black you face White's openings: the same ones, practised from the other side.
   const meet = white.filter((o) => o.listed).map((o) => ({ ...o, id: `vs:${o.family}`, side: 'b' }));
   return [...white, ...meet, ...defences.values()];
@@ -275,14 +276,17 @@ function familyOf(name) {
 console.assert(familyOf("Queen's Pawn Game: London System, with e6") === "Queen's Pawn Game: London System" && familyOf("Queen's Pawn Game") === null
   && familyOf('Rapport-Jobava System, with e6') === 'Rapport-Jobava System', 'familyOf');
 
-const fitsStyle = (o) => style === 'any' || (STYLE_OF[o.family] || []).includes(style);
+// Style tags are keyed by the opening's name, with or without its "Queen's Pawn Game:" style prefix.
+const stylesOf = (o) => STYLE_OF[o.family] || STYLE_OF[shortName(o.family)] || [];
+const fitsStyle = (o) => style === 'any' || stylesOf(o).includes(style);
 
 // The openings shown. White: the best-scoring common ones that fit your style.
 // Black: the White openings you meet most often, whatever your style.
 const yourScore = (o) => (o.side === 'w' ? o.score : 1 - o.score);
 const byChoice = (a, b) => (sort === 'played' ? b.share - a.share : yourScore(b) - yourScore(a));
 function shown() {
-  const white = OPENINGS.filter((o) => o.side === 'w' && o.listed && fitsStyle(o)).sort(byChoice);
+  const white = OPENINGS.filter((o) => o.side === 'w' && o.rank !== undefined && fitsStyle(o))
+    .sort((a, b) => a.rank - b.rank).slice(0, WANT.w).sort(byChoice);
   return [...white, ...OPENINGS.filter(isVs).sort(byChoice)];
 }
 
@@ -295,7 +299,7 @@ function card(o) {
   const level = due ? 'pagar' : s.total && s.done.length >= s.total ? 'sitter' : s.done.length ? 'pagar' : 'ny';
   const levelTxt = due ? `${due} due` : { sitter: 'Cleared', pagar: `${s.done.length}/${s.total} lines`, ny: 'New' }[level];
   const moves = numbered(o.root).split(' ');
-  const tags = (STYLE_OF[o.family] || []).map((t) => `<span class="tag">${STYLES[t].label}</span>`).join('');
+  const tags = stylesOf(o).map((t) => `<span class="tag">${STYLES[t].label}</span>`).join('');
   const about = ABOUT[o.family] || ABOUT[shortName(o.family)] || '';
   const win = o.side === 'w' ? o.win : 1 - o.win - o.draw;
   return `<article class="ocard side-${o.side}" role="button" tabindex="0" data-id="${o.id}" aria-label="${isVs(o) ? 'vs ' : ''}${o.name}">
@@ -322,11 +326,10 @@ const showAll = { w: false, b: false };
 const PHONE = matchMedia('(max-width: 560px)');
 
 function renderList() {
-  const whiteAll = OPENINGS.filter((o) => o.side === 'w' && o.listed).length;
   const about = {
     w: (n) => `${sort === 'played' ? 'Most played first' : 'Best results first'}. ${style === 'any'
       ? `The ${n} most played openings at your level, topped up with the most played within 500 of your rating.`
-      : `${n} of ${whiteAll} are ${STYLES[style].label.toLowerCase()}; change style to see the rest.`}`,
+      : `The ${n} most played ${STYLES[style].label.toLowerCase()} openings, at your level first, then within 500 of your rating.`}`,
     b: (n) => `The same ${n} White openings, from Black's side: how to meet them, ${sort === 'played' ? 'most often met first' : 'the ones Black does best against first'}. Search for your own defences, like the Sicilian.`,
   };
   const q = query.trim().toLowerCase();
