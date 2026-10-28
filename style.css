@@ -3,14 +3,14 @@
   /* Sports-magazine look: cream paper, ink type, a heavy black rule over each panel, one orange.
      --data (orange) marks what you are working on; green and red stay for right and wrong. Headlines
      are Anton (--font-poster), the rest Geist. A dark variant below swaps paper and ink. */
-  --bg: #f4efe6;
-  --surface: #fbf8f2;
-  --raised: #ece4d6;
+  --bg: #e6dfd1;
+  --surface: #efe8db;
+  --raised: #ded5c3;
   --ink: #141414;
-  --muted: #6b6458;
-  --line: #e2d9c8;
+  --muted: #62594c;
+  --line: #d3c8b3;
   --accent: #141414;
-  --accent-ink: #f4efe6;
+  --accent-ink: #efe8db;
   --data: #ff5a1f;
   --data-ink: #141414;
   --hot: #c2410c;          /* orange for text on paper (readable), --data for marks */
@@ -18,7 +18,7 @@
   --bad: #b42318;
   --hint: #e0b23a;
   --rule: #141414;
-  --track: #e7dfcf;
+  --track: #d9cfbc;
   --card: #141414; --card-ink: #f4efe6; --card-hot: #ff5a1f;
   --radius: 4px;
   /* Spacing roles: inside a group, between related parts, between groups. */
@@ -504,7 +504,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .tag { background: var(--raised); color: var(--ink); }
 
 /* Each card in its side's colour: White's openings on white, Black's on black, in both themes */
-.ocard.side-w { --accent: #141414; --surface: #fbf8f2; --ink: #141414; --muted: #6b6458; --line: #e2d9c8; --raised: #ece4d6; --good: #2f7d4f; --bad: #b42318; }
+.ocard.side-w { --accent: #141414; --surface: #efe8db; --ink: #141414; --muted: #62594c; --line: #d3c8b3; --raised: #ded5c3; --good: #2f7d4f; --bad: #b42318; }
 .ocard.side-b { --accent: #f4efe6; --surface: #141414; --ink: #f4efe6; --muted: #a8a093; --line: #2e2a25; --raised: #26221e; --good: #5fc48a; --bad: #ff6b6b; }
 .ocard.side-w, .ocard.side-b { background: var(--surface); color: var(--ink); border-color: var(--line); }
 .ocard.side-w:hover, .ocard.side-w:focus-visible, .ocard.side-b:hover, .ocard.side-b:focus-visible { border-color: var(--ink); }
