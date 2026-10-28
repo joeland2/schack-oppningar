@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029001934';
-import { STYLE_OF } from './styles.js?v=20261029001934';
+import { account, login, finishLogin } from './lichess.js?v=20261029002106';
+import { STYLE_OF } from './styles.js?v=20261029002106';
 
 const MAX = 500;
 const PV = 14;
@@ -146,7 +146,6 @@ export function profileOf(games) {
     history: games.reduce((h, g) => (g.at ? { ...h, [g.speed]: [[g.at, g.rating + g.diff], ...(h[g.speed] || [])] } : h), {}),
   };
   p.type = typeOf(p);
-  [p.good, p.work] = verdicts(p);
   return p;
 }
 
@@ -218,36 +217,6 @@ function typeOf(p) {
 }
 console.assert(typeOf({ attacking: 0.54, solid: 0.2, queensOff: 0.1, draws: 0.05, moves: 30, analysed: 50, downs: 30, saved: 0.47, lowTime: 0.16, noCastle: 0.1 }).map((t) => t.name).join() === 'Attacker,Comeback player', 'typeOf');
 
-// Good at / work on: each check with its evidence, kept only when it says something clear.
-function verdicts(p) {
-  const good = [], work = [];
-  const add = (ok, bad, item) => { if (ok) good.push(item); else if (bad) work.push(item); };
-  const diff = (p.white ?? 0) - (p.black ?? 0);
-  if (Math.abs(diff) >= 0.08) {
-    const [hi, lo] = diff > 0 ? ['White', 'Black'] : ['Black', 'White'];
-    const [sHi, sLo] = diff > 0 ? [p.winW ?? p.white, p.winB ?? p.black] : [p.winB ?? p.black, p.winW ?? p.white]; // shown as wins, the one measure the page uses
-    good.push({ title: `Playing ${hi}`, why: `You win ${pct(sHi)} of your games as ${hi}.` });
-    work.push({ title: `Playing ${lo}`, why: `As ${lo} you win ${pct(sLo)} of your games, against ${pct(sHi)} as ${hi}. Train your openings for that side.`, href: './' });
-  }
-  if (p.analysed >= ENOUGH && p.ups >= 5) add(p.converted >= 0.8, p.converted < 0.65,
-    { title: 'Winning when ahead', why: `When you were clearly better (3 pawns or more), you won ${pct(p.converted)} of ${p.ups} games.`, href: './mistakes.html' });
-  if (p.analysed >= ENOUGH && p.downs >= 5) add(p.saved >= 0.35, false, { title: 'Fighting back', why: `When you were clearly worse, you still saved ${pct(p.saved)} of ${p.downs} games.` });
-  if (p.blunders !== null && p.analysed >= ENOUGH) add(p.blunders <= 0.4, p.blunders >= 1,
-    { title: 'Avoiding blunders', why: `${p.blunders.toFixed(1)} blunders a game in your ${p.analysed} games with computer analysis${p.blunders >= 1 ? `, most in the ${worstPhase(p)}` : ''}.`, href: './mistakes.html' });
-  if (p.analysed >= ENOUGH) add(p.badStarts <= 0.1, p.badStarts >= 0.25,
-    { title: 'Getting out of the opening', why: `After move 12 you were worse by 1.5 pawns or more in ${pct(p.badStarts)} of your analysed games.`, href: './' });
-  if (p.endgames >= 10) add(p.endgameScore >= p.score + 0.07, p.endgameScore <= p.score - 0.07,
-    { title: 'Endgames', why: `You score ${pct(p.endgameScore)} in games that reach an endgame, against ${pct(p.score)} overall.`, href: './basics.html' });
-  if (p.timeLosses >= 0.2) work.push({ title: 'The clock', why: `${pct(p.timeLosses)} of your losses are on time. Move faster in the opening, which you know.` });
-  else if (p.lowTime <= 0.1 && p.n >= 30) good.push({ title: 'Using your time', why: `You are rarely short of time: ${pct(p.lowTime)} of games end with under a tenth left.` });
-  if (p.quickLosses >= 0.3) work.push({ title: 'Early collapses', why: `${pct(p.quickLosses)} of your losses are over within 25 moves. Look at every check and capture your opponent has before you move.`, href: './mistakes.html' });
-  const ops = [...p.openings.w.map((o) => ({ ...o, side: 'White' })), ...p.openings.b.map((o) => ({ ...o, side: 'Black' }))].filter((o) => o.n >= 8);
-  const weight = (o) => (o.score - 0.5) * Math.sqrt(o.n); // a clear result over many games beats an extreme over few
-  const top = [...ops].sort((a, b) => weight(b) - weight(a))[0], low = [...ops].sort((a, b) => weight(a) - weight(b))[0];
-  if (top && top.score >= 0.6) good.push({ title: top.fam, why: `You win ${pct(top.win)} of ${top.n} games with it as ${top.side}.` });
-  if (low && low !== top && low.score <= 0.4) work.push({ title: low.fam, why: `You win only ${pct(low.win)} of ${low.n} games with it as ${low.side}.`, href: './' });
-  return [good.slice(0, 4), work.slice(0, 4)];
-}
 // Skill bars, 0-100, each read from one thing in the games; null when there are too few games to say.
 // The raw scales are rules of thumb (50 is a so-so result for the player); skillsOf puts them on the card's scale.
 const clamp = (x) => Math.round(Math.max(0, Math.min(100, x)));
@@ -285,7 +254,6 @@ function rawSkills(p) {
   ];
 }
 console.assert(rawSkills({ peer: { analysed: 30, after12: 100, myBl: 1, oppBl: 1, meUp: 1, oppUp: 3, endgames: 0, n: 10 } }).map((x) => x.v).slice(0, 3).join() === '75,50,75', 'rawSkills');
-const worstPhase = (p) => Object.entries(p.slips).sort((a, b) => b[1] - a[1])[0][0];
 {
   const g = (o) => ({ side: 'w', speed: 'blitz', status: 'resign', plies: 60, result: 1, family: 'Italian Game', rating: 1500, diff: 5, castled: 8, queensOff: null, endgame: false, analysed: false, acc: null, blunders: null, best: null, worst: null, after12: null, slips: { opening: 0, middlegame: 0, endgame: 0 }, lowTime: false, ...o });
   const p = profileOf([g({}), g({ result: 0 }), g({ side: 'b', result: 0 }), g({ side: 'b', result: 0.5 })]);
@@ -532,9 +500,6 @@ const games = (n) => `${n} game${n === 1 ? '' : 's'}`;
 const bar = (o) => { const w = o.win ?? o.score, d = o.win == null ? 0 : Math.max(0, 2 * (o.score - o.win)), l = Math.max(0, 1 - w - d);
   return `<div class="wdl" role="img" aria-label="${pct(w)} wins, ${pct(d)} draws, ${pct(l)} losses"><span class="w" style="width:${w * 100}%"></span><span class="d" style="width:${d * 100}%"></span><span class="l" style="width:${l * 100}%"></span></div>`; };
 const ago = (t) => { const h = (Date.now() - t) / 3.6e6; return h < 1 ? 'less than an hour ago' : h < 48 ? `${Math.round(h)} hours ago` : `${Math.round(h / 24)} days ago`; };
-function verdictList(items, empty) {
-  return items.length ? `<ul class="pf-list">${items.map((i) => `<li><b>${esc(i.title)}</b><span>${esc(i.why)}${i.href ? ` <a href="${i.href}">Train it</a>` : ''}</span></li>`).join('')}</ul>` : `<p class="info">${empty}</p>`;
-}
 function openingRows(list) {
   return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><span>${esc(o.fam)}</span><small>${games(o.n)} · ${pct(o.win ?? o.score)} wins</small>${bar(o)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
 }
@@ -564,23 +529,8 @@ function endsGrid(ends) {
     <div class="pf-ends-cell"><b>${pct(x[k])}</b><small>${name}</small><span class="pf-ends-bar"><i style="width:${x[k] * 100}%"></i></span></div>`).join('')}</div>`;
   return `<div class="pf-ends">${row('Wins', 'won', ends.won)}${row('Losses', 'lost', ends.lost)}</div>`;
 }
-// One judgement for the whole page, from the skills against your opponents: strengths are skills
-// clearly above them (56+), weaknesses clearly below (45 or less), and the leak is the worst of those;
-// within that band it is noise and nothing is called a leak. Opening and colour verdicts are added.
-const SKILL_VERDICTS = new Set(['Winning when ahead', 'Fighting back', 'Avoiding blunders', 'Getting out of the opening', 'Endgames', 'The clock', 'Using your time', 'Early collapses']);
-function judge(p, skills) {
-  const known = skills.filter((x) => x.raw !== null);
-  const item = (x) => ({ title: x.label, why: x.why, href: x.href, train: x.train, v: x.v });
-  const work = known.filter((x) => x.raw <= 45).sort((a, b) => a.raw - b.raw).slice(0, 2).map(item);
-  const good = known.filter((x) => x.raw >= 56).sort((a, b) => b.raw - a.raw).slice(0, 2).map(item);
-  const extra = (list) => (list || []).filter((x) => !SKILL_VERDICTS.has(x.title));
-  const g = [...good, ...extra(p.good)].slice(0, 3), w = [...work, ...extra(p.work)].slice(0, 3);
-  const used = new Set([...g, ...w].map((x) => x.title)), byRaw = [...known].sort((a, b) => b.raw - a.raw);
-  // Fewer than three clear ones: fill with the next best (Strengths) and the next weakest (Train next) skills
-  for (const x of byRaw) if (g.length < 3 && !used.has(x.label) && x.raw >= 50) { g.push(item(x)); used.add(x.label); }
-  for (const x of byRaw.reverse()) if (w.length < 3 && !used.has(x.label)) { w.push(item(x)); used.add(x.label); }
-  return { good: g, work: w, leak: work[0] || null };
-}
+// The leak: the worst skill clearly below the player's opponents (45 or less); 46–55 is noise.
+const leakOf = (skills) => skills.filter((x) => x.raw !== null && x.raw <= 45).sort((a, b) => a.raw - b.raw)[0] || null;
 
 // A portrait in words, from this player's own games: the openings they actually choose, how their
 // games end, their best piece, and the area that lifts or holds them back. No two read the same.
@@ -594,7 +544,7 @@ function portrait(name, p, skills, me, part = 'lead') {
   const t = p.type.map((x) => x.name.toLowerCase());
   out.push(`${you} ${are} ${article(t[0])} ${t[0]}${t[1] ? ` with a ${t[1]}'s streak` : ''}${w.length || b.length ? `, reaching for ${[w.length && `the ${and(w)} as White`, b.length && `the ${and(b)} as Black`].filter(Boolean).join(' and ')}` : ''}.`);
   const known = skills.filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
-  const { leak } = judge(p, skills);
+  const leak = leakOf(skills);
   const named = (x) => ({ Clock: 'the clock', Openings: 'the openings' }[x.label || x.title] || (x.label || x.title).toLowerCase());
   if (known.length >= 2) out.push(`${me ? 'Your' : 'Their'} game is carried by ${named(known[0])}${leak ? ` and held back most by ${named(leak)}` : `, and ${me ? 'you match your' : 'they match their'} opponents everywhere else`}.`);
   if (part === 'lead') return out.join(' ');
@@ -711,8 +661,6 @@ function cardNote(name, p, me) {
 function render(name, at, p) {
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
   document.title = me ? 'Your Profile' : `${name} · Profile`;
-  const list = (items, empty) => verdictList(items.map((i) => ({ ...i, why: say(i.why), href: me ? i.href : null })), empty);
-  const J = judge(p, skills);
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= ENOUGH ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= ENOUGH ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
     ${playerBar(name)}
@@ -738,10 +686,6 @@ function render(name, at, p) {
       ${skillBars(skills, say, me)}
       <p class="pf-skill-more pf-skill-scale">Each skill compares ${me ? 'you' : 'the player'} with ${me ? 'your' : 'their'} own opponents rated within ${PEER} points, from the same games: 50 means as good as them, higher is better.</p>
     </section>
-    <div class="pf-two pf-verdicts">
-      <section class="pf-card"><h2 class="pf-good">Strengths</h2>${verdictList(J.good.map((i) => ({ ...i, why: say(i.why), href: null })), `Nothing is clearly above ${me ? 'your' : 'their'} opponents yet.`)}</section>
-      <section class="pf-card"><h2 class="pf-bad">Train next</h2>${list(J.work, `Nothing is clearly below ${me ? 'your' : 'their'} opponents.`)}</section>
-    </div>
     <section class="pf-card" id="pf-games"></section>
     <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From all ${p.n} games</span></div>
       <div class="pf-two pf-more-body">
@@ -811,16 +755,12 @@ function leadStory(name, p, skills, me) {
   const before = mine.find((g) => g.createdAt < week);
   const change = recent.length ? after(recent[0]) - (before ? after(before) : recent.at(-1).players[sideOf(recent.at(-1))].rating) : null;
   const last = (mine.length ? mine : games).slice(0, 10), form = last.map(res), wins = form.filter((x) => x === 'W').length, latest = last[0];
-  const { leak } = judge(p, skills);
-  return `<section class="pf-lead${leak ? '' : ' solo'}">
+  return `<section class="pf-lead solo">
     <div class="pf-news"><h2>Latest</h2>
       ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${last.map((g, i) => `<a class="pf-res r-${form[i]}" href="game.html?u=${encodeURIComponent(name)}&id=${g.id}" title="${{ W: 'Won', L: 'Lost', D: 'Drew' }[form[i]]} against ${esc(g.players[sideOf(g) === 'white' ? 'black' : 'white'].user?.id || 'anonymous')}, ${day(g.createdAt)}: open the game">${form[i]}</a>`).join('')}</p>
         <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}${main ? ` ${main}` : ''} games, newest first · last played ${day(latest.createdAt)}${change !== null ? ` · <b class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</b> this week in ${recent.length} game${recent.length === 1 ? '' : 's'}` : ''}</p>` : ''}
       ${last.length ? `<dl class="pf-facts">${recentFacts(last.map((g) => readGame(g, name.toLowerCase())), p).map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''}
     </div>
-    ${leak ? `<div class="pf-leak"><h2>${me ? 'Your biggest leak' : 'Biggest leak'}</h2>
-      <p class="pf-leak-title">${esc(leak.title)} <small>${leak.v}</small></p><p>${esc(say(leak.why))} ${esc(leak.train)}</p>${me ? `<a class="cta" href="${leak.href || 'practice.html'}">Train it</a>` : ''}
-    </div>` : ''}
   </section>`;
 }
 // The page ends on what to do next, not on the fine print.
