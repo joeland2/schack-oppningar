@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028172025';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028172025';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028172025';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028172025';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028172720';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028172720';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028172720';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028172720';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1338,12 +1338,12 @@ function bigMoment(i, after) {
   if (m.color === cur.side) {
     view = i + 1; // the board shows the position before the slip, with its arrows (see renderBoard)
     return moment('blunder', 'Blunder', `<b>${label}</b> throws away a lot. ${slipWhy(i, false)} Red: your move, orange: their answer, green: better.`,
-      [{ label: 'Take it back', run: () => takeBackTo(i) }, { label: 'Play on', run: () => showMove(Infinity) }]);
+      [{ label: 'Take it back', run: () => takeBackTo(i) }, { label: 'Play on', run: () => showMove(Infinity) }], null, null, null);
   }
   if (i !== game.history().length - 1) return; // you have moved on already
   const best = after?.move && new Chess(game.fen()).move(after.move);
   moment('chance', 'Chance!', `${sideName(m.color)}'s <b>${label}</b> (red arrow) was a blunder. There is a strong move for you now: look at checks, captures and threats.`,
-    [{ label: 'Find it', run: () => {} }, ...(best ? [{ label: 'Show me', run: () => { hintSq = [best.from, best.to]; renderBoard(); say(`${moveWords(best)}.`, 'good'); } }] : [])], null, [[m.from, m.to, RED]]);
+    [{ label: 'Find it', run: () => {} }, ...(best ? [{ label: 'Show me', run: () => { hintSq = [best.from, best.to]; renderBoard(); say(`${moveWords(best)}.`, 'good'); } }] : [])], null, [[m.from, m.to, RED]], null);
 }
 function renderNotes(gen) { if (gen === gameGen && cur) { renderBoard(); renderMoves(); renderWhy(); } }
 
@@ -1391,6 +1391,7 @@ async function opponentPlays() {
 
 function ended() {
   if (!game.isGameOver()) return false;
+  if (punishDone && !endLen) finish(); // the guided moves ended the game: the line is done
   if (!game.isCheckmate()) say('Draw. Press Next line to go on.');
   else if (game.turn() === cur.side) say('Checkmate: you lost this one. Press Restart to play the line again.', 'bad');
   else { say('Checkmate! You won.', 'good'); celebrate(); }
@@ -1421,9 +1422,11 @@ const BOOK_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c3-1
 // stays until you choose what to do. kind: trap | blunder | chance. actions: [{ label, run }], the
 // first is the main one. swing: [before, after] your score, drawn as a bar.
 let momentOpen = false;
-function moment(kind, title, html, actions, swing = null, arrows = null) {
+// onBoard: what touching the board does while the moment is up (it closes the moment first); a moment
+// without one blocks the board until you press its button.
+function moment(kind, title, html, actions, swing = null, arrows = null, onBoard = undefined) {
   closeMoment();
-  momentOpen = true; momentArrows = arrows;
+  momentOpen = true; momentArrows = arrows; momentOnBoard = onBoard;
   const bar = swing ? `<div class="moment-swing"><span>Your chances</span><b>${pct(swing[0])}</b><i aria-hidden="true"><s style="width:${swing[0] * 100}%"></s><s class="to" style="width:${swing[1] * 100}%"></s></i><b>${pct(swing[1])}</b></div>` : '';
   // Above the board, not on it: the board stays in full view with the moment's arrows on it.
   $('.board-row').insertAdjacentHTML('beforebegin', `<div class="moment moment-${kind}" role="alertdialog" aria-labelledby="moment-title">
@@ -1440,7 +1443,15 @@ function moment(kind, title, html, actions, swing = null, arrows = null) {
   renderBoard();
 }
 // Arrows for the moment on the board: [from, to, colour]; red for the move it is about.
-let momentArrows = null;
+let momentArrows = null, momentOnBoard;
+// Touching the board while a moment is up: the moment goes and its board action runs.
+function settleMoment() {
+  if (!momentOpen || momentOnBoard === undefined) return;
+  const run = momentOnBoard;
+  closeMoment();
+  run?.();
+}
+const boardBlocked = () => momentOpen && momentOnBoard === undefined;
 const RED = '#c4242a', ORANGE = '#e07b00', GREEN = '#15781b';
 function closeMoment() {
   $('.moment')?.remove();
@@ -1695,7 +1706,7 @@ function reply() {
         if (!playPremove()) prompt('Your move: punish it.');
       };
       moment('trap', 'Trap!', `${sideName(m.color)} played <b>${trapMove(t)}</b>, the mistake this line is about. It looks natural, but it lets you win: players at your level score ${pct(1 - t.score)} after it. ${mode === 'learn' ? punishText(t) || 'The green arrow shows how to punish it.' : 'This is the moment: find the move that punishes it.'}`,
-        [{ label: 'Punish it', run: go }], was === null ? null : [was, 1 - t.score], [[m.from, m.to, RED], ...punishArrow(t)]);
+        [{ label: 'Punish it', run: go }], was === null ? null : [was, 1 - t.score], [[m.from, m.to, RED], ...punishArrow(t)], go);
       // Where the line stops at the slip, Stockfish's best move is the punishment to show.
       if (mode === 'learn' && momentArrows.length === 1) {
         const at = game.fen();
@@ -1818,6 +1829,7 @@ function showHint() {
 // with the best move as an arrow in Learn (Hint in Practice) and the opponent from real games, then
 // Stockfish; only then is the line done. punish: your moves still to make; endLen: where the line ended.
 let punish = 0, punishDone = false, endLen = 0;
+const MATE_RUN = 10; // a mate this close at the line's end is part of the line
 function punishMoves() {
   const t = lines[lineIdx]?.trap;
   return t ? Math.max(0, 2 - Math.floor((line.length - 1 - t.ply) / 2)) : 0;
@@ -1829,10 +1841,20 @@ function guide() {
 }
 function finish() {
   if (mode === 'time') { trial.done++; return setTimeout(() => { if (mode === 'time' && trial.end > Date.now()) play((lineIdx + 1 + Math.floor(Math.random() * (lines.length - 1))) % lines.length); }, 300); }
-  if (!punishDone && punishMoves() > 0 && !game.isGameOver()) {
-    punish = punishMoves(); punishDone = true; playing = true; engineSaid = true;
-    renderControls(); // Hint works while you punish it
-    say(mode === 'learn' ? 'Now punish the trap: follow the arrow.' : 'Now punish the trap. Press Hint if you need help.', 'good');
+  // A mate in 10 or less for you at the line's end is played out too, before the line is done. That
+  // needs Stockfish's verdict, so wait for it (the board waits with you).
+  const key = evalKey(game.fen());
+  if (!punishDone && !game.isGameOver() && game.turn() === cur.side && !EVALS.has(key)) {
+    busy = true;
+    const gen = gameGen;
+    return evaluate(game.fen(), { keep: true }).then(() => { if (gen === gameGen) { busy = false; finish(); } });
+  }
+  const e = EVALS.get(key), mateIn = game.turn() === cur.side && e?.mate > 0 && e.mate <= MATE_RUN ? e.mate : 0;
+  if (!punishDone && !game.isGameOver() && (mateIn || punishMoves() > 0)) {
+    punish = Math.max(mateIn, punishMoves()); punishDone = true; playing = true; engineSaid = true;
+    renderControls(); // Hint works while you play it out
+    say(mateIn ? `There is a mate in ${mateIn}! ${mode === 'learn' ? 'Follow the arrow.' : 'Find it. Press Hint if you need help.'}`
+      : mode === 'learn' ? 'Now punish the trap: follow the arrow.' : 'Now punish the trap. Press Hint if you need help.', 'good');
     if (game.turn() !== cur.side) return opponentPlays();
     return guide();
   }
@@ -1857,20 +1879,21 @@ function finish() {
   // From here the game simply goes on: any move you make plays it out.
   playing = true; engineSaid = false;
   renderWhy(); // How to go on needs playing set
+  if (game.isGameOver()) return;
   if (game.turn() !== cur.side) return opponentPlays();
   const at = game.fen();
   goodMove().then((m) => { if (m && playing && game.fen() === at) { hintSq = [m.from, m.to]; renderBoard(); } });
 }
 
 // In Explore you move whichever side is to move; otherwise only your own side, on your turn.
-const canMove = () => !busy && !momentOpen && (mode === 'explore' ? cur && !game.isGameOver() : userTurn());
+const canMove = () => !busy && !boardBlocked() && (mode === 'explore' ? cur && !game.isGameOver() : userTurn());
 const mover = () => (mode === 'explore' ? game.turn() : cur.side);
 const move = (from, to) => (mode === 'explore' ? exploreMove(from, to) : tryMove(from, to));
 
 // Premove, as on Lichess: during the opponent's turn you may queue your next move (its squares are
 // marked blue); it is played the moment it is your turn, if it is still legal. A right-click cancels it.
 let premove = null;
-const canPremove = () => !!cur && !momentOpen && mode !== 'explore' && line.length > 0 && (ply < line.length || playing)
+const canPremove = () => !!cur && !boardBlocked() && mode !== 'explore' && line.length > 0 && (ply < line.length || playing)
   && game.turn() !== cur.side && !game.isGameOver();
 // Where a piece may be premoved, as on Lichess: every square it could reach on an empty board, own
 // pieces included, so a recapture can be queued while your piece still stands there. Whether the move
@@ -1915,7 +1938,7 @@ boardEl._destsFor = (sq) => (canPremove() ? premoveDests(sq) : game.moves({ squa
 boardEl.addEventListener('contextmenu', () => { if (premove) { premove = null; renderBoard(); } });
 
 enableDrag(boardEl, {
-  canDrag: (sq) => !momentOpen && leaveView(sq) && (canMove() || canPremove()) && game.get(sq)?.color === mover(),
+  canDrag: (sq) => (settleMoment(), !boardBlocked()) && leaveView(sq) && (canMove() || canPremove()) && game.get(sq)?.color === mover(),
   onDrop: (from, to) => {
     sel = null;
     if (canPremove()) { if (!setPremove(from, to)) renderBoard(); return; }
@@ -1924,7 +1947,9 @@ enableDrag(boardEl, {
 });
 boardEl.addEventListener('click', (e) => {
   const b = e.target.closest('.sq');
-  if (!b || momentOpen) return;
+  if (!b) return;
+  settleMoment();
+  if (boardBlocked()) return;
   if (!leaveView(b.dataset.sq)) return;
   if (!canMove() && canPremove()) {
     const sq = b.dataset.sq, p = game.get(sq);
