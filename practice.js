@@ -2,9 +2,9 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261028214839';
-import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028214839';
-import { build, cache, myName, skillsOf, storedGames, PV } from './profile.js?v=20261028214839';
+import { login } from './lichess.js?v=20261028214942';
+import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028214942';
+import { build, cache, myName, skillsOf, storedGames, PV } from './profile.js?v=20261028214942';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);

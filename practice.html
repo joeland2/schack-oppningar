@@ -8,8 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261028214839">
-  <script src="theme.js?v=20261028214839"></script>
+  <link rel="stylesheet" href="style.css?v=20261028214942">
+  <script src="header.js?v=20261028214942" defer></script>
+  <script src="theme.js?v=20261028214942"></script>
 </head>
 <body>
   <header class="top">
@@ -17,6 +18,7 @@
       <a class="brand" href="./">Chess<span>Trainer</span></a>
       <nav class="top-nav" aria-label="Sections"><a href="./">Openings</a><a href="basics.html">Basics</a><a href="pros.html">Puzzles</a><a href="practice.html" aria-current="page">My practice</a><a href="profile.html">Profile</a></nav>
       <form class="top-search" action="profile.html" role="search"><input name="u" type="search" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="Find a player" aria-label="Find a Lichess player" title="A Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false"></form>
+      <details class="top-players"><summary title="Your starred players" aria-label="Your starred players">★</summary><div class="top-players-menu"></div></details>
       <button id="theme" class="ghost theme" type="button" aria-label="Switch theme"></button>
     </div>
   </header>
@@ -26,6 +28,6 @@
     <div id="practice"></div>
   </main>
 
-  <script type="module" src="practice.js?v=20261028214839"></script>
+  <script type="module" src="practice.js?v=20261028214942"></script>
 </body>
 </html>
