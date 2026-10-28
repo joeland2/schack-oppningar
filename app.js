@@ -1,11 +1,11 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028224349';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028224349';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028224349';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028224349';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028224349';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028224349';
-import { storedGames } from './profile.js?v=20261028224349';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028224709';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028224709';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028224709';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028224709';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028224709';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028224709';
+import { storedGames } from './profile.js?v=20261028224709';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2156,7 +2156,7 @@ function renderStreak() {
   const days = load(DAYS_KEY, {}), today = days[dayOf(new Date())] || 0, n = streakOf(days);
   const el = $('#streak');
   el.hidden = !n && !today;
-  el.innerHTML = `<b>${n}</b> ${n === 1 ? 'day' : 'days'} in a row · <b class="${today >= GOAL ? 'up' : ''}">${Math.min(today, GOAL)}/${GOAL}</b> lines today`;
+  el.innerHTML = `<span class="acct-stat"><span class="acct-k">Streak</span><b>${n} ${n === 1 ? 'day' : 'days'}</b></span><span class="acct-stat"><span class="acct-k">Today</span><b class="${today >= GOAL ? 'up' : ''}">${Math.min(today, GOAL)}/${GOAL} lines</b></span>`;
   el.title = today >= GOAL ? 'Daily goal reached' : `Finish ${GOAL - today} more ${GOAL - today === 1 ? 'line' : 'lines'} today to reach your daily goal`;
 }
 renderStreak();
