@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028174353';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028174353';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028174353';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028174353';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028174601';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028174601';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028174601';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028174601';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -420,11 +420,14 @@ function renderList() {
     body = `<p class="og-about">${mineList.length ? 'The openings you have starred, from both sides. Practise weakest picks from these.' : 'Nothing here yet. Star (★) an opening as White and the defences you want as Black to build your repertoire.'}</p>
       <div class="olist">${mineList.map(card).join('')}</div>`;
   } else {
-    const ops = list.filter((o) => o.side === listSide);
-    const cut = !showAll[listSide] && ops.length > FIRST + 2;
+    // Your starred openings of this side come first, pinned, even ones the style or the cut would hide.
+    const pinned = mineList.filter((o) => o.side === listSide);
+    const ops = [...pinned, ...list.filter((o) => o.side === listSide && !repertoire.has(o.id))];
+    const first = Math.max(FIRST, pinned.length); // the cut never hides a pinned one
+    const cut = !showAll[listSide] && ops.length > first + 2;
     const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for White at your level. Try another style.</p>`;
     body = `<p class="og-about">${about[listSide](ops.length)}</p>${ops.length ? '' : empty}
-      <div class="olist">${(cut ? ops.slice(0, FIRST) : ops).map(card).join('')}</div>
+      <div class="olist">${(cut ? ops.slice(0, first) : ops).map(card).join('')}</div>
       ${cut ? `<button type="button" class="ghost more" data-more="${listSide}">Show all ${ops.length}</button>` : ''}`;
   }
   listEl.innerHTML = `${q ? '<h2 class="og-h">Search results</h2>' : `<div class="seg side-seg" role="group" aria-label="Your side">
