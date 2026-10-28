@@ -2,9 +2,9 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261028220844';
-import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028220844';
-import { build, cache, myName, skillsOf, storedGames, PV } from './profile.js?v=20261028220844';
+import { login } from './lichess.js?v=20261028221010';
+import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028221010';
+import { build, cache, myName, skillsOf, storedGames, PV } from './profile.js?v=20261028221010';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -28,7 +28,7 @@ const practise = (side, fam) => `./?practise=${side}~${encodeURIComponent(fam.re
 const SKILL_GO = {
   Openings: null, // the openings that cost you most are their own step
   Tactics: { href: 'mistakes.html', label: 'Solve your own mistakes' },
-  'Finishing won games': { href: 'basics.html', label: 'Basics: winning won positions' },
+  'Winning when ahead': { href: 'basics.html', label: 'Basics: winning won positions' },
   Defending: null,
   Endgames: { href: 'basics.html', label: 'Basics: endgames' },
   Clock: null,

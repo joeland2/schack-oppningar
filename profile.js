@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028220844';
-import { STYLE_OF } from './styles.js?v=20261028220844';
+import { account, login, finishLogin } from './lichess.js?v=20261028221010';
+import { STYLE_OF } from './styles.js?v=20261028221010';
 
 const MAX = 500;
 const PV = 7;
@@ -179,7 +179,7 @@ function verdicts(p) {
     work.push({ title: `Playing ${lo}`, why: `As ${lo} you score ${pct(sLo)}, ${Math.round(Math.abs(diff) * 100)} points less than as ${hi}. Train your openings for that side.`, href: './' });
   }
   if (p.analysed >= ENOUGH && p.ups >= 5) add(p.converted >= 0.8, p.converted < 0.65,
-    { title: 'Winning won games', why: `When you were clearly better (3 pawns or more), you won ${pct(p.converted)} of ${p.ups} games.`, href: './mistakes.html' });
+    { title: 'Winning when ahead', why: `When you were clearly better (3 pawns or more), you won ${pct(p.converted)} of ${p.ups} games.`, href: './mistakes.html' });
   if (p.analysed >= ENOUGH && p.downs >= 5) add(p.saved >= 0.35, false, { title: 'Fighting back', why: `When you were clearly worse, you still saved ${pct(p.saved)} of ${p.downs} games.` });
   if (p.blunders !== null && p.analysed >= ENOUGH) add(p.blunders <= 0.4, p.blunders >= 1,
     { title: 'Avoiding blunders', why: `${p.blunders.toFixed(1)} blunders a game in your ${p.analysed} games with computer analysis${p.blunders >= 1 ? `, most in the ${worstPhase(p)}` : ''}.`, href: './mistakes.html' });
@@ -218,7 +218,7 @@ function rawSkills(p) {
       means: 'Seeing threats and shots: how often you blunder, that is make a move that throws away a piece or the game.',
       why: `${(p.blunders ?? 0).toFixed(1)} blunders a game.`,
       train: 'Before every move, check every check, capture and threat your opponent has after it. Then solve the positions where you blundered.', href: './mistakes.html' },
-    { label: 'Finishing won games', needs: true, v: p.analysed >= ENOUGH && p.ups >= 5 ? clamp(((p.converted - 0.4) / 0.55) * 100) : null,
+    { label: 'Winning when ahead', needs: true, v: p.analysed >= ENOUGH && p.ups >= 5 ? clamp(((p.converted - 0.4) / 0.55) * 100) : null,
       means: 'Turning a clearly winning position (3 pawns or more ahead) into a win.',
       why: `Won ${pct(p.converted ?? 0)} of ${p.ups} games where you were clearly better.`,
       train: 'When ahead: trade pieces, not pawns, take away their counterplay first, and do not rush.', href: './basics.html' },
@@ -436,7 +436,7 @@ function analysePanel(name, p) {
     <div class="pf-an-row"><span><b>${p.analysed}/${p.n}</b> games analysed${p.ours ? ` (${p.ours} here)` : ''}
       <details class="pf-help"><summary title="${WHY_ANALYSE}" aria-label="Why analyse?">?</summary><p>${WHY_ANALYSE}</p></details>. Analyse the newest:</span>
     ${opts.map((o) => `<button type="button" class="pf-an-opt" data-analyse="${o.n}" ${o.games ? '' : 'disabled'} title="${o.games ? `${o.games} games without analysis, ${minutes(o.sec)}, with Stockfish in your browser` : 'All analysed'}">${o.n} <small>${o.games ? `${o.games} new · ${minutes(o.sec).replace('about ', '~')}` : 'done'}</small></button>`).join('')}</div>
-    ${few ? `<p class="pf-an-few">Analyse at least ${ENOUGH} games to unlock Openings, Tactics, Finishing, Defending, accuracy and blunders.</p>` : ''}
+    ${few ? `<p class="pf-an-few">Analyse at least ${ENOUGH} games to unlock Openings, Tactics, Winning when ahead, Defending, accuracy and blunders.</p>` : ''}
   </div>`;
 }
 function bindAnalyse(name) {
@@ -511,7 +511,7 @@ function endsGrid(ends) {
 // The piece is drawn white for the black card; in dark mode, where the card is cream, CSS inverts it.
 const CARD_INK = 'w';
 const PIECE_NAME = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
-const ABBR = { Openings: 'OPN', Tactics: 'TAC', 'Finishing won games': 'FIN', Defending: 'DEF', Endgames: 'END', Clock: 'CLK' };
+const ABBR = { Openings: 'OPN', Tactics: 'TAC', 'Winning when ahead': 'WIN', Defending: 'DEF', Endgames: 'END', Clock: 'CLK' };
 function playerCard(name, p, t, skills) {
   const known = skills.filter((x) => x.v !== null);
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
@@ -578,7 +578,7 @@ function render(name, at, p) {
       <h2>About these numbers</h2>
       <p class="info">Read from ${me ? 'your' : `${esc(name)}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
       <p class="info">Results, openings, opening style, the clock, endgames and the rating graph use all ${p.n} games.
-        Accuracy, blunders and the Openings, Tactics, Finishing and Defending skills need a computer's verdict on every move, so they use only the
+        Accuracy, blunders and the Openings, Tactics, Winning when ahead and Defending skills need a computer's verdict on every move, so they use only the
         ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'}${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. Analyse more from the bar at the top.</p>
       <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Score counts a win as 1 and a draw as a half.</p>
     </section>`;
