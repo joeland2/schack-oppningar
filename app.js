@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028151147';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028151147';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028151147';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028151147';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028151359';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028151359';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028151359';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028151359';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -15,7 +15,7 @@ const THEORY_GROUPS = [6, 7, 8]; // 2000+
 const TRAP_SHARE = 0.02, TRAP_SCORE = 0.35, TRAP_GAMES = 40;
 const MIN_GAMES = 20;     // below this, real-game data is too thin to trust
 const MAX_PLY = 20;       // data/explorer-*.json goes this deep
-const DATA = '2026-10-28-k8'; // version of data/explorer-*.json
+const DATA = '2026-10-28-k8c'; // version of data/explorer-*.json
 const BUCKETS = [0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]; // Lichess explorer rating groups
 // The strong players your own Lichess games are judged against: 2200+ in blitz; 2000+ in classical, where 2200+ games are scarce.
 const STRONG = { blitz: [7, 8], classical: [6, 7, 8] };
