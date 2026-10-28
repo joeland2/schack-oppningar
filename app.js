@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028122614';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028122614';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028122614';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028122614';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028123113';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028123113';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028123113';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028123113';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -745,14 +745,17 @@ function renderWhy() {
   if (mode === 'learn' && userTurn() && ply < line.length) {
     parts.push(`<p><b>Your move: ${label(ply, line[ply])}</b> ${why(line.slice(0, ply), line[ply])}</p>`);
   }
-  // The line-done summary is made at the line's end and stays while you play on from there.
-  if (ply >= line.length && hist.length === line.length) {
-    const tips = lineTips();
-    lineDone = `<div class="summary"><p class="done-head">Line done</p><p><b>What this line gave you</b> ${lineSummary()}</p>${lineFacts()}${tips.length
-      ? `<p><b>How to go on</b></p><ul class="tips">${tips.map((t) => `<li>${t}</li>`).join('')}</ul>` : ''}</div>`;
+  // The line-done summary is made at the line's end and stays while you play on from there. The tips
+  // are about the move to play at the line's end, so they go once you have played on.
+  const atEnd = ply >= line.length && hist.length === line.length;
+  let tips = '';
+  if (atEnd) {
+    lineDone = `<p class="done-head">Line done</p><p><b>What this line gave you</b> ${lineSummary()}</p>${lineFacts()}`;
+    const t = lineTips();
+    tips = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x) => `<li>${x}</li>`).join('')}</ul>` : '';
   }
   el.innerHTML = parts.join('');
-  $('#line-done').innerHTML = ply >= line.length ? lineDone : '';
+  $('#line-done').innerHTML = ply >= line.length && lineDone ? `<div class="summary">${lineDone}${tips}</div>` : '';
   $('#line-done').hidden = !$('#line-done').innerHTML;
 }
 
