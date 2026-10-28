@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028111630';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028111630';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028111630';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028111630';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028115511';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028115511';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028115511';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028115511';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -186,7 +186,15 @@ function buildLines(op) {
     const room = Math.max(1, MAX_LINES - done.length - open.length);
     for (const m of replies.slice(0, room)) open.push({ moves: [...moves, m.san], share: l.share * m.n / x.total, name: nameOf([...moves, m.san], name) });
   }
-  return done.sort((a, b) => b.share - a.share);
+  // Every line ends on the opponent's move: you see their answer, then play on from there. A line that
+  // ends on your move gets their most common reply, or loses that last move where no game goes further.
+  const seen = new Set();
+  return done.map((l) => {
+    if ((l.moves.length % 2 === 1) !== (op.side === 'w')) return l;
+    const reply = explore(l.moves, mine).moves[0];
+    return { ...l, moves: reply ? [...l.moves, reply.san] : l.moves.slice(0, -1) };
+  }).filter((l) => l.moves.length && !seen.has(lineKey(l.moves)) && seen.add(lineKey(l.moves)))
+    .sort((a, b) => b.share - a.share);
 }
 
 // The most played White openings at your level, found by walking real games from the start position,
@@ -701,10 +709,7 @@ function renderControls() {
   $('#step-fwd').disabled = mode !== 'explore' || !redo.length;
   $('#hint').disabled = !userTurn();
   $('#show').disabled = !userTurn();
-  // At the end of a line Hint and Show move make way for Play it out; while you play on they come back.
-  const lineDone = mode !== 'explore' && line.length > 0 && ply >= line.length && !playing && !game.isGameOver();
-  $('#playout').hidden = !lineDone;
-  $('#hint').hidden = $('#show').hidden = mode === 'explore' || lineDone;
+  $('#hint').hidden = $('#show').hidden = mode === 'explore';
 }
 
 // ---------- Move explanations ----------
@@ -1120,12 +1125,7 @@ function ended() {
   return true;
 }
 
-$('#playout').addEventListener('click', () => {
-  playing = true; engineSaid = false;
-  render();
-  if (game.turn() === cur.side) say('Your move. Hint and Show move help when you are stuck.');
-  else { say('Your opponent answers…'); opponentPlays(); }
-});
+
 
 // A move that is not the line's: whether strong players choose it too, and whether it does worse
 // in games at your level than the line's move. In words, not numbers.
@@ -1316,12 +1316,19 @@ function finish() {
   renderLines();
   renderLineBox();
   $('#restart').textContent = mode === 'try' && misses ? 'Try again' : 'Next line';
-  if (mode === 'learn') return say('Line learned. Play it out, press Next line, or switch to Practice to play it from memory.', 'good');
-  if (misses) return say(`Line done with ${plural(misses, 'mistake')}, so it is not cleared. Press Try again.`, 'bad');
-  if (!wasComplete && cleared() === lines.length) showComplete();
-  const back = `It comes back for review in ${plural(INTERVALS[r.box], 'day')}.`;
-  say(cleared() === lines.length ? `Line cleared. Every common line at your level is cleared. ${back}`
-    : `Line cleared, ${cleared()} of ${lines.length}. ${back} Press Next line.`, 'good');
+  const on = 'Play on if you like: the arrow shows a good next move.';
+  if (mode === 'learn') say(`Line learned. ${on} Or press Next line, or switch to Practice to play it from memory.`, 'good');
+  else if (misses) say(`Line done with ${plural(misses, 'mistake')}, so it is not cleared. ${on} Or press Try again.`, 'bad');
+  else {
+    if (!wasComplete && cleared() === lines.length) showComplete();
+    const back = `It comes back for review in ${plural(INTERVALS[r.box], 'day')}.`;
+    say(`${cleared() === lines.length ? 'Line cleared. Every common line at your level is cleared.' : `Line cleared, ${cleared()} of ${lines.length}.`} ${back} ${on}`, 'good');
+  }
+  // From here the game simply goes on: any move you make plays it out.
+  playing = true; engineSaid = false;
+  if (game.turn() !== cur.side) return opponentPlays();
+  const at = game.fen();
+  goodMove().then((m) => { if (m && playing && game.fen() === at) { hintSq = [m.from, m.to]; renderBoard(); } });
 }
 
 // In Explore you move whichever side is to move; otherwise only your own side, on your turn.
