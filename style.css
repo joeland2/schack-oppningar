@@ -496,7 +496,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .k-inaccuracy { --k: #d6a21b; } .k-mistake { --k: #e07b24; } .k-blunder { --k: #ca3431; }
 .mark[class*="k-"] { background: var(--k); }
 .nag { margin-left: 2px; font: 700 .75em var(--font-body); color: var(--k); }
-.why .verdict { border-left: 3px solid var(--k); padding-left: 8px !important; }
+.why .verdict { background: color-mix(in srgb, var(--k) 12%, transparent); padding: 6px 10px !important; border-radius: 2px; }
 .og-n { font: 500 12px var(--font-mono); padding: 1px 7px; border-radius: 99px; background: var(--raised); color: var(--muted); }
 .side-seg button[aria-pressed="true"] .og-n { background: var(--surface); }
 .ostats .wdl-key { display: none; }
@@ -644,7 +644,7 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
 /* Trap lines: a tag in the list, and a note when the mistake is played */
 .trap-tag { display: inline-block; padding: 0 6px; margin-right: 2px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: .02em;
   color: #fff; background: #c4242a; vertical-align: 1px; }
-.coach .why .trap-now { color: var(--ink); border-left: 3px solid #c4242a; padding-left: 8px !important; }
+.coach .why .trap-now { color: var(--ink); background: color-mix(in srgb, var(--bad) 12%, transparent); padding: 6px 10px !important; border-radius: 2px; }
 .coach .why .intro.plan, .line-done .plan { font-size: .92rem; color: var(--ink); }
 
 /* Progress to a file and back */
@@ -669,8 +669,8 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .lb-choice button.link { margin-left: 6px; font-size: 12px; color: var(--muted); }
 /* A moment that matters: a strip above the board that stays until you choose what to do; the board
    stays in full view, with the moment's arrows on it. */
-.moment { display: grid; gap: 6px; padding: 10px 14px; border-radius: 10px; background: var(--surface); color: var(--ink);
-  border: 1px solid var(--line); border-left: 5px solid var(--tone); box-shadow: var(--shadow); animation: moment-in .2s ease-out; }
+.moment { display: grid; gap: 6px; padding: 10px 14px; border-radius: 0 0 var(--radius) var(--radius); background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-top: 3px solid var(--tone); box-shadow: var(--shadow); animation: moment-in .2s ease-out; }
 .moment-trap, .moment-blunder, .moment-wrong { --tone: var(--bad); }
 .moment-chance, .moment-good { --tone: var(--good); }
 .moment .moment-title { margin: 0; font: 800 clamp(20px, 2.4vw, 28px)/1 var(--font-display); color: var(--tone); letter-spacing: -.01em; }
@@ -708,7 +708,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .moment-quiz .moment-actions { display: grid; gap: 6px; }
 .moment-quiz .moment-actions button { text-align: left; font-weight: 500; background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
 .moment-quiz .moment-actions button:hover { border-color: var(--ink); }
-.coach .why .careful { color: var(--ink); border-left: 3px solid #e07b00; padding-left: 8px !important; }
+.coach .why .careful { color: var(--ink); background: color-mix(in srgb, var(--hot) 12%, transparent); padding: 6px 10px !important; border-radius: 2px; }
 /* The sections, in the header of every page */
 .top-nav { display: flex; gap: 4px; margin-right: auto; margin-left: 12px; }
 .top-nav a { padding: 6px 10px; border-radius: 8px; color: var(--muted); font-weight: 500; text-decoration: none; }
@@ -748,7 +748,6 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .pf-pcard-stats span { display: flex; gap: 8px; align-items: baseline; font: 400 16px var(--font-poster); letter-spacing: .04em; opacity: .85; }
 .pf-pcard-stats b { font: 400 26px var(--font-poster); font-weight: 400; opacity: 1; min-width: 1.6em; }
 .pf-pcard-foot { margin: 10px 0 0; text-align: center; font: 500 10px var(--font-body); letter-spacing: .18em; opacity: .7; }
-.pf-kick { margin: 0; font: 600 11px var(--font-body); letter-spacing: .2em; text-transform: uppercase; color: var(--hot); }
 .pf-h1 { margin: 6px 0 0; font: 400 clamp(3.4rem, 9vw, 6rem)/0.92 var(--font-poster); text-transform: uppercase; letter-spacing: 0; }
 .pf-sub { margin: 6px 0 0; font: 400 clamp(1.5rem, 3.5vw, 2.2rem)/1.1 var(--font-poster); color: var(--muted); }
 .pf-about { margin-top: 16px; display: grid; gap: 8px; max-width: 64ch; }
@@ -757,7 +756,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .pf-best { margin: 14px 0 0; font-size: 14px; }
 
 /* Panels: paper with a heavy rule on top */
-.pf-card, .pf-kpis > div { background: var(--surface); border-top: 3px solid var(--rule); padding: clamp(16px, 2vw, 24px); min-width: 0; }
+.pf-card, .pf-kpis > div { background: var(--surface); border-radius: 0; border-top: 3px solid var(--rule); padding: clamp(16px, 2vw, 24px); min-width: 0; }
 .pf-card h2 { margin: 0 0 12px; font: 600 12px var(--font-body); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
 .pf-card h2.pf-good { color: var(--good); }
 .pf-card h2.pf-bad { color: var(--hot); }
@@ -828,7 +827,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .pr-head { padding-block: 8px 4px; }
 .pr-head .info { margin-top: 10px; max-width: 70ch; }
 .pr-steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
-.pr-step { display: grid; grid-template-columns: auto 1fr; gap: 18px; padding: clamp(16px, 2vw, 24px); background: var(--surface); border-top: 3px solid var(--rule, var(--ink)); }
+.pr-step { display: grid; grid-template-columns: auto 1fr; gap: 18px; padding: clamp(16px, 2vw, 24px); background: var(--surface); border-radius: 0; border-top: 3px solid var(--rule, var(--ink)); }
 .pr-n { font: 400 48px/0.9 var(--font-poster, var(--font-display)); color: var(--hot, var(--data)); min-width: 1.2em; }
 .pr-step h2 { margin: 0 0 6px; font: 400 26px/1.1 var(--font-poster, var(--font-display)); text-transform: uppercase; }
 .pr-step h2 small { font: 600 13px var(--font-body); color: var(--muted); text-transform: none; margin-left: 6px; }
@@ -846,7 +845,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .top-nav a[aria-current="page"] { background: none; border-radius: 0; box-shadow: inset 0 -2px 0 var(--hot); }
 h1, .picker h1 { font-family: var(--font-poster); font-weight: 400; text-transform: uppercase; letter-spacing: 0; line-height: .95; }
 .picker h1 { font-size: clamp(2.6rem, 7vw, 4.6rem); }
-.panel, .mine, .card { border-radius: var(--radius); border-top: 3px solid var(--rule); }
+.panel, .mine, .card { border-radius: 0 0 var(--radius) var(--radius); border-top: 3px solid var(--rule); }
 .ocard { border-radius: var(--radius); }
 .ocard h3 { font-family: var(--font-poster); font-weight: 400; font-size: 22px; text-transform: uppercase; letter-spacing: .01em; }
 .seg { border-radius: var(--radius); }
@@ -949,7 +948,7 @@ a.cta { color: var(--accent-ink); }
 .top-players summary { list-style: none; cursor: pointer; display: grid; place-items: center; width: 36px; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--hot); font-size: 16px; }
 .top-players summary::-webkit-details-marker { display: none; }
 .top-players[open] summary { border-color: var(--hot); }
-.top-players-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 220px; max-height: 60vh; overflow: auto; display: grid; padding: 6px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--rule); border-radius: var(--radius); box-shadow: 0 12px 30px rgb(0 0 0 / .25); }
+.top-players-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 220px; max-height: 60vh; overflow: auto; display: grid; padding: 6px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--rule); border-radius: 0 0 var(--radius) var(--radius); box-shadow: 0 12px 30px rgb(0 0 0 / .25); }
 .top-players-menu a { padding: 8px 10px; border-radius: 4px; color: var(--ink); text-decoration: none; font-weight: 600; }
 .top-players-menu a:hover, .top-players-menu a:focus-visible { background: var(--raised); }
 .top-players-menu p { margin: 6px 8px; font-size: 13px; color: var(--muted); }
@@ -1025,7 +1024,7 @@ a.cta { color: var(--accent-ink); }
 .pf-help summary { list-style: none; cursor: pointer; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--muted); color: var(--muted); font: 700 11px var(--font-body); }
 .pf-help summary::-webkit-details-marker { display: none; }
 .pf-help[open] summary, .pf-help summary:hover { border-color: var(--hot); color: var(--hot); }
-.pf-help p { position: absolute; z-index: 15; left: 0; top: calc(100% + 6px); width: min(300px, 80vw); margin: 0; padding: 10px 12px; font-size: 13px; line-height: 1.45; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--rule); border-radius: var(--radius); box-shadow: 0 10px 24px rgb(0 0 0 / .25); }
+.pf-help p { position: absolute; z-index: 15; left: 0; top: calc(100% + 6px); width: min(300px, 80vw); margin: 0; padding: 10px 12px; font-size: 13px; line-height: 1.45; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--rule); border-radius: 0 0 var(--radius) var(--radius); box-shadow: 0 10px 24px rgb(0 0 0 / .25); }
 .pf-an-few { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink); }
 
 /* Player card: the type in words under the overall; the player's piece and rating, top right */
@@ -1060,3 +1059,12 @@ a.cta { color: var(--accent-ink); }
 .pf-portrait { margin: 14px 0 0; max-width: 64ch; font-size: 16px; line-height: 1.55; }
 .pf-about p { color: var(--muted); font-size: 14px; }
 .pf-about p b { color: var(--ink); }
+
+/* The parts the browser draws carry the palette too */
+:root { accent-color: var(--data); caret-color: var(--hot); scrollbar-color: var(--line) transparent; }
+::selection { background: var(--data); color: var(--data-ink); }
+a { text-underline-offset: .18em; }
+.pf-stats dd, .pf-kpis dd, .cmp-table td, .pf-rows small, .pf-game-meta { font-variant-numeric: tabular-nums; }
+/* Drawn icons (one stroke family) in place of glyphs */
+.ico.ico-solid { fill: currentColor; stroke: none; }
+.pf-star .ico, .top-players .ico, .game-layout .controls .ico { vertical-align: -3px; stroke-width: 2; }

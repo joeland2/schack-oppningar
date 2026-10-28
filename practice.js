@@ -2,9 +2,9 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261028221642';
-import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028221642';
-import { build, cache, myName, skillsOf, storedGames, PV } from './profile.js?v=20261028221642';
+import { login } from './lichess.js?v=20261028224349';
+import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028224349';
+import { build, cache, myName, skillsOf, storedGames, PV } from './profile.js?v=20261028224349';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -66,13 +66,13 @@ function render(name, p) {
       `<a class="ghost pr-ghost" href="${practise(best.side, best.fam)}">Review it</a>`]);
   }
   $('#practice').innerHTML = `
-    <header class="pr-head"><p class="pf-kick">My practice</p><h1 class="pf-h1">Your plan</h1>
+    <header class="pr-head"><h1 class="pf-h1">Your plan</h1>
       <p class="info">Built from your last ${p.n} rated Lichess games, ${esc(name)}: the weakest parts of your game first. <a href="profile.html">See your profile</a></p></header>
     <ol class="pr-steps">${steps.map((x, i) => step(i + 1, ...x)).join('')}</ol>`;
 }
 
 function ask() {
-  $('#practice').innerHTML = `<section class="picker"><p class="pf-kick">My practice</p><h1 class="pf-h1">Your plan</h1>
+  $('#practice').innerHTML = `<section class="picker"><h1 class="pf-h1">Your plan</h1>
     <p class="info">Log in with Lichess and this page reads your games and builds a training plan: your weakest skills first, puzzles from your own mistakes, and the openings that cost you points.</p>
     <p><button id="pr-login" class="cta" type="button">Log in with Lichess</button></p></section>`;
   $('#pr-login').addEventListener('click', login);

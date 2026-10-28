@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261028221642';
-import { account } from './lichess.js?v=20261028221642';
-import { storedGames, keepGame, engineEval, applyEvals, winPct } from './profile.js?v=20261028221642';
+import { drawBoard } from './board.js?v=20261028224349';
+import { account } from './lichess.js?v=20261028224349';
+import { storedGames, keepGame, engineEval, applyEvals, winPct } from './profile.js?v=20261028224349';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -163,7 +163,6 @@ function render() {
   const pairs = [];
   for (let i = 0; i < moves.length; i += 2) pairs.push(i);
   $('#game').innerHTML = `
-    <p class="pf-kick">Game review</p>
     <h1 class="gm-title">${esc(g.players.white.user?.id || 'White')} <span>vs</span> ${esc(g.players.black.user?.id || 'Black')}</h1>
     <p class="gm-sides"><span><img src="pieces/wK.svg" alt="">White: <b>${esc(g.players.white.user?.id || 'anonymous')}</b> ${g.players.white.rating || ''}</span>
       <span><img src="pieces/bK.svg" alt="">Black: <b>${esc(g.players.black.user?.id || 'anonymous')}</b> ${g.players.black.rating || ''}</span></p>
