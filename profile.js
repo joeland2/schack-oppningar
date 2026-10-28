@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028220206';
-import { STYLE_OF } from './styles.js?v=20261028220206';
+import { account, login, finishLogin } from './lichess.js?v=20261028220400';
+import { STYLE_OF } from './styles.js?v=20261028220400';
 
 const MAX = 500;
-const PV = 6;
+const PV = 7;
 const ENOUGH = 20;
 const WHY_ANALYSE = 'Lichess only analyses games you ask it to. Analysed games give your blunders, accuracy and four of the skills, and become puzzles in My practice. Stockfish runs in your browser; no game is done twice.'; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -27,11 +27,16 @@ function readGame(g, me) {
   const c = new Chess();
   let castled = null, queensOff = null, endgameAt = null;
   const pieces = { n: 0, b: 0, r: 0, q: 0 }; // how much each piece of yours does: moves, plus captures and checks
+  const played = { n: [0, 0], b: [0, 0], r: [0, 0], q: [0, 0] }; // per piece, in analysed games: [moves, mistakes (a blunder counts 2)]
   for (let i = 0; i < moves.length; i++) {
     let m;
     try { m = c.move(moves[i]); } catch { break; }
     if (m.color === side && /[kq]/.test(m.flags) && castled === null) castled = i;
-    if (m.color === side && m.piece in pieces) pieces[m.piece] += 1 + (m.captured ? 1 : 0) + (m.san.includes('+') ? 1 : 0);
+    if (m.color === side && m.piece in pieces) {
+      pieces[m.piece] += 1 + (m.captured ? 1 : 0) + (m.san.includes('+') ? 1 : 0);
+      const j = g.analysis?.[i]?.judgment?.name;
+      if (g.analysis) { played[m.piece][0]++; played[m.piece][1] += j === 'Blunder' ? 2 : j === 'Mistake' ? 1 : 0; }
+    }
     const onBoard = c.board().flat().filter(Boolean);
     if (queensOff === null && !onBoard.some((p) => p.type === 'q')) queensOff = i;
     if (endgameAt === null && onBoard.filter((p) => p.type !== 'p' && p.type !== 'k').length <= 6) endgameAt = i;
@@ -48,7 +53,7 @@ function readGame(g, me) {
     side, speed: g.speed, at: g.createdAt, status: g.status, plies: moves.length,
     result: !g.winner ? 0.5 : (g.winner === 'white') === (side === 'w') ? 1 : 0,
     family: (g.opening?.name || 'Unknown').split(':')[0], rating: mine.rating, diff: mine.ratingDiff || 0, them: theirs.rating,
-    castled, queensOff, endgame: endgameAt !== null, pieces,
+    castled, queensOff, endgame: endgameAt !== null, pieces, played,
     analysed: v.length > 0, ours: !!g.ours, acc: mine.analysis?.accuracy ?? null, blunders: mine.analysis?.blunder ?? null, mistakes: mine.analysis?.mistake ?? null,
     best: v.length ? Math.max(...v) : null, worst: v.length ? Math.min(...v) : null, after12: v.length > 23 ? v[23] : null, slips,
     lowTime: left !== null && g.clock ? left < Math.max(10, g.clock.initial * 0.1) : false,
@@ -110,10 +115,7 @@ export function profileOf(games) {
     badStarts: share(an.filter((g) => g.after12 !== null), (g) => g.after12 <= -150),
     openings: { w: byOpening('w'), b: byOpening('b') },
     styleMix: { w: styleMix(games, 'w'), b: styleMix(games, 'b') },
-    // Your piece: the one that does the most in your games (moves, captures and checks), against how
-    // much each piece does in a normal game (a queen moves less than the knights and bishops together).
-    piece: Object.entries(games.reduce((t, g) => { for (const k in g.pieces || {}) t[k] = (t[k] || 0) + g.pieces[k]; return t; }, {}))
-      .map(([k, n]) => [k, n / ({ n: 2, b: 2, r: 2, q: 1 }[k] ** 0.5)]).sort((a, b) => b[1] - a[1])[0]?.[0] || 'n',
+    ...pieceOf(games, an.length),
     // Rating after each game, oldest first, per time control: the graph's fallback when Lichess's
     // own rating history is not available.
     history: games.reduce((h, g) => (g.at ? { ...h, [g.speed]: [[g.at, g.rating + g.diff], ...(h[g.speed] || [])] } : h), {}),
@@ -134,6 +136,23 @@ const TYPE_ABOUT = {
   'King walker': 'Often leaves the king in the centre. Bold, and sometimes it pays off, but it gives the opponent targets.',
   'All-rounder': 'No style stands out: plays a bit of everything and adapts to the position.',
 };
+// Your most important piece: with enough analysed games, the one you play best (fewest mistakes per
+// move, a blunder counting double, among pieces moved often enough); otherwise the one that does the
+// most (moves, captures, checks), against how much each piece does in a normal game.
+function pieceOf(games, analysed) {
+  const tally = { n: [0, 0], b: [0, 0], r: [0, 0], q: [0, 0] };
+  for (const g of games) for (const k in g.played || {}) { tally[k][0] += g.played[k][0]; tally[k][1] += g.played[k][1]; }
+  const ok = Object.entries(tally).filter(([, [n]]) => n >= 30);
+  if (analysed >= ENOUGH && ok.length) {
+    const [k, [n, e]] = ok.sort((a, b) => a[1][1] / a[1][0] - b[1][1] / b[1][0])[0];
+    return { piece: k, pieceWhy: 'best', pieceRate: e / n };
+  }
+  const act = Object.entries(games.reduce((t, g) => { for (const k in g.pieces || {}) t[k] = (t[k] || 0) + g.pieces[k]; return t; }, {}))
+    .map(([k, n]) => [k, n / ({ n: 2, b: 2, r: 2, q: 1 }[k] ** 0.5)]).sort((a, b) => b[1] - a[1]);
+  return { piece: act[0]?.[0] || 'n', pieceWhy: 'active' };
+}
+console.assert(pieceOf([{ played: { n: [40, 8], b: [40, 1], r: [10, 0], q: [40, 6] } }], 20).piece === 'b', 'pieceOf');
+
 // What kind of player the games show: every trait that clearly holds, the strongest first.
 function typeOf(p) {
   const traits = [
@@ -499,7 +518,7 @@ function playerCard(name, p, t, skills) {
   const main = p.speeds[0];
   return `<div class="pf-pcard" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span></div>
-      <div class="pf-pcard-side"><img class="pf-pcard-piece" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title="${esc(name)}'s piece: the ${PIECE_NAME[p.piece || 'n']}, the piece that moves, captures and checks most in these games">
+      <div class="pf-pcard-side"><img class="pf-pcard-piece" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title="${esc(name)}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
         ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
     <p class="pf-pcard-name">${esc(name)}</p>
     <div class="pf-pcard-stats">${skills.map((x) => `<span><b>${x.v ?? '–'}</b>${ABBR[x.label]}</span>`).join('')}</div>
