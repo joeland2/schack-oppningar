@@ -739,3 +739,32 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .pf-stats dd { margin: 0; font: 600 1.35rem var(--font-mono); font-variant-numeric: tabular-nums; }
 
 .pf-search { max-width: 420px; }
+
+/* Profile: the play-style certificate */
+.pf-diploma {
+  position: relative; text-align: center; padding: clamp(28px, 5vw, 48px) clamp(20px, 5vw, 56px) clamp(22px, 4vw, 36px);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: inset 0 0 0 10px var(--surface), inset 0 0 0 11px var(--ink), inset 0 0 0 14px var(--surface), inset 0 0 0 15px var(--line);
+}
+.pf-dip-kicker { margin: 0 0 18px; font: 500 11px var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.pf-dip-lead { margin: 0; color: var(--muted); }
+.pf-dip-player { margin: 4px 0 10px; font: italic 500 clamp(2.2rem, 7vw, 3.6rem)/1.05 "Fraunces", Georgia, serif; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.pf-diploma .pf-name { margin: 6px 0 12px; }
+.pf-diploma .pf-why { list-style: none; padding: 0; margin: 0 auto; max-width: 56ch; }
+.pf-dip-best { margin: 16px 0 0; font-size: .92rem; }
+.pf-dip-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--line); text-align: left; font-size: 12px; color: var(--muted); }
+.pf-seal { width: 64px; height: 64px; flex: none; fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.pf-seal circle + circle { stroke-dasharray: 2 3; }
+.pf-seal text { fill: var(--ink); stroke: none; font-size: 38px; font-family: "Segoe UI Symbol", "DejaVu Sans", serif; }
+
+/* Profile: skill bars (one hue; the value is in ink beside the bar) */
+.pf-note { margin: -4px 0 14px; font-size: 13px; }
+.pf-skills { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px 28px; }
+.pf-skills li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: baseline; }
+.pf-skill-name { font-weight: 600; }
+.pf-skill-val { font: 600 1.1rem var(--font-mono); font-variant-numeric: tabular-nums; }
+.pf-meter { grid-column: 1 / -1; position: relative; height: 8px; border-radius: 4px; background: var(--line); }
+.pf-meter i { display: block; height: 100%; border-radius: 4px; background: var(--data); }
+.pf-meter::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--muted); opacity: .5; } /* the so-so mark */
+.pf-skills small { grid-column: 1 / -1; color: var(--muted); font-size: 12.5px; }
+.pf-skill-none .pf-skill-name, .pf-skill-none .pf-skill-val { color: var(--muted); }

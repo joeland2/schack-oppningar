@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, so the page opens at once next time; Refresh reads the games again.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028203940';
-import { STYLE_OF } from './styles.js?v=20261028203940';
+import { account, login, finishLogin } from './lichess.js?v=20261028204250';
+import { STYLE_OF } from './styles.js?v=20261028204250';
 
 const MAX = 500;
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -142,6 +142,20 @@ function verdicts(p) {
   if (low && low !== top && low.score <= 0.4) work.push({ title: low.fam, why: `You score ${pct(low.score)} in ${low.n} games with it as ${low.side}. Practise its lines.`, href: './' });
   return [good.slice(0, 4), work.slice(0, 4)];
 }
+// Skill bars, 0-100, each read from one thing in the games; null when there are too few games to say.
+// The scales are rules of thumb (50 is a so-so result), not a comparison with other players.
+const clamp = (x) => Math.round(Math.max(0, Math.min(100, x)));
+function skillsOf(p) {
+  return [
+    { label: 'Openings', v: p.analysed >= 10 ? clamp(100 - p.badStarts * 250) : null, why: `Worse by 1.5 pawns after move 12 in ${pct(p.badStarts)} of analysed games.` },
+    { label: 'Tactics', v: p.analysed >= 10 && p.blunders !== null ? clamp(100 - p.blunders * 30) : null, why: `${(p.blunders ?? 0).toFixed(1)} blunders a game.` },
+    { label: 'Finishing won games', v: p.ups >= 5 ? clamp(((p.converted - 0.4) / 0.55) * 100) : null, why: `Won ${pct(p.converted ?? 0)} of ${p.ups} games where you were clearly better.` },
+    { label: 'Defending', v: p.downs >= 5 ? clamp((p.saved / 0.6) * 100) : null, why: `Saved ${pct(p.saved ?? 0)} of ${p.downs} games where you were clearly worse.` },
+    { label: 'Endgames', v: p.endgames >= 10 ? clamp(50 + (p.endgameScore - p.score) * 300) : null, why: `Score ${pct(p.endgameScore ?? 0)} in endgames against ${pct(p.score)} overall.` },
+    { label: 'Clock', v: p.n >= 30 ? clamp(100 - p.lowTime * 150 - p.timeLosses * 100) : null, why: `Short of time in ${pct(p.lowTime)} of games; ${pct(p.timeLosses)} of losses on time.` },
+  ];
+}
+console.assert(skillsOf({ analysed: 20, badStarts: 0.1, blunders: 1, ups: 0, downs: 0, endgames: 0, n: 10 }).map((x) => x.v).slice(0, 3).join() === '75,70,', 'skillsOf');
 const worstPhase = (p) => Object.entries(p.slips).sort((a, b) => b[1] - a[1])[0][0];
 {
   const g = (o) => ({ side: 'w', speed: 'blitz', status: 'resign', plies: 60, result: 1, family: 'Italian Game', rating: 1500, diff: 5, castled: 8, queensOff: null, endgame: false, analysed: false, acc: null, blunders: null, best: null, worst: null, after12: null, slips: { opening: 0, middlegame: 0, endgame: 0 }, lowTime: false, ...o });
@@ -207,6 +221,30 @@ function verdictList(items, empty) {
 function openingRows(list) {
   return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><span>${esc(o.fam)}</span><small>${o.n} games · ${pct(o.score)}</small>${bar(o.score)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
 }
+const article = (w) => (/^[AEIOU]/.test(w) ? 'an' : 'a');
+function diploma(name, at, p, t, say) {
+  const known = skillsOf(p).filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
+  const date = new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  return `<section class="pf-diploma pf-type" aria-label="Player type">
+    <p class="pf-dip-kicker">Chess Trainer · Certificate of play style</p>
+    <p class="pf-dip-lead">This certifies that</p>
+    <p class="pf-dip-player">${esc(name)}</p>
+    <p class="pf-dip-lead">plays as ${article(t[0].name)}</p>
+    <p class="pf-name">${t.map((x) => esc(x.name)).join(' · ')}</p>
+    <ul class="pf-why">${t.map((x) => `<li>${esc(say(x.why))}</li>`).join('')}</ul>
+    ${known.length >= 2 ? `<p class="pf-dip-best">Strongest: <b>${known[0].label}</b> · To train: <b>${known[known.length - 1].label}</b></p>` : ''}
+    <div class="pf-dip-foot">
+      <span>From ${p.n} rated Lichess games<br>${date}</span>
+      <svg class="pf-seal" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="36"/><circle cx="40" cy="40" r="29"/><text x="40" y="54" text-anchor="middle">♞</text></svg>
+    </div>
+  </section>`;
+}
+function skillBars(skills, say) {
+  return `<ul class="pf-skills">${skills.map((x) => `<li${x.v === null ? ' class="pf-skill-none"' : ''} title="${esc(say(x.why))}">
+      <span class="pf-skill-name">${x.label}</span><span class="pf-skill-val">${x.v ?? '–'}</span>
+      <div class="pf-meter" role="img" aria-label="${x.label}: ${x.v === null ? 'not enough games' : `${x.v} of 100`}"><i style="width:${x.v ?? 0}%"></i></div>
+      <small>${x.v === null ? 'Not enough games to say.' : esc(say(x.why))}</small></li>`).join('')}</ul>`;
+}
 function render(name, at, p) {
   const t = p.type, me = isMe(name), say = me ? (x) => x : they;
   const list = (items, empty) => verdictList(items.map((i) => ({ ...i, why: say(i.why), href: me ? i.href : null })), empty);
@@ -217,10 +255,11 @@ function render(name, at, p) {
       <button id="refresh" class="ghost" type="button">Refresh</button>
     </div>
     ${search('Look up a player')}
-    <section class="pf-card pf-type">
-      <h2>${me ? 'What kind of player you are' : `What kind of player ${esc(name)} is`}</h2>
-      <p class="pf-name">${t.map((x) => esc(x.name)).join(' · ')}</p>
-      <ul class="pf-why">${t.map((x) => `<li>${esc(say(x.why))}</li>`).join('')}</ul>
+    ${diploma(name, at, p, t, say)}
+    <section class="pf-card">
+      <h2>${me ? 'Your skills' : `${esc(name)}'s skills`}</h2>
+      <p class="info pf-note">Each bar is read from one thing in the games. 50 is a so-so result.</p>
+      ${skillBars(skillsOf(p), say)}
     </section>
     <div class="pf-two">
       <section class="pf-card"><h2>Good at</h2>${list(p.good, 'Nothing stands out yet. More games give a clearer picture.')}</section>
