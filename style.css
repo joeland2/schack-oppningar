@@ -701,3 +701,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .streak b.up { color: var(--good); }
 @media (max-width: 560px) { .streak { display: none; } }
 .trap-tag.soft { background: color-mix(in srgb, #e07b00 85%, black); }
+.moment-quiz { --tone: var(--ink); }
+.moment-quiz .moment-actions { display: grid; gap: 6px; }
+.moment-quiz .moment-actions button { text-align: left; font-weight: 500; background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+.moment-quiz .moment-actions button:hover { border-color: var(--ink); }

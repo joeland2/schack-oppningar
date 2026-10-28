@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028175303';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028175303';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028175303';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028175303';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028175707';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028175707';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028175707';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028175707';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1109,6 +1109,7 @@ function start(op) {
 
 // again: the same line once more after a slip in Practice, which keeps it from counting as cleared.
 function play(i, again = false) {
+  if (drill && lineFor(drill.now ?? '') !== i) drill = null; // another line chosen: the drill ends
   lineIdx = i;
   const l = lines[i];
   line = l.moves;
@@ -1550,6 +1551,78 @@ function rebuildLines() {
 }
 msgEl.addEventListener('click', (e) => { const b = e.target.closest('[data-choose]'); if (b && !busy) chooseMove(b.dataset.choose); });
 
+// ---------- Idea questions: what your next move should do ----------
+// Now and then in Practice, before your move: what should it do? Three answers in words, from the
+// line's move and two other moves people play here (or other legal ones), so you think of the idea
+// first and then find the move. Answering is optional: just play your move.
+const IDEA_EVERY = 3; // about one of your moves in three, after the first two
+const short = (t) => t.split('. ').slice(0, 2).join('. ').replace(/\.?$/, '.');
+function askIdea() {
+  if (drill || ply < 4 || !userTurn() || Math.random() * IDEA_EVERY >= 1) return;
+  const g = () => new Chess(game.fen());
+  const right = ideaAt(g(), line[ply]);
+  if (!right) return;
+  const seen = new Set([short(right)]);
+  const others = [...gamesAt(line.slice(0, ply)).moves.map((m) => m.san), ...g().moves().sort(() => Math.random() - 0.5)]
+    .filter((san) => san !== line[ply])
+    .map((san) => short(ideaAt(g(), san) || ''))
+    .filter((t) => t.length > 1 && !seen.has(t) && seen.add(t))
+    .slice(0, 2);
+  if (others.length < 2) return;
+  const answers = [{ text: short(right), ok: true }, ...others.map((text) => ({ text, ok: false }))].sort(() => Math.random() - 0.5);
+  moment('quiz', 'What should your move do?', 'Pick the idea first, then play the move. Or just play it.',
+    answers.map((a) => ({ label: a.text, run: () => say(a.ok ? `Yes: ${a.text} Now find the move that does it.` : `Not that one. Your move here: ${short(right).replace(/^./, (c) => c.toLowerCase())} Now find it.`, a.ok ? 'good' : 'bad') })),
+    null, null, null);
+}
+
+// ---------- Hard moves: the moves you miss, drilled on their own ----------
+// A move you get wrong in Practice is kept per opening by the moves before it, in boxes like lines are:
+// a miss puts it in box 0 (due now), finding it moves it up a box (due after that box's days). Drill
+// sets up the position right before each due one, so you practise just that move, not the whole line.
+const HARD_KEY = STORE + '-hard';
+let hard = load(HARD_KEY, {}); // { [statKey]: { [moves before]: { box, due } } }
+let drill = null; // { queue: [moves before], now, ply, total, done } while drilling
+const hardOf = () => (hard[statKey(cur.id)] ??= {});
+function hardMiss() {
+  hardOf()[lineKey(line.slice(0, ply))] = { box: 0, due: Date.now() };
+  store(HARD_KEY, hard);
+}
+function hardHit() {
+  const k = lineKey(line.slice(0, ply)), h = hardOf()[k];
+  if (!h || h.due > Date.now()) return;
+  h.box++;
+  if (h.box >= INTERVALS.length) delete hardOf()[k]; else h.due = Date.now() + INTERVALS[h.box] * DAY;
+  store(HARD_KEY, hard);
+}
+// The due hard moves that one of today's lines still reaches.
+const lineFor = (k) => lines.findIndex((l) => (lineKey(l.moves) + ' ').startsWith(k ? k + ' ' : ''));
+const hardDue = () => Object.entries(hardOf()).filter(([k, h]) => h.due <= Date.now() && lineFor(k) >= 0).map(([k]) => k);
+function startDrill() {
+  const queue = hardDue();
+  if (!queue.length) return;
+  if (mode !== 'try') setMode('try', false, false);
+  drill = { queue, total: queue.length, done: 0 };
+  nextDrill();
+}
+function nextDrill() {
+  closeMoment();
+  const k = drill.queue.shift();
+  if (k === undefined) {
+    drill = null;
+    renderLineBox();
+    return say('Hard moves done. Press Restart to go on with your lines.', 'good');
+  }
+  drill.now = k; drill.done++;
+  const before = k ? k.split(' ') : [];
+  play(lineFor(k));
+  gameGen++; busy = false; hintSq = []; // play()'s own start no longer applies
+  for (const x of before) { lastMove = game.move(x); notes[ply++] = 'book'; }
+  drill.ply = ply;
+  render();
+  say(`Hard move ${drill.done} of ${drill.total}: you missed this one before. Find the move.`);
+}
+$('#line-box').addEventListener('click', (e) => { if (e.target.closest('[data-drill]')) startDrill(); });
+
 // ---------- Practice: lines come back for review ----------
 // A line cleared in Practice moves up a box and comes back after the box's interval; a mistake sends it
 // back to the start, to be practised again today.
@@ -1713,6 +1786,7 @@ function renderLineBox() {
       <div><b>${done}/${n}</b><span>lines cleared${due ? `, ${due} due for review` : ''}</span></div>
     </div>
     <div class="lb-bar" aria-hidden="true"><span class="lb-done" style="width:${(done / n) * 100}%"></span><span class="lb-played" style="width:${(Math.max(0, played - done) / n) * 100}%"></span></div>
+    ${hardDue().length && !drill ? `<p class="lb-choice">${plural(hardDue().length, 'hard move')} to drill <button type="button" class="link" data-drill>Drill them</button></p>` : ''}
     ${mode === 'try' && practiceSet().length ? `<p class="lb-note">Practising lines ${practiceSet().map((i) => i + 1).join(', ')}.</p>` : ''}
     <p class="lb-note">${nextReview ? nextReview + ' ' : ''}Progress is saved in this browser.</p>`;
 }
@@ -1818,7 +1892,7 @@ function reply() {
     if (playPremove()) return;
     // In Practice the "Right" note stays up with the prompt, since the reply comes before you can read it;
     // in a trial the last right/wrong note stays up.
-    if (mode === 'try' && ply >= 2) prompt(`Right: ${line[ply - 2]}. Your move.`, 'good');
+    if (mode === 'try' && ply >= 2) { prompt(`Right: ${line[ply - 2]}. Your move.`, 'good'); askIdea(); }
     else if (mode !== 'time') prompt('Your move.');
   }, mode === 'time' ? 150 : 450);
 }
@@ -1888,6 +1962,13 @@ function tryMove(from, to) {
     if (mode === 'try') { // a slip in Practice: see the right move, then the line again from the start, when you are ready
       const want = expectedMove();
       wrongSq = null;
+      hardMiss();
+      if (drill) { // drilling a hard move: see it, then the next one (or this one again later)
+        say(`${m.san} is not the move here. The line plays ${moveWords(want)}.`, 'bad');
+        moment('wrong', 'Not this one', `You played <b>${m.san}</b> (red). The move is <b>${want.san}</b> (green). It comes back at the end of this drill.`,
+          [{ label: 'OK, next', run: () => { drill.queue.push(drill.now); nextDrill(); } }], null, [[m.from, m.to, RED], [want.from, want.to, GREEN]]);
+        return true;
+      }
       say(`${m.san} is not the move here. The line plays ${moveWords(want)}.`, 'bad');
       moment('wrong', 'Not this one', `You played <b>${m.san}</b> (red). The line plays <b>${want.san}</b> (green)${ideaAt(new Chess(game.fen()), want.san) ? `: ${ideaAt(new Chess(game.fen()), want.san).replace(/^./, (c) => c.toLowerCase())}` : '.'} Take a look, then play the line again from the start.`,
         [{ label: 'OK, start again', run: () => play(lineIdx, true) }], null, [[m.from, m.to, RED], [want.from, want.to, GREEN]]);
@@ -1896,6 +1977,14 @@ function tryMove(from, to) {
     if (missesHere >= 2) showHint();
     explainWrong(m.san);
     setTimeout(() => { wrongSq = null; renderBoard(); }, 700);
+    return true;
+  }
+  if (mode === 'try') hardHit();
+  if (drill && ply === drill.ply) { // the hard move, found: on to the next one
+    lastMove = m; ply++; sel = null; hintSq = []; notes[ply - 1] = 'book';
+    render();
+    say(`Right: ${m.san}.`, 'good');
+    setTimeout(() => { if (drill) nextDrill(); }, 900);
     return true;
   }
   lastMove = m; ply++; sel = null; hintSq = []; missesHere = 0;
