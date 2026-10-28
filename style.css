@@ -466,3 +466,49 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .coach .why .summary p { color: var(--ink); }
 .coach .why .summary b { display: block; font-family: var(--font-body); margin-bottom: 2px; }
 .coach .why .tips { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: .92rem; color: var(--ink); }
+
+/* ---------- Board view: taste-skill test, "Achromatic ledger" ----------
+   No colour in the chrome: ink text, a near-black primary, flat white panels on a ground taken from
+   the board's wood (a warm stone, one step off white). The one data hue marks the line you are on:
+   the progress through it and the reply it practises. Status colour stays on right and wrong. */
+body:has(#trainer:not([hidden])) {
+  --bg: #f4f3f1; --surface: #ffffff; --ink: #0a0a0a; --muted: #6b6b6b; --line: #e6e6e6;
+  --accent: #141414; --accent-ink: #ffffff; --data: #1d5fbf; --data-ink: #ffffff;
+  --good: #2e7d32; --bad: #c4242a; --shadow: none; --radius: 8px;
+  --font-display: "Geist", Inter, system-ui, sans-serif; --font-body: "Geist", Inter, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, Menlo, monospace;
+  background: var(--bg);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) body:has(#trainer:not([hidden])) {
+    --bg: #0f0e0d; --surface: #171615; --ink: #ffffff; --muted: #b4b4b4; --line: #2b2a28;
+    --accent: #ffffff; --accent-ink: #0a0a0a; --data: #6aa1ff; --data-ink: #0a0a0a; --good: #3fc07a; --bad: #e5566f;
+  }
+}
+:root[data-theme="dark"] body:has(#trainer:not([hidden])) {
+  --bg: #0f0e0d; --surface: #171615; --ink: #ffffff; --muted: #b4b4b4; --line: #2b2a28;
+  --accent: #ffffff; --accent-ink: #0a0a0a; --data: #6aa1ff; --data-ink: #0a0a0a; --good: #3fc07a; --bad: #e5566f;
+}
+body:has(#trainer:not([hidden])) .top { background: var(--bg); backdrop-filter: none; }
+body:has(#trainer:not([hidden])) .brand span { color: var(--muted); }
+#trainer .panel, #trainer .board-frame { box-shadow: none; }
+#trainer .panel { padding: 24px; gap: 20px; }
+#trainer h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; margin: 2px 0 4px; }
+#trainer .choice-label { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 500; }
+#trainer .seg button[aria-pressed="true"] { background: var(--raised, #eeeeee); color: var(--ink); font-weight: 500; }
+#trainer .controls .primary { font-weight: 500; }
+#trainer .fill, #trainer .lb-done { background: var(--data); }
+#trainer .lb-played { background: var(--data); opacity: .3; }
+#trainer .why .rep { background: transparent; border: 1px solid var(--line); }
+#trainer .why .rep.now { background: var(--data); border-color: var(--data); color: var(--data-ink); }
+#trainer .why .rep.now b { color: var(--data-ink); }
+#trainer .coach, #trainer .line-box { background: var(--surface); }
+#trainer .coach .message { font-weight: 500; font-size: 16px; }
+#trainer .why b { font-family: var(--font-mono); font-weight: 500; }
+#trainer .lb-stats b, #trainer .progress, #trainer .line-share { font-variant-numeric: tabular-nums; font-weight: 500; }
+#trainer .lb-name { font-size: 16px; font-weight: 600; }
+#trainer .eco { font-family: var(--font-mono); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) #trainer .seg button[aria-pressed="true"] { background: #2b2a28; }
+}
+:root[data-theme="dark"] #trainer .seg button[aria-pressed="true"] { background: #2b2a28; }
