@@ -1199,3 +1199,5 @@ a { text-underline-offset: .18em; }
 .pf-facts dd { margin: 0; font-size: 15px; }
 a.pf-res { text-decoration: none; transition: transform .12s; }
 a.pf-res:hover, a.pf-res:focus-visible { transform: translateY(-2px); outline: 2px solid var(--ink); outline-offset: 1px; }
+/* Skills: the scale, in its own small box under the six */
+.pf-skills-card.open .pf-skill-scale { display: block; margin: 32px 0 0; max-width: 62ch; padding: 12px 16px; border: 1px solid var(--line); border-left: 3px solid var(--hot); color: var(--muted); font-size: 14px; }

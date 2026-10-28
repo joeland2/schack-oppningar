@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028234424';
-import { STYLE_OF } from './styles.js?v=20261028234424';
+import { account, login, finishLogin } from './lichess.js?v=20261028234518';
+import { STYLE_OF } from './styles.js?v=20261028234518';
 
 const MAX = 500;
 const PV = 13;
@@ -668,7 +668,7 @@ function render(name, at, p) {
       <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
         <button type="button" class="link" data-skill-text aria-expanded="${showSkillText}">${showSkillText ? 'Hide explanations' : 'What each one means'}</button></div>
       ${skillBars(skills, say, me)}
-      <p class="info pf-note pf-skill-more">Each skill compares ${me ? 'you' : 'the player'} with ${me ? 'your' : 'their'} own opponents rated within ${PEER} points, from the same games: 50 means as good as them, higher is better.</p>
+      <p class="pf-skill-more pf-skill-scale">Each skill compares ${me ? 'you' : 'the player'} with ${me ? 'your' : 'their'} own opponents rated within ${PEER} points, from the same games: 50 means as good as them, higher is better.</p>
     </section>
     <div class="pf-two">
       <section class="pf-card"><h2 class="pf-good">Strengths</h2>${verdictList(J.good.map((i) => ({ ...i, why: say(i.why), href: null })), `Nothing is clearly above ${me ? 'your' : 'their'} opponents yet.`)}</section>
