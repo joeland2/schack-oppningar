@@ -1,10 +1,11 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028212610';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028212610';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028212610';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028212610';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028212610';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028212610';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028212755';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028212755';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028212755';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028212755';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028212755';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028212755';
+import { storedGames } from './profile.js?v=20261028212755';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -395,10 +396,23 @@ function card(o) {
 
 let query = '';
 // My favorites: the openings you star, from either side, in a list of their own.
+// The three openings you play most, from your Lichess games kept in this browser (or the ones just
+// checked here), as the list's openings; none when no games are known.
+function mostPlayed() {
+  const name = load(STORE + '-lichess-name', '') || account()?.name;
+  const games = lastGames?.games || (name && storedGames(name)) || [];
+  if (!name || !games.length || !OPENINGS.length) return [];
+  const me = name.toLowerCase(), n = new Map();
+  for (const g of games) {
+    const side = g.players.white.user?.id === me ? 'w' : g.players.black.user?.id === me ? 'b' : null;
+    const o = side && g.moves && openingOf(g.moves.split(' ').map(clean).slice(0, MAX_PLY), side);
+    const op = o && OPENINGS.find((x) => x.family === o.family && x.side === side && isVs(x) === o.vs);
+    if (op) n.set(op, (n.get(op) || 0) + 1);
+  }
+  return [...n].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([op]) => op);
+}
 const repertoire = new Set(load(STORE + '-rep', []));
 let listSide = load(STORE + '-side', 'w'); // which list shows: openings you play as White, or as Black
-const FIRST = 8; // the first few openings show, with a button for the rest
-const showAll = { w: false, b: false };
 // Kept for the phone's filter box, which starts folded.
 const PHONE = matchMedia('(max-width: 560px)');
 // Wide screens have the line list and moves in their own column, open.
@@ -414,7 +428,10 @@ function renderList() {
   const q = query.trim().toLowerCase();
   const list = q ? OPENINGS.filter((o) => o.family.toLowerCase().includes(q)).sort((a, b) => b.share - a.share) : shown();
   const mineList = OPENINGS.filter((o) => repertoire.has(o.id));
-  const count = (side) => (side === 'r' ? mineList.length : list.filter((o) => o.side === side).length);
+  // Favorites: the starred ones, then the three you play most (from your Lichess games kept here), once each.
+  const played = mostPlayed().filter((o) => !repertoire.has(o.id));
+  const favs = [...mineList, ...played];
+  const count = (side) => (side === 'r' ? favs.length : list.filter((o) => o.side === side).length);
   let body;
   if (q) {
     body = `<p class="og-about">${list.length
@@ -422,22 +439,21 @@ function renderList() {
       : `No opening at your level matches "${q.replace(/[<&"]/g, '')}".`}</p>
       <div class="olist">${list.map((o) => card(o).replace('</h3>', `<small class="as">you play ${sideName(o.side)}</small></h3>`)).join('')}</div>`;
   } else if (listSide === 'r') {
-    body = `<p class="og-about">${mineList.length ? 'The openings you have starred, from both sides. <button type="button" class="link" data-traps>Practise their traps</button>' : 'Nothing here yet. Star (★) an opening as White and the defences you want as Black to keep it here.'}</p>
-      <div class="olist">${mineList.map(card).join('')}</div>`;
+    body = `<p class="og-about">${favs.length ? `The openings you have starred${played.length ? ', and the ones you play most in your Lichess games' : ''}, from both sides. <button type="button" class="link" data-traps>Practise their traps</button>` : 'Nothing here yet. Star (★) an opening, or check your Lichess games, and it shows up here.'}</p>
+      <div class="olist">${favs.map((o) => (played.includes(o) ? card(o).replace('<span class="chip ', '<span class="tag played">Played most</span><span class="chip ') : card(o))).join('')}</div>`;
   } else {
     // Your starred openings of this side come first, pinned, even ones the style or the cut would hide.
     const pinned = mineList.filter((o) => o.side === listSide);
     const ops = [...pinned, ...list.filter((o) => o.side === listSide && !repertoire.has(o.id))];
-    const first = Math.max(FIRST, pinned.length); // the cut never hides a pinned one
-    const cut = !showAll[listSide] && ops.length > first + 2;
     const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for White at your level. Try another style.</p>`;
     body = `<p class="og-about">${about[listSide](ops.length)}</p>${ops.length ? '' : empty}
-      <div class="olist">${(cut ? ops.slice(0, first) : ops).map(card).join('')}</div>
-      ${cut ? `<button type="button" class="ghost more" data-more="${listSide}">Show all ${ops.length}</button>` : ''}`;
+      <div class="olist">${ops.map(card).join('')}</div>`;
   }
-  listEl.innerHTML = `${q ? '<h2 class="og-h">Search results</h2>' : `<div class="seg side-seg" role="group" aria-label="Your side">
-      ${['w', 'b', 'r'].map((side) => `<button type="button" data-side="${side}" aria-pressed="${side === listSide}">${side === 'r' ? '<span class="wide-only">My </span>Favorites' : `<span class="wide-only">You play </span>${sideName(side)}`} <span class="og-n">${count(side)}</span></button>`).join('')}
-    </div>`}${body}`;
+  // The side tabs sit beside the search box, outside the list, so typing a search keeps its focus.
+  $('#side-tabs').innerHTML = `<div class="seg side-seg" role="group" aria-label="Your side">
+      ${['w', 'b', 'r'].map((side) => `<button type="button" data-side="${side}" aria-pressed="${!q && side === listSide}">${side === 'r' ? '<span class="wide-only">My </span>Favorites' : `<span class="wide-only">You play </span>${sideName(side)}`} <span class="og-n">${count(side)}</span></button>`).join('')}
+    </div>`;
+  listEl.innerHTML = `${q ? '<h2 class="og-h">Search results</h2>' : ''}${body}`;
   seen.disconnect();
   listEl.querySelectorAll('.ocard').forEach((c) => {
     const op = OPENINGS.find((o) => o.id === c.dataset.id);
@@ -453,10 +469,15 @@ function renderList() {
   });
 }
 
+$('#side-tabs').addEventListener('click', (e) => {
+  const side = e.target.closest('[data-side]');
+  if (!side) return;
+  listSide = side.dataset.side; store(STORE + '-side', listSide);
+  if (query) { query = $('#search').value = ''; } // a side tab leaves the search
+  renderList();
+});
 listEl.addEventListener('click', (e) => {
   if (e.target.closest('[data-traps]')) return startTraps();
-  const more = e.target.closest('[data-more]');
-  if (more) { showAll[more.dataset.more] = true; renderList(); }
   const star = e.target.closest('[data-star]');
   if (star) {
     const id = star.dataset.star;
@@ -464,8 +485,7 @@ listEl.addEventListener('click', (e) => {
     store(STORE + '-rep', [...repertoire]);
     return renderList();
   }
-  const side = e.target.closest('[data-side]');
-  if (side) { listSide = side.dataset.side; store(STORE + '-side', listSide); renderList(); }
+
 });
 PHONE.addEventListener('change', (e) => { if (!e.matches) $('#filters').open = true; }); // desktop always shows the filters
 
@@ -2470,7 +2490,7 @@ async function showPicker() {
   cur = null; gameGen++; stopTrial(); trapRun = null; // stops an opponent reply (or a time trial) still on its way
   $('#trainer').hidden = true;
   $('#picker').hidden = false;
-  listEl.innerHTML = '';
+  listEl.innerHTML = $('#side-tabs').innerHTML = '';
   renderChoices();
   $('#rating-step').hidden = !!rating;
   $('.choice-search').hidden = !rating;
