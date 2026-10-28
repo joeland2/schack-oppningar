@@ -2,6 +2,7 @@
 // sorted by what kind of slip it was, so the ones you keep repeating stand out. Lichess's own computer
 // analysis is used where a game has one; the rest are checked here with Stockfish (evaluate).
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
+import { hanging, mateInOne } from './ideas.js?v=20261028120841';
 
 const VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 // Lichess's winning chances, 0-100; a move that costs 10 points or more is a mistake, 15 a blunder.
@@ -20,15 +21,18 @@ export const THEMES = {
   endgame: { title: 'Slips in the endgame', tip: 'Bring your king into play and push your passed pawns.' },
 };
 
-// A piece of yours (knight or bigger) that the opponent can now take for free or with a cheaper piece.
-function hangs(g, me) {
-  const them = me === 'w' ? 'b' : 'w';
-  return g.board().flat().some((p) => {
-    if (!p || p.color !== me || VALUE[p.type] < 3) return false;
-    const attackers = g.attackers(p.square, them);
-    if (!attackers.length) return false;
-    return !g.isAttacked(p.square, me) || Math.min(...attackers.map((sq) => VALUE[g.get(sq).type])) < VALUE[p.type];
-  });
+// A move worth a look by the engine: read straight off the board, so all games can be checked in
+// seconds. It allows a mate in one, misses a mate in one, leaves a piece hanging, or passes up a piece
+// that could be taken for free. Quieter slips need the engine on every move, which only Lichess's own
+// analysis has (games analysed there are read in full).
+function suspicious(before, after, played) {
+  const me = before.turn(), them = me === 'w' ? 'b' : 'w';
+  if (mateInOne(after) || (!after.isCheckmate() && mateInOne(before))) return true;
+  const was = hanging(before, me).map((h) => h.square);
+  if (hanging(after, me).some((h) => !was.includes(h.square) || h.square === played.to)) return true;
+  const gain = (m) => (m.captured ? VALUE[m.captured] - (before.isAttacked(m.to, them) ? VALUE[m.piece] : 0) : 0);
+  const free = Math.max(0, ...before.moves({ verbose: true }).map(gain));
+  return free >= 3 && gain(played) < free;
 }
 
 function themeOf(before, played, best, scoreBefore, scoreAfter, ply) {
@@ -38,7 +42,7 @@ function themeOf(before, played, best, scoreBefore, scoreAfter, ply) {
   const after = new Chess(before.fen());
   after.move(played);
   const bm = best && before.moves({ verbose: true }).find((m) => m.from === best.from && m.to === best.to);
-  if (hangs(after, me) && !hangs(before, me)) return 'hung';
+  if (hanging(after, me).length && !hanging(before, me).length) return 'hung';
   if (bm?.captured && VALUE[bm.captured] >= 3) return 'missed-win';
   if (bm?.san.includes('+')) return 'missed-check';
   const pieces = before.board().flat().filter((p) => p && !'pk'.includes(p.type)).length;
@@ -46,13 +50,13 @@ function themeOf(before, played, best, scoreBefore, scoreAfter, ply) {
 }
 
 // games: Lichess games (with moves, and analysis when Lichess has analysed them). evaluate(fen) gives
-// { move, cp, mate } from the side to move. stop() ends the search early. Stockfish checks at most
-// maxEngineGames games without Lichess analysis, since each takes a while.
-export async function findMistakes(games, name, { evaluate, onProgress = () => {}, stop = () => false, maxEngineGames = 15 }) {
+// { move, cp, mate } from the side to move. stop() ends the search early. Analysed games come first
+// since they are read at once; the rest are scanned (see suspicious) and only flagged moves are checked.
+export async function findMistakes(games, name, { evaluate, onProgress = () => {}, stop = () => false }) {
   const me = name.toLowerCase();
   const found = [];
   const mine = games.filter((g) => g.moves && (g.players.white.user?.id === me || g.players.black.user?.id === me));
-  const todo = [...mine.filter((g) => g.analysis), ...mine.filter((g) => !g.analysis).slice(0, maxEngineGames)];
+  const todo = [...mine.filter((g) => g.analysis), ...mine.filter((g) => !g.analysis)];
   let checked = 0;
   for (const game of todo) {
     if (stop()) break;
@@ -77,6 +81,7 @@ export async function findMistakes(games, name, { evaluate, onProgress = () => {
         sa = view(a, -sign);
         best = a.best ? { from: a.best.slice(0, 2), to: a.best.slice(2, 4), promotion: a.best[4] } : null;
       } else {
+        if (!suspicious(before, g, m)) continue;
         [sb, sa] = await Promise.all([evaluate(before.fen()), evaluate(g.fen())]);
         if (!sb || !sa) continue;
         if (winPct(toCp(sb)) - winPct(-toCp(sa)) < MISTAKE) continue;
@@ -91,6 +96,7 @@ export async function findMistakes(games, name, { evaluate, onProgress = () => {
       });
     }
     onProgress(++checked, todo.length, found);
+    await new Promise((r) => setTimeout(r)); // let the page show the progress
   }
   return found;
 }

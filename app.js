@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028120250';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028120250';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028120250';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028120250';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028120841';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028120841';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028120841';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028120841';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -554,16 +554,15 @@ function renderMistakes(state = 'ready', found = [], checked = 0, total = 0) {
   const el = $('#my-mistakes');
   if (!el || !lastGames) return;
   if (state === 'ready') {
-    el.innerHTML = `<p class="info">Every move of your recent games, not just the opening. Takes a couple of minutes.</p>
+    el.innerHTML = `<p class="info">All ${lastGames.games.length} of your recent games, not just the opening.</p>
       <button type="button" class="ghost" id="find-mistakes">Find my mistakes</button>`;
     return $('#find-mistakes').addEventListener('click', runMistakes);
   }
-  if (state === 'running') return (el.innerHTML = `<p class="info">Checking game ${checked} of ${total}…</p>`);
   const groups = byTheme(found).slice(0, 4);
-  el.innerHTML = `<ul class="ml-list">${groups.map(([theme, list]) => `<li class="ml-row ml-static">
+  el.innerHTML = `${state === 'running' ? `<p class="info">Checking game ${checked} of ${total}…</p>` : ''}<ul class="ml-list">${groups.map(([theme, list]) => `<li class="ml-row ml-static">
       <span class="ml-name">${THEMES[theme].title}</span><span class="ml-meta"><b>${list.length}</b> in ${plural(checked, 'game')}</span></li>`).join('')
-    || '<li class="info">No clear mistakes found.</li>'}</ul>
-    ${found.length ? `<a class="cta" href="mistakes.html">Train these ${Math.min(found.length, 80)} positions</a>` : ''}`;
+    || (state === 'running' ? '' : '<li class="info">No clear mistakes found.</li>')}</ul>
+    ${found.length && state !== 'running' ? `<a class="cta" href="mistakes.html">Train these ${Math.min(found.length, 80)} positions</a>` : ''}`;
 }
 
 async function runMistakes() {
@@ -572,7 +571,7 @@ async function runMistakes() {
   renderMistakes('running', [], 0, 1);
   let done = 0;
   const found = await findMistakes(games, name, {
-    evaluate: (fen) => evaluate(fen, { keep: true, ms: 150 }),
+    evaluate: (fen) => evaluate(fen, { keep: true, ms: 60 }), // enough to confirm a tactical slip
     // Stop when you open the board (the engine is needed there) or start another check.
     stop: () => run !== mistakeRun || !$('#trainer').hidden,
     onProgress: (checked, total, sofar) => { done = checked; if (run === mistakeRun) renderMistakes('running', sofar, checked, total); },
