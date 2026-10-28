@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028104113';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028104113';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028104341';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028104341';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -282,7 +282,7 @@ function card(o) {
   const tags = (STYLE_OF[o.family] || []).map((t) => `<span class="tag">${STYLES[t].label}</span>`).join('');
   const about = ABOUT[o.family] || ABOUT[shortName(o.family)] || '';
   const win = o.side === 'w' ? o.win : 1 - o.win - o.draw;
-  return `<article class="ocard" role="button" tabindex="0" data-id="${o.id}" aria-label="${isVs(o) ? 'vs ' : ''}${o.name}">
+  return `<article class="ocard side-${o.side}" role="button" tabindex="0" data-id="${o.id}" aria-label="${isVs(o) ? 'vs ' : ''}${o.name}">
     <div class="board mini" data-mini="${o.id}" inert></div>
     <div class="ocard-body">
       <div class="ocard-top"><h3>${isVs(o) ? 'vs ' : ''}${o.name}</h3><span class="chip ${level}">${levelTxt}</span></div>
