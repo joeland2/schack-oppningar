@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028225236';
-import { STYLE_OF } from './styles.js?v=20261028225236';
+import { account, login, finishLogin } from './lichess.js?v=20261028225954';
+import { STYLE_OF } from './styles.js?v=20261028225954';
 
 const MAX = 500;
-const PV = 9;
+const PV = 11;
 const ENOUGH = 20;
 const WHY_ANALYSE = 'Lichess only analyses games you ask it to. Analysed games give your blunders, accuracy and four of the skills, and become puzzles in My practice. Stockfish runs in your browser; no game is done twice.'; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -57,8 +57,29 @@ function readGame(g, me) {
     analysed: v.length > 0, ours: !!g.ours, acc: mine.analysis?.accuracy ?? null, blunders: mine.analysis?.blunder ?? null, mistakes: mine.analysis?.mistake ?? null,
     best: v.length ? Math.max(...v) : null, worst: v.length ? Math.min(...v) : null, after12: v.length > 23 ? v[23] : null, slips,
     lowTime: left !== null && g.clock ? left < Math.max(10, g.clock.initial * 0.1) : false,
+    // The opponent's side of the same game: the players at your level that the skills compare you with.
+    oppBlunders: theirs.analysis?.blunder ?? null,
+    states: statesOf(g, pov, myPly),
+    oppLowTime: end && end[1 - myPly] != null && g.clock ? end[1 - myPly] / 100 < Math.max(10, g.clock.initial * 0.1) : false,
   };
 }
+
+// Mistakes by state: for you and for your opponent, how many moves each made while clearly ahead
+// (1.5 pawns or more) and while clearly behind, and how many of those were mistakes (a blunder counts
+// two). From the analysis, so analysed games only.
+function statesOf(g, pov, myPly) {
+  const t = { me: { up: [0, 0], down: [0, 0] }, opp: { up: [0, 0], down: [0, 0] } };
+  if (!g.analysis) return t;
+  let before = 20 * pov; // the start, from your side
+  g.analysis.forEach((a, i) => {
+    const who = i % 2 === myPly ? 'me' : 'opp', mover = who === 'me' ? before : -before;
+    const state = mover >= 150 ? 'up' : mover <= -150 ? 'down' : null;
+    if (state) { const j = a.judgment?.name; t[who][state][0]++; t[who][state][1] += j === 'Blunder' ? 2 : j === 'Mistake' ? 1 : 0; }
+    before = (cpOf(a) ?? 0) * pov;
+  });
+  return t;
+}
+console.assert(statesOf({ analysis: [{ eval: 300 }, { eval: -100, judgment: { name: 'Blunder' } }] }, 1, 0).opp.down.join() === '1,2', 'statesOf');
 
 // ---------- All games: the profile ----------
 // Opening taste: the openings you choose yourself (a Defense is Black's choice, the rest White's),
@@ -118,6 +139,7 @@ export function profileOf(games) {
     openings: { w: byOpening('w'), b: byOpening('b') },
     styleMix: { w: styleMix(games, 'w'), b: styleMix(games, 'b') },
     ...pieceOf(games, an.length),
+    peer: peerOf(games),
     // Rating after each game, oldest first, per time control: the graph's fallback when Lichess's
     // own rating history is not available.
     history: games.reduce((h, g) => (g.at ? { ...h, [g.speed]: [[g.at, g.rating + g.diff], ...(h[g.speed] || [])] } : h), {}),
@@ -138,6 +160,29 @@ const TYPE_ABOUT = {
   'King walker': 'Often leaves the king in the centre. Bold, and sometimes it pays off, but it gives the opponent targets.',
   'All-rounder': 'No style stands out: plays a bit of everything and adapts to the position.',
 };
+// You against players at your level: your own opponents rated within 200 of you, in the same games.
+// Every number is taken for both sides, so 50 on a skill means exactly as good as them.
+const PEER = 200;
+function peerOf(games) {
+  const gs = games.filter((g) => g.them && Math.abs(g.them - g.rating) <= PEER), an = gs.filter((g) => g.analysed);
+  const mean = (xs) => (xs.length ? sum(xs, (x) => x) / xs.length : null);
+  const rate = (xs, f) => (xs.length ? xs.filter(f).length / xs.length : null);
+  const ups = an.filter((g) => g.best >= 300), downs = an.filter((g) => g.worst <= -300), ends = gs.filter((g) => g.endgame);
+  return {
+    n: gs.length, analysed: an.length, ups: ups.length, downs: downs.length, endgames: ends.length,
+    after12: mean(an.filter((g) => g.after12 !== null).map((g) => Math.max(-300, Math.min(300, g.after12)))),
+    myBl: mean(an.filter((g) => g.blunders !== null).map((g) => g.blunders)), oppBl: mean(an.filter((g) => g.oppBlunders !== null).map((g) => g.oppBlunders)),
+    // Mistakes per 10 moves while clearly ahead and while clearly behind, for you and your opponents.
+    ...Object.fromEntries(['me', 'opp'].flatMap((w) => ['up', 'down'].map((st) => {
+      const [moves, errs] = an.reduce((t, g) => [t[0] + (g.states?.[w][st][0] || 0), t[1] + (g.states?.[w][st][1] || 0)], [0, 0]);
+      return [`${w}${st === 'up' ? 'Up' : 'Down'}`, moves >= 30 ? (errs / moves) * 10 : null];
+    }))),
+    endScore: score(ends),
+    myLow: rate(gs, (g) => g.lowTime), oppLow: rate(gs, (g) => g.oppLowTime),
+    timeWins: rate(gs, (g) => g.result === 1 && /outoftime|timeout/.test(g.status)), timeLosses: rate(gs, (g) => g.result === 0 && /outoftime|timeout/.test(g.status)),
+  };
+}
+
 // Your most important piece: with enough analysed games, the one you play best (fewest mistakes per
 // move, a blunder counting double, among pieces moved often enough); otherwise the one that does the
 // most (moves, captures, checks), against how much each piece does in a normal game.
@@ -205,44 +250,67 @@ function verdicts(p) {
 // Skill bars, 0-100, each read from one thing in the games; null when there are too few games to say.
 // The raw scales are rules of thumb (50 is a so-so result for the player); skillsOf puts them on the card's scale.
 const clamp = (x) => Math.round(Math.max(0, Math.min(100, x)));
-// Each skill is on one scale for every player, like a sports card: the rating in the time control
-// played most sets the base (about 33 at 1200, 67 at 2000, 99 from 2800), and how the player does in
-// that area, judged against themselves (raw, 50 = about their usual), moves it up to 25 either way.
-const levelOf = (rating) => clamp(((rating - 400) / 2400) * 100);
+// Each skill is on one scale for every player, like a sports card. The base is the player's percentile
+// among all Lichess players of their main time control this week (Lichess's own rating distribution):
+// the middle player is 50, Magnus Carlsen about 99. How the player does in each area, judged against
+// themselves (raw, 50 = about their usual), moves it up to 25 either way.
+const DISTS = 'opening-book-v2-rating-dist'; // { [speed]: { at, freq } }: players per 25 points from 400
+const DIST = (() => { try { return JSON.parse(localStorage.getItem(DISTS)) || {}; } catch { return {}; } })();
+// Lichess's weekly rating distributions, kept a week; without them a bell curve around 1470 stands in.
+async function loadDists() {
+  const stale = ['bullet', 'blitz', 'rapid', 'classical'].filter((k) => !DIST[k] || Date.now() - DIST[k].at > 7 * 864e5);
+  await Promise.all(stale.map(async (k) => {
+    try {
+      const t = await (await fetch(`https://lichess.org/stat/rating/distribution/${k}`)).text();
+      const m = t.match(/"freq":\[([0-9,]+)\]/);
+      if (m) DIST[k] = { at: Date.now(), freq: m[1].split(',').map(Number) };
+    } catch {}
+  }));
+  try { localStorage.setItem(DISTS, JSON.stringify(DIST)); } catch {}
+}
+function percentile(rating, speed) {
+  const f = DIST[speed]?.freq;
+  if (!f) return 100 / (1 + Math.exp(-(rating - 1470) / 230)); // shortcut: a logistic stand-in until Lichess answers
+  const total = f.reduce((a, b) => a + b, 0), i = (rating - 400) / 25;
+  let below = 0;
+  for (let k = 0; k < f.length; k++) below += k + 1 <= i ? f[k] : k < i ? f[k] * (i - k) : 0;
+  return (below / total) * 100;
+}
+const levelOf = (rating, speed = 'blitz') => clamp(percentile(rating, speed));
 function skillsOf(p) {
-  const level = levelOf(p.speeds?.[0]?.rating ?? 1500);
-  return rawSkills(p).map((x) => ({ ...x, raw: x.v, v: x.v === null ? null : clamp(level + (x.v - 50) * 0.5) }));
+  return rawSkills(p).map((x) => ({ ...x, raw: x.v }));
 }
 function rawSkills(p) {
+  const q = p.peer || {}, an = (q.analysed ?? 0) >= ENOUGH, pawns = (cp) => `${cp >= 0 ? '+' : '−'}${(Math.abs(cp) / 100).toFixed(1)}`;
   return [
-    { label: 'Openings', needs: true, v: p.analysed >= ENOUGH ? clamp(100 - p.badStarts * 250) : null,
-      means: 'Whether you come out of the first 12 moves with a playable position.',
-      why: `Worse by 1.5 pawns or more after move 12 in ${pct(p.badStarts)} of analysed games.`,
+    { label: 'Openings', needs: true, v: an && q.after12 !== null ? clamp(50 + q.after12 / 4) : null,
+      means: 'How you come out of the first 12 moves, against your opponents at your level.',
+      why: `After move 12 you stand ${pawns(q.after12 ?? 0)} pawns on average against them.`,
       train: 'Practise the lines of the openings you play, and learn the plan behind them, not just the moves.', href: './' },
-    { label: 'Tactics', needs: true, v: p.analysed >= ENOUGH && p.blunders !== null ? clamp(100 - p.blunders * 30) : null,
-      means: 'Seeing threats and shots: how often you blunder, that is make a move that throws away a piece or the game.',
-      why: `${(p.blunders ?? 0).toFixed(1)} blunders a game.`,
+    { label: 'Tactics', needs: true, v: an && q.myBl !== null && q.oppBl !== null ? clamp(50 + (50 * (q.oppBl - q.myBl)) / Math.max(0.5, q.oppBl + q.myBl)) : null,
+      means: 'How often you blunder (throw away a piece or the game) compared with players at your level.',
+      why: `${(q.myBl ?? 0).toFixed(1)} blunders a game; your opponents ${(q.oppBl ?? 0).toFixed(1)}.`,
       train: 'Before every move, check every check, capture and threat your opponent has after it. Then solve the positions where you blundered.', href: './mistakes.html' },
-    { label: 'Winning when ahead', needs: true, v: p.analysed >= ENOUGH && p.ups >= 5 ? clamp(((p.converted - 0.4) / 0.55) * 100) : null,
-      means: 'Turning a clearly winning position (3 pawns or more ahead) into a win.',
-      why: `Won ${pct(p.converted ?? 0)} of ${p.ups} games where you were clearly better.`,
+    { label: 'Winning when ahead', needs: true, v: an && q.meUp != null && q.oppUp != null ? clamp(50 + (50 * (q.oppUp - q.meUp)) / Math.max(0.2, q.oppUp + q.meUp)) : null,
+      means: 'Keeping it clean when you are clearly ahead (1.5 pawns or more): how often you make a mistake then, against your opponents when they are ahead.',
+      why: `When ahead: ${(q.meUp ?? 0).toFixed(1)} mistakes per 10 moves; your opponents ${(q.oppUp ?? 0).toFixed(1)}.`,
       train: 'When ahead: trade pieces, not pawns, take away their counterplay first, and do not rush.', href: './basics.html' },
-    { label: 'Defending', needs: true, v: p.analysed >= ENOUGH && p.downs >= 5 ? clamp((p.saved / 0.6) * 100) : null,
-      means: 'Saving clearly lost positions: still winning or drawing them.',
-      why: `Saved ${pct(p.saved ?? 0)} of ${p.downs} games where you were clearly worse.`,
+    { label: 'Defending', needs: true, v: an && q.meDown != null && q.oppDown != null ? clamp(50 + (50 * (q.oppDown - q.meDown)) / Math.max(0.2, q.oppDown + q.meDown)) : null,
+      means: 'Holding on when you are clearly behind (1.5 pawns or more): how often you make another mistake then, against your opponents when they are behind.',
+      why: `When behind: ${(q.meDown ?? 0).toFixed(1)} mistakes per 10 moves; your opponents ${(q.oppDown ?? 0).toFixed(1)}.`,
       train: 'When behind: keep pieces on, make threats, and set traps rather than waiting.' },
-    { label: 'Endgames', v: p.endgames >= 10 ? clamp(50 + (p.endgameScore - p.score) * 300) : null,
-      means: 'How you do once most pieces are gone (6 or fewer pieces besides kings and pawns), against your games overall.',
-      why: `Score ${pct(p.endgameScore ?? 0)} in endgames against ${pct(p.score)} overall.`,
+    { label: 'Endgames', v: q.endgames >= 10 ? clamp(50 + (q.endScore - 0.5) * 150) : null,
+      means: 'How you do against players at your level once most pieces are gone (6 or fewer besides kings and pawns).',
+      why: `You score ${pct(q.endScore ?? 0)} in ${q.endgames} endgames against them (50% is even).`,
       train: 'Learn the basic endgames: king activity, passed pawns, and the key king-and-pawn positions.', href: './basics.html' },
-    { label: 'Clock', v: p.n >= 30 ? clamp(100 - p.lowTime * 150 - p.timeLosses * 100) : null,
-      means: 'Using your time well: not ending up short of time or losing on the clock.',
-      why: `Short of time in ${pct(p.lowTime)} of games; ${pct(p.timeLosses)} of losses on time.`,
+    { label: 'Clock', v: q.n >= 30 ? clamp(50 + (q.oppLow - q.myLow) * 100 + (q.timeWins - q.timeLosses) * 200) : null,
+      means: 'Using your time well compared with your opponents: who ends up short of time, and who loses on it.',
+      why: `Short of time in ${pct(q.myLow ?? 0)} of games (they ${pct(q.oppLow ?? 0)}); you win ${pct(q.timeWins ?? 0)} and lose ${pct(q.timeLosses ?? 0)} of games on time.`,
       train: 'Play the opening fast (you know it), and save your thinking time for the critical moments.' },
   ];
 }
-console.assert(levelOf(1200) === 33 && levelOf(2800) === 100, 'levelOf');
-console.assert(rawSkills({ analysed: 20, badStarts: 0.1, blunders: 1, ups: 0, downs: 0, endgames: 0, n: 10 }).map((x) => x.v).slice(0, 3).join() === '75,70,', 'skillsOf');
+console.assert(Math.abs(percentile(1470, 'none') - 50) < 1 && percentile(2900, 'none') > 99, 'percentile');
+console.assert(rawSkills({ peer: { analysed: 30, after12: 100, myBl: 1, oppBl: 1, meUp: 1, oppUp: 3, endgames: 0, n: 10 } }).map((x) => x.v).slice(0, 3).join() === '75,50,75', 'rawSkills');
 const worstPhase = (p) => Object.entries(p.slips).sort((a, b) => b[1] - a[1])[0][0];
 {
   const g = (o) => ({ side: 'w', speed: 'blitz', status: 'resign', plies: 60, result: 1, family: 'Italian Game', rating: 1500, diff: 5, castled: 8, queensOff: null, endgame: false, analysed: false, acc: null, blunders: null, best: null, worst: null, after12: null, slips: { opening: 0, middlegame: 0, endgame: 0 }, lowTime: false, ...o });
@@ -545,11 +613,20 @@ function playerCard(name, p, t, skills) {
   return `<div class="pf-pcard" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span></div>
       <div class="pf-pcard-side"><img class="pf-pcard-piece" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title="${esc(name)}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
-        ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
+        ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span><span class="pf-pcard-rank">${rankText(main)}</span>` : ''}</div></div>
     <p class="pf-pcard-name">${esc(name)}</p>
     <div class="pf-pcard-stats">${skills.map((x) => `<span><b>${x.v ?? '–'}</b>${ABBR[x.label]}</span>`).join('')}</div>
-    <p class="pf-pcard-foot">${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
+    <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
   </div>`;
+}
+// Where a rating ranks among all Lichess players of that time control this week: "Top 27%".
+const pctOf = (main) => Math.round(percentile(main.rating, main.speed));
+const rankText = (main) => (pctOf(main) >= 50 ? `Top ${Math.max(1, 100 - pctOf(main))}%` : `Better than ${pctOf(main)}%`);
+// The card explained in one go, under it.
+function cardNote(name, p, me) {
+  const main = p.speeds[0];
+  if (!main) return '';
+  return `<p class="pf-card-note">The six skills compare ${me ? 'you' : esc(name)} with ${me ? 'your' : 'their'} own opponents rated ${main.rating - PEER}–${main.rating + PEER}, in the same games: <b>50 means as good as them</b>, higher is better. The big number is the average of the six. <b>${rankText(main)}</b>: where ${main.rating} ranks among all Lichess ${main.speed} players this week.</p>`;
 }
 function render(name, at, p) {
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
@@ -559,7 +636,7 @@ function render(name, at, p) {
   $('#profile').innerHTML = `
     ${playerBar(name)}
     <section class="pf-hero">
-      ${playerCard(name, p, t, skills)}
+      <div class="pf-card-col">${playerCard(name, p, t, skills)}${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
         <h1 class="pf-h1">${esc(t[0].name)}</h1>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}
@@ -576,7 +653,7 @@ function render(name, at, p) {
       <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
         <button type="button" class="link" data-skill-text aria-expanded="${showSkillText}">${showSkillText ? 'Hide explanations' : 'What each one means'}</button></div>
       ${skillBars(skills, say, me)}
-      <p class="info pf-note pf-skill-more">Every player is on the same scale, like a sports card: the rating sets the base (about 33 at 1200, 67 at 2000, 99 from 2800), and each bar moves up to 25 above or below it by how the games go in that area compared with the player's own average.</p>
+      <p class="info pf-note pf-skill-more">Every player is on the same scale, like a sports card: the base is where the rating ranks among all Lichess players in that time control (the middle player is 50, the very top 99), and each bar moves up to 25 above or below it by how the games go in that area compared with the player's own average.</p>
     </section>
     <div class="pf-two">
       <section class="pf-card"><h2 class="pf-good">Strengths</h2>${list(p.good, 'Nothing stands out yet. More games give a clearer picture.')}</section>
@@ -738,9 +815,10 @@ function failed(name, err) {
   $('[data-retry]').addEventListener('click', () => run(name));
 }
 
-export { build, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV };
+export { build, cache, myName, skillsOf, loadDists, storedGames, keepGame, engineEval, applyEvals, winPct, PV };
 if ($('#profile')) { // the practice page imports this module for the above; only the profile page draws itself
   try { await finishLogin(); } catch (err) { $('#profile-msg').textContent = err.message; } // back from logging in on this page
+  await loadDists();
   start();
 }
 // ---------- The games themselves ----------

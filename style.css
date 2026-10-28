@@ -1075,3 +1075,8 @@ a { text-underline-offset: .18em; }
 .account .acct-stat input:focus-visible { outline: 0; border-bottom: 2px solid var(--hot); }
 @media (max-width: 560px) { .acct-stat { padding: 0 8px; } .acct-k { font-size: 9px; } }
 @media (max-width: 560px) { .account { flex-wrap: wrap; row-gap: 8px; } #lichess-login { max-width: 9em; overflow: hidden; text-overflow: ellipsis; } }
+/* Player card: rank on Lichess, and the card explained under it */
+.pf-pcard-rank { font: 600 10px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--card-hot); }
+.pf-card-col { display: grid; gap: 12px; justify-items: center; }
+.pf-card-note { margin: 0; max-width: 300px; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+.pf-card-note b { color: var(--ink); font-weight: 600; }
