@@ -64,7 +64,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 
 .layout {
   display: grid; gap: clamp(20px, 3vw, 40px); padding-block: 28px; align-items: start;
-  grid-template-columns: minmax(0, min(calc(100vh - 230px), 860px)) minmax(300px, 1fr);
+  /* The board and a panel of at most 460px, centred together so the board sits near the middle */
+  grid-template-columns: minmax(0, min(calc(100vh - 230px), 860px)) minmax(300px, 460px);
+  justify-content: center;
   grid-template-areas: "play panel" "list list";
 }
 .play { grid-area: play; display: grid; gap: 14px; }
@@ -403,7 +405,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) { .mark { animation: none; } }
 /* The board column holds progress, taken pieces, board and buttons; the board gives way so all fit on screen */
 @media (min-width: 821px) {
-  .board-row { width: min(100%, calc(100vh - 300px)); }
+  .board-row { width: min(100%, calc(100vh - 300px)); justify-self: center; }
 }
 
 /* Phones: a compact picker and board view. Desktop is unchanged. */
