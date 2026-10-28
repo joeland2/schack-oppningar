@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028145207';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028145207';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028145207';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028145207';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028145331';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028145331';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028145331';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028145331';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -359,7 +359,8 @@ function card(o) {
   return `<article class="ocard side-${o.side}" role="button" tabindex="0" data-id="${o.id}" aria-label="${isVs(o) ? 'vs ' : ''}${o.name}">
     <div class="board mini" data-mini="${o.id}" inert></div>
     <div class="ocard-body">
-      <div class="ocard-top"><h3>${isVs(o) ? 'vs ' : ''}${o.name}</h3><span class="ocard-tags">${tags}<span class="chip ${level}">${levelTxt}</span></span></div>
+      <div class="ocard-top"><h3>${isVs(o) ? 'vs ' : ''}${o.name}</h3><span class="ocard-tags">${tags}<span class="chip ${level}">${levelTxt}</span>
+        <button type="button" class="star" data-star="${o.id}" aria-pressed="${repertoire.has(o.id)}" title="${repertoire.has(o.id) ? 'In your repertoire' : 'Add to your repertoire'}" aria-label="${repertoire.has(o.id) ? 'Remove from' : 'Add to'} my repertoire">★</button></span></div>
       <p class="omoves"><span class="eco">${o.eco}</span> ${moves.slice(0, -1).join(' ')} <b>${moves.at(-1)}</b></p>
       <p class="odesc">${about || `Starts ${numbered(o.root)}.`}</p>
       <div class="ostats">
@@ -372,6 +373,8 @@ function card(o) {
 }
 
 let query = '';
+// My repertoire: the openings you star, from either side, in a list of their own.
+const repertoire = new Set(load(STORE + '-rep', []));
 let listSide = load(STORE + '-side', 'w'); // which list shows: openings you play as White, or as Black
 const FIRST = 8; // the first few openings show, with a button for the rest
 const showAll = { w: false, b: false };
@@ -389,13 +392,17 @@ function renderList() {
   };
   const q = query.trim().toLowerCase();
   const list = q ? OPENINGS.filter((o) => o.family.toLowerCase().includes(q)).sort((a, b) => b.share - a.share) : shown();
-  const count = (side) => list.filter((o) => o.side === side).length;
+  const mineList = OPENINGS.filter((o) => repertoire.has(o.id));
+  const count = (side) => (side === 'r' ? mineList.length : list.filter((o) => o.side === side).length);
   let body;
   if (q) {
     body = `<p class="og-about">${list.length
       ? `${list.length} openings at your level match. "vs" means a White opening you answer as Black.`
       : `No opening at your level matches "${q.replace(/[<&"]/g, '')}".`}</p>
       <div class="olist">${list.map((o) => card(o).replace('</h3>', `<small class="as">you play ${sideName(o.side)}</small></h3>`)).join('')}</div>`;
+  } else if (listSide === 'r') {
+    body = `<p class="og-about">${mineList.length ? 'The openings you have starred, from both sides. Practise weakest picks from these.' : 'Nothing here yet. Star (★) an opening as White and the defences you want as Black to build your repertoire.'}</p>
+      <div class="olist">${mineList.map(card).join('')}</div>`;
   } else {
     const ops = list.filter((o) => o.side === listSide);
     const cut = !showAll[listSide] && ops.length > FIRST + 2;
@@ -405,12 +412,12 @@ function renderList() {
       ${cut ? `<button type="button" class="ghost more" data-more="${listSide}">Show all ${ops.length}</button>` : ''}`;
   }
   listEl.innerHTML = `${q ? '<h2 class="og-h">Search results</h2>' : `<div class="seg side-seg" role="group" aria-label="Your side">
-      ${['w', 'b'].map((side) => `<button type="button" data-side="${side}" aria-pressed="${side === listSide}">You play ${sideName(side)} <span class="og-n">${count(side)}</span></button>`).join('')}
+      ${['w', 'b', 'r'].map((side) => `<button type="button" data-side="${side}" aria-pressed="${side === listSide}">${side === 'r' ? '<span class="wide-only">My </span>Repertoire' : `<span class="wide-only">You play </span>${sideName(side)}`} <span class="og-n">${count(side)}</span></button>`).join('')}
     </div>`}${body}`;
   seen.disconnect();
   listEl.querySelectorAll('.ocard').forEach((c) => {
-    const op = list.find((o) => o.id === c.dataset.id);
-    const go = () => start(op);
+    const op = OPENINGS.find((o) => o.id === c.dataset.id);
+    const go = (e) => { if (!e?.target.closest?.('.star')) start(op); };
     previewAt(c, op.root.split(' ').length);
     if (!REDUCE_MOTION) {
       seen.observe(c);
@@ -418,13 +425,20 @@ function renderList() {
       c.addEventListener('focus', () => playPreview(c));
     }
     c.addEventListener('click', go);
-    c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    c.addEventListener('keydown', (e) => { if (e.target === c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go(); } });
   });
 }
 
 listEl.addEventListener('click', (e) => {
   const more = e.target.closest('[data-more]');
   if (more) { showAll[more.dataset.more] = true; renderList(); }
+  const star = e.target.closest('[data-star]');
+  if (star) {
+    const id = star.dataset.star;
+    if (repertoire.has(id)) repertoire.delete(id); else repertoire.add(id);
+    store(STORE + '-rep', [...repertoire]);
+    return renderList();
+  }
   const side = e.target.closest('[data-side]');
   if (side) { listSide = side.dataset.side; store(STORE + '-side', listSide); renderList(); }
 });
@@ -1735,7 +1749,7 @@ document.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('clic
 }));
 $('#back').addEventListener('click', showPicker);
 $('#weakest').addEventListener('click', () => {
-  const list = shown();
+  const list = repertoire.size ? OPENINGS.filter((o) => repertoire.has(o.id)) : shown();
   if (!list.length) return;
   const score = (o) => { const s = stats[statKey(o.id)]; return s && s.total ? s.done.length / s.total : 0; };
   start([...list].sort((a, b) => score(a) - score(b))[0]);

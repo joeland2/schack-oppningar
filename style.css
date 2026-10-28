@@ -649,3 +649,9 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
 .backup .info { margin: 0 0 8px; font-size: 13px; }
 .backup-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .file-btn { cursor: pointer; }
+
+/* Star an opening into your repertoire */
+.star { border: 0; background: none; padding: 0 2px; font-size: 18px; line-height: 1; cursor: pointer; color: var(--line); }
+.ocard.side-w .star { color: #cfcfcf; } .ocard.side-b .star { color: #4a4744; }
+.star[aria-pressed="true"], .ocard .star[aria-pressed="true"] { color: #e0b23a; }
+.star:hover { color: #e0b23a; }
