@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028123950';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028123950';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028123950';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028123950';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028124705';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028124705';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028124705';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028124705';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -723,6 +723,11 @@ function repliesText(before, played) {
   return `<span class="reps">${top.map(part).join(' ')}${rest >= 0.01 ? ` <span class="rep">others ${pct(rest)}</span>` : ''}</span>`;
 }
 
+// A tip is a button: clicking it plays that move, and the game goes on from there.
+$('#line-done').addEventListener('click', (e) => {
+  const b = e.target.closest('.tip');
+  if (b && userTurn() && !busy) tryMove(b.dataset.from, b.dataset.to);
+});
 let lineDone = '', goOn = ''; // the summary shown at the end of the line, and the current tips
 function renderWhy() {
   const el = $('#why');
@@ -756,7 +761,7 @@ function renderWhy() {
   // "How to go on" follows the game: worked out afresh on each of your turns, kept while they think.
   if (ply >= line.length && userTurn()) {
     const t = lineTips();
-    goOn = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x) => `<li>${x}</li>`).join('')}</ul>` : '';
+    goOn = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x) => `<li><button type="button" class="tip" data-from="${x.move.from}" data-to="${x.move.to}">${x.html}</button></li>`).join('')}</ul>` : '';
   }
   const tips = ply >= line.length ? goOn : '';
   el.innerHTML = parts.join('');
@@ -815,36 +820,25 @@ function lineSummary() {
   return out.join(' ');
 }
 
-// How to go on from the end of the line: what strong players play next (after the opponent's usual
-// reply), then plain advice read off the board. At most three tips.
+// How to go on, for your move now: the move that scores best in games at your level, the next best,
+// and Stockfish's choice, each with what the move does. Game moves need MIN_GAMES games to count.
 function lineTips() {
-  const tips = [];
-  const p = endPosition();
-  const mine = ratingsAround(rating);
-  const now = game.history().map(clean);
-  const reply = game.turn() === p.me ? null : explore(now, mine).moves.find((m) => m.n >= MIN_GAMES);
-  const at = reply ? [...now, reply.san] : game.turn() === p.me ? now : null;
-  if (at) {
-    const g = new Chess();
-    at.forEach((m) => g.move(m));
-    const next = strongGroups(at).x.moves.filter((m) => m.n >= MIN_GAMES).slice(0, 2).map((m) => new Chess(g.fen()).move(m.san));
-    if (next.length) tips.push(`${reply ? `After their usual ${reply.san}, strong` : 'Strong'} players go on with ${next.map(moveWords).join(' or ')}.`);
+  const at = game.fen(), me = cur.side;
+  const say = (m) => { const idea = ideaAt(new Chess(at), m.san); return `${moveWords(m)}${idea ? `. ${idea}` : '.'}`; };
+  const games = explore(game.history().map(clean), ratingsAround(rating)).moves.filter((m) => m.n >= MIN_GAMES)
+    .sort((a, b) => scoreFor(b, me) - scoreFor(a, me)).slice(0, 2);
+  const engine = EVALS.get(evalKey(at))?.move;
+  const engineSan = engine && new Chess(at).move(engine).san;
+  const tips = games.map((m, i) => {
+    const move = new Chess(at).move(m.san);
+    const agrees = move.san === engineSan ? ' Stockfish agrees.' : '';
+    return { move, html: `<b>${i ? 'Next best in games' : 'Best results in games'}:</b> ${say(move)} You score ${pct(scoreFor(m, me))} after it at your level.${agrees}` };
+  });
+  if (engineSan && !games.some((m) => new Chess(at).move(m.san).san === engineSan)) {
+    const move = new Chess(at).move(engine);
+    tips.push({ move, html: `<b>Stockfish's choice:</b> ${say(move)}` });
   }
-  // Where games run out, Stockfish's choice (once the evaluation bar's search has it).
-  const best = !tips.length && game.turn() === p.me && EVALS.get(evalKey(game.fen()))?.move;
-  if (best) tips.push(`Stockfish's choice here: ${moveWords(new Chess(game.fen()).move(best))}.`);
-  if (!p.castled && p.kingHome) tips.push('Castle soon, so your king is safe.');
-  if (p.undeveloped.length) tips.push(`Bring out ${andList(p.undeveloped.map((x) => `the ${PIECE[x.type]} on ${x.square}`))}.`);
-  if (p.theirKingInCentre && now.length >= 8) tips.push('Their king is still in the centre: open lines with a pawn break before they castle.');
-  if (p.lead > 0) tips.push('Trade pieces to make your extra material count.');
-  if (p.lead < 0) tips.push('Keep the initiative: you gave material, so attack before they get organised.');
-  if (!p.centre.length) tips.push(`Claim the centre with a pawn to ${p.me === 'w' ? 'd4 or e4' : 'd5 or e5'} when you can.`);
-  if (p.centre.length === 1) {
-    const other = { d4: 'e4', e4: 'd4', d5: 'e5', e5: 'd5' }[p.centre[0]];
-    if (other && !game.get(other)) tips.push(`Prepare ${other} to take more of the centre.`);
-  }
-  if (p.castled && !p.undeveloped.length) tips.push('Connect your rooks and put one on an open file.');
-  return tips.slice(0, 3);
+  return tips;
 }
 
 // ---------- Game ----------

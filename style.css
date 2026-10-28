@@ -565,3 +565,14 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
 .coach .why .prev b { font-family: var(--font-mono); font-weight: 500; }
 .reps-box summary { cursor: pointer; font-size: .85rem; color: var(--muted); }
 .reps-box .reps { margin-top: 6px; }
+
+/* How to go on: each option is a move you can click to play */
+.line-done .tips { list-style: none; padding: 0; gap: 6px; }
+.line-done .tip { width: 100%; text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  color: var(--ink); font: inherit; font-size: .9rem; line-height: 1.45; cursor: pointer; }
+.line-done .tip:hover, .line-done .tip:focus-visible { border-color: var(--ink); }
+.line-done .tip b { display: inline; margin: 0; }
+
+/* Light / dark toggle in the header */
+.theme { display: inline-grid; place-items: center; min-width: 40px; height: 38px; padding: 0 10px; }
+.top-in .crumb { margin-left: auto; }
