@@ -399,7 +399,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 
 /* Evaluation bar, upright beside the board like on Lichess: White's share fills from White's side */
 .board-row { display: grid; }
-@media (prefers-reduced-motion: reduce) { /* Black taken pieces need a light edge to show on the dark page */
+/* Black taken pieces need a light edge to show on the dark page */
 .captured img[src*="/bP"], .captured img[src*="/bN"], .captured img[src*="/bB"], .captured img[src*="/bR"], .captured img[src*="/bQ"] {
   filter: drop-shadow(0 0 1px rgb(255 255 255 / .75)) drop-shadow(0 0 1px rgb(255 255 255 / .5));
 }
@@ -415,4 +415,45 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 /* The board column holds progress, taken pieces, board and buttons; the board gives way so all fit on screen */
 @media (min-width: 821px) {
   .board-row { width: min(100%, calc(100vh - 300px)); }
+}
+
+/* Phones: a compact picker and board view. Desktop is unchanged. */
+.filters > summary { display: none; }
+.ometa { display: none; }
+@media (max-width: 560px) {
+  .top-in { padding-block: 10px; }
+  .picker { display: flex; flex-direction: column; }
+  .picker > .mine { order: 10; }
+  .filters { margin-top: 14px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .filters > summary { display: flex; justify-content: space-between; gap: 12px; cursor: pointer; font-weight: 700; list-style: none; }
+  .filters > summary::-webkit-details-marker { display: none; }
+  .filters > summary span { color: var(--muted); font-weight: 500; }
+  .filters .choices { margin: 12px 0 4px; }
+  .filters .seg:has([data-style]) { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .choices-search { margin: 12px 0 6px; }
+  .choices-search .choice-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .og-w, .og-b { padding: 12px; margin-inline: -8px; }
+  .ocards, .og-w .ocards, .og-b .ocards { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .ocard { grid-template-columns: 76px minmax(0, 1fr); align-items: center; }
+  .ocard:hover, .ocard:focus-visible { transform: none; }
+  .ocard .board.mini { width: 76px; margin: 8px 0 8px 8px; border-radius: 4px; }
+  .ocard-body { padding: 8px 12px; gap: 3px; }
+  .ocard .tags, .ocard .played, .ocard .wdl, .ocard .wdl-key, .ocard .chip.ny { display: none; }
+  .ometa { display: block; margin: 0; font-size: .8rem; color: var(--muted); }
+  .ometa b { color: var(--ink); }
+  .more { width: 100%; margin-top: 10px; }
+  .layout { gap: 14px; }
+  .play { gap: 6px; }
+  .captured { min-height: 18px; }
+  .captured img { width: 18px; height: 18px; }
+  .panel { gap: 16px; padding: 14px; }
+  .lb-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lb-stats div:nth-child(2), .lb-note { display: none; }
+}
+/* Desktop: filters and search share one row, as before the filters got their own box */
+@media (min-width: 561px) {
+  .filters { display: inline-block; vertical-align: top; max-width: 100%; }
+  .choices-search { display: inline-flex; vertical-align: top; width: min(420px, 100%); margin-left: 29px; }
+  /* inline blocks keep their margins apart, so trim what used to collapse with the heading and the box below */
+  .filters .choices, .choices-search { margin-top: 12px; margin-bottom: 4px; }
 }

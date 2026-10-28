@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261027232256">
+  <link rel="stylesheet" href="style.css?v=20261028090910">
 </head>
 <body>
   <header class="top">
@@ -48,6 +48,8 @@
       </p>
     </form>
     </div>
+    <details id="filters" class="filters" open>
+    <summary id="filters-sum">Filters</summary>
     <div class="choices">
       <div class="choice">
         <span class="choice-label">Time control</span>
@@ -67,6 +69,9 @@
         </div>
         <p id="style-about" class="choice-about"></p>
       </div>
+    </div>
+    </details>
+    <div class="choices choices-search">
       <div class="choice choice-search">
         <label class="choice-label" for="search">Find an opening</label>
         <input id="search" class="search" type="search" placeholder="e.g. Sicilian, London, Scotch" autocomplete="off">
@@ -147,7 +152,7 @@
 
   <footer class="wrap foot">Click a piece, then the square to move it to. Your opponent plays the replies real Lichess players within 200 of your rating choose in your time control, most common first. Style tags are our own judgement; popularity comes from real games. Learn shows every move; Practice tests you, and cleared lines come back for review.</footer>
 
-  <script type="module" src="app.js?v=20261027232256"></script>
+  <script type="module" src="app.js?v=20261028090910"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>

@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake, moveWords, instruction } from './board.js?v=20261027232256';
-import { STYLES, STYLE_OF } from './styles.js?v=20261027232256';
+import { drawBoard, enableDrag, shake, moveWords, instruction } from './board.js?v=20261028090910';
+import { STYLES, STYLE_OF } from './styles.js?v=20261028090910';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -257,6 +257,7 @@ function card(o) {
       <h3>${isVs(o) ? 'vs ' : ''}${o.name}</h3>
       <p class="omoves">${moves.slice(0, -1).join(' ')} <b>${moves.at(-1)}</b></p>
       ${tags ? `<p class="tags">${tags}</p>` : ''}
+      <p class="ometa">${pctOf(o.share)} of games · you win <b>${pct(o.side === 'w' ? o.win : 1 - o.win - o.draw)}</b></p>
       <p class="played">${isVs(o) ? 'You meet it' : 'Played'} in <b>${pctOf(o.share)}</b> of games</p>
       ${wdl(o, o.side)}
     </div>
@@ -264,6 +265,9 @@ function card(o) {
 }
 
 let query = '';
+// Phones show the first few openings per colour, with a button for the rest.
+const PHONE = matchMedia('(max-width: 560px)'), PHONE_FIRST = 8;
+const showAll = { w: false, b: false };
 
 function renderList() {
   const whiteAll = OPENINGS.filter((o) => o.side === 'w' && o.share >= MIN_REACH).length;
@@ -283,7 +287,9 @@ function renderList() {
       <div class="ocards">${list.map((o) => card(o).replace('</h3>', `<small class="as">${isVs(o) ? 'you play Black' : `you play ${sideName(o.side)}`}</small></h3>`)).join('')}</div></section>`
     : `<div class="cols">${groups.map(([side, label, about]) => {
       const ops = list.filter((o) => o.side === side);
-      return `<section class="og og-${side}"><h2>${label} <span class="og-n">${ops.length}</span></h2><p class="og-about">${about(ops.length)}</p>${ops.length ? '' : empty}<div class="ocards">${ops.map(card).join('')}</div></section>`;
+      const cut = PHONE.matches && !showAll[side] && ops.length > PHONE_FIRST + 2;
+      const more = cut ? `<button type="button" class="ghost more" data-more="${side}">Show all ${ops.length}</button>` : '';
+      return `<section class="og og-${side}"><h2>${label} <span class="og-n">${ops.length}</span></h2><p class="og-about">${about(ops.length)}</p>${ops.length ? '' : empty}<div class="ocards">${(cut ? ops.slice(0, PHONE_FIRST) : ops).map(card).join('')}</div>${more}</section>`;
     }).join('')}</div>`;
   seen.disconnect();
   listEl.querySelectorAll('.ocard').forEach((c) => {
@@ -299,6 +305,15 @@ function renderList() {
     c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
   });
 }
+
+listEl.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-more]');
+  if (b) { showAll[b.dataset.more] = true; renderList(); }
+});
+PHONE.addEventListener('change', (e) => {
+  if (!e.matches) $('#filters').open = true; // desktop always shows the filters
+  if (OPENINGS.length) renderList();
+});
 
 // ---------- Animated previews ----------
 const REDUCE_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1021,6 +1036,7 @@ function renderChoices() {
   $('#style-about').textContent = style === 'any' ? 'All common openings, whatever their character.' : STYLES[style].about;
   document.querySelectorAll('.speed-name').forEach((el) => (el.textContent = speed));
   $('#rating').value = rating || '';
+  $('#filters-sum').innerHTML = `Filters <span>${speed[0].toUpperCase() + speed.slice(1)} · ${style === 'any' ? 'any style' : STYLES[style].label}</span>`;
 }
 document.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('click', () => {
   speed = b.dataset.speed;
@@ -1076,3 +1092,4 @@ try { await loadBook(); } catch {
 try { for (const k of Object.keys(localStorage)) if (k === STORE + '-token' || k.startsWith(STORE + '-x')) localStorage.removeItem(k); } catch {}
 setMode(mode);
 showPicker();
+if (PHONE.matches) $('#filters').open = false;
