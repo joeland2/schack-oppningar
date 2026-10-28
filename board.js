@@ -7,7 +7,8 @@ const FILES = 'abcdefgh';
 // pre marks a queued premove's squares.
 export const GLYPH = { brilliant: '!!', best: '★', good: '✓', inaccuracy: '?!', mistake: '?', blunder: '??' };
 const BOOK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c3-1.5 5.5-1.5 8 0 2.5-1.5 5-1.5 8 0v12c-3-1.5-5.5-1.5-8 0-2.5-1.5-5-1.5-8 0zM12 6v12"/></svg>';
-export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint = [], wrong = null, arrow = null, mark = null, dests = null, pre = [] } = {}) {
+// arrows: several [from, to, colour] at once (e.g. every move you are offered).
+export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint = [], wrong = null, arrow = null, arrows = [], mark = null, dests = null, pre = [] } = {}) {
   planAnim(el, game, side);
   const targets = sel ? dests || game.moves({ square: sel, verbose: true }).map((m) => m.to) : [];
   let html = '';
@@ -33,7 +34,7 @@ export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint 
       ? `<span class="mark ${mark.ok ? 'ok' : 'bad'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${mark.ok ? 'M5 12.5l4.5 4.5L19 7.5' : 'M7 7l10 10M17 7L7 17'}"/></svg></span>` : '';
     html += `<button class="${cls.join(' ')}" data-sq="${sq}" aria-label="${sq}${p ? ' ' + p.color + p.type : ''}">${piece}${badge}${fileLbl}${rankLbl}</button>`;
   }
-  el.innerHTML = html + (arrow ? arrowSvg(arrow, side) : '') + (el.classList.contains('mini') ? '' : '<svg class="shapes" viewBox="0 0 8 8" aria-hidden="true"></svg>');
+  el.innerHTML = html + (arrow ? arrowSvg(arrow, side) : arrows.map((a) => arrowSvg(a, side)).join('')) + (el.classList.contains('mini') ? '' : '<svg class="shapes" viewBox="0 0 8 8" aria-hidden="true"></svg>');
   el._game = game;
   drawShapes(el);
   if (el._anim) stepAnim(el, performance.now());
@@ -160,7 +161,7 @@ export function clearShapes(el) {
 }
 
 // Board coordinates run 0–8 across and down, so a square's centre is at (file + 0.5, row + 0.5).
-function arrowSvg([from, to], side) {
+function arrowSvg([from, to, colour], side) {
   const xy = (sq) => {
     const f = FILES.indexOf(sq[0]), r = 8 - Number(sq[1]);
     return side === 'w' ? [f + 0.5, r + 0.5] : [7.5 - f, 7.5 - r];
@@ -169,7 +170,7 @@ function arrowSvg([from, to], side) {
   const len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len;
   const tip = [x2 - ux * 0.08, y2 - uy * 0.08], base = [tip[0] - ux * 0.42, tip[1] - uy * 0.42];
   const wing = (k) => `${base[0] - uy * k},${base[1] + ux * k}`;
-  return `<svg class="arrow" viewBox="0 0 8 8" aria-hidden="true">
+  return `<svg class="arrow" viewBox="0 0 8 8" aria-hidden="true"${colour ? ` style="--arrow:${colour}"` : ''}>
     <line x1="${x1}" y1="${y1}" x2="${base[0]}" y2="${base[1]}" />
     <polygon points="${tip[0]},${tip[1]} ${wing(0.24)} ${wing(-0.24)}" />
   </svg>`;

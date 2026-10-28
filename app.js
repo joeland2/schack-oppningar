@@ -1,13 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028143531';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028143531';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028143531';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028143531';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028144102';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028144102';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028144102';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028144102';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
 const MAX_LINES = 20;
 const MIN_LINE = 0.03;   // a side line needs 3% of the opening's games to become a line of its own
+const THEORY = 0.15;     // a reply strong players choose this often is a main line, rare at your level or not
+const THEORY_GROUPS = [6, 7, 8]; // 2000+
 const MIN_GAMES = 20;     // below this, real-game data is too thin to trust
 const MAX_PLY = 20;       // data/explorer-*.json goes this deep
 const DATA = '2026-10-28-k8'; // version of data/explorer-*.json
@@ -211,14 +213,18 @@ function buildLines(op) {
     }
     const x = gamesAt(moves);
     const name = nameOf(moves, l.name);
-    const replies = x.total < MIN_GAMES ? [] : x.moves.filter((m) => m.n >= MIN_GAMES && m.n / x.total >= MIN_SHARE);
+    // The replies you meet (MIN_SHARE of games at your level), plus theory: the main replies of strong
+    // players (THEORY of games at 2000+), where players at your level reach them at all.
+    const strong = explore(moves, THEORY_GROUPS);
+    const theory = new Set(strong.moves.filter((m) => m.n >= MIN_GAMES && m.n / strong.total >= THEORY).map((m) => m.san));
+    const replies = x.total < MIN_GAMES ? [] : x.moves.filter((m) => (m.n >= MIN_GAMES && m.n / x.total >= MIN_SHARE) || (theory.has(m.san) && m.n >= 3));
     if (!replies.length) { done.push({ moves, share: l.share, name, branch: l.branch }); continue; }
     const room = Math.max(1, MAX_LINES - done.length - open.length);
     // The most common reply always carries the line on; others branch off only if they come up in at
     // least MIN_LINE of games in this opening, so the line budget goes to depth, not to rarities.
     // branch: how many of the opening's games reach the point where this line leaves its parent; the
     // main line (always the most common reply) keeps 1, so it is learned first.
-    for (const [i, m] of replies.filter((m, i) => i === 0 || l.share * m.n / x.total >= MIN_LINE).slice(0, room).entries()) {
+    for (const [i, m] of replies.filter((m, i) => i === 0 || theory.has(m.san) || l.share * m.n / x.total >= MIN_LINE).slice(0, room).entries()) {
       const share = l.share * m.n / x.total;
       open.push({ moves: [...moves, m.san], share, name: nameOf([...moves, m.san], name), branch: i ? share : l.branch });
     }
@@ -663,7 +669,11 @@ $('#search').addEventListener('input', (e) => { query = e.target.value; if (OPEN
 // ---------- Board ----------
 function renderBoard() {
   const n = game.history().length - 1, note = notes[n];
-  drawBoard(boardEl, game, { side: cur.side, sel, last: lastMove, hint: hintSq, wrong: wrongSq, arrow: hintSq.length === 2 ? hintSq : null,
+  // At the line's end every offered move gets an arrow (green: real games, blue: Stockfish), unless
+  // one is pointed at.
+  const offered = ply >= line.length && game.history().length === line.length && userTurn() && !(tipHint !== null) ? tipArrows : [];
+  drawBoard(boardEl, game, { side: cur.side, sel, last: lastMove, hint: hintSq, wrong: wrongSq,
+    arrow: hintSq.length === 2 && !offered.length ? hintSq : null, arrows: offered,
     mark: (wrongSq && { sq: wrongSq, ok: false }) || (note && lastMove && { sq: lastMove.to, kind: note }),
     dests: sel && canPremove() ? premoveDests(sel).map((m) => m.to) : null, pre: premove ? [premove.from, premove.to] : [] });
 }
@@ -781,7 +791,7 @@ $('#line-done').addEventListener('mouseout', (e) => {
   renderBoard();
 });
 $('#line-done').addEventListener('click', (e) => { if (e.target.closest('.done-next')) $('#restart').click(); });
-let lineDone = ''; // the summary shown at the end of the line, and the current tips
+let lineDone = '', tipArrows = []; // the summary shown at the end of the line, and the current tips
 function renderWhy() {
   const el = $('#why');
   if (!cur || !line.length || mode === 'explore') { $('#line-done').hidden = true; return (el.innerHTML = ''); } // Explore explains in the message
@@ -821,6 +831,8 @@ function renderWhy() {
   let tips = '';
   if (ply >= line.length && hist.length === line.length && userTurn()) {
     const t = lineTips();
+    const arrows = t.map((x) => [x.move.from, x.move.to, x.engine ? '#1d5fbf' : '#15781b']);
+    if (JSON.stringify(arrows) !== JSON.stringify(tipArrows)) { tipArrows = arrows; renderBoard(); }
     tips = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x) => `<li><button type="button" class="tip" data-from="${x.move.from}" data-to="${x.move.to}">${x.html}</button></li>`).join('')}</ul>` : '';
   }
   el.innerHTML = parts.join('');
@@ -913,7 +925,7 @@ function lineTips() {
   });
   const RANK = ["Stockfish's choice", "Stockfish's second choice", "Stockfish's third choice"];
   engine.forEach((move, i) => {
-    if (tips.length < 3 && !tips.some((t) => t.move.san === move.san)) tips.push({ move, html: `<b>${RANK[i]}:</b> ${say(move)}` });
+    if (tips.length < 3 && !tips.some((t) => t.move.san === move.san)) tips.push({ move, engine: true, html: `<b>${RANK[i]}:</b> ${say(move)}` });
   });
   return tips;
 }

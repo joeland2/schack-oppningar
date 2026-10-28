@@ -265,8 +265,8 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 
 /* Move arrow, Lichess green */
 .arrow { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; opacity: .85; }
-.arrow line { stroke: #15781b; stroke-width: .17; stroke-linecap: round; }
-.arrow polygon { fill: #15781b; }
+.arrow line { stroke: var(--arrow, #15781b); stroke-width: .17; stroke-linecap: round; }
+.arrow polygon { fill: var(--arrow, #15781b); }
 
 /* Dragging a piece */
 .board:not(.mini) { touch-action: none; }
