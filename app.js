@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028152510';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028152510';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028152510';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028152510';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028152953';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028152953';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028152953';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028152953';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -875,7 +875,7 @@ function renderWhy() {
   // are about the move to play at the line's end, so they go once you have played on.
   if (ply >= line.length && hist.length === line.length) {
     const plan = planOf(cur);
-    lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p><p><b>What this line gave you</b> ${lineSummary()}</p>${lineFacts()}${plan ? `<p class="plan"><b>Your plan from here:</b> ${plan}</p>` : ''}`;
+    lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p>${lineWhy()}${lineFacts()}${plan ? `<p class="plan"><b>The opening's general plan:</b> ${plan}</p>` : ''}`;
   }
   // "How to go on" is for the moment you start playing on: shown at the line's end, gone once you move.
   let tips = '';
@@ -904,42 +904,76 @@ function resultsAt(moves) {
   return { n, win, draw, loss: 1 - win - draw };
 }
 // The facts box at the end of a line: how games at your level went from the last position with enough games.
-function lineFacts() {
+// Results at your level from the line's end (or the last position of it with enough games).
+function endResults() {
   let k = line.length, r = null;
   while (k > 0 && !(r = resultsAt(line.slice(0, k)))) k--;
+  return r;
+}
+const scoresWell = () => { const r = endResults(); return !!r && r.win > r.loss; };
+function lineFacts() {
+  const r = endResults();
   if (!r) return '';
   const cell = (v, label) => `<div><b>${v}</b><span>${label}</span></div>`;
   return `<div class="facts" aria-label="From here at your level">${cell(pct(r.win), 'you win')}${cell(pct(r.draw), 'draws')}${cell(pct(r.loss), 'you lose')}${cell(r.n.toLocaleString('en'), 'games at your level')}</div>`;
 }
 
-// The end of the line, in a few plain sentences: whether players at your level do well from here
-// (in words, not numbers), what the position offers you, and the material.
+// The end of the line, read off the board: development, kings, material and open files, for both sides.
 function endPosition() {
-  const me = cur.side, them = me === 'w' ? 'b' : 'w', home = me === 'w' ? '1' : '8';
+  const me = cur.side, them = me === 'w' ? 'b' : 'w';
   const pieces = game.board().flat().filter(Boolean);
+  const home = (c) => (c === 'w' ? '1' : '8');
   const kingOf = (c) => pieces.find((p) => p.type === 'k' && p.color === c).square;
-  const castled = game.history({ verbose: true }).some((m) => m.color === me && /[kq]/.test(m.flags));
-  const minors = pieces.filter((p) => p.color === me && 'nb'.includes(p.type));
-  const undeveloped = minors.filter((p) => ['b', 'c', 'f', 'g'].map((f) => f + home).includes(p.square));
-  const centre = pieces.filter((p) => p.color === me && p.type === 'p' && CENTRE.includes(p.square)).map((p) => p.square);
+  const castled = (c) => game.history({ verbose: true }).some((m) => m.color === c && /[kq]/.test(m.flags));
+  const minors = (c) => pieces.filter((p) => p.color === c && 'nb'.includes(p.type));
+  const undeveloped = (c) => minors(c).filter((p) => ['b', 'c', 'f', 'g'].map((f) => f + home(c)).includes(p.square));
   const points = (c) => pieces.filter((p) => p.color === c && p.type !== 'k').reduce((s, p) => s + VALUE[p.type], 0);
-  const theirKing = kingOf(them);
-  return { me, them, castled, kingHome: kingOf(me)[0] === 'e' && kingOf(me)[1] === home, minors, undeveloped, centre,
-    lead: points(me) - points(them), theirKingInCentre: theirKing[0] === 'e' && theirKing[1] === (them === 'w' ? '1' : '8') };
+  const pawnsOn = (c, f) => pieces.some((p) => p.color === c && p.type === 'p' && p.square[0] === f);
+  // Files with none of your pawns, nearest the centre first: open (no pawns) or half-open (theirs only).
+  const files = ['e', 'd', 'f', 'c'].filter((f) => !pawnsOn(me, f)).map((f) => ({ f, open: !pawnsOn(them, f) }));
+  const inCentre = (c) => ['d', 'e', 'f'].includes(kingOf(c)[0]) && kingOf(c)[1] === home(c);
+  return { me, them, castled: castled(me), theyCastled: castled(them), kingHome: inCentre(me), theirKingInCentre: inCentre(them),
+    out: minors(me).length - undeveloped(me).length, theirOut: minors(them).length - undeveloped(them).length,
+    undeveloped: undeveloped(me), lead: points(me) - points(them), files };
 }
 const andList = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : xs[0]);
 
-function lineSummary() {
-  const out = [];
-  const p = endPosition();
-  const facts = [];
-  if (p.castled) facts.push('your king is castled');
-  if (p.minors.length) facts.push(p.undeveloped.length ? `${p.minors.length - p.undeveloped.length} of your ${p.minors.length} knights and bishops are out` : 'all your knights and bishops are out');
-  if (p.centre.length) facts.push(`you have ${p.centre.length === 1 ? 'a pawn' : 'pawns'} on ${p.centre.join(' and ')}`);
-  if (facts.length) out.push(andList(facts).replace(/^./, (c) => c.toUpperCase()) + '.');
-  if (p.lead > 0) out.push('You are ahead in material.');
-  if (p.lead < 0) out.push('You have given material for activity.');
-  return out.join(' ');
+// Why the line's end is good for you, in a few points: Stockfish's verdict (once it is in), and what
+// the board shows about development, kings, material and files. Then where to take the game: the
+// goals that follow from those points, and how strong players usually go on from here.
+function lineWhy() {
+  const p = endPosition(), them = sideName(p.them), why = [], aims = [];
+  const e = EVALS.get(evalKey(game.fen()));
+  if (e && game.turn() === p.me) {
+    const cp = toCp(e);
+    why.push(cp >= 80 ? 'Stockfish rates your position as clearly better.' : cp >= 30 ? 'Stockfish rates your position as a little better.'
+      : cp > -30 ? 'Stockfish rates it as equal: a full game, where the better plan wins.'
+      : `Stockfish gives ${them} ${cp > -100 ? 'a small' : 'an'} edge${scoresWell() ? ', but players at your level win more than they lose from here' : ', so play carefully'}.`);
+  }
+  if (p.out > p.theirOut) why.push(`You are ahead in development: ${p.out} knights and bishops out against ${p.theirOut}, so open the game before ${them} catches up.`);
+  else if (p.out < p.theirOut) why.push(`${them} is ahead in development (${p.theirOut} pieces out against your ${p.out}), so catch up before you start anything.`);
+  if (p.theirKingInCentre && !p.theyCastled) why.push(`${them}'s king is still in the centre: if the centre opens, it is a target.`);
+  if (p.lead > 0) why.push(`You are ${p.lead === 1 ? 'a pawn' : `${p.lead} points`} up: trade pieces, not pawns, and the extra material wins the endgame.`);
+  if (p.lead < 0) why.push(`You gave ${p.lead === -1 ? 'a pawn' : 'material'} for quick development and open lines. Keep the pace up: in a slow game the material counts.`);
+  const file = p.files[0];
+  if (file) why.push(`The ${file.f}-file is ${file.open ? 'open' : 'half-open for you'}: a rook belongs there.`);
+  // Goals, in the order to reach them.
+  if (p.undeveloped.length) aims.push(`bring out your ${andList(p.undeveloped.map((x) => `${PIECE[x.type]} on ${x.square}`))}`);
+  if (!p.castled && p.kingHome) aims.push('castle');
+  if (file) aims.push(`put a rook on the ${file.f}-file`);
+  if (p.theirKingInCentre && !p.theyCastled) aims.push(`open the centre before ${them} castles`);
+  else if (p.lead > 0) aims.push('trade pieces');
+  // How strong players go on: the most played move, a few moves deep.
+  const moves = game.history().map(clean), next = [];
+  for (let i = 0; i < 4; i++) {
+    const m = strongGroups([...moves, ...next]).x.moves.find((x) => x.n >= MIN_GAMES);
+    if (!m) break;
+    next.push(m.san);
+  }
+  const n0 = moves.length;
+  const seq = next.map((san, i) => ((n0 + i) % 2 === 0 ? `${(n0 + i) / 2 + 1}.${san}` : i === 0 ? `${Math.floor((n0 + i) / 2) + 1}...${san}` : san)).join(' ');
+  return `${why.length ? `<p><b>Why this is good for you</b></p><ul class="done-why">${why.map((x) => `<li>${x}</li>`).join('')}</ul>` : ''}
+    ${aims.length || seq ? `<p><b>Where to take the game</b> ${aims.length ? `${andList(aims).replace(/^./, (c) => c.toUpperCase())}.` : ''}${seq ? ` Stronger players usually go on <b>${seq}</b>.` : ''}</p>` : ''}`;
 }
 
 // How to go on, for your move now: the move that scores best in games at your level, the next best,
