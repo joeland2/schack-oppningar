@@ -151,6 +151,7 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
   .top { position: static; }
   /* On a phone the feedback comes first, right under the board. */
   .coach { order: -2; }
+  .panel > .moment { order: -3; } /* a moment comes before even that */
 }
 @media (prefers-reduced-motion: reduce) { .board.shake { animation: none; } .fill { transition: none; } }
 

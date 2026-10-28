@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028180127';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028180127';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028180127';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028180127';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028180455';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028180455';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028180455';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028180455';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1433,8 +1433,9 @@ function moment(kind, title, html, actions, swing = null, arrows = null, onBoard
   closeMoment();
   momentOpen = true; momentArrows = arrows; momentOnBoard = onBoard; momentAt = game.history().join(' ');
   const bar = swing ? `<div class="moment-swing"><span>Your chances</span><b>${pct(swing[0])}</b><i aria-hidden="true"><s style="width:${swing[0] * 100}%"></s><s class="to" style="width:${swing[1] * 100}%"></s></i><b>${pct(swing[1])}</b></div>` : '';
-  // Above the board, not on it: the board stays in full view with the moment's arrows on it.
-  $('.board-row').insertAdjacentHTML('beforebegin', `<div class="moment moment-${kind}" role="alertdialog" aria-labelledby="moment-title">
+  // At the top of the panel beside the board (under it on a phone): the board never moves, and stays
+  // in full view with the moment's arrows on it.
+  $('.panel').insertAdjacentHTML('afterbegin', `<div class="moment moment-${kind}" role="alertdialog" aria-labelledby="moment-title">
     <p class="moment-title" id="moment-title">${title}</p><p class="moment-text">${html}</p>${bar}
     <div class="moment-actions">${actions.map((a, i) => `<button type="button" class="${i ? 'ghost' : 'cta'}" data-act="${i}">${a.label}</button>`).join('')}</div></div>`);
   const el = $('.moment');
