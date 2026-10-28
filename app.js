@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028144851';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028144851';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028144851';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028144851';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028144915';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028144915';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028144915';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028144915';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1329,11 +1329,20 @@ function nextLine() {
   const due = lines.map((l, i) => [i, s.rep?.[key(l)]]).filter(([, r]) => r && r.box > 0 && r.due <= Date.now())
     .sort((a, b) => a[1].due - b[1].due);
   if (due.length) return due[0][0];
-  const learned = lines.findIndex((l) => s.played.includes(key(l)) && !s.done.includes(key(l)));
-  if (learned !== -1) return learned;
-  const fresh = lines.findIndex((l) => !s.done.includes(key(l)));
-  return fresh !== -1 ? fresh : lineIdx;
+  // The working set: the first COHORT lines not yet cleared, in course order. A new line joins only
+  // when one of them is cleared; within the set, the line you missed last comes first, then the others
+  // in turn, never the one you just played if another is waiting.
+  const open = practiceSet();
+  if (!open.length) return lineIdx;
+  const missed = open.filter((i) => s.rep?.[key(lines[i])] && i !== lineIdx);
+  const next = open.find((i) => i > lineIdx) ?? open[0];
+  return missed[0] ?? (open.length > 1 && next === lineIdx ? open.find((i) => i !== lineIdx) : next);
 }
+const COHORT = 3;
+const practiceSet = () => {
+  const s = stats[statKey(cur.id)] || {};
+  return lines.map((l, i) => i).filter((i) => !s.done?.includes(lineKey(lines[i].moves))).slice(0, COHORT);
+};
 
 // ---------- Lines overview and the "opening complete" approval ----------
 // Lines of the current list that are cleared (progress saved for other ratings may hold other lines).
@@ -1365,6 +1374,7 @@ function renderLineBox() {
       <div><b>${done}/${n}</b><span>lines cleared${due ? `, ${due} due for review` : ''}</span></div>
     </div>
     <div class="lb-bar" aria-hidden="true"><span class="lb-done" style="width:${(done / n) * 100}%"></span><span class="lb-played" style="width:${(Math.max(0, played - done) / n) * 100}%"></span></div>
+    ${mode === 'try' && practiceSet().length ? `<p class="lb-note">Practising lines ${practiceSet().map((i) => i + 1).join(', ')}.</p>` : ''}
     <p class="lb-note">${nextReview ? nextReview + ' ' : ''}Progress is saved in this browser.</p>`;
 }
 
@@ -1694,7 +1704,7 @@ function setMode(m, restart = true, remember = true) {
   for (const k of ['learn', 'try', 'explore']) $(`#mode-${k}`).setAttribute('aria-pressed', m === k);
   $('#mode-about').textContent = {
     learn: 'Every move is shown, with the replies you can expect at your level. Nothing is scored.',
-    try: 'Practice: play the line from memory. A line played without mistakes is cleared and comes back for review after 1, 3, 7, 14 and 30 days.',
+    try: `Practice: play lines from memory, ${COHORT} at a time in course order; a new line joins when you clear one. A cleared line comes back for review after 1, 3, 7, 14 and 30 days.`,
     explore: 'Play any move: the opponent answers as players at your level most often do, and you see how often each move is played and how it scores. To try another answer, step back and move their piece.',
   }[m];
   if (!lines.length) return;
