@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028212755';
-import { STYLE_OF } from './styles.js?v=20261028212755';
+import { account, login, finishLogin } from './lichess.js?v=20261028213056';
+import { STYLE_OF } from './styles.js?v=20261028213056';
 
 const MAX = 500;
 const PV = 4; // bumped when the profile gains something new: older saved profiles are read again
@@ -466,6 +466,7 @@ function render(name, at, p) {
   const known = skills.filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
   const kpis = [['Score', pct(p.score)], p.acc !== null && ['Accuracy', `${p.acc}%`], p.blunders !== null && ['Blunders / game', p.blunders.toFixed(1)], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
+    ${playerBar(name)}
     <section class="pf-hero">
       ${playerCard(name, p, t, skills)}
       <div class="pf-hero-text">
@@ -518,6 +519,7 @@ function render(name, at, p) {
   $('#refresh').addEventListener('click', () => run(name));
   bindSearch();
   bindAnalyse(name);
+  bindPlayerBar(name);
   ratingChart(name, p);
 }
 
@@ -623,6 +625,88 @@ if ($('#profile')) { // the practice page imports this module for the above; onl
   try { await finishLogin(); } catch (err) { $('#profile-msg').textContent = err.message; } // back from logging in on this page
   start();
 }
+// ---------- Starred players and comparing ----------
+const FAVS = 'opening-book-v2-players'; // the players you star: friends or favourites, by name
+function favs() { try { return JSON.parse(localStorage.getItem(FAVS)) || []; } catch { return []; } }
+const isFav = (name) => favs().some((x) => x.toLowerCase() === name.toLowerCase());
+function toggleFav(name) {
+  const list = isFav(name) ? favs().filter((x) => x.toLowerCase() !== name.toLowerCase()) : [...favs(), name];
+  try { localStorage.setItem(FAVS, JSON.stringify(list)); } catch {}
+}
+const profileLink = (n) => `profile.html?u=${encodeURIComponent(n)}`;
+const compareLink = (a, b) => `profile.html?u=${encodeURIComponent(a)}&vs=${encodeURIComponent(b)}`;
+// Above a profile: star this player, compare with them, and your starred players to jump to.
+function playerBar(name) {
+  const me = isMe(name), mine = myName(), list = favs().filter((x) => x.toLowerCase() !== name.toLowerCase());
+  return `<div class="pf-players">
+    ${me ? '' : `<button type="button" class="ghost pf-star" data-fav aria-pressed="${isFav(name)}">${isFav(name) ? '★ Starred' : '☆ Star player'}</button>`}
+    ${!me && mine ? `<a class="ghost" href="${compareLink(mine, name)}">Compare with me</a>` : ''}
+    ${list.length ? `<span class="pf-players-list"><small>${me ? 'Your players' : 'Starred'}</small>${list.map((x) => `<a class="pf-chip" href="${profileLink(x)}">${esc(x)}</a>${me ? `<a class="pf-chip pf-vs" href="${compareLink(name, x)}" title="Compare ${esc(name)} with ${esc(x)}">vs</a>` : ''}`).join('')}</span>` : ''}
+  </div>`;
+}
+function bindPlayerBar(name) {
+  $('[data-fav]')?.addEventListener('click', (e) => {
+    toggleFav(name);
+    $('.pf-players').outerHTML = playerBar(name);
+    bindPlayerBar(name);
+  });
+}
+// A profile ready to show: kept here, else read from the player's games.
+async function profileFor(name) {
+  const c = cache()[name.toLowerCase()];
+  return c && c.v === PV ? { name: c.name, p: c.p } : { name, p: await build(name) };
+}
+// Two players side by side: cards, types, skills as paired bars, the key numbers and opening taste.
+async function compare(a, b) {
+  $('#profile').innerHTML = '';
+  try {
+    const A = await profileFor(a), B = await profileFor(b);
+    renderCompare(A, B);
+  } catch (err) { $('#profile-msg').textContent = err.message; }
+}
+function renderCompare(A, B) {
+  const sa = skillsOf(A.p), sb = skillsOf(B.p);
+  const num = (v, f = (x) => x) => (v === null || v === undefined ? '–' : f(v));
+  const main = (p) => p.speeds[0];
+  const rows = [
+    ['Rating', num(main(A.p)?.rating) + (main(A.p) ? ` <small>${main(A.p).speed}</small>` : ''), num(main(B.p)?.rating) + (main(B.p) ? ` <small>${main(B.p).speed}</small>` : '')],
+    ['Score', pct(A.p.score), pct(B.p.score)],
+    ['As White', num(A.p.white, pct), num(B.p.white, pct)],
+    ['As Black', num(A.p.black, pct), num(B.p.black, pct)],
+    ['Accuracy', num(A.p.acc, (x) => `${x}%`), num(B.p.acc, (x) => `${x}%`)],
+    ['Blunders / game', num(A.p.blunders, (x) => x.toFixed(1)), num(B.p.blunders, (x) => x.toFixed(1))],
+    ['Draws', pct(A.p.draws), pct(B.p.draws)],
+    ['Moves a game', A.p.moves, B.p.moves],
+    ['Opening taste', tasteShort(A.p.styleMix), tasteShort(B.p.styleMix)],
+  ];
+  $('#profile').innerHTML = `
+    <div class="pf-players"><a class="ghost" href="${profileLink(A.name)}">← ${esc(A.name)}</a><a class="ghost" href="${profileLink(B.name)}">${esc(B.name)} →</a></div>
+    <header class="cmp-head"><p class="pf-kick">Compare</p><h1 class="pf-h1">${esc(A.name)} <span>vs</span> ${esc(B.name)}</h1></header>
+    <section class="cmp-cards">
+      <div>${playerCard(A.name, A.p, A.p.type, sa)}<p class="cmp-type"><b>${A.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
+      <div>${playerCard(B.name, B.p, B.p.type, sb)}<p class="cmp-type"><b>${B.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
+    </section>
+    <section class="pf-card">
+      <h2>Skills</h2>
+      <p class="cmp-key"><span class="cmp-a"></span>${esc(A.name)} <span class="cmp-b"></span>${esc(B.name)}</p>
+      <ul class="cmp-skills">${sa.map((x, i) => {
+        const y = sb[i], d = x.v !== null && y.v !== null ? x.v - y.v : null;
+        return `<li><span class="cmp-label">${x.label}</span>
+          <div class="cmp-bars" role="img" aria-label="${x.label}: ${esc(A.name)} ${x.v ?? 'no data'}, ${esc(B.name)} ${y.v ?? 'no data'}">
+            <div class="cmp-bar a"><i style="width:${x.v ?? 0}%"></i><b>${x.v ?? '–'}</b></div>
+            <div class="cmp-bar b"><i style="width:${y.v ?? 0}%"></i><b>${y.v ?? '–'}</b></div></div>
+          <small>${d === null ? 'Not enough games for both.' : d === 0 ? 'Even.' : `${esc(d > 0 ? A.name : B.name)} +${Math.abs(d)}`}</small></li>`;
+      }).join('')}</ul>
+    </section>
+    <section class="pf-card">
+      <h2>Numbers</h2>
+      <table class="cmp-table"><thead><tr><th></th><th>${esc(A.name)}</th><th>${esc(B.name)}</th></tr></thead>
+        <tbody>${rows.map(([k, x, y]) => `<tr><th scope="row">${k}</th><td>${x}</td><td>${y}</td></tr>`).join('')}</tbody></table>
+    </section>
+    <p class="info">Both read from each player's last ${MAX} rated Lichess games. Skills are rules of thumb; ones that need analysed games are only as good as the number analysed.</p>`;
+}
+const tasteShort = (mix) => [taste(mix?.w) && `${taste(mix.w).label} as White`, taste(mix?.b) && `${taste(mix.b).label} as Black`].filter(Boolean).join(', ') || 'Mixed';
+
 // A player's profile: from this browser when it was read before, else from their games. The address
 // keeps the name (?u=), so a profile can be shared or bookmarked.
 function show(name, push) {
@@ -631,7 +715,8 @@ function show(name, push) {
   if (c && c.v === PV) render(c.name, c.at, c.p); else run(name);
 }
 function start() {
-  const name = new URLSearchParams(location.search).get('u') || myName();
+  const q = new URLSearchParams(location.search), name = q.get('u') || myName();
+  if (name && q.get('vs')) return compare(name, q.get('vs'));
   if (name) show(name, false); else ask();
 }
 if ($('#profile')) addEventListener('popstate', () => start());

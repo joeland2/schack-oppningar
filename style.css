@@ -881,3 +881,38 @@ a.cta { color: var(--accent-ink); }
 .og-bar .search { width: 100%; }
 .mine-bottom { margin-top: 28px; }
 .tag.played { background: var(--data); color: var(--data-ink); }
+/* Profile: star a player, compare, your starred players */
+.pf-players { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.pf-players a.ghost, .pf-players .ghost { text-decoration: none; font-size: 14px; padding: 7px 12px; }
+.pf-star[aria-pressed="true"] { border-color: var(--hot); color: var(--hot); }
+.pf-players-list { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }
+.pf-players-list small { color: var(--muted); font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; margin-right: 4px; }
+.pf-chip { font-size: 13px; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--ink) !important; text-decoration: none; }
+.pf-chip.pf-vs { margin-left: -4px; padding: 4px 8px; color: var(--hot) !important; }
+
+/* Compare: two players side by side; A is orange, B is ink-grey, each value written beside its bar */
+.cmp-head .pf-h1 span { color: var(--muted); font-size: .55em; vertical-align: middle; }
+.cmp-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 24px; justify-items: center; }
+.cmp-type { text-align: center; margin: 10px 0 0; }
+.cmp-key { display: flex; align-items: center; gap: 6px 10px; margin: -4px 0 14px; font-size: 13px; color: var(--muted); }
+.cmp-key span { width: 14px; height: 6px; border-radius: 3px; display: inline-block; }
+.cmp-a, .cmp-bar.a i { background: var(--data); }
+.cmp-b, .cmp-bar.b i { background: var(--muted); }
+.cmp-skills { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+.cmp-skills li { display: grid; grid-template-columns: 150px 1fr auto; gap: 4px 16px; align-items: center; }
+.cmp-label { font-weight: 600; }
+.cmp-bars { display: grid; gap: 4px; }
+.cmp-bar { display: grid; grid-template-columns: 1fr 2.4em; gap: 8px; align-items: center; }
+.cmp-bar i { display: block; height: 8px; border-radius: 4px; min-width: 2px; }
+.cmp-bar { background: none; }
+.cmp-bar b { font: 400 18px/1 var(--font-poster); text-align: right; }
+.cmp-bar i { grid-column: 1; justify-self: start; }
+.cmp-skills small { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.cmp-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.cmp-table th, .cmp-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+.cmp-table thead th { font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.cmp-table tbody th { font-weight: 600; color: var(--muted); }
+.cmp-table td { font-weight: 600; }
+.cmp-table small { color: var(--muted); font-weight: 400; }
+@media (max-width: 640px) { .cmp-skills li { grid-template-columns: 1fr auto; } .cmp-bars { grid-column: 1 / -1; grid-row: 2; } }
+.cmp-head .pf-h1 { font-size: clamp(2rem, 5.5vw, 3.6rem); overflow-wrap: anywhere; }
