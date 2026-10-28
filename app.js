@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake, moveWords, instruction } from './board.js?v=20261028090910';
-import { STYLES, STYLE_OF } from './styles.js?v=20261028090910';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction } from './board.js?v=20261028092453';
+import { STYLES, STYLE_OF } from './styles.js?v=20261028092453';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -100,11 +100,21 @@ async function loadBook() {
   IN_BOOK = new Set(BOOK.flatMap((l) => l.moves.map((_, i) => lineKey(l.moves.slice(0, i + 1)))));
 }
 
+// White systems that Lichess names by move order, so one opening is split over several names:
+// 1.d4 d5 2.Bf4 "Queen's Pawn Game: Accelerated London System", 1.d4 Nf6 2.Bf4 "Indian Defense:
+// Accelerated London System", and so on. Every such move order counts as the system and becomes a
+// starting point for its lines. 2.Bf4 after 1.d4 is the London whatever Black played first.
+const SYSTEMS = [
+  { family: 'London System', eco: 'D02', book: /London System/, test: (moves, name) => /London System/.test(name || '') || /^d4 \S+ Bf4$/.test(lineKey(moves)) },
+];
+console.assert(SYSTEMS[0].test(['d4', 'e6', 'Bf4']) && !SYSTEMS[0].test(['e4', 'e5', 'Nf3'], 'Scotch Game: Scotch Gambit, London Defense'), 'SYSTEMS');
+
 // Every book position in the opening's family, as move-sequence keys.
 function familyBook(op) {
   const set = new Set();
+  const sys = SYSTEMS.find((s) => s.family === op.family);
   for (const l of BOOK) {
-    if (!l.name.startsWith(op.family) && !l.name.includes(': ' + op.family)) continue;
+    if (sys ? !sys.book.test(l.name) : !l.name.startsWith(op.family) && !l.name.includes(': ' + op.family)) continue;
     for (let i = 1; i <= l.moves.length; i++) set.add(lineKey(l.moves.slice(0, i)));
   }
   return set;
@@ -156,7 +166,9 @@ function buildLines(op) {
     return n ? `${n.eco} · ${n.name}` : fallback;
   };
   const done = [];
-  const open = [{ moves: op.root.split(' '), share: 1, name: '' }];
+  // A system's move orders count like opponent replies: each one played in ≥ MIN_SHARE of its games.
+  const open = (op.roots || [{ moves: op.root.split(' '), share: op.share }]).filter((r) => r.share / op.share >= MIN_SHARE)
+    .map((r) => ({ moves: r.moves, share: r.share / op.share, name: op.roots ? op.name : '' }));
   while (open.length && done.length + open.length < MAX_LINES) {
     open.sort((a, b) => b.share - a.share);
     const l = open.shift();
@@ -197,6 +209,23 @@ function popularOpenings() {
       const share = p.share * m.n / x.total;
       if (share < 0.0005 || m.n < MIN_GAMES) continue;
       const moves = [...p.moves, m.san];
+      const sys = moves.length % 2 && SYSTEMS.find((s) => s.test(moves, m.name));
+      if (sys) {
+        const o = found.get(sys.family);
+        if (!o) {
+          named.add(sys.family);
+          found.set(sys.family, { id: sys.family, name: sys.family, family: sys.family, eco: sys.eco, side: 'w', root: moves.join(' '),
+            roots: [{ moves, share }], share, win: m.win, draw: m.draw, score: m.score });
+        } else if (!o.roots.some((r) => lineKey(moves).startsWith(lineKey(r.moves) + ' '))) {
+          // another move order: the system's results are the games-weighted mix of all of them
+          const t = o.share + share;
+          for (const k of ['win', 'draw', 'score']) o[k] = (o[k] * o.share + m[k] * share) / t;
+          o.share = t;
+          o.roots.push({ moves, share });
+        }
+        open.push({ moves, share });
+        continue;
+      }
       const family = m.name && familyOf(m.name);
       if (family && !named.has(family)) {
         named.add(family);
@@ -225,12 +254,13 @@ const shortName = (family) => (/Variation$/.test(family) ? family : family.split
 // "Sicilian Defense: Najdorf Variation" → "Sicilian Defense". Generic first-move names keep their
 // variation instead ("Queen's Pawn Game: London System"), or are skipped when they have none.
 function familyOf(name) {
-  const head = name.split(':')[0];
+  const head = name.split(':')[0].split(',')[0]; // "Rapport-Jobava System, with e6" is still the Jobava
   if (!GENERIC.has(head)) return head;
   const sub = name.split(',')[0];
   return sub === head ? null : sub;
 }
-console.assert(familyOf("Queen's Pawn Game: London System, with e6") === "Queen's Pawn Game: London System" && familyOf("Queen's Pawn Game") === null, 'familyOf');
+console.assert(familyOf("Queen's Pawn Game: London System, with e6") === "Queen's Pawn Game: London System" && familyOf("Queen's Pawn Game") === null
+  && familyOf('Rapport-Jobava System, with e6') === 'Rapport-Jobava System', 'familyOf');
 
 const fitsStyle = (o) => style === 'any' || (STYLE_OF[o.family] || []).includes(style);
 
@@ -689,6 +719,7 @@ function play(i) {
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   misses = 0; missesHere = 0; busy = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
+  clearShapes(boardEl);
   redo = [];
   $('#restart').textContent = 'Restart';
   render();
