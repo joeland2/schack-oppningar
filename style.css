@@ -1244,3 +1244,4 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
   .pf-game-meta br { display: none; }
   .pf-game-meta small::before { content: " · "; }
 }
+.pf-card-actions > span { color: var(--muted); font-size: 13.5px; }

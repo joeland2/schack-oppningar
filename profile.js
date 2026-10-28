@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029001356';
-import { STYLE_OF } from './styles.js?v=20261029001356';
+import { account, login, finishLogin } from './lichess.js?v=20261029001934';
+import { STYLE_OF } from './styles.js?v=20261029001934';
 
 const MAX = 500;
 const PV = 14;
@@ -622,41 +622,86 @@ function playerCard(name, p, t, skills) {
 }
 // Where a rating ranks among all Lichess players of that time control this week: "Top 27%".
 // The card explained in one go, under it.
-// The player card as a PNG, to save or share. Drawn onto a canvas from the card on screen: its
-// background, rules, piece and every line of text, each where the page put it (3x for sharpness).
-async function cardPng(name, btn) {
-  btn.disabled = true; btn.textContent = 'Making the image…';
+// The player card as an image to save or share, drawn from the numbers at a fixed size so it looks
+// the same from a phone or a computer. "Card + style" adds the player type, the openings and the portrait.
+const CARD = { bg: '#141414', ink: '#f4efe6', muted: '#a8a093', line: '#3d3730', hot: '#ff5a1f', paper: '#e6dfd1', paperInk: '#141414', paperMuted: '#62594c' };
+const fit = (ctx, text, font, size, max) => { let z = size; do { ctx.font = font.replace('#', z); } while (ctx.measureText(text).width > max && --z > 10); return z; };
+// Text in lines of at most max wide; the first line can start indented (after a bold lead-in).
+function wrap(ctx, text, x, y, max, lh, lines = 99, indent = 0) {
+  const words = text.split(' '); let line = '', n = 0;
+  const put = (t) => { ctx.fillText(t, n ? x : x + indent, y); y += lh; n++; };
+  for (let i = 0; i < words.length; i++) {
+    const next = line ? `${line} ${words[i]}` : words[i];
+    if (ctx.measureText(next).width > max - (n ? 0 : indent) && line) {
+      if (n + 1 === lines) { put(`${line}…`); return y; }
+      put(line); line = words[i];
+    } else line = next;
+  }
+  if (line) put(line);
+  return y;
+}
+// One card, 600 x 780 units, top left at (x, y).
+function drawCard(ctx, x, y, name, p, t, skills, piece) {
+  const known = skills.filter((k) => k.v !== null), ovr = known.length ? String(Math.round(sum(known, (k) => k.v) / known.length)) : '–', main = p.speeds[0];
+  ctx.save(); ctx.translate(x, y);
+  ctx.fillStyle = CARD.bg; ctx.beginPath(); ctx.roundRect(0, 0, 600, 780, 10); ctx.fill();
+  ctx.textBaseline = 'alphabetic'; ctx.letterSpacing = '0px';
+  ctx.fillStyle = CARD.hot; ctx.font = '400 150px Anton'; ctx.fillText(ovr, 40, 185);
+  ctx.fillStyle = CARD.ink; fit(ctx, t[0].name.toUpperCase(), '400 #px Anton', 40, 300); ctx.fillText(t[0].name.toUpperCase(), 42, 235);
+  if (piece) ctx.drawImage(piece, 450, 48, 110, 110);
+  if (main) {
+    ctx.textAlign = 'right'; ctx.font = '400 26px Anton'; ctx.fillStyle = CARD.muted; const sp = main.speed.toUpperCase(); ctx.fillText(sp, 560, 235);
+    const w = ctx.measureText(sp).width; ctx.font = '400 52px Anton'; ctx.fillStyle = CARD.ink; ctx.fillText(String(main.rating), 560 - w - 10, 235); ctx.textAlign = 'left';
+  }
+  ctx.fillStyle = CARD.line; ctx.fillRect(40, 262, 520, 2); ctx.fillRect(40, 372, 520, 2);
+  ctx.fillStyle = CARD.ink; ctx.textAlign = 'center'; fit(ctx, name.toUpperCase(), '400 #px Anton', 64, 520); ctx.fillText(name.toUpperCase(), 300, 342); ctx.textAlign = 'left';
+  skills.forEach((k, i) => {
+    const cx = i % 2 ? 330 : 70, cy = 470 + Math.floor(i / 2) * 95;
+    ctx.fillStyle = CARD.ink; ctx.font = '400 72px Anton'; const v = String(k.v ?? '–'); ctx.fillText(v, cx, cy);
+    ctx.fillStyle = CARD.muted; ctx.font = '400 34px Anton'; ctx.fillText(ABBR[k.label], cx + ctx.measureText('00').width * 72 / 34 + 18, cy);
+  });
+  ctx.fillStyle = CARD.muted; ctx.textAlign = 'center'; ctx.font = '600 20px Geist'; ctx.letterSpacing = '4px';
+  ctx.fillText(`${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} GAMES`, 300, 742);
+  ctx.restore();
+}
+async function cardPng(name, p, t, skills, detail, btn) {
+  const label = btn.textContent; btn.disabled = true; btn.textContent = 'Making the image…';
   try {
-    await document.fonts.ready;
-    const card = $('.pf-pcard'), box = card.getBoundingClientRect(), S = 3, pad = 12;
-    const canvas = Object.assign(document.createElement('canvas'), { width: (box.width + pad * 2) * S, height: (box.height + pad * 2) * S });
-    const ctx = canvas.getContext('2d'), at = (r) => [r.left - box.left + pad, r.top - box.top + pad];
+    await Promise.all(['400 40px Anton', '400 20px Geist', '600 20px Geist'].map((f) => document.fonts.load(f)));
+    const piece = await new Promise((ok) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = `pieces/w${(p.piece || 'n').toUpperCase()}.svg`; });
+    const S = 2, W = detail ? 1080 : 680, H = detail ? 1350 : 860;
+    const canvas = Object.assign(document.createElement('canvas'), { width: W * S, height: H * S }), ctx = canvas.getContext('2d');
     ctx.scale(S, S);
-    const cs = getComputedStyle(card);
-    ctx.fillStyle = cs.backgroundColor; ctx.beginPath(); ctx.roundRect(pad, pad, box.width, box.height, parseFloat(cs.borderRadius) || 0); ctx.fill();
-    for (const el of card.querySelectorAll('*')) {
-      const st = getComputedStyle(el), r = el.getBoundingClientRect(), [x, y] = at(r);
-      for (const [side, w] of [['Top', st.borderTopWidth], ['Bottom', st.borderBottomWidth]]) if (parseFloat(w) > 0 && st[`border${side}Style`] !== 'none') {
-        ctx.fillStyle = st[`border${side}Color`]; ctx.fillRect(x, side === 'Top' ? y : y + r.height - parseFloat(w), r.width, parseFloat(w));
+    if (!detail) drawCard(ctx, 40, 40, name, p, t, skills, piece);
+    else {
+      ctx.fillStyle = CARD.paper; ctx.fillRect(0, 0, W, H);
+      ctx.save(); ctx.translate(60, 60); ctx.scale(0.78, 0.78); drawCard(ctx, 0, 0, name, p, t, skills, piece); ctx.restore();
+      const x = 560, max = W - x - 60; let y = 140;
+      ctx.fillStyle = CARD.paperInk; const z = fit(ctx, t[0].name.toUpperCase(), '400 #px Anton', 120, max); ctx.fillText(t[0].name.toUpperCase(), x, y += z * 0.2);
+      if (t[1]) { ctx.fillStyle = CARD.paperMuted; fit(ctx, `+ ${t[1].name}`, '400 #px Anton', 48, max); ctx.fillText(`+ ${t[1].name}`, x, y += 70); }
+      y += 40;
+      for (const [m, side] of [[p.styleMix?.w, 'White'], [p.styleMix?.b, 'Black']]) {
+        const tt = taste(m); if (!tt) continue;
+        ctx.fillStyle = CARD.hot; ctx.fillRect(x, y, max, 4);
+        ctx.fillStyle = CARD.paperMuted; ctx.font = '700 15px Geist'; ctx.letterSpacing = '2px'; ctx.fillText(`OPENINGS AS ${side.toUpperCase()}`, x, y += 34); ctx.letterSpacing = '0px';
+        ctx.fillStyle = CARD.paperInk; ctx.font = '400 40px Anton'; ctx.fillText(tt.label.toUpperCase(), x, y += 46);
+        ctx.fillStyle = CARD.paperMuted; ctx.font = '400 18px Geist'; ctx.fillText(`${pct(tt.share)} of their choices`, x, y += 28); y += 30;
       }
-      if (el.tagName === 'IMG') ctx.drawImage(el, x, y, r.width, r.height);
+      const text = (html) => Object.assign(document.createElement('div'), { innerHTML: html }).textContent;
+      let ty = 760;
+      ctx.fillStyle = CARD.paperInk; ctx.font = '400 32px Geist';
+      ty = wrap(ctx, text(portrait(name, p, skills, false)), 60, ty, W - 120, 46, 5) + 24;
+      ctx.fillStyle = CARD.paperMuted; ctx.font = '400 24px Geist';
+      for (const k of t) { ctx.font = '700 24px Geist'; ctx.fillStyle = CARD.paperInk; ctx.fillText(`${k.name}.`, 60, ty); const w = ctx.measureText(`${k.name}. `).width; ctx.font = '400 24px Geist'; ctx.fillStyle = CARD.paperMuted; ty = wrap(ctx, TYPE_ABOUT[k.name] || '', 60, ty, W - 120, 34, 3, w) + 12; }
+      ctx.fillStyle = CARD.hot; ctx.fillRect(60, H - 96, W - 120, 3);
+      ctx.fillStyle = CARD.paperInk; ctx.font = '400 30px Anton'; ctx.fillText('CHESS TRAINER', 60, H - 50);
+      ctx.fillStyle = CARD.paperMuted; ctx.font = '400 20px Geist'; ctx.textAlign = 'right'; ctx.fillText(`From ${name}'s last ${p.n} rated Lichess games`, W - 60, H - 52); ctx.textAlign = 'left';
     }
-    const walk = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
-    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
-      const text = n.textContent.replace(/\s+/g, ' ').trim();
-      if (!text) continue;
-      const st = getComputedStyle(n.parentElement), range = document.createRange(); range.selectNodeContents(n);
-      const r = [...range.getClientRects()].find((q) => q.width > 0);
-      if (!r) continue;
-      ctx.font = `${st.fontWeight} ${st.fontSize} ${st.fontFamily}`; ctx.fillStyle = st.color; ctx.letterSpacing = st.letterSpacing === 'normal' ? '0px' : st.letterSpacing;
-      const t = st.textTransform === 'uppercase' ? text.toUpperCase() : text, m = ctx.measureText(t), [x, y] = at(r);
-      ctx.fillText(t, x + Math.max(0, (r.width - m.width) / 2), y + m.fontBoundingBoxAscent + (r.height - m.fontBoundingBoxAscent - m.fontBoundingBoxDescent) / 2);
-    }
-    const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${name}-chess-card.png`, { type: 'image/png' });
+    const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${name}-chess-${detail ? 'profile' : 'card'}.png`, { type: 'image/png' });
     if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) await navigator.share({ files: [file], title: `${name}'s chess card` }).catch(() => {});
     else { const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: file.name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
-  } catch (err) { $('#profile-msg').textContent = `The card image could not be made: ${err.message}`; }
-  btn.disabled = false; btn.textContent = 'Download card';
+  } catch (err) { $('#profile-msg').textContent = `The image could not be made: ${err.message}`; }
+  btn.disabled = false; btn.textContent = label;
 }
 function cardNote(name, p, me) {
   const main = p.speeds[0];
@@ -672,7 +717,7 @@ function render(name, at, p) {
   $('#profile').innerHTML = `
     ${playerBar(name)}
     <section class="pf-hero">
-      <div class="pf-card-col">${playerCard(name, p, t, skills)}<div class="pf-card-actions"><button type="button" class="link" data-card-png>Download card</button></div>${cardNote(name, p, me)}</div>
+      <div class="pf-card-col">${playerCard(name, p, t, skills)}<div class="pf-card-actions"><span>Download</span><button type="button" class="link" data-card-png="card">Card</button><button type="button" class="link" data-card-png="style">Card + style</button></div>${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h1 class="pf-h1">${esc(t[0].name)}</h1>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}</div>${tasteLine(p.styleMix, me)}</div>
@@ -724,7 +769,7 @@ function render(name, at, p) {
     </section>
     ${nextActions(name, me)}`;
   $('#refresh').addEventListener('click', () => run(name));
-  $('[data-card-png]')?.addEventListener('click', (e) => cardPng(name, e.target));
+  document.querySelectorAll('[data-card-png]').forEach((b) => b.addEventListener('click', () => cardPng(name, p, t, skills, b.dataset.cardPng === 'style', b)));
   bindSearch();
   bindAnalyse(name);
   bindPlayerBar(name);
