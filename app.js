@@ -1,11 +1,11 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029002946';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029002946';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261029002946';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029002946';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029002946';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029002946';
-import { storedGames } from './profile.js?v=20261029002946';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029004235';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029004235';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261029004235';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029004235';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029004235';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029004235';
+import { storedGames } from './profile.js?v=20261029004235';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1245,11 +1245,15 @@ const opponentElo = () => Math.max(1320, Math.min(3190, rating));
 function search(fen, { elo = null, ms = 500, skip = null, multi = 1 } = {}) {
   const run = () => new Promise((resolve) => {
     if (skip?.()) return resolve(null);
+    const fresh = !engine; // a new engine first loads its WebAssembly, which is slow on a phone
     if (!engine) {
       engine = new Worker(ENGINE_SRC);
       engine.addEventListener('error', () => { engine = null; engineDone?.(null); });
     }
-    engineDone = resolve;
+    // An engine that never answers (crashed or hung, on a phone short of memory) is restarted, so
+    // one lost search cannot block every search queued after it.
+    const watchdog = setTimeout(() => { engine?.terminate(); engine = null; resolve(null); }, ms + (fresh ? 30000 : 5000));
+    engineDone = (x) => { clearTimeout(watchdog); resolve(x); };
     let cp = 0, mate = null, pv = [];
     const lines = [];
     const toMove = (uci) => (uci && uci !== '(none)' ? { from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] } : null);
@@ -1262,6 +1266,7 @@ function search(fen, { elo = null, ms = 500, skip = null, multi = 1 } = {}) {
         lines[k - 1] = toMove(e.data.match(/ pv (\S+)/)?.[1]);
       }
       if (!e.data.startsWith('bestmove')) return;
+      clearTimeout(watchdog);
       resolve({ move: toMove(e.data.split(' ')[1]), cp, mate, pv, lines: lines.filter(Boolean) });
     };
     engine.postMessage(`setoption name MultiPV value ${multi}`);
@@ -1434,7 +1439,11 @@ async function opponentPlays() {
   const gen = gameGen, at = game.fen();
   // Follow the real games as long as any reach this position: the reply played most there.
   const real = gamesAt(game.history().map(clean)).moves[0];
-  const m = real ? { san: real.san, label: `Real games ${levelText(rating)}` } : await engineReply(at);
+  let m = real ? { san: real.san, label: `Real games ${levelText(rating)}` } : await engineReply(at).catch((e) => (console.warn(e), null));
+  if (!m && gen === gameGen && game.fen() === at && !game.isGameOver()) { // no engine answered: the game goes on all the same
+    const all = game.moves();
+    m = { san: all[Math.floor(Math.random() * all.length)], label: 'Random move', note: 'The engines did not answer here, so the opponent played a random legal move.' };
+  }
   await new Promise((x) => setTimeout(x, 450));
   if (gen !== gameGen || game.fen() !== at || !m) { if (gen === gameGen) busy = false; return; }
   lastMove = game.move(m.san ?? m); ply++; busy = false; hintSq = []; opponent = m.label;
@@ -1501,6 +1510,10 @@ function moment(kind, title, html, actions, swing = null, arrows = null, onBoard
   });
   el.querySelector('[data-act]').focus({ preventScroll: true });
   renderBoard();
+  // On a phone the moment sits under the board: scroll just enough that its buttons are in view
+  // (the header goes first, so the board stays on screen).
+  const r = el.getBoundingClientRect();
+  if (PHONE.matches && r.bottom > innerHeight) scrollBy({ top: r.bottom - innerHeight + 12, behavior: 'smooth' });
 }
 // Arrows for the moment on the board: [from, to, colour]; red for the move it is about.
 let momentArrows = null, momentOnBoard, momentAt = '';

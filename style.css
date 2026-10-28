@@ -1234,3 +1234,12 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
   .pf-game-meta small::before { content: " · "; }
 }
 .pf-card-actions > span { color: var(--muted); font-size: 13.5px; }
+/* Phones: the board as large as the screen allows. The play column runs edge to edge, the frame
+   loses its padding, and the evaluation bar is a thin strip (its number is left out). */
+@media (max-width: 560px) {
+  #trainer .board-row { margin-inline: -12px; }
+  #trainer .board-frame { padding: 0; border: 0; background: none; }
+  #trainer .board-row { grid-template-columns: 8px minmax(0, 1fr); gap: 4px; }
+  #trainer .evalbar { border-radius: 3px; }
+  #trainer .evalbar-num { display: none; }
+}
