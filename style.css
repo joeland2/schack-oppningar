@@ -768,3 +768,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .pf-meter::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--muted); opacity: .5; } /* the so-so mark */
 .pf-skills small { grid-column: 1 / -1; color: var(--muted); font-size: 12.5px; }
 .pf-skill-none .pf-skill-name, .pf-skill-none .pf-skill-val { color: var(--muted); }
+.pf-diploma .pf-why { gap: 10px; color: var(--ink); text-align: left; }
+.pf-diploma .pf-why span { color: var(--muted); }
+.pf-means { grid-column: 1 / -1; margin: 2px 0 0; font-size: 13.5px; }
+.pf-train { grid-column: 1 / -1; margin: 4px 0 0; padding: 8px 10px; font-size: 13px; background: var(--bg); border-radius: var(--radius); }

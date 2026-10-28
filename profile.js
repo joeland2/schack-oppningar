@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, so the page opens at once next time; Refresh reads the games again.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028204250';
-import { STYLE_OF } from './styles.js?v=20261028204250';
+import { account, login, finishLogin } from './lichess.js?v=20261028205235';
+import { STYLE_OF } from './styles.js?v=20261028205235';
 
 const MAX = 500;
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -98,6 +98,17 @@ export function profileOf(games) {
   return p;
 }
 
+// What each type means, shown above the evidence from the games.
+const TYPE_ABOUT = {
+  Attacker: 'Goes after the king early, wants open lines and the initiative, and takes some risk for it. Dangerous when the attack lands, shaky when it does not.',
+  'Solid builder': 'Builds a safe position first and strikes when the moment is right. Hard to beat quickly, but can let wins slip by being too careful.',
+  'Endgame player': 'Happy to trade pieces and win slowly with technique. Trusts long-term edges more than tactics.',
+  Fighter: 'Plays every game for a result and rarely settles for a draw. Wins and losses both come quickly.',
+  'Comeback player': 'Keeps finding chances in bad positions and turns lost games around. Stubborn defence is a real strength.',
+  'Time scrambler': 'Spends a lot of time early and plays the end on the clock. Strong in scrambles, but some games are lost on time.',
+  'King walker': 'Often leaves the king in the centre. Bold, and sometimes it pays off, but it gives the opponent targets.',
+  'All-rounder': 'No style stands out: plays a bit of everything and adapts to the position.',
+};
 // What kind of player the games show: every trait that clearly holds, the strongest first.
 function typeOf(p) {
   const traits = [
@@ -147,12 +158,30 @@ function verdicts(p) {
 const clamp = (x) => Math.round(Math.max(0, Math.min(100, x)));
 function skillsOf(p) {
   return [
-    { label: 'Openings', v: p.analysed >= 10 ? clamp(100 - p.badStarts * 250) : null, why: `Worse by 1.5 pawns after move 12 in ${pct(p.badStarts)} of analysed games.` },
-    { label: 'Tactics', v: p.analysed >= 10 && p.blunders !== null ? clamp(100 - p.blunders * 30) : null, why: `${(p.blunders ?? 0).toFixed(1)} blunders a game.` },
-    { label: 'Finishing won games', v: p.ups >= 5 ? clamp(((p.converted - 0.4) / 0.55) * 100) : null, why: `Won ${pct(p.converted ?? 0)} of ${p.ups} games where you were clearly better.` },
-    { label: 'Defending', v: p.downs >= 5 ? clamp((p.saved / 0.6) * 100) : null, why: `Saved ${pct(p.saved ?? 0)} of ${p.downs} games where you were clearly worse.` },
-    { label: 'Endgames', v: p.endgames >= 10 ? clamp(50 + (p.endgameScore - p.score) * 300) : null, why: `Score ${pct(p.endgameScore ?? 0)} in endgames against ${pct(p.score)} overall.` },
-    { label: 'Clock', v: p.n >= 30 ? clamp(100 - p.lowTime * 150 - p.timeLosses * 100) : null, why: `Short of time in ${pct(p.lowTime)} of games; ${pct(p.timeLosses)} of losses on time.` },
+    { label: 'Openings', v: p.analysed >= 10 ? clamp(100 - p.badStarts * 250) : null,
+      means: 'Whether you come out of the first 12 moves with a playable position.',
+      why: `Worse by 1.5 pawns or more after move 12 in ${pct(p.badStarts)} of analysed games.`,
+      train: 'Practise the lines of the openings you play, and learn the plan behind them, not just the moves.', href: './' },
+    { label: 'Tactics', v: p.analysed >= 10 && p.blunders !== null ? clamp(100 - p.blunders * 30) : null,
+      means: 'Seeing threats and shots: how often you blunder, that is make a move that throws away a piece or the game.',
+      why: `${(p.blunders ?? 0).toFixed(1)} blunders a game.`,
+      train: 'Before every move, check every check, capture and threat your opponent has after it. Then solve the positions where you blundered.', href: './mistakes.html' },
+    { label: 'Finishing won games', v: p.ups >= 5 ? clamp(((p.converted - 0.4) / 0.55) * 100) : null,
+      means: 'Turning a clearly winning position (3 pawns or more ahead) into a win.',
+      why: `Won ${pct(p.converted ?? 0)} of ${p.ups} games where you were clearly better.`,
+      train: 'When ahead: trade pieces, not pawns, take away their counterplay first, and do not rush.', href: './basics.html' },
+    { label: 'Defending', v: p.downs >= 5 ? clamp((p.saved / 0.6) * 100) : null,
+      means: 'Saving clearly lost positions: still winning or drawing them.',
+      why: `Saved ${pct(p.saved ?? 0)} of ${p.downs} games where you were clearly worse.`,
+      train: 'When behind: keep pieces on, make threats, and set traps rather than waiting.' },
+    { label: 'Endgames', v: p.endgames >= 10 ? clamp(50 + (p.endgameScore - p.score) * 300) : null,
+      means: 'How you do once most pieces are gone (6 or fewer pieces besides kings and pawns), against your games overall.',
+      why: `Score ${pct(p.endgameScore ?? 0)} in endgames against ${pct(p.score)} overall.`,
+      train: 'Learn the basic endgames: king activity, passed pawns, and the key king-and-pawn positions.', href: './basics.html' },
+    { label: 'Clock', v: p.n >= 30 ? clamp(100 - p.lowTime * 150 - p.timeLosses * 100) : null,
+      means: 'Using your time well: not ending up short of time or losing on the clock.',
+      why: `Short of time in ${pct(p.lowTime)} of games; ${pct(p.timeLosses)} of losses on time.`,
+      train: 'Play the opening fast (you know it), and save your thinking time for the critical moments.' },
   ];
 }
 console.assert(skillsOf({ analysed: 20, badStarts: 0.1, blunders: 1, ups: 0, downs: 0, endgames: 0, n: 10 }).map((x) => x.v).slice(0, 3).join() === '75,70,', 'skillsOf');
@@ -231,7 +260,7 @@ function diploma(name, at, p, t, say) {
     <p class="pf-dip-player">${esc(name)}</p>
     <p class="pf-dip-lead">plays as ${article(t[0].name)}</p>
     <p class="pf-name">${t.map((x) => esc(x.name)).join(' · ')}</p>
-    <ul class="pf-why">${t.map((x) => `<li>${esc(say(x.why))}</li>`).join('')}</ul>
+    <ul class="pf-why">${t.map((x) => `<li><b>${esc(x.name)}.</b> ${esc(TYPE_ABOUT[x.name] || '')} <span>${esc(say(x.why))}</span></li>`).join('')}</ul>
     ${known.length >= 2 ? `<p class="pf-dip-best">Strongest: <b>${known[0].label}</b> · To train: <b>${known[known.length - 1].label}</b></p>` : ''}
     <div class="pf-dip-foot">
       <span>From ${p.n} rated Lichess games<br>${date}</span>
@@ -239,11 +268,14 @@ function diploma(name, at, p, t, say) {
     </div>
   </section>`;
 }
-function skillBars(skills, say) {
-  return `<ul class="pf-skills">${skills.map((x) => `<li${x.v === null ? ' class="pf-skill-none"' : ''} title="${esc(say(x.why))}">
+// Each bar: what it measures, what the games show, and below 50 how to train it.
+function skillBars(skills, say, me) {
+  return `<ul class="pf-skills">${skills.map((x) => `<li${x.v === null ? ' class="pf-skill-none"' : ''}>
       <span class="pf-skill-name">${x.label}</span><span class="pf-skill-val">${x.v ?? '–'}</span>
       <div class="pf-meter" role="img" aria-label="${x.label}: ${x.v === null ? 'not enough games' : `${x.v} of 100`}"><i style="width:${x.v ?? 0}%"></i></div>
-      <small>${x.v === null ? 'Not enough games to say.' : esc(say(x.why))}</small></li>`).join('')}</ul>`;
+      <p class="pf-means">${esc(x.means)}</p>
+      <small>${x.v === null ? 'Not enough games to say.' : esc(say(x.why))}</small>
+      ${x.v !== null && x.v < 50 ? `<p class="pf-train"><b>How to train:</b> ${esc(x.train)}${me && x.href ? ` <a href="${x.href}">Start</a>` : ''}</p>` : ''}</li>`).join('')}</ul>`;
 }
 function render(name, at, p) {
   const t = p.type, me = isMe(name), say = me ? (x) => x : they;
@@ -259,7 +291,7 @@ function render(name, at, p) {
     <section class="pf-card">
       <h2>${me ? 'Your skills' : `${esc(name)}'s skills`}</h2>
       <p class="info pf-note">Each bar is read from one thing in the games. 50 is a so-so result.</p>
-      ${skillBars(skillsOf(p), say)}
+      ${skillBars(skillsOf(p), say, me)}
     </section>
     <div class="pf-two">
       <section class="pf-card"><h2>Good at</h2>${list(p.good, 'Nothing stands out yet. More games give a clearer picture.')}</section>
