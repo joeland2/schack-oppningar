@@ -938,3 +938,16 @@ a.cta { color: var(--accent-ink); }
 .pf-analyse.few { padding: 12px 14px; border: 1px solid var(--hot); border-radius: var(--radius); background: var(--surface); }
 .pf-analyse.few .pf-an-why { color: var(--ink); font-size: 14px; }
 .pf-skill-lock { grid-column: 1 / -1; color: var(--hot); font-size: 12.5px; font-weight: 600; }
+/* How games end: two rows of three numbers, each with a bar of its share (green wins, red losses) */
+.pf-ends { display: grid; gap: 10px; }
+.pf-ends-row { display: grid; grid-template-columns: 70px repeat(3, minmax(0, 1fr)); gap: 10px; align-items: center; }
+.pf-ends-label { font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.pf-ends-cell { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 2px 8px; padding: 10px 12px; background: var(--bg); border-radius: var(--radius); }
+.pf-ends-cell b { font: 400 28px/1 var(--font-poster); }
+.pf-ends-cell small { color: var(--muted); font-size: 12px; }
+.pf-ends-bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: var(--track); overflow: hidden; }
+.pf-ends-bar i { display: block; height: 100%; }
+.pf-ends-row.won .pf-ends-bar i { background: var(--good); }
+.pf-ends-row.lost .pf-ends-bar i { background: var(--bad); }
+@media (max-width: 560px) { .pf-ends-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } .pf-ends-label { grid-column: 1 / -1; } }
+.pf-rows .pf-meter::after { display: none; } /* the so-so mark only means something on skills */

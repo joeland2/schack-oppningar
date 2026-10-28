@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028214705';
-import { STYLE_OF } from './styles.js?v=20261028214705';
+import { account, login, finishLogin } from './lichess.js?v=20261028214839';
+import { STYLE_OF } from './styles.js?v=20261028214839';
 
 const MAX = 500;
 const PV = 5;
@@ -460,6 +460,13 @@ function tastePanel(mix, me) {
     <p class="info pf-note">Gambits give material for attack, attacking openings go for the initiative, positional and solid ones build first. Counted from the openings ${me ? 'you pick yourself' : 'they pick themselves'}: the defence as Black, the opening as White.</p>
     <div class="pf-two pf-taste-grid">${side(mix.w, 'White')}${side(mix.b, 'Black')}</div></section>`;
 }
+// How games end: wins and losses split by mate, resignation and time, as numbers with a small bar each.
+function endsGrid(ends) {
+  const kinds = [['mate', 'By mate'], ['resign', 'Resigned'], ['time', 'On time']];
+  const row = (label, cls, x) => `<div class="pf-ends-row ${cls}"><span class="pf-ends-label">${label}</span>${kinds.map(([k, name]) => `
+    <div class="pf-ends-cell"><b>${pct(x[k])}</b><small>${name}</small><span class="pf-ends-bar"><i style="width:${x[k] * 100}%"></i></span></div>`).join('')}</div>`;
+  return `<div class="pf-ends">${row('Wins', 'won', ends.won)}${row('Losses', 'lost', ends.lost)}</div>`;
+}
 // The player card: the overall (the mean of the known skills), a short code for the type, the six skills.
 const CODE = { Attacker: 'ATK', 'Solid builder': 'SOL', 'Endgame player': 'EGP', Fighter: 'FTR', 'Comeback player': 'CMB', 'Time scrambler': 'TIM', 'King walker': 'KNG', 'All-rounder': 'ALL' };
 const ABBR = { Openings: 'OPN', Tactics: 'TAC', 'Finishing won games': 'FIN', Defending: 'DEF', Endgames: 'END', Clock: 'CLK' };
@@ -515,8 +522,7 @@ function render(name, at, p) {
       <h3>By time control</h3>
       <ul class="pf-rows">${p.speeds.map((x) => `<li><span>${x.speed[0].toUpperCase() + x.speed.slice(1)}</span><small>${x.n} games · ${pct(x.score)} · now ${x.rating} (${x.change >= 0 ? '+' : ''}${x.change})</small>${bar(x.score)}</li>`).join('')}</ul>
       <h3>How ${me ? 'your' : 'their'} games end</h3>
-      <p class="info">Wins: ${pct(p.ends.won.mate)} by mate, ${pct(p.ends.won.resign)} resigned, ${pct(p.ends.won.time)} on time.
-        Losses: ${pct(p.ends.lost.mate)} by mate, ${pct(p.ends.lost.resign)} resigned, ${pct(p.ends.lost.time)} on time.</p>
+      ${endsGrid(p.ends)}
     </section>
     ${tastePanel(p.styleMix, me)}
     <div class="pf-two">
