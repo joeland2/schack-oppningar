@@ -713,3 +713,29 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .top-nav a:hover { color: var(--ink); background: var(--bg); }
 .top-nav a[aria-current="page"] { color: var(--ink); background: var(--bg); box-shadow: inset 0 -2px 0 var(--ink); }
 @media (max-width: 1000px) { .top-in { flex-wrap: wrap; } .top-nav { order: 3; width: 100%; margin: 0; } }
+
+/* Profile: what your Lichess games show */
+.profile { max-width: 1040px; margin-inline: auto; padding-block: clamp(20px, 4vh, 40px) 48px; display: grid; gap: var(--gap-group); }
+#profile { display: grid; gap: var(--gap-group); }
+#profile-msg:empty { display: none; }
+.pf-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+.pf-head h1 { margin: 0 0 4px; font-size: clamp(2rem, 4.5vw, 3rem); }
+.pf-card { padding: clamp(16px, 2vw, 24px); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; }
+.pf-card h2 { margin: 0 0 10px; font-size: 16px; font-weight: 600; }
+.pf-card h3 { margin: 18px 0 6px; font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.pf-name { margin: 0 0 8px; font-family: var(--font-display); font-weight: 700; font-size: clamp(1.5rem, 3.5vw, 2.2rem); line-height: 1.15; letter-spacing: -0.02em; }
+.pf-why { margin: 0; padding-left: 1.1em; color: var(--muted); display: grid; gap: 4px; max-width: 70ch; }
+.pf-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: var(--gap-group); }
+.pf-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+.pf-list li { display: grid; gap: 2px; }
+.pf-list span { color: var(--muted); font-size: .92rem; }
+.pf-rows { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.pf-rows li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: baseline; }
+.pf-rows li .wdl { grid-column: 1 / -1; height: 6px; }
+.pf-rows small { color: var(--muted); font-variant-numeric: tabular-nums; }
+.pf-stats { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+.pf-stats div { padding: 10px 12px; background: var(--bg); border-radius: var(--radius); }
+.pf-stats dt { font-size: 12px; color: var(--muted); }
+.pf-stats dd { margin: 0; font: 600 1.35rem var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.pf-search { max-width: 420px; }

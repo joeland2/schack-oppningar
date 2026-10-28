@@ -78,3 +78,5 @@ Opening lines are built from what real players at the user's own rating (±200) 
 ## Accessibility & Inclusion
 
 No specific standard has been set yet. The site already uses buttons for board squares, keyboard-operable opening cards, and turns off motion for players who have set their system to reduce motion.
+
+**Profile** (`profile.html`, in every header): a player's last 500 rated Lichess games (all speeds, standard chess), read move by move with Lichess's own analysis where a game has it. It shows what kind of player the games show (traits such as Attacker, Solid builder, Endgame player, Fighter, Comeback player, Time scrambler, King walker, each with its evidence), Good at and Work on (colour, converting won games, fighting back, blunders, the opening phase, endgames, the clock, early collapses, best and worst opening), results, time controls, how games end and openings by side. Your own profile opens from your login or saved Lichess name; any player can be looked up and is described in the third person; the 10 last profiles are kept in the browser.
