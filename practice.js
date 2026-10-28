@@ -2,9 +2,9 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261028232845';
-import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028232845';
-import { current, cache, myName, skillsOf, loadDists, storedGames } from './profile.js?v=20261028232845';
+import { login } from './lichess.js?v=20261028233343';
+import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028233343';
+import { current, cache, myName, skillsOf, storedGames } from './profile.js?v=20261028233343';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -79,7 +79,6 @@ function ask() {
 }
 
 // Your games are kept in this browser, so the plan opens at once; only the first visit fetches them.
-await loadDists(); // the skill scale: where ratings rank on Lichess
 const name = myName();
 if (!name) ask();
 else {

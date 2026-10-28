@@ -1124,8 +1124,15 @@ a { text-underline-offset: .18em; }
 .link-out { font-size: 14px; }
 /* Profile hero: the portrait in two sentences, the rest in one fold; the card explained in a fold */
 .pf-why-type { margin-top: 12px; }
-.pf-why-type > summary, .pf-card-help > summary { cursor: pointer; color: var(--hot); font-weight: 600; font-size: 14px; list-style-position: inside; }
+.pf-card-help > summary { cursor: pointer; color: var(--hot); font-weight: 600; font-size: 14px; list-style-position: inside; }
+/* The type fold: just a small arrow under the portrait */
+.pf-why-type > summary { list-style: none; cursor: pointer; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--hot); }
+.pf-why-type > summary::-webkit-details-marker { display: none; }
+.pf-why-type > summary::before { content: ""; width: 8px; height: 8px; border: solid currentColor; border-width: 0 2px 2px 0; transform: translateY(-2px) rotate(45deg); transition: transform .2s; }
+.pf-why-type[open] > summary::before { transform: translateY(2px) rotate(-135deg); }
+.pf-why-type > summary:hover { border-color: var(--hot); }
 .pf-why-type[open] > summary { margin-bottom: 10px; }
+@media (max-width: 860px) { .pf-why-type > summary { margin-inline: auto; } }
 .pf-why-type .pf-about p { color: var(--ink); }
 .pf-more-portrait { margin: 12px 0 0; color: var(--muted); max-width: 64ch; }
 .pf-card-help { max-width: 300px; text-align: left; }

@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028232845';
-import { STYLE_OF } from './styles.js?v=20261028232845';
+import { account, login, finishLogin } from './lichess.js?v=20261028233343';
+import { STYLE_OF } from './styles.js?v=20261028233343';
 
 const MAX = 500;
 const PV = 13;
@@ -291,33 +291,7 @@ function verdicts(p) {
 // Skill bars, 0-100, each read from one thing in the games; null when there are too few games to say.
 // The raw scales are rules of thumb (50 is a so-so result for the player); skillsOf puts them on the card's scale.
 const clamp = (x) => Math.round(Math.max(0, Math.min(100, x)));
-// Each skill is on one scale for every player, like a sports card. The base is the player's percentile
-// among all Lichess players of their main time control this week (Lichess's own rating distribution):
-// the middle player is 50, Magnus Carlsen about 99. How the player does in each area, judged against
-// themselves (raw, 50 = about their usual), moves it up to 25 either way.
-const DISTS = 'opening-book-v2-rating-dist'; // { [speed]: { at, freq } }: players per 25 points from 400
-const DIST = (() => { try { return JSON.parse(localStorage.getItem(DISTS)) || {}; } catch { return {}; } })();
-// Lichess's weekly rating distributions, kept a week; without them a bell curve around 1470 stands in.
-async function loadDists() {
-  const stale = ['bullet', 'blitz', 'rapid', 'classical'].filter((k) => !DIST[k] || Date.now() - DIST[k].at > 7 * 864e5);
-  await Promise.all(stale.map(async (k) => {
-    try {
-      const t = await (await fetch(`https://lichess.org/stat/rating/distribution/${k}`)).text();
-      const m = t.match(/"freq":\[([0-9,]+)\]/);
-      if (m) DIST[k] = { at: Date.now(), freq: m[1].split(',').map(Number) };
-    } catch {}
-  }));
-  try { localStorage.setItem(DISTS, JSON.stringify(DIST)); } catch {}
-}
-function percentile(rating, speed) {
-  const f = DIST[speed]?.freq;
-  if (!f) return 100 / (1 + Math.exp(-(rating - 1470) / 230)); // shortcut: a logistic stand-in until Lichess answers
-  const total = f.reduce((a, b) => a + b, 0), i = (rating - 400) / 25;
-  let below = 0;
-  for (let k = 0; k < f.length; k++) below += k + 1 <= i ? f[k] : k < i ? f[k] * (i - k) : 0;
-  return (below / total) * 100;
-}
-const levelOf = (rating, speed = 'blitz') => clamp(percentile(rating, speed));
+// Each skill compares the player with their own opponents in the same games: 50 = as good as them.
 function skillsOf(p) {
   return rawSkills(p).map((x) => ({ ...x, raw: x.v }));
 }
@@ -350,7 +324,6 @@ function rawSkills(p) {
       train: 'Play the opening fast (you know it), and save your thinking time for the critical moments.' },
   ];
 }
-console.assert(Math.abs(percentile(1470, 'none') - 50) < 1 && percentile(2900, 'none') > 99, 'percentile');
 console.assert(rawSkills({ peer: { analysed: 30, after12: 100, myBl: 1, oppBl: 1, meUp: 1, oppUp: 3, endgames: 0, n: 10 } }).map((x) => x.v).slice(0, 3).join() === '75,50,75', 'rawSkills');
 const worstPhase = (p) => Object.entries(p.slips).sort((a, b) => b[1] - a[1])[0][0];
 {
@@ -699,13 +672,11 @@ function playerCard(name, p, t, skills) {
   </div>`;
 }
 // Where a rating ranks among all Lichess players of that time control this week: "Top 27%".
-const pctOf = (main) => Math.round(percentile(main.rating, main.speed));
-const rankText = (main) => (pctOf(main) >= 50 ? `Top ${Math.max(1, 100 - pctOf(main))}%` : `Better than ${pctOf(main)}%`);
 // The card explained in one go, under it.
 function cardNote(name, p, me) {
   const main = p.speeds[0];
   if (!main) return '';
-  return `<details class="pf-card-help"><summary>How the card works</summary><p class="pf-card-note">The six skills compare ${me ? 'you' : esc(name)} with ${me ? 'your' : 'their'} own opponents rated ${main.rating - PEER}–${main.rating + PEER}, in the same games: <b>50 means as good as them</b>, higher is better. The big number is the average of the six. <b>${rankText(main)}</b>: where ${main.rating} ranks among all Lichess ${main.speed} players this week.</p></details>`;
+  return `<details class="pf-card-help"><summary>How the card works</summary><p class="pf-card-note">The six skills compare ${me ? 'you' : esc(name)} with ${me ? 'your' : 'their'} own opponents rated ${main.rating - PEER}–${main.rating + PEER}, in the same games: <b>50 means as good as them</b>, higher is better. The big number is the average of the six.</p></details>`;
 }
 function render(name, at, p) {
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
@@ -721,7 +692,7 @@ function render(name, at, p) {
         <h1 class="pf-h1">${esc(t[0].name)}</h1>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}
         <p class="pf-portrait">${portrait(name, p, skills, me)}</p>
-        <details class="pf-why-type"><summary>Why ${esc(t.map((x) => x.name.toLowerCase()).join(' + '))}? More about ${me ? 'your' : 'their'} game</summary>
+        <details class="pf-why-type"><summary aria-label="Why ${esc(t.map((x) => x.name.toLowerCase()).join(' + '))}? More about ${me ? 'your' : 'their'} game" title="Why ${esc(t.map((x) => x.name.toLowerCase()).join(' + '))}? Read more"></summary>
           <div class="pf-about">${t.map((x) => `<p><b>${esc(x.name)}.</b> ${esc(TYPE_ABOUT[x.name] || '')} <span>${esc(say(x.why))}</span></p>`).join('')}</div>
           ${tasteLine(p.styleMix, me)}
           <p class="pf-more-portrait">${portrait(name, p, skills, me, 'more')}</p>
@@ -967,7 +938,7 @@ function failed(name, err) {
   $('[data-retry]').addEventListener('click', () => run(name));
 }
 
-export { build, current, cache, myName, skillsOf, loadDists, storedGames, keepGame, engineEval, applyEvals, winPct, PV };
+export { build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV };
 // ---------- The games themselves ----------
 // The newest games as a list; each opens on game.html with the board, how it went and the key moves.
 const STATUS = { mate: 'mate', resign: 'resignation', outoftime: 'time', timeout: 'time', draw: 'agreement', stalemate: 'stalemate', aborted: 'abort' };
@@ -1162,6 +1133,5 @@ if ($('#profile')) addEventListener('popstate', () => start());
 // Last in the file, so every constant above is defined before the page draws.
 if ($('#profile')) { // the practice page imports this module for the above; only the profile page draws itself
   try { await finishLogin(); } catch (err) { $('#profile-msg').textContent = err.message; } // back from logging in on this page
-  await loadDists();
   start();
 }
