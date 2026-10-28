@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028152953';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028152953';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028152953';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028152953';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028153345';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028153345';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028153345';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028153345';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1293,7 +1293,6 @@ async function opponentPlays() {
   const note = !real && !engineSaid ? ' Real games at your level run out here, so Stockfish plays the opponent now, at your rating.' : '';
   if (!real) engineSaid = true;
   say(`Your move.${note}`);
-  if (mode === 'learn' && playing) showBest();
 }
 
 function ended() {
@@ -1616,10 +1615,6 @@ function finish() {
   playing = true; engineSaid = false;
   renderWhy(); // How to go on needs playing set
   if (game.turn() !== cur.side) return opponentPlays();
-  showBest();
-}
-// The arrow for a good move here (at the line's end, and in Learn after every reply while you play on).
-function showBest() {
   const at = game.fen();
   goodMove().then((m) => { if (m && playing && game.fen() === at) { hintSq = [m.from, m.to]; renderBoard(); } });
 }
@@ -1706,7 +1701,6 @@ function leaveView(sq) {
   premove = null; busy = false; sel = null; hintSq = [];
   render();
   say('Moves taken back. Your move.');
-  if (mode === 'learn') showBest();
   return true;
 }
 const reviewing = () => mode !== 'explore' && playing;
