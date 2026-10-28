@@ -1204,3 +1204,5 @@ a { text-underline-offset: .18em; }
 .pf-facts div { display: grid; grid-template-columns: 6.5em 1fr; gap: 12px; align-items: baseline; }
 .pf-facts dt { font: 700 11.5px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .pf-facts dd { margin: 0; font-size: 15px; }
+a.pf-res { text-decoration: none; transition: transform .12s; }
+a.pf-res:hover, a.pf-res:focus-visible { transform: translateY(-2px); outline: 2px solid var(--ink); outline-offset: 1px; }

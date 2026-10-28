@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028234219';
-import { STYLE_OF } from './styles.js?v=20261028234219';
+import { account, login, finishLogin } from './lichess.js?v=20261028234319';
+import { STYLE_OF } from './styles.js?v=20261028234319';
 
 const MAX = 500;
 const PV = 13;
@@ -784,7 +784,7 @@ function tacticsList(name, games, p) {
   ].filter(Boolean);
   if (!recent.length) return '';
   return `<dl class="pf-facts">${recentFacts(rs, p).map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
-    <h3 class="pf-tac-h">Tactics used <small>last ${recent.length} games</small></h3>
+    <h3 class="pf-tac-h">Tactics used</h3>
     ${rows.length ? `<ul class="pf-tac">${rows.map(([n, what, how]) => `<li><b>${n}</b><span>${what}<small>${how}</small></span></li>`).join('')}</ul>` : '<p class="info">No forks, discovered checks, mates or promotions in these games.</p>'}`;
 }
 function leadStory(name, p, skills, me) {
@@ -797,16 +797,16 @@ function leadStory(name, p, skills, me) {
   const week = Date.now() - 7 * 864e5, recent = mine.filter((g) => g.createdAt >= week);
   const before = mine.find((g) => g.createdAt < week);
   const change = recent.length ? after(recent[0]) - (before ? after(before) : recent.at(-1).players[sideOf(recent.at(-1))].rating) : null;
-  const form = games.slice(0, 10).map(res), wins = form.filter((x) => x === 'W').length, latest = games[0];
+  const last = (mine.length ? mine : games).slice(0, 10), form = last.map(res), wins = form.filter((x) => x === 'W').length, latest = last[0];
   // No clear leak: the lowest skill anyway, as the next step up
   const { leak: clear } = judge(p, skills), least = skills.filter((x) => x.v !== null).sort((a, b) => a.v - b.v)[0];
   const leak = clear || (least && { title: least.label, v: least.v, why: least.why, train: least.train, href: least.href });
   return `<section class="pf-lead">
     <div class="pf-news"><h2>Latest</h2>
       ${main ? `<p class="pf-news-big"><b>${after(mine[0])}</b> ${change !== null ? `<span class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</span> <small>${main} this week, ${recent.length} game${recent.length === 1 ? '' : 's'}</small>` : `<small>${main} · no games this week</small>`}</p>` : ''}
-      ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${form.map((x) => `<span class="pf-res r-${x}">${x}</span>`).join('')}</p>
-        <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}, newest first · last played ${day(latest.createdAt)}</p>` : ''}
-      ${tacticsList(name, games, p)}
+      ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${last.map((g, i) => `<a class="pf-res r-${form[i]}" href="game.html?u=${encodeURIComponent(name)}&id=${g.id}" title="${{ W: 'Won', L: 'Lost', D: 'Drew' }[form[i]]} against ${esc(g.players[sideOf(g) === 'white' ? 'black' : 'white'].user?.id || 'anonymous')}, ${day(g.createdAt)}: open the game">${form[i]}</a>`).join('')}</p>
+        <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}${main ? ` ${main}` : ''} games, newest first · last played ${day(latest.createdAt)}</p>` : ''}
+      ${tacticsList(name, last, p)}
     </div>
     <div class="pf-leak${clear ? '' : ' none'}"><h2>${clear ? (me ? 'Your biggest leak' : 'Biggest leak') : leak ? 'Room to grow' : 'No clear leak'}</h2>
       ${leak ? `<p class="pf-leak-title">${esc(leak.title)} <small>${leak.v}</small></p><p>${esc(say(leak.why))} ${esc(leak.train)}</p>${me ? `<a class="cta" href="${leak.href || 'practice.html'}">Train it</a>` : ''}`
