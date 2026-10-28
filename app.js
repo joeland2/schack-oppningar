@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028151359';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028151359';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028151359';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028151359';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028152510';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028152510';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028152510';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028152510';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -699,12 +699,13 @@ $('#search').addEventListener('input', (e) => { query = e.target.value; if (OPEN
 
 // ---------- Board ----------
 function renderBoard() {
-  if (view !== null) { // looking back at a move: its badge, and an arrow for the better move after a slip
+  if (view !== null) { // looking back at a move: its badge; after a slip, the position before it, with
+    // the move played in red and the better one in green
     const hist = game.history({ verbose: true }), g = new Chess();
-    hist.slice(0, view).forEach((m) => g.move(m.san));
     const m = hist[view - 1], better = betters[view - 1];
-    return drawBoard(boardEl, g, { side: cur.side, last: m || null, arrows: better ? [[better.from, better.to, '#15781b']] : [],
-      mark: m && notes[view - 1] && { sq: m.to, kind: notes[view - 1] } });
+    hist.slice(0, better ? view - 1 : view).forEach((x) => g.move(x.san));
+    if (better) return drawBoard(boardEl, g, { side: cur.side, last: hist[view - 2] || null, arrows: [[m.from, m.to, '#c4242a'], [better.from, better.to, '#15781b']] });
+    return drawBoard(boardEl, g, { side: cur.side, last: m || null, mark: m && notes[view - 1] && { sq: m.to, kind: notes[view - 1] } });
   }
   const n = game.history().length - 1, note = notes[n];
   // At the line's end every offered move gets an arrow (green: real games, blue: Stockfish), unless
@@ -863,11 +864,11 @@ function renderWhy() {
   if (game.isGameOver()) parts.unshift(gameStats());
   if (view !== null) { // looking back: what the move was, and what was better
     const n = view - 1, k = notes[n];
-    parts.unshift(`<p class="verdict${k ? ` k-${k}` : ''}">${n < 0 ? 'The start position.' : `<b>${label(n, hist[n])}${k && k !== 'book' ? ` was ${NOTE_WORD[k]}` : ''}.</b>${betters[n] ? ` Better was ${moveWords(betters[n])} (green arrow).` : ''}`} Use → or click the last move to go back to the game.</p>`);
+    parts.unshift(`<p class="verdict${k ? ` k-${k}` : ''}">${n < 0 ? 'The start position.' : `<b>${label(n, hist[n])}${k && k !== 'book' ? ` was ${NOTE_WORD[k]}` : ''}.</b>${betters[n] ? ` Better was ${moveWords(betters[n])}: green arrow, with the move played in red.` : ''}`} Use → or click the last move to go back to the game.</p>`);
   }
   // Your last own move, when it was a slip: what it was and what was better (play-out only).
   const mine = hist.length - ((hist.length - 1) % 2 === (cur.side === 'w' ? 0 : 1) ? 1 : 2);
-  if (playing && mine >= line.length && betters[mine]) {
+  if (view === null && playing && mine >= line.length && betters[mine]) {
     parts.push(`<p class="verdict k-${notes[mine]}"><b>${label(mine, hist[mine])} was ${NOTE_WORD[notes[mine]]}.</b> Better was ${moveWords(betters[mine])}.</p>`);
   }
   // The line-done summary is made at the line's end and stays while you play on from there. The tips
@@ -1258,6 +1259,7 @@ async function opponentPlays() {
   const note = !real && !engineSaid ? ' Real games at your level run out here, so Stockfish plays the opponent now, at your rating.' : '';
   if (!real) engineSaid = true;
   say(`Your move.${note}`);
+  if (mode === 'learn' && playing) showBest();
 }
 
 function ended() {
@@ -1580,6 +1582,10 @@ function finish() {
   playing = true; engineSaid = false;
   renderWhy(); // How to go on needs playing set
   if (game.turn() !== cur.side) return opponentPlays();
+  showBest();
+}
+// The arrow for a good move here (at the line's end, and in Learn after every reply while you play on).
+function showBest() {
   const at = game.fen();
   goodMove().then((m) => { if (m && playing && game.fen() === at) { hintSq = [m.from, m.to]; renderBoard(); } });
 }
@@ -1666,6 +1672,7 @@ function leaveView(sq) {
   premove = null; busy = false; sel = null; hintSq = [];
   render();
   say('Moves taken back. Your move.');
+  if (mode === 'learn') showBest();
   return true;
 }
 const reviewing = () => mode !== 'explore' && playing;
