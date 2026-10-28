@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028180947';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028180947';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028180947';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028180947';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028181542';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028181542';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028181542';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028181542';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -753,6 +753,7 @@ $('#search').addEventListener('input', (e) => { query = e.target.value; if (OPEN
 
 // ---------- Board ----------
 function renderBoard() {
+  if (boardHeld) { boardDirty = boardEl._noAnim || boardDirty === 'drop' ? 'drop' : true; return; }
   if (view !== null) { // looking back at a move: its badge; after a slip, the position before it, with
     // the move played in red and the better one in green
     const hist = game.history({ verbose: true }), g = new Chess();
@@ -1463,9 +1464,15 @@ function settleMoment() {
   momentOnBoard = null;
   run();
 }
-let boardHeld = false;
+// While a piece is held the board is not redrawn (that would swap the piece under your hand, and the
+// dragged piece would stop following the pointer); it is drawn once you let go.
+let boardHeld = false, boardDirty = false;
 boardEl.addEventListener('pointerdown', () => { boardHeld = true; });
-for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, () => { boardHeld = false; setTimeout(leaveMoment); });
+for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, () => {
+  boardHeld = false;
+  if (boardDirty) { boardEl._noAnim = boardDirty === 'drop'; boardDirty = false; renderBoard(); } // a dropped piece is already where it lands
+  setTimeout(leaveMoment);
+});
 function leaveMoment() {
   if (!momentOpen || momentOnBoard === undefined || boardHeld) return;
   const now = game.history({ verbose: true }), at = momentAt ? momentAt.split(' ') : [];
