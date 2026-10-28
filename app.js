@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028124705';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028124705';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028124705';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028124705';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028130225';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028130225';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028130225';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028130225';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -726,7 +726,22 @@ function repliesText(before, played) {
 // A tip is a button: clicking it plays that move, and the game goes on from there.
 $('#line-done').addEventListener('click', (e) => {
   const b = e.target.closest('.tip');
-  if (b && userTurn() && !busy) tryMove(b.dataset.from, b.dataset.to);
+  if (b && userTurn() && !busy) { tipHint = null; tryMove(b.dataset.from, b.dataset.to); }
+});
+// Pointing at a tip shows its move as an arrow on the board; leaving puts the board back.
+let tipHint = null;
+$('#line-done').addEventListener('mouseover', (e) => {
+  const b = e.target.closest('.tip');
+  if (!b || !userTurn()) return;
+  tipHint ??= hintSq;
+  hintSq = [b.dataset.from, b.dataset.to];
+  renderBoard();
+});
+$('#line-done').addEventListener('mouseout', (e) => {
+  const b = e.target.closest('.tip');
+  if (!b || b.contains(e.relatedTarget) || tipHint === null) return;
+  hintSq = tipHint; tipHint = null;
+  renderBoard();
 });
 let lineDone = '', goOn = ''; // the summary shown at the end of the line, and the current tips
 function renderWhy() {
@@ -822,22 +837,23 @@ function lineSummary() {
 
 // How to go on, for your move now: the move that scores best in games at your level, the next best,
 // and Stockfish's choice, each with what the move does. Game moves need MIN_GAMES games to count.
+// Always three when the position has them: games first, then Stockfish's ranking for the rest (where
+// real games run out, all three are Stockfish's). A move already listed is not repeated.
 function lineTips() {
   const at = game.fen(), me = cur.side;
   const say = (m) => { const idea = ideaAt(new Chess(at), m.san); return `${moveWords(m)}${idea ? `. ${idea}` : '.'}`; };
   const games = explore(game.history().map(clean), ratingsAround(rating)).moves.filter((m) => m.n >= MIN_GAMES)
     .sort((a, b) => scoreFor(b, me) - scoreFor(a, me)).slice(0, 2);
-  const engine = EVALS.get(evalKey(at))?.move;
-  const engineSan = engine && new Chess(at).move(engine).san;
+  const engine = topMoves(at).map((m) => new Chess(at).move(m));
   const tips = games.map((m, i) => {
     const move = new Chess(at).move(m.san);
-    const agrees = move.san === engineSan ? ' Stockfish agrees.' : '';
+    const agrees = move.san === engine[0]?.san ? ' Stockfish agrees.' : '';
     return { move, html: `<b>${i ? 'Next best in games' : 'Best results in games'}:</b> ${say(move)} You score ${pct(scoreFor(m, me))} after it at your level.${agrees}` };
   });
-  if (engineSan && !games.some((m) => new Chess(at).move(m.san).san === engineSan)) {
-    const move = new Chess(at).move(engine);
-    tips.push({ move, html: `<b>Stockfish's choice:</b> ${say(move)}` });
-  }
+  const RANK = ["Stockfish's choice", "Stockfish's second choice", "Stockfish's third choice"];
+  engine.forEach((move, i) => {
+    if (tips.length < 3 && !tips.some((t) => t.move.san === move.san)) tips.push({ move, html: `<b>${RANK[i]}:</b> ${say(move)}` });
+  });
   return tips;
 }
 
@@ -963,7 +979,8 @@ const opponentElo = () => Math.max(1320, Math.min(3190, rating));
 // One search at a time: changing options while the WebAssembly engine searches crashes it.
 // Resolves { move, cp, mate } with the score from the side to move, or null. skip() is asked when the
 // search's turn comes: a search for a position you have already left is dropped.
-function search(fen, { elo = null, ms = 500, skip = null } = {}) {
+// multi: how many best moves to rank (MultiPV); their first moves come back as lines, best first.
+function search(fen, { elo = null, ms = 500, skip = null, multi = 1 } = {}) {
   const run = () => new Promise((resolve) => {
     if (skip?.()) return resolve(null);
     if (!engine) {
@@ -972,15 +989,20 @@ function search(fen, { elo = null, ms = 500, skip = null } = {}) {
     }
     engineDone = resolve;
     let cp = 0, mate = null;
+    const lines = [];
+    const toMove = (uci) => (uci && uci !== '(none)' ? { from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] } : null);
     engine.onmessage = (e) => {
       if (typeof e.data !== 'string') return;
       const sc = e.data.match(/ score (cp|mate) (-?\d+)/);
-      if (sc && !/ (lower|upper)bound/.test(e.data)) { if (sc[1] === 'cp') { cp = Number(sc[2]); mate = null; } else mate = Number(sc[2]); }
+      if (sc && !/ (lower|upper)bound/.test(e.data)) {
+        const k = Number(e.data.match(/ multipv (\d+)/)?.[1] || 1);
+        if (k === 1) { if (sc[1] === 'cp') { cp = Number(sc[2]); mate = null; } else mate = Number(sc[2]); }
+        lines[k - 1] = toMove(e.data.match(/ pv (\S+)/)?.[1]);
+      }
       if (!e.data.startsWith('bestmove')) return;
-      const uci = e.data.split(' ')[1];
-      const move = uci && uci !== '(none)' ? { from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] } : null;
-      resolve({ move, cp, mate });
+      resolve({ move: toMove(e.data.split(' ')[1]), cp, mate, lines: lines.filter(Boolean) });
     };
+    engine.postMessage(`setoption name MultiPV value ${multi}`);
     engine.postMessage(`setoption name UCI_LimitStrength value ${!!elo}`);
     if (elo) engine.postMessage(`setoption name UCI_Elo value ${elo}`);
     engine.postMessage(`position fen ${fen}`);
@@ -989,6 +1011,16 @@ function search(fen, { elo = null, ms = 500, skip = null } = {}) {
   return (engineQueue = engineQueue.then(run, run));
 }
 const bestMove = (fen, opts) => search(fen, opts).then((r) => r?.move ?? null);
+// Stockfish's three best moves in a position, for How to go on; cached, and the tips redraw when ready.
+const TOPS = new Map();
+function topMoves(fen) {
+  const k = evalKey(fen);
+  if (!TOPS.has(k)) {
+    TOPS.set(k, null);
+    search(fen, { ms: 500, multi: 3 }).then((r) => { TOPS.set(k, r?.lines || []); if (cur && game.fen() === fen) renderWhy(); });
+  }
+  return TOPS.get(k) || [];
+}
 
 // ---------- Evaluation: the bar and the move badges ----------
 // Stockfish's full-strength verdict on a position, cached by position. keep: search it even if you
