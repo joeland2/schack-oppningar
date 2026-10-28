@@ -655,3 +655,6 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
 .ocard.side-w .star { color: #cfcfcf; } .ocard.side-b .star { color: #4a4744; }
 .star[aria-pressed="true"], .ocard .star[aria-pressed="true"] { color: #e0b23a; }
 .star:hover { color: #e0b23a; }
+.game-stats li button { display: flex; align-items: center; gap: 6px; width: 100%; padding: 2px 4px; margin: -2px -4px; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.game-stats li button:hover:not(:disabled) { background: var(--line); }
+.game-stats li button:disabled { cursor: default; }

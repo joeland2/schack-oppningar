@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028145423';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028145423';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028145423';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028145423';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028150420';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028150420';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028150420';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028150420';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -691,6 +691,13 @@ $('#search').addEventListener('input', (e) => { query = e.target.value; if (OPEN
 
 // ---------- Board ----------
 function renderBoard() {
+  if (view !== null) { // looking back at a move: its badge, and an arrow for the better move after a slip
+    const hist = game.history({ verbose: true }), g = new Chess();
+    hist.slice(0, view).forEach((m) => g.move(m.san));
+    const m = hist[view - 1], better = betters[view - 1];
+    return drawBoard(boardEl, g, { side: cur.side, last: m || null, arrows: better ? [[better.from, better.to, '#15781b']] : [],
+      mark: m && notes[view - 1] && { sq: m.to, kind: notes[view - 1] } });
+  }
   const n = game.history().length - 1, note = notes[n];
   // At the line's end every offered move gets an arrow (green: real games, blue: Stockfish), unless
   // one is pointed at.
@@ -706,7 +713,7 @@ function renderMoves() {
   let html = '';
   for (let i = 0; i < Math.max(line.length, hist.length); i += 2) {
     const cell = (j) => j < hist.length
-      ? `<button type="button" class="mv ${j === hist.length - 1 ? 'now' : ''}" data-n="${j + 1}">${hist[j]}${notes[j] && notes[j] !== 'book' ? `<sup class="nag k-${notes[j]}">${GLYPH[notes[j]]}</sup>` : ''}</button>`
+      ? `<button type="button" class="mv ${j === (view ?? hist.length) - 1 ? 'now' : ''}" data-n="${j + 1}">${hist[j]}${notes[j] && notes[j] !== 'book' ? `<sup class="nag k-${notes[j]}">${GLYPH[notes[j]]}</sup>` : ''}</button>`
       : `<span class="mv todo">${j < line.length ? '…' : ''}</span>`;
     html += `<li><span class="num">${i / 2 + 1}.</span>${cell(i)}${cell(i + 1)}</li>`;
   }
@@ -750,8 +757,8 @@ function renderMaterial() {
 // Buttons that cannot do anything right now say so, instead of silently ignoring a press.
 function renderControls() {
   if (!cur) return;
-  $('#step-back').disabled = !game.history().length;
-  $('#step-fwd').disabled = mode !== 'explore' || !redo.length;
+  $('#step-back').disabled = !game.history().length || view === 0;
+  $('#step-fwd').disabled = view === null && (mode !== 'explore' || !redo.length);
   $('#hint').disabled = !userTurn();
   $('#show').disabled = !userTurn();
   $('#hint').hidden = $('#show').hidden = mode === 'explore' || mode === 'time';
@@ -801,14 +808,15 @@ $('#line-done').addEventListener('click', (e) => {
 });
 // Pointing at a tip shows its move as an arrow on the board; leaving puts the board back.
 let tipHint = null;
-$('#line-done').addEventListener('mouseover', (e) => {
+// Mouse only: a tap on a phone would leave one arrow stuck in place of all of them.
+$('#line-done').addEventListener('pointerover', (e) => {
   const b = e.target.closest('.tip');
-  if (!b || !userTurn()) return;
+  if (!b || e.pointerType !== 'mouse' || !userTurn()) return;
   tipHint ??= hintSq;
   hintSq = [b.dataset.from, b.dataset.to];
   renderBoard();
 });
-$('#line-done').addEventListener('mouseout', (e) => {
+$('#line-done').addEventListener('pointerout', (e) => {
   const b = e.target.closest('.tip');
   if (!b || b.contains(e.relatedTarget) || tipHint === null) return;
   hintSq = tipHint; tipHint = null;
@@ -845,6 +853,10 @@ function renderWhy() {
     if (reps) parts.push(`<details class="reps-box"><summary>What players at your level answer here</summary>${reps}</details>`);
   }
   if (game.isGameOver()) parts.unshift(gameStats());
+  if (view !== null) { // looking back: what the move was, and what was better
+    const n = view - 1, k = notes[n];
+    parts.unshift(`<p class="verdict${k ? ` k-${k}` : ''}">${n < 0 ? 'The start position.' : `<b>${label(n, hist[n])}${k && k !== 'book' ? ` was ${NOTE_WORD[k]}` : ''}.</b>${betters[n] ? ` Better was ${moveWords(betters[n])} (green arrow).` : ''}`} Use → or click the last move to go back to the game.</p>`);
+  }
   // Your last own move, when it was a slip: what it was and what was better (play-out only).
   const mine = hist.length - ((hist.length - 1) % 2 === (cur.side === 'w' ? 0 : 1) ? 1 : 2);
   if (playing && mine >= line.length && betters[mine]) {
@@ -986,16 +998,17 @@ function start(op) {
   if (mode === 'time') startTrial(); else play(nextLine());
 }
 
-function play(i) {
+// again: the same line once more after a slip in Practice, which keeps it from counting as cleared.
+function play(i, again = false) {
   lineIdx = i;
   const l = lines[i];
   line = l.moves;
   game = new Chess();
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
-  misses = 0; missesHere = 0; busy = false;
+  misses = again ? misses : 0; missesHere = 0; busy = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
   playing = false;
-  premove = null; notes = []; betters = []; lineDone = '';
+  premove = null; notes = []; betters = []; lineDone = ''; view = null;
   clearShapes(boardEl);
   redo = [];
   $('#restart').textContent = 'Restart';
@@ -1256,8 +1269,15 @@ function gameStats() {
   const badge = (k) => `<span class="mark k-${k} legend-badge">${k === 'book' ? BOOK_ICON : GLYPH[k]}</span>`;
   const result = game.isCheckmate() ? (game.turn() === cur.side ? 'You were checkmated' : 'You won by checkmate') : 'Draw';
   return `<div class="game-stats"><p class="gs-head">${result} · your ${plural(mine.length, 'move')}</p>
-    <ul>${KINDS.map((k) => `<li class="${count(k) ? '' : 'none'}">${badge(k)}<b>${count(k)}</b> ${KIND_NAME[k]}</li>`).join('')}</ul></div>`;
+    <ul>${KINDS.map((k) => `<li class="${count(k) ? '' : 'none'}"><button type="button" data-kind="${k}" ${count(k) ? '' : 'disabled'}>${badge(k)}<b>${count(k)}</b> ${KIND_NAME[k]}</button></li>`).join('')}</ul></div>`;
 }
+$('#why').addEventListener('click', (e) => {
+  const kind = e.target.closest('.game-stats button[data-kind]')?.dataset.kind;
+  if (!kind) return;
+  const mine = notes.map((k, i) => (k === kind && (i % 2 === 0) === (cur.side === 'w') ? i : -1)).filter((i) => i >= 0);
+  const at = view === null ? -1 : view - 1;
+  goTo((mine.find((i) => i > at) ?? mine[0]) + 1);
+});
 const BOOK_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c3-1.5 5.5-1.5 8 0 2.5-1.5 5-1.5 8 0v12c-3-1.5-5.5-1.5-8 0-2.5-1.5-5-1.5-8 0zM12 6v12"/></svg>';
 
 // A short banner over the board, for the end of a line.
@@ -1488,6 +1508,13 @@ function tryMove(from, to) {
     wrongSq = to; sel = null;
     renderBoard();
     shake(boardEl);
+    if (mode === 'try') { // a slip in Practice: see the right move, then the line again from the start
+      busy = true;
+      const gen = gameGen;
+      say(`${m.san} is not the move here: the line plays ${moveWords(expectedMove())}. Starting the line again.`, 'bad');
+      setTimeout(() => { if (gen === gameGen) play(lineIdx, true); }, 2500);
+      return true;
+    }
     if (missesHere >= 2) showHint();
     explainWrong(m.san);
     setTimeout(() => { wrongSq = null; renderBoard(); }, 700);
@@ -1577,7 +1604,7 @@ boardEl._destsFor = (sq) => (canPremove() ? premoveDests(sq) : game.moves({ squa
 boardEl.addEventListener('contextmenu', () => { if (premove) { premove = null; renderBoard(); } });
 
 enableDrag(boardEl, {
-  canDrag: (sq) => (canMove() || canPremove()) && game.get(sq)?.color === mover(),
+  canDrag: (sq) => leaveView(sq) && (canMove() || canPremove()) && game.get(sq)?.color === mover(),
   onDrop: (from, to) => {
     sel = null;
     if (canPremove()) { if (!setPremove(from, to)) renderBoard(); return; }
@@ -1587,6 +1614,7 @@ enableDrag(boardEl, {
 boardEl.addEventListener('click', (e) => {
   const b = e.target.closest('.sq');
   if (!b) return;
+  if (!leaveView(b.dataset.sq)) return;
   if (!canMove() && canPremove()) {
     const sq = b.dataset.sq, p = game.get(sq);
     if (sel && sel !== sq && setPremove(sel, sq)) return;
@@ -1607,34 +1635,41 @@ boardEl.addEventListener('click', (e) => {
 // opponent's other moves and see how to answer them. Forward replays the moves you stepped back over.
 let redo = [];
 
-// While you play on after a line, back is a take-back, as on Lichess: your last move (and the reply to
-// it) is undone and you play on against the same opponent. It never goes back into the line itself.
-function takeBack() {
+// While you play on after a line, the move list, ← and → only look back at moves, as on Lichess:
+// view is how many moves the board shows (null: the game as it is now). Playing a move from an earlier
+// position of yours takes the moves after it back.
+let view = null;
+function showMove(n) {
+  view = n >= game.history().length ? null : Math.max(0, n);
+  sel = null;
+  render();
+}
+// Picking up a piece while looking back: back to the game, or, when it is one of your pieces at your
+// own earlier move, the moves after it are taken back and you play on from there.
+function leaveView(sq) {
+  if (view === null) return true;
+  const n = view, g = new Chess();
+  game.history().slice(0, n).forEach((m) => g.move(m));
+  if (n < line.length || g.turn() !== cur.side || g.get(sq)?.color !== cur.side) { showMove(Infinity); return false; }
   gameGen++; // a reply still on its way no longer applies
-  game.undo();
-  while (game.turn() !== cur.side && game.history().length > line.length) game.undo();
-  ply = game.history().length;
-  notes.length = betters.length = ply;
+  while (game.history().length > n) game.undo();
+  ply = n; notes.length = betters.length = n; view = null;
   lastMove = game.history({ verbose: true }).at(-1) || null;
   premove = null; busy = false; sel = null; hintSq = [];
   render();
-  if (game.turn() !== cur.side) return opponentPlays(); // back at the line's end on their move
-  say('Move taken back. Your move.');
+  say('Moves taken back. Your move.');
+  return true;
 }
+const reviewing = () => mode !== 'explore' && playing;
 
-// Clicking a move in the list goes back to the position after it: a take-back while you play on,
-// otherwise Explore from there (as stepping back does), with Forward replaying the moves.
+// Clicking a move in the list: while you play on, the board shows that move (see view); otherwise
+// Explore from there (as stepping back does), with Forward replaying the moves.
 function goTo(n) {
-  if (!cur || n >= game.history().length || (mode === 'explore' && busy)) return;
+  if (!cur || (mode === 'explore' && busy)) return;
+  if (reviewing()) return showMove(n);
+  if (n >= game.history().length) return;
   gameGen++; // a reply still on its way no longer applies
   premove = null; busy = false; sel = null; hintSq = [];
-  if (mode !== 'explore' && playing && n >= line.length) {
-    while (game.history().length > n) game.undo();
-    ply = n; notes.length = betters.length = n;
-    lastMove = game.history({ verbose: true }).at(-1) || null;
-    render();
-    return game.turn() !== cur.side ? opponentPlays() : say('Back to that move. Your move.');
-  }
   if (mode !== 'explore') setMode('explore', false, false);
   while (game.history().length > n) redo.push(game.undo());
   ply = n;
@@ -1646,7 +1681,7 @@ movesEl.addEventListener('click', (e) => { const b = e.target.closest('.mv[data-
 
 function stepBack() {
   if (!cur || !lines.length || !game.history().length) return;
-  if (mode !== 'explore' && playing && game.history().length > line.length) return takeBack();
+  if (reviewing()) return showMove((view ?? game.history().length) - 1);
   if (mode !== 'explore') { setMode('explore', false, false); gameGen++; } // the line's pending reply no longer applies
   else if (busy) return;
   redo.push(game.undo());
@@ -1659,6 +1694,7 @@ function stepBack() {
 }
 
 function stepForward() {
+  if (view !== null) return showMove(view + 1);
   if (mode !== 'explore' || busy || !redo.length) return;
   const m = redo.pop();
   exploreMove(m.from, m.to, m.promotion, true);
@@ -1762,7 +1798,7 @@ $('#weakest').addEventListener('click', () => {
   start([...list].sort((a, b) => score(a) - score(b))[0]);
 });
 function setMode(m, restart = true, remember = true) {
-  mode = m;
+  mode = m; view = null;
   if (m !== 'time') stopTrial();
   if (remember && m !== 'explore' && m !== 'time') store(STORE + '-mode', m);
   for (const k of ['learn', 'try', 'explore', 'time']) $(`#mode-${k}`).setAttribute('aria-pressed', m === k);
