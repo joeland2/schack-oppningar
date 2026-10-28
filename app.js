@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028121253';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028121253';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028121253';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028121253';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028121832';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028121832';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028121832';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028121832';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -324,6 +324,8 @@ const FIRST = 8; // the first few openings show, with a button for the rest
 const showAll = { w: false, b: false };
 // Kept for the phone's filter box, which starts folded.
 const PHONE = matchMedia('(max-width: 560px)');
+// Wide screens have the line list and moves in their own column, open.
+if (matchMedia('(min-width: 1400px)').matches) document.querySelectorAll('.side details').forEach((d) => { d.open = true; });
 
 function renderList() {
   const about = {
@@ -720,6 +722,7 @@ function repliesText(before, played) {
   return `<span class="reps">At your level: ${top.map(part).join(' ')}${rest >= 0.01 ? ` <span class="rep">others ${pct(rest)}</span>` : ''}</span>`;
 }
 
+let lineDone = ''; // the summary shown at the end of the line, kept while you play on
 function renderWhy() {
   const el = $('#why');
   if (!cur || !line.length || mode === 'explore') return (el.innerHTML = ''); // Explore explains in the message
@@ -742,11 +745,13 @@ function renderWhy() {
   if (mode === 'learn' && userTurn() && ply < line.length) {
     parts.push(`<p><b>Your move: ${label(ply, line[ply])}</b> ${why(line.slice(0, ply), line[ply])}</p>`);
   }
+  // The line-done summary is made at the line's end and stays while you play on from there.
   if (ply >= line.length && hist.length === line.length) {
     const tips = lineTips();
-    parts.push(`<div class="summary"><p><b>What this line gave you</b> ${lineSummary()}</p>${lineFacts()}${tips.length
-      ? `<p><b>How to go on</b></p><ul class="tips">${tips.map((t) => `<li>${t}</li>`).join('')}</ul>` : ''}</div>`);
+    lineDone = `<div class="summary"><p class="done-head">Line done</p><p><b>What this line gave you</b> ${lineSummary()}</p>${lineFacts()}${tips.length
+      ? `<p><b>How to go on</b></p><ul class="tips">${tips.map((t) => `<li>${t}</li>`).join('')}</ul>` : ''}</div>`;
   }
+  if (ply >= line.length && lineDone) parts.push(lineDone);
   el.innerHTML = parts.join('');
 }
 
@@ -861,7 +866,7 @@ function play(i) {
   misses = 0; missesHere = 0; busy = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
   playing = false;
-  premove = null; notes = []; betters = [];
+  premove = null; notes = []; betters = []; lineDone = '';
   clearShapes(boardEl);
   redo = [];
   $('#restart').textContent = 'Restart';

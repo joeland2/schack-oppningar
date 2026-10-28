@@ -146,7 +146,7 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .foot { padding-block: 8px 32px; color: var(--muted); font-size: .85rem; }
 
 @media (max-width: 820px) {
-  .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "play" "panel" "list"; gap: 20px; padding-block: 16px; }
+  .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "play" "panel" "side" "list"; gap: 20px; padding-block: 16px; }
   .board-frame { padding: 6px; }
   .top { position: static; }
   /* On a phone the feedback comes first, right under the board. */
@@ -542,3 +542,16 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
 .ml-meta small { font-size: 12px; }
 #my-mistakes .cta { display: inline-block; margin-top: 8px; text-decoration: none; }
 @media (max-width: 560px) { .ml-row { flex-direction: column; gap: 0; } }
+
+/* This line: its box, the list of lines and the moves. Under the panel on laptops, in its own column
+   to the left of the board on wide screens, so the space beside the board is used. */
+.side { grid-area: side; min-width: 0; display: grid; gap: var(--gap-group); align-content: start; padding: 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+@media (min-width: 821px) { .layout:has(.side) { grid-template-areas: "play panel" "play side"; } }
+@media (min-width: 1400px) {
+  .layout:has(.side) { grid-template-columns: minmax(240px, 320px) minmax(0, min(calc(100vh - 230px), 860px)) minmax(300px, 460px); grid-template-areas: "side play panel"; }
+  .side { position: sticky; top: 84px; max-height: calc(100vh - 100px); overflow: auto; }
+}
+/* The line-done summary, kept while you play on */
+.coach .why .summary { border-top: 0; padding: 10px 12px; border-left: 3px solid var(--good); border-radius: 6px; background: var(--bg); }
+.coach .why .done-head { font-weight: 600; color: var(--good); }
