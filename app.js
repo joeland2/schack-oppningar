@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction } from './board.js?v=20261028093210';
-import { STYLES, STYLE_OF } from './styles.js?v=20261028093210';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction } from './board.js?v=20261028093614';
+import { STYLES, STYLE_OF } from './styles.js?v=20261028093614';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -32,6 +32,7 @@ const ratingKey = () => `${STORE}-${speed}-rating`;
 const statKey = (id) => `${speed}:${id}`;
 let rating = load(ratingKey(), null);
 let style = load(STORE + '-style', 'any');
+let sort = load(STORE + '-sort', 'score'); // score: best results for your side first; played: most played first
 let OPENINGS = [];   // most played openings at your level
 let cur = null;      // current opening
 let lines = [];      // real-game lines for cur, most common first
@@ -263,10 +264,11 @@ const fitsStyle = (o) => style === 'any' || (STYLE_OF[o.family] || []).includes(
 
 // The openings shown. White: the best-scoring common ones that fit your style.
 // Black: the White openings you meet most often, whatever your style.
+const yourScore = (o) => (o.side === 'w' ? o.score : 1 - o.score);
+const byChoice = (a, b) => (sort === 'played' ? b.share - a.share : yourScore(b) - yourScore(a));
 function shown() {
-  const white = OPENINGS.filter((o) => o.side === 'w' && o.share >= MIN_REACH && fitsStyle(o))
-    .sort((a, b) => b.score - a.score).slice(0, WANT.w);
-  return [...white, ...OPENINGS.filter(isVs)];
+  const white = OPENINGS.filter((o) => o.side === 'w' && o.share >= MIN_REACH && fitsStyle(o)).sort(byChoice).slice(0, WANT.w);
+  return [...white, ...OPENINGS.filter(isVs).sort(byChoice)];
 }
 
 // ---------- Opening list ----------
@@ -299,10 +301,10 @@ const showAll = { w: false, b: false };
 function renderList() {
   const whiteAll = OPENINGS.filter((o) => o.side === 'w' && o.share >= MIN_REACH).length;
   const groups = [
-    ['w', 'You play White', (n) => `Your openings, best results first (a draw counts as half a win). ${style === 'any'
+    ['w', 'You play White', (n) => `Your openings, ${sort === 'played' ? 'most played first' : 'best results first (a draw counts as half a win)'}. ${style === 'any'
       ? `All ${n} played in at least 1% of games at your level.`
       : `${n} of ${whiteAll} are ${STYLES[style].label.toLowerCase()}; change style to see the rest.`}`],
-    ['b', 'You play Black', (n) => `The ${n} White openings you meet most often at your level, and how Black does against them. Your style does not filter these: White picks them. Search for your own defences, like the Sicilian.`],
+    ['b', 'You play Black', (n) => `The ${n} White openings you meet most often at your level, ${sort === 'played' ? 'most often first' : "the ones Black does best against first"}. Your style does not filter these: White picks them. Search for your own defences, like the Sicilian.`],
   ];
   const q = query.trim().toLowerCase();
   const list = q ? OPENINGS.filter((o) => o.family.toLowerCase().includes(q)).sort((a, b) => b.share - a.share) : shown();
@@ -1060,11 +1062,12 @@ async function showPicker() {
 // Time control and style switches, plus the rating labels that depend on the time control.
 function renderChoices() {
   document.querySelectorAll('[data-speed]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.speed === speed));
+  document.querySelectorAll('[data-sort]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.sort === sort));
   document.querySelectorAll('[data-style]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.style === style));
   $('#style-about').textContent = style === 'any' ? 'All common openings, whatever their character.' : STYLES[style].about;
   document.querySelectorAll('.speed-name').forEach((el) => (el.textContent = speed));
   $('#rating').value = rating || '';
-  $('#filters-sum').innerHTML = `Filters <span>${speed[0].toUpperCase() + speed.slice(1)} · ${style === 'any' ? 'any style' : STYLES[style].label}</span>`;
+  $('#filters-sum').innerHTML = `Filters <span>${speed[0].toUpperCase() + speed.slice(1)} · ${style === 'any' ? 'any style' : STYLES[style].label} · ${sort === 'played' ? 'most played' : 'best results'}</span>`;
 }
 document.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('click', () => {
   speed = b.dataset.speed;
@@ -1075,6 +1078,12 @@ document.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('cli
 document.querySelectorAll('[data-style]').forEach((b) => b.addEventListener('click', () => {
   style = b.dataset.style;
   store(STORE + '-style', style);
+  renderChoices();
+  if (OPENINGS.length) renderList();
+}));
+document.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('click', () => {
+  sort = b.dataset.sort;
+  store(STORE + '-sort', sort);
   renderChoices();
   if (OPENINGS.length) renderList();
 }));
