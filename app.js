@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028111250';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028111250';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028111250';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028111250';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028111630';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028111630';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028111630';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028111630';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -14,9 +14,6 @@ const BUCKETS = [0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]; // Lichess 
 const STRONG = { blitz: [7, 8], classical: [6, 7, 8] };
 const WANT = { w: 30 };   // White openings listed; Black's list is the same openings from the other side
 const POOL = 80;          // White openings collected, so a style filter still has enough to show
-// White openings in at least 1% of games at your level are listed first; the rest of the list is filled with
-// the most played among players within 500 of your rating (see popularOpenings).
-const MIN_REACH = 0.01;
 // First-move names that are not an opening plan of their own.
 const GENERIC = new Set(["King's Pawn Game", "Queen's Pawn Game", "King's Knight Opening"]);
 
@@ -72,11 +69,11 @@ function wdl(o, side) {
 
 const numbered = (moves) => moves.split(' ').map((m, i) => (i % 2 ? m : `${i / 2 + 1}.${m}`)).join(' ');
 
-// Indexes of the rating groups overlapping rating ± 200.
+// Indexes of the rating groups overlapping rating ± 300: "your level" everywhere on the site.
 function ratingsAround(r) {
-  return BUCKETS.flatMap((b, i) => (b <= r + 200 && (BUCKETS[i + 1] ?? Infinity) > r - 200 ? [i] : []));
+  return BUCKETS.flatMap((b, i) => (b <= r + 300 && (BUCKETS[i + 1] ?? Infinity) > r - 300 ? [i] : []));
 }
-console.assert(ratingsAround(1500).join() === '2,3,4' && ratingsAround(2400).join() === '7,8', 'ratingsAround');
+console.assert(ratingsAround(1500).join() === '2,3,4,5' && ratingsAround(2400).join() === '6,7,8', 'ratingsAround');
 
 // ---------- Data (all local, nothing is fetched from Lichess) ----------
 let TREE, BOOK, NAMES, IN_BOOK;
@@ -244,15 +241,9 @@ function popularOpenings() {
     }
   }
   const white = [...found.values()].sort((a, b) => b.share - a.share);
-  // The listed White openings: every one played in at least 1% of games at your level, then the most
-  // played among players within 500 of your rating until there are WANT.w. Their figures stay those of
-  // your own level.
-  const wide = BUCKETS.flatMap((b, i) => (b <= rating + 500 && (BUCKETS[i + 1] ?? Infinity) > rating - 500 ? [i] : []));
-  const reach = (o) => (o.roots || [{ moves: o.root.split(' ') }]).reduce((s, r) => s + reachOf(r.moves, wide), 0);
-  const common = white.filter((o) => o.share >= MIN_REACH);
-  const rest = white.filter((o) => o.share < MIN_REACH).sort((a, b) => reach(b) - reach(a));
-  // rank orders every White opening found; a style filter takes the first WANT.w of its own style
-  [...common, ...rest].forEach((o, i) => { o.rank = i; o.listed = i < WANT.w; });
+  // The listed White openings: the WANT.w most played at your level. rank orders every White opening
+  // found; a style filter takes the first WANT.w of its own style.
+  white.forEach((o, i) => { o.rank = i; o.listed = i < WANT.w; });
   // As Black you face White's openings: the same ones, practised from the other side.
   const meet = white.filter((o) => o.listed).map((o) => ({ ...o, id: `vs:${o.family}`, side: 'b' }));
   return [...white, ...meet, ...defences.values()];
@@ -329,8 +320,8 @@ const PHONE = matchMedia('(max-width: 560px)');
 function renderList() {
   const about = {
     w: (n) => `${sort === 'played' ? 'Most played first' : 'Best results first'}. ${style === 'any'
-      ? `The ${n} most played openings at your level, topped up with the most played within 500 of your rating.`
-      : `The ${n} most played ${STYLES[style].label.toLowerCase()} openings, at your level first, then within 500 of your rating.`}`,
+      ? `The ${n} most played openings at your level.`
+      : `The ${n} most played ${STYLES[style].label.toLowerCase()} openings at your level.`}`,
     b: (n) => `The same ${n} White openings, from Black's side: how to meet them, ${sort === 'played' ? 'most often met first' : 'the ones Black does best against first'}. Search for your own defences, like the Sicilian.`,
   };
   const q = query.trim().toLowerCase();
@@ -1243,7 +1234,7 @@ $('#lines-list').addEventListener('click', (e) => {
 
 function showComplete() {
   $('#complete-title').textContent = `${isVs(cur) ? 'vs ' : ''}${cur.name}: complete`;
-  $('#complete-text').textContent = `You cleared all ${lines.length} lines: every common reply at ${rating} ± 200 in ${speed}, each played from memory without a mistake.`;
+  $('#complete-text').textContent = `You cleared all ${lines.length} lines: every common reply at ${rating} ± 300 in ${speed}, each played from memory without a mistake.`;
   $('#complete').showModal();
 }
 $('#complete-more').addEventListener('click', () => { $('#complete').close(); play((lineIdx + 1) % lines.length); });
@@ -1460,7 +1451,7 @@ async function showPicker() {
   $('#pick-msg').textContent = `Loading ${speed} games…`;
   try { await loadTree(); } catch { return say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .'); }
   OPENINGS = POPULAR[`${speed}:${rating}`] ??= popularOpenings();
-  $('#pick-msg').textContent = `Real ${speed} games at ${rating} ± 200${style === 'any' ? '' : `, ${STYLES[style].label.toLowerCase()} White openings only`}. Pick one to practise.`;
+  $('#pick-msg').textContent = `Real ${speed} games at ${rating} ± 300${style === 'any' ? '' : `, ${STYLES[style].label.toLowerCase()} White openings only`}. Pick one to practise.`;
   renderList();
 }
 
