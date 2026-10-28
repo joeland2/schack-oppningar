@@ -695,7 +695,6 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .tree-end.learned { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); }
 .tree-end.cleared { border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--surface)); }
 .tree-end.now { outline: 2px solid var(--ink); outline-offset: 1px; }
-@media (max-width: 560px) { .streak { display: none; } }
 .trap-tag.soft { background: color-mix(in srgb, #e07b00 85%, black); }
 .moment-quiz { --tone: var(--ink); }
 .moment-quiz .moment-actions { display: grid; gap: 6px; }
@@ -1064,7 +1063,7 @@ a { text-underline-offset: .18em; }
 .top-nav a { white-space: nowrap; } /* "My practice" never breaks onto two lines */
 .account { flex-wrap: nowrap; }
 
-/* Header account: rating, streak and today as small stats (label over number), split by hairlines */
+/* Header account: the rating as a small stat (label over number) */
 .account { gap: 10px; align-items: center; }
 .acct-stat { display: grid; gap: 1px; padding: 0 12px; border-left: 1px solid var(--line); line-height: 1; white-space: nowrap; }
 .account > .acct-stat:first-child { border-left: 0; padding-left: 0; }

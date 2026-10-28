@@ -1,11 +1,11 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028224709';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028224709';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028224709';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028224709';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028224709';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028224709';
-import { storedGames } from './profile.js?v=20261028224709';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028225236';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028225236';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028225236';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028225236';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028225236';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028225236';
+import { storedGames } from './profile.js?v=20261028225236';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2132,16 +2132,6 @@ function tryMove(from, to) {
   return true;
 }
 
-  if (days[today] === GOAL) setTimeout(() => flash('Daily goal reached!'), 1900); // after the line's own banner
-}
-function renderStreak() {
-  const days = load(DAYS_KEY, {}), today = days[dayOf(new Date())] || 0, n = streakOf(days);
-  const el = $('#streak');
-  el.hidden = !n && !today;
-  el.innerHTML = `<span class="acct-stat"><span class="acct-k">Streak</span><b>${n} ${n === 1 ? 'day' : 'days'}</b></span><span class="acct-stat"><span class="acct-k">Today</span><b class="${today >= GOAL ? 'up' : ''}">${Math.min(today, GOAL)}/${GOAL} lines</b></span>`;
-  el.title = today >= GOAL ? 'Daily goal reached' : `Finish ${GOAL - today} more ${GOAL - today === 1 ? 'line' : 'lines'} today to reach your daily goal`;
-}
-renderStreak();
 
 // A transposition: after a move that is not the line's, the position is the one a line has at this
 // point (this line's or another's). Then that line is the one you are in. Not in a time trial, where
