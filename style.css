@@ -449,10 +449,9 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .shapes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; opacity: .6; overflow: hidden; }
 .sq.anim { z-index: 8; }
 .pc.fading { position: absolute; inset: 0; z-index: 1; opacity: .5; }
-.coach .why .summary { display: grid; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
-.coach .why .summary p { color: var(--ink); }
-.coach .why .summary b { display: block; font-family: var(--font-body); margin-bottom: 2px; }
-.coach .why .tips { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: .92rem; color: var(--ink); }
+.line-done .summary { display: grid; gap: 6px; }
+.line-done .summary b { display: block; margin-bottom: 2px; }
+.line-done .tips { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: .92rem; color: var(--ink); }
 
 /* Board view details in the ledger style */
 #trainer .panel, #trainer .board-frame { box-shadow: none; }
@@ -552,6 +551,9 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
   .layout:has(.side) { grid-template-columns: minmax(240px, 320px) minmax(0, min(calc(100vh - 230px), 860px)) minmax(300px, 460px); grid-template-areas: "side play panel"; }
   .side { position: sticky; top: 84px; max-height: calc(100vh - 100px); overflow: auto; }
 }
-/* The line-done summary, kept while you play on */
-.coach .why .summary { border-top: 0; padding: 10px 12px; border-left: 3px solid var(--good); border-radius: 6px; background: var(--bg); }
-.coach .why .done-head { font-weight: 600; color: var(--good); }
+/* The line-done summary: its own box above the coach, kept while you play on */
+.line-done { padding: 14px 16px; border: 1px solid var(--good); border-radius: 12px; background: var(--bg); }
+.line-done p { margin: 0; padding: 0; border: 0; background: none; font-size: .95rem; color: var(--ink); }
+.line-done .done-head { font-weight: 600; color: var(--good); }
+.line-done b { font-family: var(--font-body); }
+@media (max-width: 820px) { .line-done { order: -2; } }

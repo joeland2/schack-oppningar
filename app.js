@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028121832';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028121832';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028121832';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028121832';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028122234';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028122234';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028122234';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028122234';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -725,7 +725,7 @@ function repliesText(before, played) {
 let lineDone = ''; // the summary shown at the end of the line, kept while you play on
 function renderWhy() {
   const el = $('#why');
-  if (!cur || !line.length || mode === 'explore') return (el.innerHTML = ''); // Explore explains in the message
+  if (!cur || !line.length || mode === 'explore') { $('#line-done').hidden = true; return (el.innerHTML = ''); } // Explore explains in the message
   const hist = game.history();
   const label = (n, san) => `${Math.floor(n / 2) + 1}.${n % 2 ? '..' : ''}${san}`;
   const parts = [];
@@ -751,8 +751,9 @@ function renderWhy() {
     lineDone = `<div class="summary"><p class="done-head">Line done</p><p><b>What this line gave you</b> ${lineSummary()}</p>${lineFacts()}${tips.length
       ? `<p><b>How to go on</b></p><ul class="tips">${tips.map((t) => `<li>${t}</li>`).join('')}</ul>` : ''}</div>`;
   }
-  if (ply >= line.length && lineDone) parts.push(lineDone);
   el.innerHTML = parts.join('');
+  $('#line-done').innerHTML = ply >= line.length ? lineDone : '';
+  $('#line-done').hidden = !$('#line-done').innerHTML;
 }
 
 // Your side's wins, draws and losses (as shares) in games at your level that reached a position, or null.
