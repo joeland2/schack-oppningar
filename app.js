@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction } from './board.js?v=20261028102114';
-import { STYLES, STYLE_OF } from './styles.js?v=20261028102114';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028103241';
+import { STYLES, STYLE_OF } from './styles.js?v=20261028103241';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -44,7 +44,6 @@ let sel = null;
 let hintSq = [];     // highlighted squares
 let mode = load(STORE + '-mode', 'learn'); // learn: every move is shown; try: test yourself
 let wrongSq = null;
-let markSq = null;   // { sq, ok }: a tick on the square of a right move, for a moment
 let lastMove = null;
 let misses = 0;      // mistakes in this run
 let missesHere = 0;  // mistakes on the current move
@@ -512,8 +511,10 @@ $('#search').addEventListener('input', (e) => { query = e.target.value; if (OPEN
 
 // ---------- Board ----------
 function renderBoard() {
+  const n = game.history().length - 1, note = notes[n];
   drawBoard(boardEl, game, { side: cur.side, sel, last: lastMove, hint: hintSq, wrong: wrongSq, arrow: hintSq.length === 2 ? hintSq : null,
-    mark: markSq || (wrongSq && { sq: wrongSq, ok: false }) });
+    mark: (wrongSq && { sq: wrongSq, ok: false }) || (note && lastMove && { sq: lastMove.to, kind: note }),
+    dests: sel && canPremove() ? premoveDests(sel).map((m) => m.to) : null, pre: premove ? [premove.from, premove.to] : [] });
 }
 
 function renderMoves() {
@@ -521,7 +522,7 @@ function renderMoves() {
   let html = '';
   for (let i = 0; i < Math.max(line.length, hist.length); i += 2) {
     const cell = (j) => j < hist.length
-      ? `<span class="mv ${j === hist.length - 1 ? 'now' : ''}">${hist[j]}</span>`
+      ? `<span class="mv ${j === hist.length - 1 ? 'now' : ''}">${hist[j]}${notes[j] && notes[j] !== 'book' ? `<sup class="nag k-${notes[j]}">${GLYPH[notes[j]]}</sup>` : ''}</span>`
       : `<span class="mv todo">${j < line.length ? '…' : ''}</span>`;
     html += `<li><span class="num">${i / 2 + 1}.</span>${cell(i)}${cell(i + 1)}</li>`;
   }
@@ -536,7 +537,7 @@ function say(text, tone = '') {
   msgEl.className = 'message ' + tone;
 }
 
-function render() { renderBoard(); renderMoves(); renderWhy(); renderControls(); renderMaterial(); }
+function render() { renderBoard(); renderMoves(); renderWhy(); renderControls(); renderMaterial(); renderEval(); }
 
 // ---------- Material and evaluation ----------
 const START = { q: 1, r: 2, b: 2, n: 2, p: 8 };
@@ -675,6 +676,11 @@ function renderWhy() {
       ? `<p><b>You played ${label(n, hist[n])}</b> ${why(before, san)}</p>`
       : `<p><b>${sideName(n % 2 ? 'b' : 'w')} played ${label(n, hist[n])}</b> ${idea(before, san)} ${repliesText(before, san)}</p>`);
   }
+  // Your last own move, when it was a slip: what it was and what was better (play-out only).
+  const mine = hist.length - ((hist.length - 1) % 2 === (cur.side === 'w' ? 0 : 1) ? 1 : 2);
+  if (playing && mine >= line.length && betters[mine]) {
+    parts.push(`<p class="verdict k-${notes[mine]}"><b>${label(mine, hist[mine])} was ${NOTE_WORD[notes[mine]]}.</b> Better was ${moveWords(betters[mine])}.</p>`);
+  }
   if (mode === 'learn' && userTurn() && ply < line.length) {
     parts.push(`<p><b>Your move: ${label(ply, line[ply])}</b> ${why(line.slice(0, ply), line[ply])}</p>`);
   }
@@ -796,6 +802,7 @@ function play(i) {
   misses = 0; missesHere = 0; busy = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
   playing = false;
+  premove = null; notes = []; betters = [];
   clearShapes(boardEl);
   redo = [];
   $('#restart').textContent = 'Restart';
@@ -836,6 +843,8 @@ function exploreMove(from, to, promotion = 'q', keepRedo = false, prefix = '') {
   if (!m) return false;
   if (!keepRedo) redo = []; // a new move starts a new branch
   lastMove = m; ply = hist.length + 1; sel = null; hintSq = []; busy = false;
+  notes.length = betters.length = hist.length;
+  rate(hist.length, m.before, m);
   render();
   if (game.isCheckmate()) { say(`${prefix}${m.san} is checkmate. ${sideName(m.color)} wins.`, 'good'); return true; }
   if (game.isGameOver()) { say(`${prefix}${m.san}: the game is drawn.`); return true; }
@@ -877,17 +886,25 @@ let engine = null, engineDone = null, engineQueue = Promise.resolve();
 // The opponent plays at your rating; Stockfish's lowest setting is 1320, so below that it is a little stronger.
 const opponentElo = () => Math.max(1320, Math.min(3190, rating));
 // One search at a time: changing options while the WebAssembly engine searches crashes it.
-function bestMove(fen, { elo = null, ms = 500 } = {}) {
+// Resolves { move, cp, mate } with the score from the side to move, or null. skip() is asked when the
+// search's turn comes: a search for a position you have already left is dropped.
+function search(fen, { elo = null, ms = 500, skip = null } = {}) {
   const run = () => new Promise((resolve) => {
+    if (skip?.()) return resolve(null);
     if (!engine) {
       engine = new Worker(ENGINE_SRC);
       engine.addEventListener('error', () => { engine = null; engineDone?.(null); });
     }
     engineDone = resolve;
+    let cp = 0, mate = null;
     engine.onmessage = (e) => {
-      if (typeof e.data !== 'string' || !e.data.startsWith('bestmove')) return;
+      if (typeof e.data !== 'string') return;
+      const sc = e.data.match(/ score (cp|mate) (-?\d+)/);
+      if (sc && !/ (lower|upper)bound/.test(e.data)) { if (sc[1] === 'cp') { cp = Number(sc[2]); mate = null; } else mate = Number(sc[2]); }
+      if (!e.data.startsWith('bestmove')) return;
       const uci = e.data.split(' ')[1];
-      resolve(uci && uci !== '(none)' ? { from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] } : null);
+      const move = uci && uci !== '(none)' ? { from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] } : null;
+      resolve({ move, cp, mate });
     };
     engine.postMessage(`setoption name UCI_LimitStrength value ${!!elo}`);
     if (elo) engine.postMessage(`setoption name UCI_Elo value ${elo}`);
@@ -896,6 +913,78 @@ function bestMove(fen, { elo = null, ms = 500 } = {}) {
   });
   return (engineQueue = engineQueue.then(run, run));
 }
+const bestMove = (fen, opts) => search(fen, opts).then((r) => r?.move ?? null);
+
+// ---------- Evaluation: the bar and the move badges ----------
+// Stockfish's full-strength verdict on a position, cached by position. keep: search it even if you
+// have moved on (a move being rated needs the position before it).
+const EVALS = new Map(), EVALS_PENDING = new Map();
+const evalKey = (fen) => fen.split(' ').slice(0, 4).join(' ');
+function evaluate(fen, { keep = false } = {}) {
+  const k = evalKey(fen);
+  if (EVALS.has(k)) return Promise.resolve(EVALS.get(k));
+  if (EVALS_PENDING.has(k)) return EVALS_PENDING.get(k);
+  const p = search(fen, { ms: 350, skip: () => !keep && (!cur || game.fen() !== fen) }).then((r) => {
+    EVALS_PENDING.delete(k);
+    if (r) { EVALS.set(k, r); renderEval(); }
+    return r;
+  });
+  EVALS_PENDING.set(k, p);
+  return p;
+}
+// A score in centipawns from the side to move; a mate counts as 100 pawns ("mate 0": you are mated).
+const toCp = (r) => (r.mate === null ? r.cp : r.mate > 0 ? 10000 : -10000);
+// Lichess's winning chances, 0-100, from centipawns.
+const winPct = (cp) => 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
+
+function renderEval() {
+  if (!cur) return;
+  const el = $('#evalbar');
+  const fen = game.fen();
+  let r = EVALS.get(evalKey(fen));
+  if (game.isCheckmate()) r = { cp: 0, mate: 0 };
+  else if (game.isDraw()) r = { cp: 0, mate: null };
+  el.classList.toggle('stale', !r);
+  el.classList.toggle('flip', cur.side === 'b');
+  if (!r) { if (!$('#trainer').hidden) evaluate(fen); return; }
+  const white = (game.turn() === 'w' ? 1 : -1) * toCp(r);
+  const share = r.mate !== null ? (white > 0 ? 100 : 0) : winPct(white);
+  el.querySelector('.evalbar-white').style.height = `${share}%`;
+  el.querySelector('.evalbar-num').textContent = r.mate !== null ? (r.mate === 0 ? '#' : `M${Math.abs(r.mate)}`) : (Math.min(Math.abs(white), 2000) / 100).toFixed(1);
+  el.classList.toggle('behind', share < 12);
+  el.setAttribute('aria-label', `Stockfish: ${r.mate !== null ? `mate for ${white > 0 ? 'White' : 'Black'}` : Math.abs(white) < 30 ? 'equal' : `${white > 0 ? 'White' : 'Black'} is better by ${(Math.abs(white) / 100).toFixed(1)} pawns`}`);
+}
+
+// Move badges, as in an analysis on Lichess or chess.com. notes[i] rates the move at ply i: book
+// (the line's own moves), brilliant, best, good, inaccuracy, mistake or blunder. Thresholds are Lichess's:
+// a move that drops the mover's winning chances by 5, 10 or 15 points (of 100) is an inaccuracy, a mistake
+// or a blunder. A brilliant move is the engine's best that leaves a piece hanging.
+let notes = [], betters = [];
+const NOTE_WORD = { brilliant: 'brilliant', best: 'the best move', good: 'good', inaccuracy: 'an inaccuracy', mistake: 'a mistake', blunder: 'a blunder' };
+const VALUE_OF = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+function leavesPieceHanging(g, m) {
+  if ('pk'.includes(m.piece)) return false;
+  const them = m.color === 'w' ? 'b' : 'w';
+  const attackers = g.attackers ? g.attackers(m.to, them) : [];
+  if (!attackers.length) return false;
+  const cheapest = Math.min(...attackers.map((sq) => VALUE_OF[g.get(sq).type]));
+  return cheapest < VALUE_OF[m.piece] || !g.isAttacked(m.to, m.color);
+}
+async function rate(i, before, m) {
+  const gen = gameGen;
+  const g = new Chess(before);
+  g.move(m.san);
+  if (g.isCheckmate()) { notes[i] = 'best'; return renderNotes(gen); }
+  const [b, a] = await Promise.all([evaluate(before, { keep: true }), evaluate(g.fen(), { keep: true })]);
+  if (!b || !a || gen !== gameGen) return;
+  const loss = winPct(toCp(b)) - winPct(-toCp(a));
+  const isBest = b.move && b.move.from === m.from && b.move.to === m.to;
+  notes[i] = loss >= 15 ? 'blunder' : loss >= 10 ? 'mistake' : loss >= 5 ? 'inaccuracy'
+    : isBest ? (leavesPieceHanging(g, m) && winPct(-toCp(a)) >= 45 ? 'brilliant' : 'best') : 'good';
+  if (loss >= 5 && b.move) betters[i] = new Chess(before).move(b.move);
+  renderNotes(gen);
+}
+function renderNotes(gen) { if (gen === gameGen && cur) { renderBoard(); renderMoves(); renderWhy(); } }
 
 // A good move for you here: what strong players play most, or Stockfish's choice where games run out.
 async function goodMove() {
@@ -915,8 +1004,10 @@ async function opponentPlays() {
   await new Promise((x) => setTimeout(x, 450));
   if (gen !== gameGen || game.fen() !== at || !m) { if (gen === gameGen) busy = false; return; }
   lastMove = game.move(m.san ?? m); ply++; busy = false; hintSq = [];
+  rate(ply - 1, at, lastMove);
   render();
   if (ended()) return;
+  if (playPremove()) return;
   const note = !real && !engineSaid ? ' Real games at your level run out here, so Stockfish plays the opponent now, at your rating.' : '';
   if (!real) engineSaid = true;
   say(`Your move.${note}`);
@@ -1058,8 +1149,10 @@ function reply() {
     if (gen !== gameGen) return;
     const m = game.move(line[ply]);
     lastMove = m; ply++; busy = false; hintSq = [];
+    notes[ply - 1] = 'book';
     render();
     if (ply >= line.length) return finish();
+    if (playPremove()) return;
     prompt('Your move.');
   }, 450);
 }
@@ -1070,6 +1163,7 @@ function tryMove(from, to) {
   if (!m) return false;
   if (playing) {
     lastMove = m; ply++; sel = null; hintSq = [];
+    rate(ply - 1, game.history({ verbose: true }).at(-1).before, m);
     render();
     if (!ended()) opponentPlays();
     return true;
@@ -1087,8 +1181,7 @@ function tryMove(from, to) {
   }
   lastMove = m; ply++; sel = null; hintSq = []; missesHere = 0;
   say(`Right: ${moveWords(m)}.`, 'good');
-  markSq = { sq: m.to, ok: true };
-  setTimeout(() => { if (markSq?.sq === m.to) { markSq = null; renderBoard(); } }, 900);
+  notes[ply - 1] = 'book';
   render();
   if (ply >= line.length) finish(); else reply();
   return true;
@@ -1136,13 +1229,48 @@ function finish() {
 const canMove = () => !busy && (mode === 'explore' ? cur && !game.isGameOver() : userTurn());
 const mover = () => (mode === 'explore' ? game.turn() : cur.side);
 const move = (from, to) => (mode === 'explore' ? exploreMove(from, to) : tryMove(from, to));
+
+// Premove, as on Lichess: during the opponent's turn you may queue your next move (its squares are
+// marked blue); it is played the moment it is your turn, if it is still legal. A right-click cancels it.
+let premove = null;
+const canPremove = () => !!cur && mode !== 'explore' && line.length > 0 && (ply < line.length || playing)
+  && game.turn() !== cur.side && !game.isGameOver();
+const premoveDests = (sq) => asMover(game, cur.side)?.moves({ square: sq, verbose: true }) || [];
+function setPremove(from, to) {
+  if (!premoveDests(from).some((m) => m.to === to)) return false;
+  premove = { from, to };
+  sel = null;
+  renderBoard();
+  return true;
+}
+function playPremove() {
+  const p = premove;
+  premove = null;
+  if (!p || !userTurn()) return false;
+  return tryMove(p.from, p.to);
+}
+boardEl._destsFor = (sq) => (canPremove() ? premoveDests(sq) : game.moves({ square: sq, verbose: true }));
+boardEl.addEventListener('contextmenu', () => { if (premove) { premove = null; renderBoard(); } });
+
 enableDrag(boardEl, {
-  canDrag: (sq) => canMove() && game.get(sq)?.color === mover(),
-  onDrop: (from, to) => { sel = null; if (!move(from, to)) renderBoard(); },
+  canDrag: (sq) => (canMove() || canPremove()) && game.get(sq)?.color === mover(),
+  onDrop: (from, to) => {
+    sel = null;
+    if (canPremove()) { if (!setPremove(from, to)) renderBoard(); return; }
+    if (!move(from, to)) renderBoard();
+  },
 });
 boardEl.addEventListener('click', (e) => {
   const b = e.target.closest('.sq');
-  if (!b || !canMove()) return;
+  if (!b) return;
+  if (!canMove() && canPremove()) {
+    const sq = b.dataset.sq, p = game.get(sq);
+    if (sel && sel !== sq && setPremove(sel, sq)) return;
+    premove = null;
+    sel = p && p.color === cur.side && sel !== sq ? sq : null;
+    return renderBoard();
+  }
+  if (!canMove()) return;
   const sq = b.dataset.sq;
   const p = game.get(sq);
   if (sel && sel !== sq && move(sel, sq)) return;
@@ -1162,6 +1290,7 @@ function stepBack() {
   redo.push(game.undo());
   lastMove = game.history({ verbose: true }).at(-1) || null;
   ply = game.history().length;
+  premove = null;
   busy = false; sel = null;
   render();
   exploreSay('Stepped back. Move any piece, for either side, to see how often players at your level choose it. ');

@@ -2,10 +2,14 @@
 const FILES = 'abcdefgh';
 
 // arrow: [from, to] draws a move arrow over the board, like the arrows on Lichess.
-// mark: { sq, ok } puts a green tick (right move) or red cross (wrong move) on a square.
-export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint = [], wrong = null, arrow = null, mark = null } = {}) {
+// mark: { sq, ok } puts a green tick (right move) or red cross (wrong move) on a square; { sq, kind }
+// puts a move badge there instead (see GLYPH). dests overrides the selected piece's targets (premoves);
+// pre marks a queued premove's squares.
+export const GLYPH = { brilliant: '!!', best: '★', good: '✓', inaccuracy: '?!', mistake: '?', blunder: '??' };
+const BOOK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c3-1.5 5.5-1.5 8 0 2.5-1.5 5-1.5 8 0v12c-3-1.5-5.5-1.5-8 0-2.5-1.5-5-1.5-8 0zM12 6v12"/></svg>';
+export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint = [], wrong = null, arrow = null, mark = null, dests = null, pre = [] } = {}) {
   planAnim(el, game, side);
-  const targets = sel ? game.moves({ square: sel, verbose: true }).map((m) => m.to) : [];
+  const targets = sel ? dests || game.moves({ square: sel, verbose: true }).map((m) => m.to) : [];
   let html = '';
   for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
     const sq = FILES[side === 'w' ? f : 7 - f] + (side === 'w' ? 8 - r : r + 1);
@@ -16,13 +20,16 @@ export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint 
     if (last && (sq === last.from || sq === last.to)) cls.push('last');
     if (hint.includes(sq)) cls.push('hint');
     if (sq === wrong) cls.push('wrong');
+    if (pre.includes(sq)) cls.push('pre');
     if (targets.includes(sq)) cls.push(p ? 'cap' : 'dot');
     const fileLbl = r === 7 ? `<span class="lbl f">${sq[0]}</span>` : '';
     const rankLbl = f === 0 ? `<span class="lbl r">${sq[1]}</span>` : '';
     const fading = el._anim?.fadings.get(sq);
     const piece = (fading ? `<img class="pc fading" src="pieces/${fading}.svg" alt="">` : '')
       + (p ? `<img class="pc" src="pieces/${p.color}${p.type.toUpperCase()}.svg" alt="">` : '');
-    const badge = mark && mark.sq === sq
+    const badge = mark && mark.sq === sq && mark.kind
+      ? `<span class="mark k-${mark.kind}" title="${mark.kind}">${mark.kind === 'book' ? BOOK : GLYPH[mark.kind]}</span>`
+      : mark && mark.sq === sq
       ? `<span class="mark ${mark.ok ? 'ok' : 'bad'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${mark.ok ? 'M5 12.5l4.5 4.5L19 7.5' : 'M7 7l10 10M17 7L7 17'}"/></svg></span>` : '';
     html += `<button class="${cls.join(' ')}" data-sq="${sq}" aria-label="${sq}${p ? ' ' + p.color + p.type : ''}">${piece}${badge}${fileLbl}${rankLbl}</button>`;
   }
@@ -212,7 +219,7 @@ export function enableDrag(el, { canDrag, onDrop }) {
       sq?.querySelector('img.pc')?.classList.add('dragging');
       // Like Lichess: the picked-up piece's square and its moves are marked while you drag.
       sq?.classList.add('sel');
-      for (const m of el._game?.moves({ square: from, verbose: true }) || []) el.querySelector(`[data-sq="${m.to}"]`)?.classList.add(m.captured ? 'cap' : 'dot');
+      for (const m of (el._destsFor ? el._destsFor(from) : el._game?.moves({ square: from, verbose: true })) || []) el.querySelector(`[data-sq="${m.to}"]`)?.classList.add(m.captured ? 'cap' : 'dot');
     }
     if (moved) place(e);
   });

@@ -398,7 +398,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .captured b { margin-left: 12px; font: 600 .85rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* Evaluation bar, upright beside the board like on Lichess: White's share fills from White's side */
-.board-row { display: grid; }
+.board-row { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; }
 /* Black taken pieces need a light edge to show on the dark page */
 .captured img[src*="/bP"], .captured img[src*="/bN"], .captured img[src*="/bB"], .captured img[src*="/bR"], .captured img[src*="/bQ"] {
   filter: drop-shadow(0 0 1px rgb(255 255 255 / .75)) drop-shadow(0 0 1px rgb(255 255 255 / .5));
@@ -512,3 +512,26 @@ body:has(#trainer:not([hidden])) .brand span { color: var(--muted); }
   :root:not([data-theme="light"]) #trainer .seg button[aria-pressed="true"] { background: #2b2a28; }
 }
 :root[data-theme="dark"] #trainer .seg button[aria-pressed="true"] { background: #2b2a28; }
+
+/* Evaluation bar, upright beside the board like on Lichess: White's share fills from White's side */
+.evalbar { position: relative; border-radius: 6px; overflow: hidden; background: #2a2724; border: 1px solid var(--line); }
+.evalbar-white { position: absolute; left: 0; right: 0; bottom: 0; height: 50%; background: #f2efe8; transition: height .3s ease-out; }
+.evalbar.flip .evalbar-white { bottom: auto; top: 0; }
+.evalbar-num { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font: 600 .58rem var(--font-mono); letter-spacing: -0.04em; color: #2a2724; }
+.evalbar.flip .evalbar-num { bottom: auto; top: 6px; }
+.evalbar.behind .evalbar-num { color: #f2efe8; }
+.evalbar.stale { opacity: .45; }
+@media (prefers-reduced-motion: reduce) { .evalbar-white { transition: none; } }
+
+/* Premove squares, Lichess blue */
+.sq.pre::after { content: ""; position: absolute; inset: 0; background: rgb(20 30 85 / .5); }
+
+/* Move badges: on the square of the last move and after moves in the list */
+.mark[class*="k-"] { font: 700 11px/1 var(--font-body); color: #fff; letter-spacing: -0.04em; width: 30%; height: 30%; }
+.mark[class*="k-"] { font-size: clamp(9px, 2.2vw, 15px); }
+.mark.k-book svg { stroke: #fff; stroke-width: 2.2; }
+.k-brilliant { --k: #1baca6; } .k-best { --k: #5c9e3a; } .k-good { --k: #7d9f5f; } .k-book { --k: #a88865; }
+.k-inaccuracy { --k: #d6a21b; } .k-mistake { --k: #e07b24; } .k-blunder { --k: #ca3431; }
+.mark[class*="k-"] { background: var(--k); }
+.nag { margin-left: 2px; font: 700 .75em var(--font-body); color: var(--k); }
+.why .verdict { border-left: 3px solid var(--k); padding-left: 8px !important; }
