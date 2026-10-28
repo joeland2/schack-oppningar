@@ -2,9 +2,9 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261028213527';
-import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028213527';
-import { build, cache, myName, skillsOf, storedGames, PV } from './profile.js?v=20261028213527';
+import { login } from './lichess.js?v=20261028213706';
+import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028213706';
+import { build, cache, myName, skillsOf, storedGames, PV } from './profile.js?v=20261028213706';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -48,7 +48,7 @@ function render(name, p) {
   }
   const mine = puzzles();
   steps.push(['Puzzles from your own games', mine.length
-    ? `<p>${mine.length} positions from your games where you went wrong. Find the move you missed. <a href="profile.html#pf-analyse">Analyse more games</a> for more.</p>`
+    ? `<p>${mine.length} positions from your games where you went wrong. Find the move you missed. <a href="profile.html">Analyse more games</a> on your profile for more.</p>`
     : '<p>The positions in your games where you went wrong, as puzzles: blunders, missed wins and missed mates.</p>',
   mine.length ? '<a class="cta" href="mistakes.html">Solve them</a>' : '<a class="cta" href="./?do=mistakes">Find my mistakes</a>']);
   const ops = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))]

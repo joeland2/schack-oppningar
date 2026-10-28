@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028213527';
-import { STYLE_OF } from './styles.js?v=20261028213527';
+import { account, login, finishLogin } from './lichess.js?v=20261028213706';
+import { STYLE_OF } from './styles.js?v=20261028213706';
 
 const MAX = 500;
 const PV = 4; // bumped when the profile gains something new: older saved profiles are read again
@@ -353,8 +353,7 @@ function costOf(p, n) {
 let analysing = null; // { stop } while a run is going
 async function analyse(name, n) {
   const el = $('#pf-analyse');
-  if (!RAW || RAW_NAME.toLowerCase() !== name.toLowerCase()) { RAW = storedGames(name); RAW_NAME = name; }
-  if (!RAW) await build(name);
+  await build(name); // the games played since are fetched first, so they are analysed too
   const todo = RAW.slice(0, n).filter((g) => !g.analysis && g.moves);
   const total = sum(todo, (g) => g.moves.split(' ').length), t0 = Date.now();
   let done = 0;
@@ -383,14 +382,16 @@ async function analyse(name, n) {
   const p = await readAll(name, RAW);
   if (mine === runs) render(name, Date.now(), p); // unless another player was looked up meanwhile
 }
+// A slim bar at the top: how many games are analysed, and analysing the newest 100, 250 or 500
+// in all. New games are fetched first; games already analysed are always skipped.
 function analysePanel(name, p) {
-  if (analysing) return `<div id="pf-analyse" class="pf-analyse"><p class="pf-an-progress">Analysing…</p><div class="pf-an-bar"><i></i></div><button type="button" class="ghost" data-stop>Stop</button></div>`;
+  if (analysing) return `<div id="pf-analyse" class="pf-analyse running"><span class="pf-an-progress">Analysing…</span><div class="pf-an-bar"><i></i></div><button type="button" class="link" data-stop>Stop</button></div>`;
   if (!p.todo) return '';
   const opts = [100, 250, 500].filter((n) => n <= Math.max(100, p.n)).map((n) => ({ n, ...costOf(p, n) }));
   return `<div id="pf-analyse" class="pf-analyse">
-    <p><b>${p.analysed} of ${p.n} games are analysed</b>${p.ours ? ` (${p.ours} of them here)` : ''}. Accuracy, blunders and the Openings, Tactics, Finishing and Defending skills come from analysed games, so more of them make those numbers more reliable. Analyse the newest games here, with Stockfish in your browser; games already analysed are skipped:</p>
-    <div class="pf-an-opts">${opts.map((o) => `<button type="button" class="ghost" data-analyse="${o.n}" ${o.games ? '' : 'disabled'}><b>Newest ${o.n}</b><small>${o.games ? `${o.games} to analyse · ${minutes(o.sec)}` : 'all analysed'}</small></button>`).join('')}</div>
-    <p class="info">Keep this page open while it runs. You can stop at any time; finished games are kept.</p></div>`;
+    <span><b>${p.analysed}/${p.n}</b> games analysed${p.ours ? ` (${p.ours} here)` : ''}. Analyse the newest:</span>
+    ${opts.map((o) => `<button type="button" class="pf-an-opt" data-analyse="${o.n}" ${o.games ? '' : 'disabled'} title="${o.games ? `${o.games} games without analysis, ${minutes(o.sec)}, with Stockfish in your browser` : 'All analysed'}">${o.n} <small>${o.games ? `${o.games} new · ${minutes(o.sec).replace('about ', '~')}` : 'done'}</small></button>`).join('')}
+  </div>`;
 }
 function bindAnalyse(name) {
   const el = $('#pf-analyse');
@@ -472,6 +473,7 @@ function render(name, at, p) {
   const kpis = [['Score', pct(p.score)], p.acc !== null && ['Accuracy', `${p.acc}%`], p.blunders !== null && ['Blunders / game', p.blunders.toFixed(1)], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
     ${playerBar(name)}
+    ${analysePanel(name, p)}
     <section class="pf-hero">
       ${playerCard(name, p, t, skills)}
       <div class="pf-hero-text">
@@ -489,7 +491,6 @@ function render(name, at, p) {
       <h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
       <p class="info pf-note">Each bar is read from one thing in the games. 50 is a so-so result.</p>
       ${skillBars(skills, say, me)}
-      ${analysePanel(name, p)}
     </section>
     <div class="pf-two">
       <section class="pf-card"><h2 class="pf-good">Strengths</h2>${list(p.good, 'Nothing stands out yet. More games give a clearer picture.')}</section>
@@ -518,7 +519,7 @@ function render(name, at, p) {
       <p class="info">Read from ${me ? 'your' : `${esc(name)}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
       <p class="info">Results, openings, opening style, the clock, endgames and the rating graph use all ${p.n} games.
         Accuracy, blunders and the Openings, Tactics, Finishing and Defending skills need a computer's verdict on every move, so they use only the
-        ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'}${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. Analyse more under Skills.</p>
+        ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'}${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. Analyse more from the bar at the top.</p>
       <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Score counts a win as 1 and a draw as a half.</p>
     </section>`;
   $('#refresh').addEventListener('click', () => run(name));

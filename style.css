@@ -863,16 +863,16 @@ a.cta { color: var(--accent-ink); }
   :root:not([data-theme="light"]) .ocard.side-w { --accent: #f4efe6; --surface: #2c2823; --ink: #f4efe6; --muted: #b5ad9f; --line: #3d3730; --raised: #39342d; --good: #5fc48a; --bad: #ff6b6b; }
 }
 :root[data-theme="dark"] .ocard.side-w { --accent: #f4efe6; --surface: #2c2823; --ink: #f4efe6; --muted: #b5ad9f; --line: #3d3730; --raised: #39342d; --good: #5fc48a; --bad: #ff6b6b; }
-/* Profile: analysing more games here */
-.pf-analyse { grid-column: 1 / -1; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
-.pf-analyse p { margin: 0; max-width: 80ch; font-size: 14px; }
-.pf-an-opts { display: flex; flex-wrap: wrap; gap: 10px; }
-.pf-an-opts button { display: grid; gap: 2px; text-align: left; padding: 10px 14px; min-width: 170px; }
-.pf-an-opts button small { color: var(--muted); font-size: 12px; }
-.pf-an-opts button:disabled { opacity: .55; cursor: default; }
-.pf-an-bar { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+/* Profile: the slim analyse bar at the top */
+.pf-analyse { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 13.5px; color: var(--muted); }
+.pf-analyse b { color: var(--ink); }
+.pf-an-opt { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 99px; padding: 3px 10px; font: 600 13px var(--font-body); cursor: pointer; }
+.pf-an-opt small { color: var(--muted); font-weight: 400; }
+.pf-an-opt:hover:not(:disabled) { border-color: var(--hot); }
+.pf-an-opt:disabled { opacity: .5; cursor: default; }
+.pf-analyse.running { gap: 10px; }
+.pf-an-bar { flex: 1 1 160px; max-width: 320px; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
 .pf-an-bar i { display: block; height: 100%; width: 0; background: var(--data); transition: width .3s; }
-.pf-analyse [data-stop] { justify-self: start; }
 
 /* Openings list: the side tabs and the search on one row; the Lichess box below the list */
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
