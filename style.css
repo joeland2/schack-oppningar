@@ -659,3 +659,7 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
 .game-stats li button:hover:not(:disabled) { background: var(--line); }
 .game-stats li button:disabled { cursor: default; }
 .done-why { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: .92rem; color: var(--ink); }
+button.link { padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.message button.link { display: block; margin-top: 6px; }
+.lb-choice { margin: 0; font-size: 13px; color: var(--ink); }
+.lb-choice button.link { margin-left: 6px; font-size: 12px; color: var(--muted); }

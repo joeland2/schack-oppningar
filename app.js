@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028155142';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028155142';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028155142';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028155142';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028160549';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028160549';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028160549';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028160549';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -30,7 +30,11 @@ const listEl = $('#openings');
 const msgEl = $('#message');
 const movesEl = $('#moves');
 
-let stats = load(STORE, {});    // { 'blitz:Italian Game': { done: [lineKey], total } }
+let stats = load(STORE, {});
+// Your own moves: where you would rather play another move than the suggested one, per opening,
+// { [opening id]: { [moves before, as lineKey]: san } }. The lines are built around them.
+const CHOICE_KEY = STORE + '-choice';
+let choices = load(CHOICE_KEY, {});    // { 'blitz:Italian Game': { done: [lineKey], total } }
 // Progress saved before time controls existed was all blitz.
 for (const k of Object.keys(stats)) if (!k.includes(':')) { stats[`blitz:${k}`] = stats[k]; delete stats[k]; }
 let speed = load(STORE + '-speed', 'blitz');
@@ -222,7 +226,7 @@ function buildLines(op) {
     let moves = l.moves;
     if (moves.length >= MAX_PLY) { done.push(l); continue; }
     if (moves.length % 2 === (op.side === 'w' ? 0 : 1)) {
-      const san = userMove(moves, book);
+      const san = choices[op.id]?.[lineKey(moves)] || userMove(moves, book);
       if (!san) { done.push(l); continue; }
       moves = [...moves, san];
     }
@@ -565,10 +569,41 @@ function analyse(games, name) {
 console.assert(analyse([], 'x').counted === 0, 'analyse');
 
 
+// Where your games left your lines: in each game of an opening in the list, the first of your moves
+// that is not your line's move while the game was still in one of its lines. Grouped by position and
+// move, the most frequent first. The opponent leaving the lines is no fault of yours, so it ends the walk.
+function leftLines(games, name) {
+  const me = name.toLowerCase(), built = new Map(), found = new Map();
+  for (const g of games) {
+    const side = g.players.white.user?.id === me ? 'w' : g.players.black.user?.id === me ? 'b' : null;
+    if (!side || !g.moves) continue;
+    const moves = g.moves.split(' ').map(clean).slice(0, MAX_PLY);
+    const o = openingOf(moves, side);
+    const op = o && OPENINGS.find((x) => x.family === o.family && x.side === side && isVs(x) === o.vs);
+    if (!op) continue;
+    if (!built.has(op.id)) built.set(op.id, buildLines(op));
+    let ls = built.get(op.id);
+    for (let i = 0; i < moves.length && ls.length; i++) {
+      const want = ls.find((l) => l.moves[i] !== undefined)?.moves[i]; // lines that share the moves so far share your move
+      if (want === undefined) break; // past the end of your lines
+      if ((i % 2 === 0) === (side === 'w') && moves[i] !== want) {
+        const key = `${op.id}|${lineKey(moves.slice(0, i))}|${moves[i]}`;
+        const f = found.get(key) ?? { op, before: moves.slice(0, i), played: moves[i], want, games: 0 };
+        f.games++;
+        found.set(key, f);
+        break;
+      }
+      ls = ls.filter((l) => l.moves[i] === moves[i]);
+    }
+  }
+  return [...found.values()].sort((a, b) => b.games - a.games);
+}
+
 // Your Lichess games in one compact box: what you play most as White and as Black (with how you score
 // against players at your level), and what to train: the opening moves you keep getting wrong, then the
 // mistakes you repeat in whole games.
 function renderMine({ counted, slips, openings }, name) {
+  const left = rating ? leftLines(lastGames?.games || [], name) : [];
   $('#mine-out').innerHTML = '';
   const el = $('#my-openings');
   el.hidden = !counted;
@@ -595,7 +630,12 @@ function renderMine({ counted, slips, openings }, name) {
     </div>
     <div class="ml-col">
       <h2>What to train</h2>
-      <h3>Opening moves you get wrong</h3>
+      <h3>Where you left your lines</h3>
+      <ul class="ml-list">${left.slice(0, 3).map((f, n) => `<li><button type="button" class="ml-row" data-left="${n}">
+        <span class="ml-name">${isVs(f.op) ? 'vs ' : ''}${f.op.name}, move ${Math.floor(f.before.length / 2) + 1}</span>
+        <span class="ml-meta">you played <b class="down">${f.played}</b>, your line <b>${f.want}</b> · ${plural(f.games, 'game')}</span>
+      </button></li>`).join('') || '<li class="info">Your games stayed in your lines.</li>'}</ul>
+      <h3>Opening moves strong players avoid</h3>
       <ul class="ml-list">${slips.slice(0, 3).map((s, n) => `<li><button type="button" class="ml-row" data-practise="${n}">
         <span class="ml-name">${slipName(s)}</span>
         <span class="ml-meta">you play <b class="down">${s.played}</b>, strong players <b>${s.best}</b> · ${plural(s.games, 'game')}</span>
@@ -603,6 +643,13 @@ function renderMine({ counted, slips, openings }, name) {
       <h3>Mistakes in whole games</h3>
       <div id="my-mistakes"></div>
     </div>`;
+  el.querySelectorAll('[data-left]').forEach((b) => b.addEventListener('click', () => {
+    const f = left[Number(b.dataset.left)];
+    start(f.op);
+    const want = lineKey([...f.before, f.want]) + ' ';
+    const i = lines.findIndex((l) => (lineKey(l.moves) + ' ').startsWith(want));
+    if (i >= 0) play(i);
+  }));
   el.querySelectorAll('[data-my]').forEach((b) => b.addEventListener('click', () => start(find(openings[Number(b.dataset.my)]))));
   el.querySelectorAll('[data-practise]').forEach((b) => b.addEventListener('click', () => {
     const s = slips[Number(b.dataset.practise)];
@@ -877,8 +924,7 @@ function renderWhy() {
   // The line-done summary is made at the line's end and stays while you play on from there. The tips
   // are about the move to play at the line's end, so they go once you have played on.
   if (ply >= line.length && hist.length === line.length) {
-    const plan = planOf(cur);
-    lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p>${lineWhy()}${lineFacts()}${plan ? `<p class="plan"><b>The opening's general plan:</b> ${plan}</p>` : ''}`;
+    lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p>${lineWhy()}${lineFacts()}`;
   }
   // "How to go on" is for the moment you start playing on: shown at the line's end, gone once you move.
   let tips = '';
@@ -1386,7 +1432,44 @@ function explainWrong(san) {
   else if (missesHere >= 2) parts.push('The piece to move is highlighted.');
   else parts.push('Try again.');
   say(`${san} is not the move here. ${parts.join(' ')}`, 'bad');
+  // A sound move with games behind it can become your own move here.
+  const rootLen = Math.max(...(cur.roots || [{ moves: cur.root.split(' ') }]).map((r) => r.moves.length)); // the opening's own moves stay
+  if (mode === 'learn' && ply >= rootLen && share(clean(san)) >= RARE && score(clean(san)) !== null) {
+    msgEl.insertAdjacentHTML('beforeend', ` <button type="button" class="link" data-choose="${clean(san)}">Play ${clean(san)} here in my lines</button>`);
+  }
 }
+
+// Making a move your own: the lines are built again around it, and you go on from right after it.
+function chooseMove(san) {
+  const before = line.slice(0, ply), at = [...before, san];
+  choices[cur.id] = { ...choices[cur.id], [lineKey(before)]: san };
+  rebuildLines();
+  const i = lines.findIndex((l) => (lineKey(l.moves) + ' ').startsWith(lineKey(at) + ' '));
+  if (i < 0) { // no game goes on from there: keep the old move
+    delete choices[cur.id][lineKey(before)];
+    rebuildLines();
+    return say(`Too few games go on after ${san} to build a line from it.`, 'bad');
+  }
+  store(CHOICE_KEY, choices);
+  play(i);
+  gameGen++; busy = false; hintSq = []; // play()'s own first reply no longer applies
+  for (const m of at) { lastMove = game.move(m); notes[ply++] = 'book'; }
+  render();
+  say(`${san} is now your move here. Your lines are built around it.`, 'good');
+  if (ply >= line.length) finish(); else reply();
+}
+function unchoose(key) {
+  delete choices[cur.id]?.[key];
+  store(CHOICE_KEY, choices);
+  rebuildLines();
+  play(Math.min(lineIdx, lines.length - 1));
+}
+function rebuildLines() {
+  lines = buildLines(cur);
+  stats[statKey(cur.id)].total = lines.length;
+  store(STORE, stats);
+}
+msgEl.addEventListener('click', (e) => { const b = e.target.closest('[data-choose]'); if (b && !busy) chooseMove(b.dataset.choose); });
 
 // ---------- Practice: lines come back for review ----------
 // A line cleared in Practice moves up a box and comes back after the box's interval; a mistake sends it
@@ -1442,7 +1525,17 @@ const practiceSet = () => {
 // ---------- Lines overview and the "opening complete" approval ----------
 // Lines of the current list that are cleared (progress saved for other ratings may hold other lines).
 const cleared = () => lines.filter((l) => stats[statKey(cur.id)]?.done.includes(lineKey(l.moves))).length;
-const lineName = (l) => (l.name ? l.name.split(' · ').at(-1).split(': ').at(-1) : 'Unnamed line');
+// The main line is called that, as in a course; the other lines by their opening name.
+const lineName = (l) => (l.branch === 1 ? 'Main line' : l.name ? l.name.split(' · ').at(-1).split(': ').at(-1) : 'Side line');
+const moveLabel = (i, san) => `${Math.floor(i / 2) + 1}${i % 2 ? '...' : '.'}${san}`;
+// What tells a line apart: the trap it punishes, or the move where it leaves the main line (the main
+// line itself: its last moves).
+function lineTag(l) {
+  if (l.trap) return `if they play ${trapMove(l.trap)}`;
+  const main = lines[0]?.moves || [];
+  const i = l.moves.findIndex((m, k) => m !== main[k]);
+  return l === lines[0] || i < 0 ? lineEnd(l) : `after ${moveLabel(i, l.moves[i])}`;
+}
 // The line's last two moves with their real move numbers, e.g. "5.O-O d6", so same-named lines can be told apart.
 // A line's trap: the opponent's natural-looking slip, how well you do after it, and the move that
 // punishes it with what that move does.
@@ -1470,7 +1563,9 @@ function renderLineBox() {
   const r = s.rep?.[lineKey(l.moves)];
   const nextReview = r?.box > 0 ? (r.due <= Date.now() ? 'This line is due for review today.' : `Next review of this line in ${plural(Math.ceil((r.due - Date.now()) / DAY), 'day')}.`) : '';
   $('#line-box').innerHTML = `
-    <h2 class="lb-name">Line ${lineIdx + 1} of ${n}: ${lineName(l)} <small>${lineEnd(l)}</small></h2>
+    <h2 class="lb-name">Line ${lineIdx + 1} of ${n}: ${lineName(l)} <small>${lineTag(l)}</small></h2>
+    ${Object.entries(choices[cur.id] || {}).filter(([k, san]) => { const i = k ? k.split(' ').length : 0; return lineKey(l.moves.slice(0, i)) === k && l.moves[i] === san; })
+      .map(([k, san]) => `<p class="lb-choice">Your own move: <b>${moveLabel(k ? k.split(' ').length : 0, san)}</b> <button type="button" class="link" data-unchoose="${k}">Use the suggested move</button></p>`).join('')}
     ${s.done?.includes(lineKey(l.moves)) ? '<p class="lb-status cleared"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>You have cleared this line</p>'
       : s.played?.includes(lineKey(l.moves)) ? '<p class="lb-status"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>You have learned this line</p>' : ''}
     <div class="lb-stats">
@@ -1483,13 +1578,15 @@ function renderLineBox() {
     <p class="lb-note">${nextReview ? nextReview + ' ' : ''}Progress is saved in this browser.</p>`;
 }
 
+$('#line-box').addEventListener('click', (e) => { const b = e.target.closest('[data-unchoose]'); if (b) unchoose(b.dataset.unchoose); });
+
 function renderLines() {
   const s = stats[statKey(cur.id)] || {}, done = s.done || [], learned = s.played || [];
   $('#lines-sum').textContent = `All ${lines.length} lines`; // the line box above already counts the cleared ones
   // Green once you have played a line through (Learn), stronger with a tick once cleared (Practice).
   const state = (l) => (done.includes(lineKey(l.moves)) ? ' cleared' : learned.includes(lineKey(l.moves)) ? ' learned' : '');
   $('#lines-list').innerHTML = lines.map((l, i) => `<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}" data-i="${i}">
-      <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? '<span class="trap-tag">Trap</span> ' : ''}${lineName(l)}<small>${l.trap ? `if they play ${trapMove(l.trap)}` : lineEnd(l)}</small></span>
+      <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? '<span class="trap-tag">Trap</span> ' : ''}${lineName(l)}<small>${lineTag(l)}</small></span>
       <span class="line-share">${bigShare(l.share)}</span><span class="line-ok">${state(l) ? `<span class="done-tag"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${state(l) === ' cleared' ? 'Cleared' : 'Learned'}</span>` : ''}</span>
     </button></li>`).join('');
 }
