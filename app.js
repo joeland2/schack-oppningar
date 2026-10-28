@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028154954';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028154954';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028154954';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028154954';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028155142';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028155142';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028155142';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028155142';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1518,7 +1518,10 @@ function reply() {
     render();
     if (ply >= line.length) return finish();
     if (playPremove()) return;
-    if (mode !== 'time') prompt('Your move.'); // in a trial the last right/wrong note stays up
+    // In Practice the "Right" note stays up with the prompt, since the reply comes before you can read it;
+    // in a trial the last right/wrong note stays up.
+    if (mode === 'try' && ply >= 2) prompt(`Right: ${line[ply - 2]}. Your move.`, 'good');
+    else if (mode !== 'time') prompt('Your move.');
   }, mode === 'time' ? 150 : 450);
 }
 
@@ -1603,8 +1606,8 @@ function expectedMove() {
 }
 
 // In Learn mode the move to play is always shown.
-function prompt(text) {
-  if (mode !== 'learn' || !userTurn() || ply >= line.length) return say(text);
+function prompt(text, tone = '') {
+  if (mode !== 'learn' || !userTurn() || ply >= line.length) return say(text, tone);
   const m = expectedMove();
   hintSq = [m.from, m.to];
   renderBoard();
