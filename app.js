@@ -1,10 +1,10 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028202738';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028202738';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028202738';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028202738';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028202738';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028202738';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028202955';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028202955';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028202955';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028202955';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028202955';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028202955';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -419,7 +419,7 @@ function renderList() {
       : `No opening at your level matches "${q.replace(/[<&"]/g, '')}".`}</p>
       <div class="olist">${list.map((o) => card(o).replace('</h3>', `<small class="as">you play ${sideName(o.side)}</small></h3>`)).join('')}</div>`;
   } else if (listSide === 'r') {
-    body = `<p class="og-about">${mineList.length ? 'The openings you have starred, from both sides. Practise weakest picks from these.' : 'Nothing here yet. Star (★) an opening as White and the defences you want as Black to build your repertoire.'}</p>
+    body = `<p class="og-about">${mineList.length ? 'The openings you have starred, from both sides. <button type="button" class="link" data-traps>Practise their traps</button>' : 'Nothing here yet. Star (★) an opening as White and the defences you want as Black to build your repertoire.'}</p>
       <div class="olist">${mineList.map(card).join('')}</div>`;
   } else {
     // Your starred openings of this side come first, pinned, even ones the style or the cut would hide.
@@ -451,6 +451,7 @@ function renderList() {
 }
 
 listEl.addEventListener('click', (e) => {
+  if (e.target.closest('[data-traps]')) return startTraps();
   const more = e.target.closest('[data-more]');
   if (more) { showAll[more.dataset.more] = true; renderList(); }
   const star = e.target.closest('[data-star]');
@@ -2507,13 +2508,6 @@ document.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('clic
   if (OPENINGS.length) renderList();
 }));
 $('#back').addEventListener('click', showPicker);
-$('#traps').addEventListener('click', () => { if (rating && OPENINGS.length) startTraps(); });
-$('#weakest').addEventListener('click', () => {
-  const list = repertoire.size ? OPENINGS.filter((o) => repertoire.has(o.id)) : shown();
-  if (!list.length) return;
-  const score = (o) => { const s = stats[statKey(o.id)]; return s && s.total ? s.done.length / s.total : 0; };
-  start([...list].sort((a, b) => score(a) - score(b))[0]);
-});
 function setMode(m, restart = true, remember = true) {
   const was = mode;
   mode = m; view = null;
