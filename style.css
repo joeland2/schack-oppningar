@@ -668,7 +668,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
    stays in full view, with the moment's arrows on it. */
 .moment { display: grid; gap: 6px; padding: 10px 14px; border-radius: 10px; background: var(--surface); color: var(--ink);
   border: 1px solid var(--line); border-left: 5px solid var(--tone); box-shadow: var(--shadow); animation: moment-in .2s ease-out; }
-.moment-trap, .moment-blunder { --tone: var(--bad); }
+.moment-trap, .moment-blunder, .moment-wrong { --tone: var(--bad); }
 .moment-chance { --tone: var(--good); }
 .moment .moment-title { margin: 0; font: 800 clamp(20px, 2.4vw, 28px)/1 var(--font-display); color: var(--tone); letter-spacing: -.01em; }
 .moment .moment-text { margin: 0; font-size: .92rem; line-height: 1.4; }

@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028171910';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028171910';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028171910';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028171910';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028172025';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028172025';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028172025';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028172025';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -764,7 +764,7 @@ function renderBoard() {
     }
     return drawBoard(boardEl, g, { side: cur.side, last: m || null, mark: m && notes[view - 1] && { sq: m.to, kind: notes[view - 1] } });
   }
-  if (momentArrows && view === null) return drawBoard(boardEl, game, { side: cur.side, last: lastMove, wrong: lastMove?.to, arrows: momentArrows });
+  if (momentArrows && view === null) return drawBoard(boardEl, game, { side: cur.side, last: lastMove, wrong: momentArrows[0]?.[1], arrows: momentArrows }); // the red arrow's square
   const n = game.history().length - 1, note = notes[n];
   // At the line's end every offered move gets an arrow (green: real games, blue: Stockfish), unless
   // one is pointed at.
@@ -1772,11 +1772,12 @@ function tryMove(from, to) {
     wrongSq = to; sel = null;
     renderBoard();
     shake(boardEl);
-    if (mode === 'try') { // a slip in Practice: see the right move, then the line again from the start
-      busy = true;
-      const gen = gameGen;
-      say(`${m.san} is not the move here: the line plays ${moveWords(expectedMove())}. Starting the line again.`, 'bad');
-      setTimeout(() => { if (gen === gameGen) play(lineIdx, true); }, 2500);
+    if (mode === 'try') { // a slip in Practice: see the right move, then the line again from the start, when you are ready
+      const want = expectedMove();
+      wrongSq = null;
+      say(`${m.san} is not the move here. The line plays ${moveWords(want)}.`, 'bad');
+      moment('wrong', 'Not this one', `You played <b>${m.san}</b> (red). The line plays <b>${want.san}</b> (green)${ideaAt(new Chess(game.fen()), want.san) ? `: ${ideaAt(new Chess(game.fen()), want.san).replace(/^./, (c) => c.toLowerCase())}` : '.'} Take a look, then play the line again from the start.`,
+        [{ label: 'OK, start again', run: () => play(lineIdx, true) }], null, [[m.from, m.to, RED], [want.from, want.to, GREEN]]);
       return true;
     }
     if (missesHere >= 2) showHint();
