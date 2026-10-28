@@ -1049,3 +1049,14 @@ a.cta { color: var(--accent-ink); }
 .cmp-bar { display: flex; align-items: center; gap: 8px; }
 .cmp-bar i { display: block; flex: none; height: 14px; border-radius: 7px; min-width: 4px; }
 .cmp-bar b { font: 400 22px/1 var(--font-poster); }
+/* Compare: the summary in words; cards and names open each profile */
+.cmp-story p { margin: 0 0 8px; max-width: 80ch; }
+.cmp-story p:last-child { margin-bottom: 0; }
+.cmp-card { display: block; text-decoration: none; border-radius: 4px; transition: transform .15s; }
+.cmp-card:hover, .cmp-card:focus-visible { transform: translateY(-3px); }
+.cmp-head .pf-h1 a { color: inherit !important; text-decoration: none; }
+.cmp-head .pf-h1 a:hover { text-decoration: underline; text-decoration-thickness: 3px; }
+@media (prefers-reduced-motion: reduce) { .cmp-card { transition: none; } }
+.pf-portrait { margin: 14px 0 0; max-width: 64ch; font-size: 16px; line-height: 1.55; }
+.pf-about p { color: var(--muted); font-size: 14px; }
+.pf-about p b { color: var(--ink); }

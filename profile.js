@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028221126';
-import { STYLE_OF } from './styles.js?v=20261028221126';
+import { account, login, finishLogin } from './lichess.js?v=20261028221642';
+import { STYLE_OF } from './styles.js?v=20261028221642';
 
 const MAX = 500;
-const PV = 7;
+const PV = 9;
 const ENOUGH = 20;
 const WHY_ANALYSE = 'Lichess only analyses games you ask it to. Analysed games give your blunders, accuracy and four of the skills, and become puzzles in My practice. Stockfish runs in your browser; no game is done twice.'; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -88,6 +88,8 @@ export function profileOf(games) {
   for (const g of an) for (const k in slips) slips[k] += g.slips[k];
   const p = {
     n, score: score(games), white: score(games.filter((g) => g.side === 'w')), black: score(games.filter((g) => g.side === 'b')),
+    // How often the player wins: wins out of all games (score counts a draw as half a win, these do not).
+    winRate: share(games, (g) => g.result === 1), winW: share(games.filter((g) => g.side === 'w'), (g) => g.result === 1), winB: share(games.filter((g) => g.side === 'b'), (g) => g.result === 1),
     nWhite: games.filter((g) => g.side === 'w').length,
     speeds: Object.entries(games.reduce((m, g) => ({ ...m, [g.speed]: [...(m[g.speed] || []), g] }), {}))
       .map(([speed, gs]) => ({ speed, n: gs.length, score: score(gs), rating: gs[0].rating + gs[0].diff, change: gs[0].rating + gs[0].diff - gs[gs.length - 1].rating })) // newest game first
@@ -154,18 +156,21 @@ function pieceOf(games, analysed) {
 console.assert(pieceOf([{ played: { n: [40, 8], b: [40, 1], r: [10, 0], q: [40, 6] } }], 20).piece === 'b', 'pieceOf');
 
 // What kind of player the games show: every trait that clearly holds, the strongest first.
+// The two traits that weigh most. Each gets a strength: how far the games go past the point where the
+// trait clearly holds (1 = just there); the two strongest name the player, always two (max two).
 function typeOf(p) {
   const traits = [
-    p.attacking >= 0.35 && { name: 'Attacker', why: `${pct(p.attacking)} of your games are in attacking openings or gambits: you like the initiative early.` },
-    p.solid >= 0.5 && p.attacking < 0.25 && { name: 'Solid builder', why: `${pct(p.solid)} of your games are in solid or positional openings: you build first and attack later.` },
-    p.queensOff >= 0.35 && { name: 'Endgame player', why: `The queens come off before move 25 in ${pct(p.queensOff)} of your games: you are happy to trade and play it out.` },
-    p.draws < 0.04 && p.moves <= 35 && { name: 'Fighter', why: `Almost no draws (${pct(p.draws)}) and games of ${p.moves} moves on average: your games are decided, one way or the other.` },
-    p.analysed >= ENOUGH && p.downs >= 5 && p.saved >= 0.35 && { name: 'Comeback player', why: `In ${pct(p.saved)} of the games where you were clearly losing, you still won or drew.` },
-    p.lowTime >= 0.3 && { name: 'Time scrambler', why: `You end ${pct(p.lowTime)} of your games with under a tenth of your time left.` },
-    p.noCastle >= 0.25 && { name: 'King walker', why: `Your king stays in the centre in ${pct(p.noCastle)} of your longer games.` },
-  ].filter(Boolean);
-  return traits.length ? traits : [{ name: 'All-rounder', why: 'No style stands out: you play a bit of everything.' }];
+    { name: 'Attacker', w: p.attacking / 0.35, why: `${pct(p.attacking)} of your games are in attacking openings or gambits: you like the initiative early.` },
+    { name: 'Solid builder', w: (p.solid / 0.5) * (p.attacking < 0.25 ? 1 : 0.6), why: `${pct(p.solid)} of your games are in solid or positional openings: you build first and attack later.` },
+    { name: 'Endgame player', w: p.queensOff / 0.35, why: `The queens come off before move 25 in ${pct(p.queensOff)} of your games: you are happy to trade and play it out.` },
+    { name: 'Fighter', w: (0.06 / Math.max(p.draws, 0.01)) * 0.5 * (35 / Math.max(p.moves, 15)), why: `Few draws (${pct(p.draws)}) and games of ${p.moves} moves on average: your games are decided, one way or the other.` },
+    { name: 'Comeback player', w: p.analysed >= ENOUGH && p.downs >= 5 ? p.saved / 0.35 : 0, why: `In ${pct(p.saved ?? 0)} of the games where you were clearly losing, you still won or drew.` },
+    { name: 'Time scrambler', w: p.lowTime / 0.3, why: `You end ${pct(p.lowTime)} of your games with under a tenth of your time left.` },
+    { name: 'King walker', w: p.noCastle / 0.25, why: `Your king stays in the centre in ${pct(p.noCastle)} of your longer games.` },
+  ].sort((x, y) => y.w - x.w);
+  return traits[0].w < 0.5 ? [{ name: 'All-rounder', why: 'No style stands out: you play a bit of everything.' }, traits[0]] : traits.slice(0, 2);
 }
+console.assert(typeOf({ attacking: 0.54, solid: 0.2, queensOff: 0.1, draws: 0.05, moves: 30, analysed: 50, downs: 30, saved: 0.47, lowTime: 0.16, noCastle: 0.1 }).map((t) => t.name).join() === 'Attacker,Comeback player', 'typeOf');
 
 // Good at / work on: each check with its evidence, kept only when it says something clear.
 function verdicts(p) {
@@ -507,6 +512,27 @@ function endsGrid(ends) {
     <div class="pf-ends-cell"><b>${pct(x[k])}</b><small>${name}</small><span class="pf-ends-bar"><i style="width:${x[k] * 100}%"></i></span></div>`).join('')}</div>`;
   return `<div class="pf-ends">${row('Wins', 'won', ends.won)}${row('Losses', 'lost', ends.lost)}</div>`;
 }
+// A portrait in words, from this player's own games: the openings they actually choose, how their
+// games end, their best piece, and the area that lifts or holds them back. No two read the same.
+function portrait(name, p, skills, me) {
+  const you = me ? 'You' : esc(name), your = me ? 'your' : 'their', are = me ? 'are' : 'is';
+  // The openings chosen, by family: the King's Gambit Accepted and Declined are one King's Gambit.
+  const own = (list) => [...new Set(list.filter((o) => !o.fam.startsWith('vs ')).map((o) => o.fam.replace(/ (Accepted|Declined)$/, '')))].slice(0, 2).map(esc);
+  const w = own(p.openings.w), b = own(p.openings.b);
+  const and = (xs) => xs.join(' and ');
+  const out = [];
+  const t = p.type.map((x) => x.name.toLowerCase());
+  out.push(`${you} ${are} ${article(t[0])} ${t[0]}${t[1] ? ` with a ${t[1]}'s streak` : ''}${w.length || b.length ? `, reaching for ${[w.length && `the ${and(w)} as White`, b.length && `the ${and(b)} as Black`].filter(Boolean).join(' and ')}` : ''}.`);
+  const known = skills.filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
+  if (known.length >= 2) out.push(`${me ? 'Your' : 'Their'} game is carried by ${known[0].label.toLowerCase()} and held back most by ${known[known.length - 1].label.toLowerCase()}.`);
+  if (p.piece) out.push(`${me ? 'Your' : 'Their'} most important piece is the ${PIECE_NAME[p.piece]}.`);
+  const e = p.ends.won, l = p.ends.lost;
+  const winsBy = e.mate >= e.resign && e.mate >= e.time ? `${pct(e.mate)} of wins by mate` : e.time >= e.resign ? `${pct(e.time)} of wins on the clock` : `${pct(e.resign)} of wins by resignation`;
+  out.push(`Games last ${p.moves} moves on average, with ${winsBy}${l.time >= 0.2 ? ` and ${pct(l.time)} of losses on time` : ''}.`);
+  const dw = (p.winW ?? 0) - (p.winB ?? 0);
+  if (Math.abs(dw) >= 0.06) out.push(`${you} win${me ? '' : 's'} clearly more often with ${dw > 0 ? 'White' : 'Black'} (${pct(Math.max(p.winW, p.winB))} against ${pct(Math.min(p.winW, p.winB))}).`);
+  return out.join(' ');
+}
 // The player card: the overall (the mean of the known skills), a short code for the type, the six skills.
 // The piece is drawn white for the black card; in dark mode, where the card is cream, CSS inverts it.
 const CARD_INK = 'w';
@@ -529,7 +555,7 @@ function render(name, at, p) {
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
   const list = (items, empty) => verdictList(items.map((i) => ({ ...i, why: say(i.why), href: me ? i.href : null })), empty);
   const known = skills.filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
-  const kpis = [['Score', pct(p.score)], p.acc !== null && p.analysed >= ENOUGH && ['Accuracy', `${p.acc}%`], p.blunders !== null && p.analysed >= ENOUGH && ['Blunders / game', p.blunders.toFixed(1)], ['Draws', pct(p.draws)]].filter(Boolean);
+  const kpis = [['Win rate', pct(p.winRate ?? p.score)], p.acc !== null && p.analysed >= ENOUGH && ['Accuracy', `${p.acc}%`], p.blunders !== null && p.analysed >= ENOUGH && ['Blunders / game', p.blunders.toFixed(1)], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
     ${playerBar(name)}
     <section class="pf-hero">
@@ -538,7 +564,8 @@ function render(name, at, p) {
         <p class="pf-kick">${me ? 'Your player type' : 'Player type'}</p>
         <h1 class="pf-h1">${esc(t[0].name)}</h1>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}
-        <div class="pf-about">${t.map((x) => `<p><b>${esc(x.name)}:</b> ${esc(TYPE_ABOUT[x.name] || '')} <span>${esc(say(x.why))}</span></p>`).join('')}</div>
+        <p class="pf-portrait">${portrait(name, p, skills, me)}</p>
+        <div class="pf-about">${t.map((x) => `<p title="${esc(TYPE_ABOUT[x.name] || '')}"><b>${esc(x.name)}:</b> ${esc(say(x.why))}</p>`).join('')}</div>
         ${tasteLine(p.styleMix, me)}
         ${known.length >= 2 ? `<p class="pf-best">Strongest: <b>${known[0].label}</b> · To train: <b>${known[known.length - 1].label}</b></p>` : ''}
       </div>
@@ -778,6 +805,13 @@ async function profileFor(name) {
 // again from just those games of each player, so a blitz player and a bullet player compare like
 // for like. The default is the time control the first player plays most, when the other has games in it too.
 const SPEEDS = ['bullet', 'blitz', 'rapid', 'classical'];
+// Each player's games read once (replaying them is the slow part), so switching time control is quick.
+const RECORDS = new Map();
+function recordsOf(name, games) {
+  const k = `${name.toLowerCase()}:${games.length}:${games[0]?.id}`;
+  if (!RECORDS.has(k)) RECORDS.set(k, games.map((g) => readGame(g, name.toLowerCase())));
+  return RECORDS.get(k);
+}
 const MIN_SPEED = 10; // games in a time control needed to compare it
 async function compare(a, b, speed = new URLSearchParams(location.search).get('speed')) {
   $('#profile').innerHTML = '';
@@ -787,7 +821,7 @@ async function compare(a, b, speed = new URLSearchParams(location.search).get('s
     const count = (gs, sp) => gs.filter((g) => g.speed === sp).length;
     const avail = SPEEDS.filter((sp) => count(ga, sp) >= MIN_SPEED && count(gb, sp) >= MIN_SPEED);
     if (speed === null) speed = avail.includes(A.p.speeds[0]?.speed) ? A.p.speeds[0].speed : 'all';
-    const sub = (X, gs) => (speed === 'all' || !gs.length ? X : { name: X.name, p: profileOf(gs.filter((g) => g.speed === speed).map((g) => readGame(g, X.name.toLowerCase()))) });
+    const sub = (X, gs) => (speed === 'all' || !gs.length ? X : { name: X.name, p: profileOf(recordsOf(X.name, gs).filter((g) => g.speed === speed)) });
     renderCompare(sub(A, ga), sub(B, gb), speed, avail);
   } catch (err) { $('#profile-msg').textContent = err.message; }
 }
@@ -797,9 +831,9 @@ function renderCompare(A, B, speed = 'all', avail = []) {
   const main = (p) => p.speeds[0];
   const rows = [
     ['Rating', num(main(A.p)?.rating) + (main(A.p) ? ` <small>${main(A.p).speed}</small>` : ''), num(main(B.p)?.rating) + (main(B.p) ? ` <small>${main(B.p).speed}</small>` : '')],
-    ['Score', pct(A.p.score), pct(B.p.score)],
-    ['As White', num(A.p.white, pct), num(B.p.white, pct)],
-    ['As Black', num(A.p.black, pct), num(B.p.black, pct)],
+    ['Win rate', pct(A.p.winRate), pct(B.p.winRate)],
+    ['Wins as White', num(A.p.winW, pct), num(B.p.winW, pct)],
+    ['Wins as Black', num(A.p.winB, pct), num(B.p.winB, pct)],
     ['Accuracy', num(A.p.acc, (x) => `${x}%`), num(B.p.acc, (x) => `${x}%`)],
     ['Blunders / game', num(A.p.blunders, (x) => x.toFixed(1)), num(B.p.blunders, (x) => x.toFixed(1))],
     ['Draws', pct(A.p.draws), pct(B.p.draws)],
@@ -808,12 +842,13 @@ function renderCompare(A, B, speed = 'all', avail = []) {
   ];
   $('#profile').innerHTML = `
     <div class="pf-players"><a class="ghost" href="${profileLink(A.name)}">← ${esc(A.name)}</a><a class="ghost" href="${profileLink(B.name)}">${esc(B.name)} →</a></div>
-    <header class="cmp-head"><p class="pf-kick">Compare</p><h1 class="pf-h1">${esc(A.name)} <span>vs</span> ${esc(B.name)}</h1>
+    <header class="cmp-head"><p class="pf-kick">Compare</p><h1 class="pf-h1"><a href="${profileLink(A.name)}">${esc(A.name)}</a> <span>vs</span> <a href="${profileLink(B.name)}">${esc(B.name)}</a></h1>
       <div class="pf-seg cmp-speeds" role="group" aria-label="Time control">${['all', ...SPEEDS].map((sp) => `<button type="button" data-speed="${sp}" aria-pressed="${sp === speed}" ${sp === 'all' || avail.includes(sp) ? '' : `disabled title="Fewer than ${MIN_SPEED} ${sp} games for one of you"`}>${sp === 'all' ? 'All games' : sp[0].toUpperCase() + sp.slice(1)}</button>`).join('')}</div></header>
     <section class="cmp-cards">
-      <div>${playerCard(A.name, A.p, A.p.type, sa)}<p class="cmp-type"><b>${A.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
-      <div>${playerCard(B.name, B.p, B.p.type, sb)}<p class="cmp-type"><b>${B.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
+      <div><a class="cmp-card" href="${profileLink(A.name)}" title="Open ${esc(A.name)}'s profile">${playerCard(A.name, A.p, A.p.type, sa)}</a><p class="cmp-type"><b>${A.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
+      <div><a class="cmp-card" href="${profileLink(B.name)}" title="Open ${esc(B.name)}'s profile">${playerCard(B.name, B.p, B.p.type, sb)}</a><p class="cmp-type"><b>${B.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
     </section>
+    <section class="pf-card cmp-story"><h2>In short</h2>${compareStory(A, B, sa, sb).map((x) => `<p>${x}</p>`).join('')}</section>
     <section class="pf-card">
       <h2>Skills</h2>
       <p class="cmp-key"><span class="cmp-a"></span>${esc(A.name)} <span class="cmp-b"></span>${esc(B.name)}</p>
@@ -838,6 +873,34 @@ function renderCompare(A, B, speed = 'all', avail = []) {
     compare(A.name, B.name, btn.dataset.speed);
   }));
 
+}
+const article = (w) => (/^[aeiou]/i.test(w) ? 'an' : 'a');
+// The comparison in words: who is stronger overall and by how much, where each one is better, how
+// they play, and how they score.
+function compareStory(A, B, sa, sb) {
+  const a = esc(A.name), b = esc(B.name);
+  const ovr = (sk) => { const k = sk.filter((x) => x.v !== null); return k.length ? Math.round(sum(k, (x) => x.v) / k.length) : null; };
+  const oa = ovr(sa), ob = ovr(sb), out = [];
+  if (oa !== null && ob !== null) {
+    const d = oa - ob;
+    out.push(Math.abs(d) <= 3 ? `<b>Very even overall</b> (${oa} against ${ob}): the difference is in the details.`
+      : `<b>${d > 0 ? a : b} is the stronger player overall</b> (${Math.max(oa, ob)} against ${Math.min(oa, ob)})${Math.abs(d) >= 15 ? ', a clear gap' : ''}.`);
+  }
+  const gaps = sa.map((x, i) => ({ label: x.label.toLowerCase(), d: x.v !== null && sb[i].v !== null ? x.v - sb[i].v : null })).filter((x) => x.d !== null);
+  const forA = gaps.filter((x) => x.d >= 5).sort((x, y) => y.d - x.d), forB = gaps.filter((x) => x.d <= -5).sort((x, y) => x.d - y.d);
+  const list = (xs) => xs.slice(0, 2).map((x) => `${x.label} (+${Math.abs(x.d)})`).join(' and ');
+  if (forA.length || forB.length) out.push([forA.length && `${a} is better at ${list(forA)}`, forB.length && `${b} at ${list(forB)}`].filter(Boolean).join(', while ') + '.');
+  const ta = A.p.type[0].name, tb = B.p.type[0].name;
+  out.push(ta === tb ? `Both play as ${article(ta)} ${ta.toLowerCase()}${tasteShort(A.p.styleMix) === tasteShort(B.p.styleMix) ? ', with the same taste in openings' : ''}.`
+    : `${a} plays as ${article(ta)} ${ta.toLowerCase()} (${tasteShort(A.p.styleMix).toLowerCase()}), ${b} as ${article(tb)} ${tb.toLowerCase()} (${tasteShort(B.p.styleMix).toLowerCase()}).`);
+  const ds = Math.round((A.p.winRate - B.p.winRate) * 100);
+  out.push(Math.abs(ds) < 3 ? `They win about as often against their own opponents (${pct(A.p.winRate)} and ${pct(B.p.winRate)} of games).`
+    : `${ds > 0 ? a : b} wins more often against their own opponents (${pct(Math.max(A.p.winRate, B.p.winRate))} of games against ${pct(Math.min(A.p.winRate, B.p.winRate))}).`);
+  if (A.p.blunders !== null && B.p.blunders !== null && A.p.analysed >= ENOUGH && B.p.analysed >= ENOUGH && Math.abs(A.p.blunders - B.p.blunders) >= 0.3) {
+    const fewer = A.p.blunders < B.p.blunders ? a : b;
+    out.push(`${fewer} blunders less (${Math.min(A.p.blunders, B.p.blunders).toFixed(1)} a game against ${Math.max(A.p.blunders, B.p.blunders).toFixed(1)}).`);
+  }
+  return out;
 }
 const tasteShort = (mix) => [taste(mix?.w) && `${taste(mix.w).label} as White`, taste(mix?.b) && `${taste(mix.b).label} as Black`].filter(Boolean).join(', ') || 'Mixed';
 
