@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028153345';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028153345';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028153345';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028153345';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028154001';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028154001';
+import { ideaAt, asMover, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028154001';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028154001';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -66,6 +66,10 @@ const clean = (san) => san.replace(/[+#]/g, '');
 const lineKey = (moves) => moves.join(' ');
 const pct = (x) => `${Math.round(x * 100)}%`;
 const pctOf = (x) => (x < 0.01 ? '<1%' : pct(x));
+// A line's share of the opening, only when it is big enough to say something: a few percent makes a
+// line look like it never comes up, when every line together is what you meet.
+const BIG_SHARE = 0.1;
+const bigShare = (x) => (x >= BIG_SHARE ? pct(x) : '');
 // How popular an opening is among those of its kind (White openings, or Black's answers to them): a
 // share under 1% says little, a place in the list says more.
 const ordinal = (n) => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
@@ -844,8 +848,7 @@ function renderWhy() {
   if (!hist.length && lines[lineIdx]) {
     const l = lines[lineIdx], about = ABOUT[cur.family] || ABOUT[shortName(cur.family)] || '';
     const plan = planOf(cur);
-    parts.push(`<p class="intro"><b>${isVs(cur) ? 'vs ' : ''}${cur.name}.</b> ${about} This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level (${pctOf(l.share)}). It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap
-      ? ` <b>A trap:</b> at your level your opponent often plays ${Math.floor(l.trap.ply / 2) + 1}${l.trap.ply % 2 ? '...' : '.'}${l.trap.san} and scores only ${pct(l.trap.score)} after it. Learn how to punish it.` : ''}</p>${plan ? `<p class="intro plan"><b>Your plan:</b> ${plan}</p>` : ''}`);
+    parts.push(`<p class="intro"><b>${isVs(cur) ? 'vs ' : ''}${cur.name}.</b> ${about} This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level${bigShare(l.share) ? ` (${bigShare(l.share)})` : ''}. It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap ? ` <b>A trap.</b> ${trapStory(l)}` : ''}</p>${plan ? `<p class="intro plan"><b>Your plan:</b> ${plan}</p>` : ''}`);
   }
   // First what to play and why (Learn), then a quiet line on the last move, then the other replies
   // folded away: the board and the move to make come first.
@@ -857,14 +860,14 @@ function renderWhy() {
     const text = yours ? why(before, san) : idea(before, san);
     parts.push(`<p class="prev">${yours ? 'You' : sideName(n % 2 ? 'b' : 'w')} played <b>${label(n, hist[n])}</b>${text ? `: ${lower(text)}` : ''}</p>`);
     const t = lines[lineIdx]?.trap;
-    if (t && n === t.ply && mode !== 'explore') parts.push(`<p class="trap-now"><b>That is the mistake.</b> Players at your level score only ${pct(t.score)} after ${san}. Now punish it.</p>`);
+    if (t && n === t.ply && mode !== 'explore') parts.push(`<p class="trap-now"><b>That is the mistake: ${trapMove(t)}</b> You score ${pct(1 - t.score)} after it at your level. ${mode === 'learn' ? punishText(t) : 'Find the move that punishes it.'}</p>`);
     const reps = !yours && repliesText(before, san);
     if (reps) parts.push(`<details class="reps-box"><summary>What players at your level answer here</summary>${reps}</details>`);
   }
   if (game.isGameOver()) parts.unshift(gameStats());
   if (view !== null) { // looking back: what the move was, and what was better
     const n = view - 1, k = notes[n];
-    parts.unshift(`<p class="verdict${k ? ` k-${k}` : ''}">${n < 0 ? 'The start position.' : `<b>${label(n, hist[n])}${k && k !== 'book' ? ` was ${NOTE_WORD[k]}` : ''}.</b>${betters[n] ? ` Better was ${moveWords(betters[n])}: green arrow, with the move played in red.` : ''}`} Use → or click the last move to go back to the game.</p>`);
+    parts.unshift(`<p class="verdict${k ? ` k-${k}` : ''}">${n < 0 ? 'The start position.' : `<b>${label(n, hist[n])}${k && k !== 'book' ? ` was ${NOTE_WORD[k]}` : ''}.</b>${betters[n] ? ` ${slipWhy(n)}` : ''}`} Use → or click the last move to go back to the game.</p>`);
   }
   // Your last own move, when it was a slip: what it was and what was better (play-out only).
   const mine = hist.length - ((hist.length - 1) % 2 === (cur.side === 'w' ? 0 : 1) ? 1 : 2);
@@ -1228,6 +1231,20 @@ function renderEval() {
 // a move that drops the mover's winning chances by 5, 10 or 15 points (of 100) is an inaccuracy, a mistake
 // or a blunder. A brilliant move is the engine's best that leaves a piece hanging.
 let notes = [], betters = [];
+// Why the move at ply n was a slip: what goes wrong on the board (a mate or a piece left hanging),
+// or else the opponent's best answer to it and what that answer does; then the better move and its point.
+function slipWhy(n) {
+  const m = game.history({ verbose: true })[n], better = betters[n];
+  const after = new Chess(m.before);
+  after.move(m.san);
+  const danger = m.color === cur.side ? dangerAfter(m.before, m.san) : ''; // its wording is for your own moves
+  const r = EVALS.get(evalKey(after.fen()));
+  const reply = r?.move && new Chess(after.fen()).move(r.move);
+  const replyIdea = reply && ideaAt(new Chess(after.fen()), reply.san);
+  const wrong = danger || (reply ? `${sideName(after.turn())} answers ${reply.san}${replyIdea ? `: ${replyIdea.replace(/^./, (c) => c.toLowerCase())}` : '.'}` : '');
+  const bestIdea = ideaAt(new Chess(m.before), better.san);
+  return `${wrong ? `Why: ${wrong} ` : ''}Better was <b>${better.san}</b>${bestIdea ? `: ${bestIdea.replace(/^./, (c) => c.toLowerCase())}` : '.'} (Green arrow; the move played is red.)`;
+}
 const NOTE_WORD = { brilliant: 'brilliant', best: 'the best move', good: 'good', inaccuracy: 'an inaccuracy', mistake: 'a mistake', blunder: 'a blunder' };
 const VALUE_OF = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 function leavesPieceHanging(g, m) {
@@ -1427,6 +1444,18 @@ const practiceSet = () => {
 const cleared = () => lines.filter((l) => stats[statKey(cur.id)]?.done.includes(lineKey(l.moves))).length;
 const lineName = (l) => (l.name ? l.name.split(' · ').at(-1).split(': ').at(-1) : 'Unnamed line');
 // The line's last two moves with their real move numbers, e.g. "5.O-O d6", so same-named lines can be told apart.
+// A line's trap: the opponent's natural-looking slip, how well you do after it, and the move that
+// punishes it with what that move does.
+const trapMove = (t) => `${Math.floor(t.ply / 2) + 1}${t.ply % 2 ? '...' : '.'}${t.san}?`;
+function punishText(t) {
+  const l = lines[lineIdx], san = l.moves[t.ply + 1];
+  if (!san) return '';
+  const g = new Chess();
+  l.moves.slice(0, t.ply + 1).forEach((m) => g.move(m));
+  const idea = ideaAt(g, san);
+  return `The answer is <b>${san}!</b>${idea ? `: ${idea.replace(/^./, (c) => c.toLowerCase())}` : '.'}`;
+}
+const trapStory = (l) => `At your level your opponent often plays <b>${trapMove(l.trap)}</b>. It looks natural, but you score ${pct(1 - l.trap.score)} after it. This line shows how to punish it.`;
 const lineEnd = (l) => numbered(lineKey(l.moves)).split(' ').slice(l.moves.length % 2 ? -1 : -2).join(' ');
 
 // Which line this is, how far through the opening you are, and how likely the line is to come up.
@@ -1440,14 +1469,12 @@ function renderLineBox() {
   const due = dueCount(s);
   const r = s.rep?.[lineKey(l.moves)];
   const nextReview = r?.box > 0 ? (r.due <= Date.now() ? 'This line is due for review today.' : `Next review of this line in ${plural(Math.ceil((r.due - Date.now()) / DAY), 'day')}.`) : '';
-  const oneIn = Math.max(1, Math.round(1 / (cur.share * l.share)));
   $('#line-box').innerHTML = `
     <h2 class="lb-name">Line ${lineIdx + 1} of ${n}: ${lineName(l)} <small>${lineEnd(l)}</small></h2>
     ${s.done?.includes(lineKey(l.moves)) ? '<p class="lb-status cleared"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>You have cleared this line</p>'
       : s.played?.includes(lineKey(l.moves)) ? '<p class="lb-status"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>You have learned this line</p>' : ''}
     <div class="lb-stats">
-      <div><b>${pctOf(l.share)}</b><span>of games in this opening go this way</span></div>
-      <div><b>1 in ${oneIn.toLocaleString('en')}</b><span>of all your ${speed} games reach it</span></div>
+      ${l.trap ? `<div class="lb-trap"><b>${trapMove(l.trap)}</b><span>the trap: you score ${pct(1 - l.trap.score)} after it</span></div>` : bigShare(l.share) ? `<div><b>${bigShare(l.share)}</b><span>of games in this opening go this way</span></div>` : ''}
       <div><b>${played}/${n}</b><span>lines learned</span></div>
       <div><b>${done}/${n}</b><span>lines cleared${due ? `, ${due} due for review` : ''}</span></div>
     </div>
@@ -1462,8 +1489,8 @@ function renderLines() {
   // Green once you have played a line through (Learn), stronger with a tick once cleared (Practice).
   const state = (l) => (done.includes(lineKey(l.moves)) ? ' cleared' : learned.includes(lineKey(l.moves)) ? ' learned' : '');
   $('#lines-list').innerHTML = lines.map((l, i) => `<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}" data-i="${i}">
-      <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? '<span class="trap-tag">Trap</span> ' : ''}${lineName(l)}<small>${lineEnd(l)}</small></span>
-      <span class="line-share">${pctOf(l.share)}</span><span class="line-ok">${state(l) ? `<span class="done-tag"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${state(l) === ' cleared' ? 'Cleared' : 'Learned'}</span>` : ''}</span>
+      <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? '<span class="trap-tag">Trap</span> ' : ''}${lineName(l)}<small>${l.trap ? `if they play ${trapMove(l.trap)}` : lineEnd(l)}</small></span>
+      <span class="line-share">${bigShare(l.share)}</span><span class="line-ok">${state(l) ? `<span class="done-tag"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${state(l) === ' cleared' ? 'Cleared' : 'Learned'}</span>` : ''}</span>
     </button></li>`).join('');
 }
 $('#lines-list').addEventListener('click', (e) => {
@@ -1693,7 +1720,8 @@ function leaveView(sq) {
   if (view === null) return true;
   const n = view, g = new Chess();
   game.history().slice(0, n).forEach((m) => g.move(m));
-  if (n < line.length || g.turn() !== cur.side || g.get(sq)?.color !== cur.side) { showMove(Infinity); return false; }
+  if (g.get(sq)?.color !== g.turn()) { showMove(Infinity); return false; }
+  if (n < line.length || g.turn() !== cur.side) { exploreFrom(n, 'Explore from here: move any piece, for either side. '); return true; }
   gameGen++; // a reply still on its way no longer applies
   while (game.history().length > n) game.undo();
   ply = n; notes.length = betters.length = n; view = null;
@@ -1711,14 +1739,18 @@ function goTo(n) {
   if (!cur || (mode === 'explore' && busy)) return;
   if (reviewing()) return showMove(n);
   if (n >= game.history().length) return;
+  exploreFrom(n, 'Back to that move. Move any piece, for either side. ');
+}
+// Explore from move n, with Forward replaying the moves after it.
+function exploreFrom(n, text) {
   gameGen++; // a reply still on its way no longer applies
-  premove = null; busy = false; sel = null; hintSq = [];
+  premove = null; busy = false; sel = null; hintSq = []; view = null;
   if (mode !== 'explore') setMode('explore', false, false);
   while (game.history().length > n) redo.push(game.undo());
   ply = n;
   lastMove = game.history({ verbose: true }).at(-1) || null;
   render();
-  exploreSay('Back to that move. Move any piece, for either side. ');
+  exploreSay(text);
 }
 movesEl.addEventListener('click', (e) => { const b = e.target.closest('.mv[data-n]'); if (b) goTo(Number(b.dataset.n)); });
 
