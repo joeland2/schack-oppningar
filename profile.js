@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028232421';
-import { STYLE_OF } from './styles.js?v=20261028232421';
+import { account, login, finishLogin } from './lichess.js?v=20261028232703';
+import { STYLE_OF } from './styles.js?v=20261028232703';
 
 const MAX = 500;
 const PV = 13;
@@ -433,8 +433,10 @@ function storedGames(name) {
 }
 
 let RAW = null, RAW_NAME = ''; // the games in use, kept for analysing them here
+let quiet = false; // checking for new games behind a profile already shown: no progress messages
+const msgEl = () => (quiet ? { textContent: '' } : $('#profile-msg'));
 async function build(name) {
-  const msg = $('#profile-msg'), have = storedGames(name) || [];
+  const msg = msgEl(), have = storedGames(name) || [];
   msg.textContent = have.length ? `Fetching ${name}'s new games from Lichess…` : `Fetching ${name}'s last ${MAX} rated games from Lichess…`;
   const fresh = await fetchGames(name, (k) => { msg.textContent = `Fetching ${name}'s games from Lichess… ${k}`; }, have.length ? have[0].createdAt + 1 : null);
   const ids = new Set(fresh.map((g) => g.id));
@@ -452,7 +454,7 @@ async function current(name) {
   return c && c.v === PV && Date.now() - c.at < FRESH && storedGames(name) ? c.p : build(name);
 }
 async function readAll(name, raw) {
-  const msg = $('#profile-msg');
+  const msg = msgEl();
   const me = name.toLowerCase(), games = [];
   for (let i = 0; i < raw.length; i++) {
     games.push(readGame(raw[i], me));
@@ -933,7 +935,18 @@ function ask() {
 
 let runs = 0; // a newer look-up wins over one still reading games
 async function run(name) {
-  const mine = ++runs;
+  const mine = ++runs, c = cache()[name.toLowerCase()];
+  // Seen before: show the saved profile at once, then fetch new games quietly and redraw only if there were any.
+  if (c && c.v === PV) {
+    try { render(c.name || name, c.at, c.p); } catch (err) { console.warn('saved profile could not be shown, reading it again', err); }
+    const before = storedGames(name) || [], top = before[0]?.id;
+    quiet = true;
+    try {
+      const p = await build(name), after = storedGames(name);
+      if (mine === runs && (after[0]?.id !== top || after.length !== before.length)) { const y = scrollY; render(name, Date.now(), p); scrollTo(0, y); }
+    } catch {} finally { quiet = false; }
+    return;
+  }
   // A skeleton of the page while the games are read, so it is never blank.
   $('#profile').innerHTML = `<section class="pf-hero pf-skeleton" aria-hidden="true"><div class="pf-card-col"><div class="pf-pcard"><b class="pf-ovr">–</b><p class="pf-pcard-name">${esc(name)}</p></div></div>
     <div class="pf-hero-text"><span class="pf-sk-line w60"></span><span class="pf-sk-line"></span><span class="pf-sk-line"></span><span class="pf-sk-line w80"></span></div></section>`;
@@ -955,11 +968,6 @@ function failed(name, err) {
 }
 
 export { build, current, cache, myName, skillsOf, loadDists, storedGames, keepGame, engineEval, applyEvals, winPct, PV };
-if ($('#profile')) { // the practice page imports this module for the above; only the profile page draws itself
-  try { await finishLogin(); } catch (err) { $('#profile-msg').textContent = err.message; } // back from logging in on this page
-  await loadDists();
-  start();
-}
 // ---------- The games themselves ----------
 // The newest games as a list; each opens on game.html with the board, how it went and the key moves.
 const STATUS = { mate: 'mate', resign: 'resignation', outoftime: 'time', timeout: 'time', draw: 'agreement', stalemate: 'stalemate', aborted: 'abort' };
@@ -1137,13 +1145,12 @@ function compareStory(A, B, sa, sb) {
 }
 const tasteShort = (mix) => [taste(mix?.w) && `${taste(mix.w).label} as White`, taste(mix?.b) && `${taste(mix.b).label} as Black`].filter(Boolean).join(', ') || 'Mixed';
 
-// A player's profile: from this browser when it was read before, else from their games. The address
+// A player's profile: shown at once from this browser when it was read before (new games are then
+// fetched quietly), else read from their games. The address
 // keeps the name (?u=), so a profile can be shared or bookmarked.
 function show(name, push) {
   if (push) history.pushState(null, '', isMe(name) ? location.pathname : `?u=${encodeURIComponent(name)}`);
-  const c = cache()[name.toLowerCase()];
-  if (!(c && c.v === PV)) return run(name);
-  try { render(c.name, c.at, c.p); } catch (err) { console.warn('saved profile could not be shown, reading it again', err); run(name); }
+  run(name);
 }
 function start() {
   const q = new URLSearchParams(location.search), name = q.get('u') || myName();
@@ -1151,3 +1158,10 @@ function start() {
   if (name) show(name, false); else ask();
 }
 if ($('#profile')) addEventListener('popstate', () => start());
+
+// Last in the file, so every constant above is defined before the page draws.
+if ($('#profile')) { // the practice page imports this module for the above; only the profile page draws itself
+  try { await finishLogin(); } catch (err) { $('#profile-msg').textContent = err.message; } // back from logging in on this page
+  await loadDists();
+  start();
+}

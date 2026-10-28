@@ -1,11 +1,11 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028232421';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028232421';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028232421';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028232421';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028232421';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028232421';
-import { storedGames } from './profile.js?v=20261028232421';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028232703';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028232703';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028232703';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028232703';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028232703';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028232703';
+import { storedGames } from './profile.js?v=20261028232703';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2481,6 +2481,7 @@ function renderChoices() {
   $('#style-about').textContent = style === 'any' ? 'All common openings, whatever their character.' : STYLES[style].about;
   document.querySelectorAll('.speed-name').forEach((el) => (el.textContent = speed));
   $('#rating').value = rating || '';
+  lockRating();
   $('#filters-sum').innerHTML = `Filters <span>${speed[0].toUpperCase() + speed.slice(1)} · ${style === 'any' ? 'any style' : STYLES[style].label} · ${sort === 'played' ? 'most played' : 'best results'}</span>`;
 }
 document.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('click', () => {
@@ -2617,7 +2618,14 @@ async function deepLink() {
 }
 
 // ---------- Lichess login ----------
+// Logged in, the rating is always your own from Lichess; only without a login can it be typed in.
+function lockRating() {
+  const a = account(), el = $('#rating');
+  el.readOnly = !!a;
+  el.title = a ? `Your Lichess ${speed} rating, filled in from ${a.name}'s account` : 'Your Lichess rating: change it to see the openings of another level';
+}
 function renderLogin() {
+  lockRating();
   const a = account(), b = $('#lichess-login');
   b.textContent = a ? a.name : 'Log in';
   b.title = a ? `Logged in to Lichess as ${a.name}: play-outs follow real games from all of Lichess. Click to log out.`

@@ -1190,3 +1190,4 @@ a { text-underline-offset: .18em; }
 .pf-more-head { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; margin-bottom: 14px; }
 .pf-more-head h2 { margin: 0; }
 .pf-more-head span { color: var(--muted); font-size: 13.5px; }
+.account .acct-stat input:read-only { border-bottom-color: transparent; cursor: default; }
