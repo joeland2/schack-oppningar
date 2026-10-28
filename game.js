@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261028220650';
-import { account } from './lichess.js?v=20261028220650';
-import { storedGames, keepGame, engineEval, applyEvals, winPct } from './profile.js?v=20261028220650';
+import { drawBoard } from './board.js?v=20261028220844';
+import { account } from './lichess.js?v=20261028220844';
+import { storedGames, keepGame, engineEval, applyEvals, winPct } from './profile.js?v=20261028220844';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -102,6 +102,24 @@ function story() {
 }
 
 // ---------- Drawing ----------
+// The badge on the moved piece, as in the trainer: blunder, mistake, inaccuracy from the analysis,
+// best when it was the engine's own move, good otherwise; none without analysis.
+function kindOf(i) {
+  const j = g.analysis?.[i]?.judgment?.name;
+  if (j) return j.toLowerCase();
+  if (!g.analysis?.[i]) return null;
+  const b = i > 0 ? g.analysis[i]?.best : null, m = moves[i];
+  return b && b.slice(0, 4) === m.from + m.to ? 'best' : 'good';
+}
+// Who is who: the player of each colour beside the board, the one at the bottom below it.
+function players(bottom) {
+  const strip = (c) => {
+    const pl = g.players[c === 'w' ? 'white' : 'black'], you = (c === 'w') === (side === 'white');
+    return `<img src="pieces/${c}K.svg" alt=""><b>${esc(pl.user?.id || 'anonymous')}</b> <span>${pl.rating || ''}</span> <small>${c === 'w' ? 'White' : 'Black'}${you && name ? ' · you' : ''}</small>`;
+  };
+  $('#top-player').innerHTML = strip(bottom === 'w' ? 'b' : 'w');
+  $('#bottom-player').innerHTML = strip(bottom);
+}
 function drawPosition() {
   const c = new Chess(fens[idx]);
   const arrows = [];
@@ -112,7 +130,9 @@ function drawPosition() {
     if (b) arrows.push([b.from, b.to, GREEN]);
     last = null;
   }
-  drawBoard($('#board'), c, { side: (side === 'white') !== flip ? 'w' : 'b', last, arrows });
+  const bottom = (side === 'white') !== flip ? 'w' : 'b';
+  drawBoard($('#board'), c, { side: bottom, last, arrows, mark: focus === null && idx ? { sq: moves[idx - 1].to, kind: kindOf(idx - 1) } : null });
+  players(bottom);
   const i = idx - 1, j = g.analysis?.[i]?.judgment?.name;
   $('#here').innerHTML = focus !== null && idx === focus
     ? `${moveNo(focus)} <b>${moves[focus].san}</b> was played here (red)${bestMove(focus) ? `; <b>${bestMove(focus).san}</b> (green) was better` : ''}.`
@@ -144,8 +164,10 @@ function render() {
   for (let i = 0; i < moves.length; i += 2) pairs.push(i);
   $('#game').innerHTML = `
     <p class="pf-kick">Game review</p>
-    <h1 class="gm-title">${esc(name || me.user?.id || 'White')} <span>vs</span> ${esc(opp.user?.id || 'anonymous')}</h1>
-    <p class="info">${esc(side)} · ${me.rating || ''} vs ${opp.rating || ''} · ${g.speed} · ${new Date(g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · <a href="https://lichess.org/${g.id}${side === 'black' ? '/black' : ''}" target="_blank" rel="noopener">On Lichess</a></p>
+    <h1 class="gm-title">${esc(g.players.white.user?.id || 'White')} <span>vs</span> ${esc(g.players.black.user?.id || 'Black')}</h1>
+    <p class="gm-sides"><span><img src="pieces/wK.svg" alt="">White: <b>${esc(g.players.white.user?.id || 'anonymous')}</b> ${g.players.white.rating || ''}</span>
+      <span><img src="pieces/bK.svg" alt="">Black: <b>${esc(g.players.black.user?.id || 'anonymous')}</b> ${g.players.black.rating || ''}</span></p>
+    <p class="info">You played ${esc(side)} · ${g.speed} · ${new Date(g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · <a href="https://lichess.org/${g.id}${side === 'black' ? '/black' : ''}" target="_blank" rel="noopener">On Lichess</a></p>
     <section class="gm-story">
       <p class="gm-head">${s.head}</p>
       ${s.acc ? `<p class="gm-acc">Accuracy: <b>${s.acc[0]}%</b> you, <b>${s.acc[1] ?? '–'}%</b> your opponent</p>` : ''}
