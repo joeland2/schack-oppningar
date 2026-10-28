@@ -1,8 +1,9 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028181916';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028181916';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028181916';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028181916';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028201928';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028201928';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028201928';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028201928';
+import { maiaMove, MAIA_MAX } from './maia.js?v=20261028201928';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1210,7 +1211,7 @@ const userTurn = () => (ply < line.length || playing) && !game.isGameOver() && g
 // Only used once you play a game out past the line: as the opponent where real games run out, and for hints.
 const ENGINE_SRC = 'engine/stockfish-18-lite-single.js';
 let engine = null, engineDone = null, engineQueue = Promise.resolve();
-// The opponent plays at your rating; Stockfish's lowest setting is 1320, so below that it is a little stronger.
+// Above Maia's range Stockfish plays at your rating (its lowest setting is 1320).
 const opponentElo = () => Math.max(1320, Math.min(3190, rating));
 // One search at a time: changing options while the WebAssembly engine searches crashes it.
 // Resolves { move, cp, mate } with the score from the side to move, or null. skip() is asked when the
@@ -1380,13 +1381,27 @@ function hintFor(m) {
   return 'Look for the move that improves your worst piece.';
 }
 
-let engineSaid = false; // the switch to Stockfish is mentioned once per game
+let engineSaid = false; // the switch to Maia or Stockfish is mentioned once per game
+// Where real games run out: Maia, a net trained on Lichess games, plays the move a player of your
+// rating would likely play (its own human mistakes included). Above its range, or if it cannot load,
+// Stockfish at your rating.
+async function engineReply(at) {
+  if (rating < MAIA_MAX + 100) {
+    try {
+      const h = game.history({ verbose: true });
+      const { move } = await maiaMove(rating, h.length ? [h[0].before, ...h.map((x) => x.after)] : [at], game.moves({ verbose: true }));
+      return { san: move.san, by: 'Maia (a computer trained on Lichess games to play like people at your rating)' };
+    } catch (e) { console.warn(e); }
+  }
+  const best = await bestMove(at, { elo: opponentElo() });
+  return best && { ...best, by: 'Stockfish, at your rating,' };
+}
 async function opponentPlays() {
   busy = true;
   const gen = gameGen, at = game.fen();
   // Follow the real games as long as any reach this position: the reply played most there.
   const real = gamesAt(game.history().map(clean)).moves[0];
-  const m = real ? { san: real.san } : await bestMove(at, { elo: opponentElo() });
+  const m = real ? { san: real.san } : await engineReply(at);
   await new Promise((x) => setTimeout(x, 450));
   if (gen !== gameGen || game.fen() !== at || !m) { if (gen === gameGen) busy = false; return; }
   lastMove = game.move(m.san ?? m); ply++; busy = false; hintSq = [];
@@ -1394,7 +1409,7 @@ async function opponentPlays() {
   render();
   if (ended()) return;
   if (playPremove()) return;
-  const note = !real && !engineSaid ? ' Real games at your level run out here, so Stockfish plays the opponent now, at your rating.' : '';
+  const note = !real && !engineSaid ? ` Real games at your level run out here, so ${m.by} plays the opponent now.` : '';
   if (!real) engineSaid = true;
   if (punishDone && !endLen) return punish > 0 ? (say('Your move: keep punishing it.', 'good'), guide()) : finish();
   say(`Your move.${note}`);
