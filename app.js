@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028144915';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028144915';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028144915';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028144915';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028145144';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028145144';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028145144';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028145144';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -697,6 +697,7 @@ function renderMoves() {
     html += `<li><span class="num">${i / 2 + 1}.</span>${cell(i)}${cell(i + 1)}</li>`;
   }
   movesEl.innerHTML = html;
+  if (mode === 'time') return; // the trial's clock owns the progress bar
   $('#progress').textContent = mode === 'explore' ? 'Exploring' : playing ? 'Line done · playing it out' : line.length ? `${Math.min(ply, line.length)} of ${line.length} moves` : '';
   $('#bar').style.width = line.length ? `${Math.min(ply / line.length, 1) * 100}%` : '0';
 }
@@ -739,7 +740,7 @@ function renderControls() {
   $('#step-fwd').disabled = mode !== 'explore' || !redo.length;
   $('#hint').disabled = !userTurn();
   $('#show').disabled = !userTurn();
-  $('#hint').hidden = $('#show').hidden = mode === 'explore';
+  $('#hint').hidden = $('#show').hidden = mode === 'explore' || mode === 'time';
 }
 
 // ---------- Move explanations ----------
@@ -803,7 +804,7 @@ $('#line-done').addEventListener('click', (e) => { if (e.target.closest('.done-n
 let lineDone = '', tipArrows = []; // the summary shown at the end of the line, and the current tips
 function renderWhy() {
   const el = $('#why');
-  if (!cur || !line.length || mode === 'explore') { $('#line-done').hidden = true; return (el.innerHTML = ''); } // Explore explains in the message
+  if (!cur || !line.length || mode === 'explore' || mode === 'time') { $('#line-done').hidden = true; return (el.innerHTML = ''); } // Explore explains in the message
   const hist = game.history();
   const label = (n, san) => `${Math.floor(n / 2) + 1}.${n % 2 ? '..' : ''}${san}`;
   const lower = (t) => t.replace(/^./, (c) => c.toLowerCase());
@@ -968,7 +969,7 @@ function start(op) {
   const s = stats[statKey(op.id)] = { done: [], played: [], ...stats[statKey(op.id)], total: lines.length };
   s.played ??= [];
   store(STORE, stats);
-  play(nextLine());
+  if (mode === 'time') startTrial(); else play(nextLine());
 }
 
 function play(i) {
@@ -1413,8 +1414,35 @@ function reply() {
     render();
     if (ply >= line.length) return finish();
     if (playPremove()) return;
-    prompt('Your move.');
-  }, 450);
+    if (mode !== 'time') prompt('Your move.'); // in a trial the last right/wrong note stays up
+  }, mode === 'time' ? 150 : 450);
+}
+
+// ---------- Time trial ----------
+// The lines from memory against the clock: a right move adds time, a wrong one takes some and the
+// right move is played for you; a finished line goes straight on to another. The best score is kept.
+const TRIAL_S = 60, TRIAL_RIGHT = 2, TRIAL_WRONG = 5;
+let trial = null; // { end, score, done, timer }
+function startTrial() {
+  stopTrial();
+  trial = { end: Date.now() + TRIAL_S * 1000, score: 0, done: 0, timer: setInterval(tickTrial, 100) };
+  $('#restart').textContent = 'Restart';
+  play(Math.floor(Math.random() * lines.length));
+  say('Go! Play the lines from memory.');
+}
+function stopTrial() { if (trial) clearInterval(trial.timer); trial = trial && { ...trial, timer: null }; }
+function tickTrial() {
+  const left = trial.end - Date.now();
+  $('#progress').textContent = `${Math.max(0, Math.ceil(left / 1000))} s · ${plural(trial.score, 'move')} right`;
+  $('#bar').style.width = `${Math.max(0, Math.min(1, left / (TRIAL_S * 1000))) * 100}%`;
+  if (left > 0) return;
+  clearInterval(trial.timer);
+  gameGen++; busy = true; // the trial is over: no more moves
+  const s = stats[statKey(cur.id)];
+  const best = Math.max(s.timeBest || 0, trial.score);
+  const record = trial.score > (s.timeBest || 0);
+  s.timeBest = best; store(STORE, stats);
+  say(`Time! ${plural(trial.score, 'move')} right, ${plural(trial.done, 'line')} finished. ${record ? 'A new best!' : `Your best: ${best}.`} Press Restart to go again.`, 'good');
 }
 
 function tryMove(from, to) {
@@ -1428,6 +1456,18 @@ function tryMove(from, to) {
     if (!ended()) opponentPlays();
     return true;
   }
+  if (mode === 'time' && clean(m.san) !== line[ply]) {
+    game.undo();
+    trial.end -= TRIAL_WRONG * 1000;
+    wrongSq = to; sel = null; shake(boardEl);
+    setTimeout(() => { wrongSq = null; renderBoard(); }, 500);
+    lastMove = game.move(line[ply]); ply++;
+    say(`Not ${m.san}: it was ${lastMove.san}. −${TRIAL_WRONG} s`, 'bad');
+    render();
+    if (ply >= line.length) finish(); else reply();
+    return true;
+  }
+  if (mode === 'time') { trial.end += TRIAL_RIGHT * 1000; trial.score++; }
   if (clean(m.san) !== line[ply]) {
     game.undo();
     misses++; missesHere++;
@@ -1440,7 +1480,7 @@ function tryMove(from, to) {
     return true;
   }
   lastMove = m; ply++; sel = null; hintSq = []; missesHere = 0;
-  say(`Right: ${moveWords(m)}.`, 'good');
+  say(mode === 'time' ? `Right: ${m.san}. +${TRIAL_RIGHT} s` : `Right: ${moveWords(m)}.`, 'good');
   notes[ply - 1] = 'book';
   render();
   if (ply >= line.length) finish(); else reply();
@@ -1469,6 +1509,7 @@ function showHint() {
 // The end of the line. Learn: the line counts as learned. Practice: without a mistake it is cleared
 // and comes back for review later; with one it stays to be practised again today.
 function finish() {
+  if (mode === 'time') { trial.done++; return setTimeout(() => { if (mode === 'time' && trial.end > Date.now()) play((lineIdx + 1 + Math.floor(Math.random() * (lines.length - 1))) % lines.length); }, 300); }
   const s = stats[statKey(cur.id)];
   if (!s.played.includes(lineKey(line))) s.played.push(lineKey(line));
   store(STORE, stats);
@@ -1619,6 +1660,7 @@ document.addEventListener('keydown', (e) => {
 
 $('#restart').addEventListener('click', () => {
   if (!lines.length) return start(cur);
+  if (mode === 'time') return startTrial();
   if (mode === 'learn') return play(ply >= line.length ? nextLine() : lineIdx);
   play(ply >= line.length && misses === 0 ? nextLine() : lineIdx);
 });
@@ -1648,7 +1690,7 @@ $('#show').addEventListener('click', async () => {
 });
 // Opening picker, shown before the board.
 async function showPicker() {
-  cur = null; gameGen++; // stops an opponent reply that is still on its way
+  cur = null; gameGen++; stopTrial(); // stops an opponent reply (or a time trial) still on its way
   $('#trainer').hidden = true;
   $('#picker').hidden = false;
   listEl.innerHTML = '';
@@ -1700,21 +1742,25 @@ $('#weakest').addEventListener('click', () => {
 });
 function setMode(m, restart = true, remember = true) {
   mode = m;
-  if (remember && m !== 'explore') store(STORE + '-mode', m);
-  for (const k of ['learn', 'try', 'explore']) $(`#mode-${k}`).setAttribute('aria-pressed', m === k);
+  if (m !== 'time') stopTrial();
+  if (remember && m !== 'explore' && m !== 'time') store(STORE + '-mode', m);
+  for (const k of ['learn', 'try', 'explore', 'time']) $(`#mode-${k}`).setAttribute('aria-pressed', m === k);
   $('#mode-about').textContent = {
     learn: 'Every move is shown, with the replies you can expect at your level. Nothing is scored.',
     try: `Practice: play lines from memory, ${COHORT} at a time in course order; a new line joins when you clear one. A cleared line comes back for review after 1, 3, 7, 14 and 30 days.`,
+    time: `Time trial: ${TRIAL_S} seconds to play as many moves of this opening's lines as you can from memory. Right +${TRIAL_RIGHT} s, wrong −${TRIAL_WRONG} s.`,
     explore: 'Play any move: the opponent answers as players at your level most often do, and you see how often each move is played and how it scores. To try another answer, step back and move their piece.',
   }[m];
   if (!lines.length) return;
   if (!restart) return;
   if (m === 'explore') enterExplore(); // carry on from the current position
+  else if (m === 'time') startTrial();
   else play(lineIdx);
 }
 $('#mode-learn').addEventListener('click', () => setMode('learn'));
 $('#mode-try').addEventListener('click', () => setMode('try'));
 $('#mode-explore').addEventListener('click', () => setMode('explore'));
+$('#mode-time').addEventListener('click', () => setMode('time'));
 function setRating(r) {
   rating = r >= 400 && r <= 3200 ? Math.round(r) : null;
   store(ratingKey(), rating);
