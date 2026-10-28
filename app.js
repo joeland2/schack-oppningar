@@ -1,14 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028133006';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028133006';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028133006';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028133006';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028140300';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028140300';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028140300';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028140300';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
 const MAX_LINES = 20;
 const MIN_GAMES = 20;     // below this, real-game data is too thin to trust
 const MAX_PLY = 20;       // data/explorer-*.json goes this deep
+const DATA = '2026-10-28-k8'; // version of data/explorer-*.json
 const BUCKETS = [0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]; // Lichess explorer rating groups
 // Rating groups whose moves count as yours: 2200+ in blitz; 2000+ in classical, where 2200+ games are scarce.
 const STRONG = { blitz: [7, 8], classical: [6, 7, 8] };
@@ -87,7 +88,8 @@ const POPULAR = {};   // popularOpenings() per time control and rating; it takes
 // data/explorer-<speed>.json: move counts per rating group from Lichess games of that time control,
 // built by tools/make_explorer.py. Loaded once per time control.
 async function loadTree() {
-  TREES[speed] ??= (await fetch(`data/explorer-${speed}.json`).then((r) => r.json())).tree;
+  // DATA is bumped whenever the data is rebuilt, so no browser keeps an old file
+  TREES[speed] ??= (await fetch(`data/explorer-${speed}.json?v=${DATA}`).then((r) => r.json())).tree;
   TREE = TREES[speed];
   console.assert(explore(['e4'], [3]).moves.some((m) => m.san === 'c5'), `data/explorer-${speed}.json is not in the expected format`);
 }
@@ -1272,7 +1274,7 @@ function renderLineBox() {
 
 function renderLines() {
   const done = stats[statKey(cur.id)]?.done || [];
-  $('#lines-sum').textContent = `Lines · ${cleared()} of ${lines.length} cleared`;
+  $('#lines-sum').textContent = `All ${lines.length} lines`; // the line box above already counts the cleared ones
   $('#lines-list').innerHTML = lines.map((l, i) => `<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}" data-i="${i}">
       <span class="line-n">${i + 1}.</span><span class="line-name">${lineName(l)}<small>${lineEnd(l)}</small></span>
       <span class="line-share">${pctOf(l.share)}</span><span class="line-ok">${done.includes(lineKey(l.moves)) ? '<svg class="ico" viewBox="0 0 24 24" role="img" aria-label="Cleared"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}</span>

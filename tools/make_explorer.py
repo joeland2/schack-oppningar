@@ -15,8 +15,8 @@ from bisect import bisect_right
 URL = 'https://database.lichess.org/standard/lichess_db_standard_rated_2026-09.pgn.zst'
 BUCKETS = [0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]  # same groups as the Lichess explorer
 MAX_PLY = 20
-KEEP = 20            # drop sequences seen in fewer games than this
-PRUNE_EVERY = 250_000  # games per lossy-counting bucket: a kept sequence is undercounted by at most one per bucket
+KEEP = 8             # drop sequences seen in fewer games than this
+PRUNE_EVERY = 500_000  # games per lossy-counting bucket: a kept sequence is undercounted by at most one per bucket
 COMMENT = re.compile(r'\{[^}]*\}')
 NUMBER = re.compile(r'^\d+\.+$')
 
