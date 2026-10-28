@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028220400';
-import { STYLE_OF } from './styles.js?v=20261028220400';
+import { account, login, finishLogin } from './lichess.js?v=20261028220650';
+import { STYLE_OF } from './styles.js?v=20261028220650';
 
 const MAX = 500;
 const PV = 7;
@@ -694,7 +694,22 @@ function ask() {
 let runs = 0; // a newer look-up wins over one still reading games
 async function run(name) {
   const mine = ++runs;
-  try { const p = await build(name); if (mine === runs) render(name, Date.now(), p); } catch (err) { if (mine === runs) $('#profile-msg').textContent = err.message; }
+  $('#profile').innerHTML = '';
+  $('#profile-msg').textContent = `Looking up ${name} on Lichess…`;
+  // Lichess can be slow to start sending games; say so instead of leaving the page blank.
+  const slow = setTimeout(() => { if (mine === runs && /Looking up|Fetching/.test($('#profile-msg').textContent)) $('#profile-msg').textContent += ' Lichess is slow right now; still waiting.'; }, 12000);
+  try {
+    const p = await build(name);
+    if (mine === runs) render(name, Date.now(), p);
+  } catch (err) {
+    if (mine === runs) failed(name, err);
+  } finally { clearTimeout(slow); }
+}
+// Something went wrong: say what, and offer to try again (reading the games afresh).
+function failed(name, err) {
+  console.error(err);
+  $('#profile-msg').innerHTML = `${esc(err.message || String(err))} <button type="button" class="link" data-retry>Try again</button>`;
+  $('[data-retry]').addEventListener('click', () => run(name));
 }
 
 export { build, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV };
@@ -831,7 +846,8 @@ const tasteShort = (mix) => [taste(mix?.w) && `${taste(mix.w).label} as White`, 
 function show(name, push) {
   if (push) history.pushState(null, '', isMe(name) ? location.pathname : `?u=${encodeURIComponent(name)}`);
   const c = cache()[name.toLowerCase()];
-  if (c && c.v === PV) render(c.name, c.at, c.p); else run(name);
+  if (!(c && c.v === PV)) return run(name);
+  try { render(c.name, c.at, c.p); } catch (err) { console.warn('saved profile could not be shown, reading it again', err); run(name); }
 }
 function start() {
   const q = new URLSearchParams(location.search), name = q.get('u') || myName();
