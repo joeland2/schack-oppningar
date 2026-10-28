@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028214942';
-import { STYLE_OF } from './styles.js?v=20261028214942';
+import { account, login, finishLogin } from './lichess.js?v=20261028215039';
+import { STYLE_OF } from './styles.js?v=20261028215039';
 
 const MAX = 500;
 const PV = 5;
@@ -604,12 +604,16 @@ function lineChart(pts, from, end) {
   const ticks = [0, 1, 2, 3].map((k) => Math.round(y0 + ((y1 - y0) * k) / 3));
   const line = pts.map(([t, r], k) => `${k ? 'L' : 'M'}${x(t).toFixed(1)},${y(r).toFixed(1)}`).join('') + `L${x(end).toFixed(1)},${y(pts[pts.length - 1][1]).toFixed(1)}`;
   const change = pts[pts.length - 1][1] - pts[0][1];
-  return `<p class="pf-chart-now"><b>${pts[pts.length - 1][1]}</b> <span class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</span> <small>since ${fmtDay(pts[0][0])}</small></p>
+  // The highest and lowest rating in the period, with the day, also marked on the line.
+  const top = pts.reduce((a, q) => (q[1] > a[1] ? q : a)), low = pts.reduce((a, q) => (q[1] < a[1] ? q : a));
+  const mark = (q, cls) => `<circle class="${cls}" cx="${x(q[0]).toFixed(1)}" cy="${y(q[1]).toFixed(1)}" r="4"/>`;
+  return `<p class="pf-chart-now"><b>${pts[pts.length - 1][1]}</b> <span class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</span> <small>since ${fmtDay(pts[0][0])}</small>
+      <span class="pf-hilo"><span><i class="hi"></i>High <b>${top[1]}</b> <small>${fmtDay(top[0])}</small></span><span><i class="lo"></i>Low <b>${low[1]}</b> <small>${fmtDay(low[0])}</small></span></span></p>
     <svg class="pf-line" viewBox="0 0 ${W} ${H}" role="img" aria-label="Rating from ${pts[0][1]} to ${pts[pts.length - 1][1]} between ${fmtDay(from)} and ${fmtDay(end)}"
       data-pts='${JSON.stringify(pts.map(([t, r]) => [Math.round(x(t)), Math.round(y(r)), r, t]))}'>
       ${ticks.map((r) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(r)}" y2="${y(r)}"/><text class="ax" x="${L - 8}" y="${y(r) + 4}" text-anchor="end">${r}</text>`).join('')}
       <text class="ax" x="${L}" y="${H - 6}">${fmtDay(from)}</text><text class="ax" x="${W - R}" y="${H - 6}" text-anchor="end">Today</text>
-      <path class="ln" d="${line}"/>
+      <path class="ln" d="${line}"/>${mark(top, 'hi')}${mark(low, 'lo')}
       <g class="hov" visibility="hidden"><line class="cross" y1="${T}" y2="${H - B}"/><circle r="5"/></g>
       <rect class="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}"/>
     </svg><p class="pf-tip" aria-live="polite"></p>`;
