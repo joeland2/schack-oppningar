@@ -1,7 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028110306';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028110306';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028110306';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028111002';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028111002';
+import { ideaAt, asMover, CENTRE } from './ideas.js?v=20261028111002';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028111002';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -585,7 +586,7 @@ function renderMistakes(state = 'ready', found = [], checked = 0, total = 0) {
       <div class="board mini" data-mk="${theme}" inert></div>
       <div class="mk-body"><b>${THEMES[theme].title}</b> <span class="og-n">${list.length}</span>
         <p>${THEMES[theme].tip}</p>
-        <p class="mk-ex">For example: you played <b>${list[0].played}</b>, better was <b>${list[0].best}</b>. <a href="${list[0].url}" target="_blank" rel="noopener">See the game</a></p></div>
+        <p class="mk-ex">For example: you played <b>${list[0].played}</b>, better was <b>${list[0].best}</b>.</p></div>
     </div>`).join('')}</div>
     ${found.length ? `<a class="cta" href="mistakes.html">Train these ${found.length} positions</a>` : ''}`;
   for (const [theme, list] of groups) {
@@ -725,56 +726,6 @@ function idea(before, san) {
   return ideaAt(g, san);
 }
 
-// Same, from a position (a Chess game) rather than a move list. Plays the move on g.
-// A position with the given side to move, so we can ask what that side's pieces reach.
-function asMover(g, color) {
-  const fen = g.fen().split(' ');
-  fen[1] = color; fen[3] = '-';
-  try { return new Chess(fen.join(' ')); } catch { return null; }
-}
-const CENTRE = ['d4', 'd5', 'e4', 'e5'];
-// How many squares a side's bishops and queen reach: rises when a pawn move opens their lines.
-function lineMobility(g, color) {
-  const h = asMover(g, color);
-  if (!h) return 0;
-  return h.moves({ verbose: true }).filter((x) => 'bq'.includes(x.piece)).length;
-}
-
-function ideaAt(g, san) {
-  const prev = g.history({ verbose: true }).at(-1);
-  const mobBefore = lineMobility(g, g.turn());
-  const castleBefore = ['f', 'g'].map((f) => g.get(f + (g.turn() === 'w' ? '1' : '8')));
-  const m = g.move(san);
-  const out = [];
-  if (m.flags.includes('k') || m.flags.includes('q')) out.push('Castles: the king gets to safety and the rook comes into play');
-  else {
-    if (m.captured) out.push(`${prev && prev.to === m.to ? 'Takes back' : 'Takes'} the ${PIECE[m.captured]} on ${m.to}`);
-    if ('nb'.includes(m.piece) && m.from[1] === (m.color === 'w' ? '1' : '8')) out.push(`Develops the ${PIECE[m.piece]}`);
-    if (m.piece === 'p' && !m.captured && 'de'.includes(m.to[0])) out.push('Claims the centre');
-    else if (m.piece === 'p' && !m.captured && 'cf'.includes(m.to[0])) out.push('Fights for the centre from the side');
-    if (m.piece === 'q' && g.moveNumber() <= 7) out.push('Brings the queen out early');
-  }
-  if (g.inCheck()) out.push('Gives check');
-  // What the moved piece now reaches: look at its moves as if it could move again.
-  const h = asMover(g, m.color);
-  const reach = h ? h.moves({ square: m.to, verbose: true }) : [];
-  // pawns only count in the centre, where hitting them matters early on
-  const hits = reach.filter((x) => x.captured && x.captured !== 'k' && (x.captured !== 'p' || CENTRE.includes(x.to)))
-    .map((x) => `${PIECE[x.captured]} on ${x.to}`);
-  if (hits.length) out.push(`Attacks the ${hits.join(' and the ')}`);
-  // Centre squares it now covers (a pawn covers the squares diagonally ahead of it).
-  const fwd = m.color === 'w' ? 1 : -1;
-  const covers = m.piece === 'p'
-    ? [-1, 1].map((d) => String.fromCharCode(m.to.charCodeAt(0) + d) + (Number(m.to[1]) + fwd))
-    : reach.filter((x) => !x.captured).map((x) => x.to);
-  const centre = CENTRE.filter((sq) => covers.includes(sq) && !g.get(sq));
-  if (centre.length && m.piece !== 'k') out.push(`Controls ${centre.join(' and ')} in the centre`);
-  if (m.piece === 'p' && lineMobility(g, m.color) - mobBefore >= 3) out.push('Opens lines for the bishop and queen');
-  const rank = m.color === 'w' ? '1' : '8';
-  const castleNow = ['f', 'g'].map((f) => g.get(f + rank));
-  if (g.getCastlingRights?.(m.color)?.k && castleBefore.some(Boolean) && !castleNow.some(Boolean)) out.push('Clears the way to castle');
-  return out.length ? out.join('. ') + '.' : '';
-}
 console.assert(idea(['e4', 'e5'], 'Nf3').startsWith('Develops the knight. Attacks the pawn on e5.'), 'idea');
 
 // The idea plus what real games say: how often the move is chosen here, and how you do after it.

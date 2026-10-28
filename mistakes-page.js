@@ -1,7 +1,10 @@
-import { drill } from './drill.js?v=20261028110306';
-import { THEMES } from './mistakes.js?v=20261028110306';
+import { drill } from './drill.js?v=20261028111002';
+import { THEMES } from './mistakes.js?v=20261028111002';
+import { explainMistake, dangerAfter } from './ideas.js?v=20261028111002';
 
 // Positions from your own games where you went wrong, saved by "Find my mistakes" on the openings page.
+// Everything is explained here, on the board: what your move did wrong, nudges while you look for
+// the better move, and what that move does once you find it.
 let found = [];
 try { found = JSON.parse(localStorage.getItem('opening-book-v2-mistakes')) || []; } catch {}
 
@@ -10,17 +13,29 @@ if (!found.length) {
     <p class="info">Open <a href="openings.html">Practise openings</a>, check your Lichess games and press Find my mistakes.
     The positions where you went wrong show up here to train.</p></section>`;
 } else {
-  drill(found.map((f, n) => ({
-    id: `${f.url}`,
-    group: THEMES[f.theme].title,
-    tag: String(n + 1),
-    title: f.opening ? f.opening.split(':')[0] : `Move ${Math.floor(f.ply / 2) + 1}`,
-    side: f.side,
-    fen: f.fen,
-    solution: [f.best],
-    intro: `From one of your games: you played ${f.played} here. There was a better move. Find it.`,
-    explain: `<p><b>${f.best}</b> was the move. ${THEMES[f.theme].tip}</p>
-      <p class="src"><a href="${f.url}" target="_blank" rel="noopener">See the game on Lichess</a>.</p>`,
-    wrong: (san) => (san === f.played ? `That is what you played in the game. ${THEMES[f.theme].title}: look again.` : null),
-  })), 'mistakes-solved-v1');
+  drill(found.map((f, n) => {
+    const e = explainMistake(f);
+    const theme = THEMES[f.theme];
+    const moveNo = `move ${Math.floor(f.ply / 2) + 1}`;
+    let tries = 0;
+    return {
+      id: `${f.url}`,
+      group: theme.title,
+      tag: String(n + 1),
+      title: `${theme.title}, ${moveNo}`,
+      side: f.side,
+      fen: f.fen,
+      solution: [f.best],
+      intro: `From one of your games${f.opening ? ` (${f.opening.split(':')[0]})` : ''}, ${moveNo}. You played ${f.played} here. ${e.wrong} Can you find the better move?`,
+      explain: `<p><b>${f.best}</b> was the move. ${e.right}</p>
+        <p><b>What to take with you:</b> ${theme.tip}</p>`,
+      wrong: (san) => {
+        tries++;
+        if (san === f.played) return `That is the move from your game. ${e.wrong} Try something else.`;
+        const danger = dangerAfter(f.fen, san);
+        if (danger) return `${danger} Try again.`;
+        return tries >= 2 ? `${e.nudge} Press Hint if you want the piece to move.` : `${san} is not the best here. ${e.nudge}`;
+      },
+    };
+  }), 'mistakes-solved-v1');
 }
