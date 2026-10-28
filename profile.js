@@ -3,11 +3,12 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028214139';
-import { STYLE_OF } from './styles.js?v=20261028214139';
+import { account, login, finishLogin } from './lichess.js?v=20261028214705';
+import { STYLE_OF } from './styles.js?v=20261028214705';
 
 const MAX = 500;
-const PV = 4; // bumped when the profile gains something new: older saved profiles are read again
+const PV = 5;
+const ENOUGH = 20; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
 const $ = (s) => document.querySelector(s);
 const pct = (x) => `${Math.round(x * 100)}%`;
@@ -133,7 +134,7 @@ function typeOf(p) {
     p.solid >= 0.5 && p.attacking < 0.25 && { name: 'Solid builder', why: `${pct(p.solid)} of your games are in solid or positional openings: you build first and attack later.` },
     p.queensOff >= 0.35 && { name: 'Endgame player', why: `The queens come off before move 25 in ${pct(p.queensOff)} of your games: you are happy to trade and play it out.` },
     p.draws < 0.04 && p.moves <= 35 && { name: 'Fighter', why: `Almost no draws (${pct(p.draws)}) and games of ${p.moves} moves on average: your games are decided, one way or the other.` },
-    p.downs >= 5 && p.saved >= 0.35 && { name: 'Comeback player', why: `In ${pct(p.saved)} of the games where you were clearly losing, you still won or drew.` },
+    p.analysed >= ENOUGH && p.downs >= 5 && p.saved >= 0.35 && { name: 'Comeback player', why: `In ${pct(p.saved)} of the games where you were clearly losing, you still won or drew.` },
     p.lowTime >= 0.3 && { name: 'Time scrambler', why: `You end ${pct(p.lowTime)} of your games with under a tenth of your time left.` },
     p.noCastle >= 0.25 && { name: 'King walker', why: `Your king stays in the centre in ${pct(p.noCastle)} of your longer games.` },
   ].filter(Boolean);
@@ -151,12 +152,12 @@ function verdicts(p) {
     good.push({ title: `Playing ${hi}`, why: `You score ${pct(sHi)} as ${hi}.` });
     work.push({ title: `Playing ${lo}`, why: `As ${lo} you score ${pct(sLo)}, ${Math.round(Math.abs(diff) * 100)} points less than as ${hi}. Train your openings for that side.`, href: './' });
   }
-  if (p.ups >= 5) add(p.converted >= 0.8, p.converted < 0.65,
+  if (p.analysed >= ENOUGH && p.ups >= 5) add(p.converted >= 0.8, p.converted < 0.65,
     { title: 'Winning won games', why: `When you were clearly better (3 pawns or more), you won ${pct(p.converted)} of ${p.ups} games.`, href: './mistakes.html' });
-  if (p.downs >= 5) add(p.saved >= 0.35, false, { title: 'Fighting back', why: `When you were clearly worse, you still saved ${pct(p.saved)} of ${p.downs} games.` });
-  if (p.blunders !== null && p.analysed >= 10) add(p.blunders <= 0.4, p.blunders >= 1,
+  if (p.analysed >= ENOUGH && p.downs >= 5) add(p.saved >= 0.35, false, { title: 'Fighting back', why: `When you were clearly worse, you still saved ${pct(p.saved)} of ${p.downs} games.` });
+  if (p.blunders !== null && p.analysed >= ENOUGH) add(p.blunders <= 0.4, p.blunders >= 1,
     { title: 'Avoiding blunders', why: `${p.blunders.toFixed(1)} blunders a game in your ${p.analysed} games with computer analysis${p.blunders >= 1 ? `, most in the ${worstPhase(p)}` : ''}.`, href: './mistakes.html' });
-  if (p.analysed >= 10) add(p.badStarts <= 0.1, p.badStarts >= 0.25,
+  if (p.analysed >= ENOUGH) add(p.badStarts <= 0.1, p.badStarts >= 0.25,
     { title: 'Getting out of the opening', why: `After move 12 you were worse by 1.5 pawns or more in ${pct(p.badStarts)} of your analysed games.`, href: './' });
   if (p.endgames >= 10) add(p.endgameScore >= p.score + 0.07, p.endgameScore <= p.score - 0.07,
     { title: 'Endgames', why: `You score ${pct(p.endgameScore)} in games that reach an endgame, against ${pct(p.score)} overall.`, href: './basics.html' });
@@ -175,19 +176,19 @@ function verdicts(p) {
 const clamp = (x) => Math.round(Math.max(0, Math.min(100, x)));
 function skillsOf(p) {
   return [
-    { label: 'Openings', v: p.analysed >= 10 ? clamp(100 - p.badStarts * 250) : null,
+    { label: 'Openings', needs: true, v: p.analysed >= ENOUGH ? clamp(100 - p.badStarts * 250) : null,
       means: 'Whether you come out of the first 12 moves with a playable position.',
       why: `Worse by 1.5 pawns or more after move 12 in ${pct(p.badStarts)} of analysed games.`,
       train: 'Practise the lines of the openings you play, and learn the plan behind them, not just the moves.', href: './' },
-    { label: 'Tactics', v: p.analysed >= 10 && p.blunders !== null ? clamp(100 - p.blunders * 30) : null,
+    { label: 'Tactics', needs: true, v: p.analysed >= ENOUGH && p.blunders !== null ? clamp(100 - p.blunders * 30) : null,
       means: 'Seeing threats and shots: how often you blunder, that is make a move that throws away a piece or the game.',
       why: `${(p.blunders ?? 0).toFixed(1)} blunders a game.`,
       train: 'Before every move, check every check, capture and threat your opponent has after it. Then solve the positions where you blundered.', href: './mistakes.html' },
-    { label: 'Finishing won games', v: p.ups >= 5 ? clamp(((p.converted - 0.4) / 0.55) * 100) : null,
+    { label: 'Finishing won games', needs: true, v: p.analysed >= ENOUGH && p.ups >= 5 ? clamp(((p.converted - 0.4) / 0.55) * 100) : null,
       means: 'Turning a clearly winning position (3 pawns or more ahead) into a win.',
       why: `Won ${pct(p.converted ?? 0)} of ${p.ups} games where you were clearly better.`,
       train: 'When ahead: trade pieces, not pawns, take away their counterplay first, and do not rush.', href: './basics.html' },
-    { label: 'Defending', v: p.downs >= 5 ? clamp((p.saved / 0.6) * 100) : null,
+    { label: 'Defending', needs: true, v: p.analysed >= ENOUGH && p.downs >= 5 ? clamp((p.saved / 0.6) * 100) : null,
       means: 'Saving clearly lost positions: still winning or drawing them.',
       why: `Saved ${pct(p.saved ?? 0)} of ${p.downs} games where you were clearly worse.`,
       train: 'When behind: keep pieces on, make threats, and set traps rather than waiting.' },
@@ -388,9 +389,14 @@ function analysePanel(name, p) {
   if (analysing) return `<div id="pf-analyse" class="pf-analyse running"><span class="pf-an-progress">Analysing…</span><div class="pf-an-bar"><i></i></div><button type="button" class="link" data-stop>Stop</button></div>`;
   if (!p.todo) return '';
   const opts = [100, 250, 500].filter((n) => n <= Math.max(100, p.n)).map((n) => ({ n, ...costOf(p, n) }));
-  return `<div id="pf-analyse" class="pf-analyse">
-    <span><b>${p.analysed}/${p.n}</b> games analysed${p.ours ? ` (${p.ours} here)` : ''}. Analyse the newest:</span>
-    ${opts.map((o) => `<button type="button" class="pf-an-opt" data-analyse="${o.n}" ${o.games ? '' : 'disabled'} title="${o.games ? `${o.games} games without analysis, ${minutes(o.sec)}, with Stockfish in your browser` : 'All analysed'}">${o.n} <small>${o.games ? `${o.games} new · ${minutes(o.sec).replace('about ', '~')}` : 'done'}</small></button>`).join('')}
+  const few = p.analysed < ENOUGH, first = opts[0];
+  return `<div id="pf-analyse" class="pf-analyse${few ? ' few' : ''}">
+    <div class="pf-an-row"><span><b>${p.analysed}/${p.n}</b> games analysed${p.ours ? ` (${p.ours} here)` : ''}. Analyse the newest:</span>
+    ${opts.map((o) => `<button type="button" class="pf-an-opt" data-analyse="${o.n}" ${o.games ? '' : 'disabled'} title="${o.games ? `${o.games} games without analysis, ${minutes(o.sec)}, with Stockfish in your browser` : 'All analysed'}">${o.n} <small>${o.games ? `${o.games} new · ${minutes(o.sec).replace('about ', '~')}` : 'done'}</small></button>`).join('')}</div>
+    <p class="pf-an-why">${few
+      ? `<b>Analyse at least ${ENOUGH} games to see your Openings, Tactics, Finishing and Defending skills, your accuracy and your blunders.</b> They need a computer's verdict on every move, and ${p.analysed ? `only ${p.analysed} of your games have one` : 'none of your games has one yet'}. The newest 100 takes ${minutes(first?.sec || 0)}.`
+      : 'Why analyse? Lichess only analyses the games you ask it to. A computer verdict on every move shows your blunders and accuracy, how you come out of the opening, whether you win won positions and save lost ones, and it turns your mistakes into puzzles in My practice. The more games, the more reliable the numbers.'}
+      Stockfish runs in your browser; analysed games are kept and never done twice.</p>
   </div>`;
 }
 function bindAnalyse(name) {
@@ -430,6 +436,7 @@ function skillBars(skills, say, me) {
   return `<ul class="pf-skills">${skills.map((x) => `<li${x.v === null ? ' class="pf-skill-none"' : ''}>
       <span class="pf-skill-name">${x.label}</span><span class="pf-skill-val">${x.v ?? '–'}</span>
       <div class="pf-meter" role="img" aria-label="${x.label}: ${x.v === null ? 'not enough games' : `${x.v} of 100`}"><i style="width:${x.v ?? 0}%"></i></div>
+      ${x.v === null && x.needs ? '<small class="pf-skill-lock">Needs more analysed games</small>' : ''}
       <div class="pf-skill-more"><p class="pf-means">${esc(x.means)}</p>
       <small>${x.v === null ? 'Not enough games to say.' : esc(say(x.why))}</small>
       ${x.v !== null && x.v < 50 ? `<p class="pf-train"><b>How to train:</b> ${esc(x.train)}${me && x.href ? ` <a href="${x.href}">Start</a>` : ''}</p>` : ''}</div></li>`).join('')}</ul>`;
@@ -471,7 +478,7 @@ function render(name, at, p) {
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
   const list = (items, empty) => verdictList(items.map((i) => ({ ...i, why: say(i.why), href: me ? i.href : null })), empty);
   const known = skills.filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
-  const kpis = [['Score', pct(p.score)], p.acc !== null && ['Accuracy', `${p.acc}%`], p.blunders !== null && ['Blunders / game', p.blunders.toFixed(1)], ['Draws', pct(p.draws)]].filter(Boolean);
+  const kpis = [['Score', pct(p.score)], p.acc !== null && p.analysed >= ENOUGH && ['Accuracy', `${p.acc}%`], p.blunders !== null && p.analysed >= ENOUGH && ['Blunders / game', p.blunders.toFixed(1)], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
     ${playerBar(name)}
     <section class="pf-hero">

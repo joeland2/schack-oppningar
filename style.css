@@ -931,3 +931,10 @@ a.cta { color: var(--accent-ink); }
 .pf-analyse { font-size: 14.5px; gap: 8px 10px; }
 .pf-an-opt { padding: 6px 14px; font-size: 14px; }
 .pf-an-opt small { font-size: 12.5px; }
+
+.pf-analyse { display: grid; gap: 8px; }
+.pf-an-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.pf-an-why { margin: 0; max-width: 90ch; font-size: 13px; color: var(--muted); }
+.pf-analyse.few { padding: 12px 14px; border: 1px solid var(--hot); border-radius: var(--radius); background: var(--surface); }
+.pf-analyse.few .pf-an-why { color: var(--ink); font-size: 14px; }
+.pf-skill-lock { grid-column: 1 / -1; color: var(--hot); font-size: 12.5px; font-weight: 600; }
