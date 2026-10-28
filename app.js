@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028130225';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028130225';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028130225';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028130225';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028130426';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028130426';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028130426';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028130426';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -70,11 +70,14 @@ function wdl(o, side) {
 
 const numbered = (moves) => moves.split(' ').map((m, i) => (i % 2 ? m : `${i / 2 + 1}.${m}`)).join(' ');
 
-// Indexes of the rating groups overlapping rating ± 300: "your level" everywhere on the site.
+// Indexes of the rating groups overlapping 300 below to 500 above your rating: "your level" everywhere
+// on the site. Reaching higher keeps more games deep into the lines, and they are better games.
+const LEVEL = { below: 300, above: 500 };
+const levelText = (r) => `${r - LEVEL.below}–${r + LEVEL.above}`;
 function ratingsAround(r) {
-  return BUCKETS.flatMap((b, i) => (b <= r + 300 && (BUCKETS[i + 1] ?? Infinity) > r - 300 ? [i] : []));
+  return BUCKETS.flatMap((b, i) => (b <= r + LEVEL.above && (BUCKETS[i + 1] ?? Infinity) > r - LEVEL.below ? [i] : []));
 }
-console.assert(ratingsAround(1500).join() === '2,3,4,5' && ratingsAround(2400).join() === '6,7,8', 'ratingsAround');
+console.assert(ratingsAround(1500).join() === '2,3,4,5,6' && ratingsAround(2400).join() === '6,7,8', 'ratingsAround');
 
 // ---------- Data (all local, nothing is fetched from Lichess) ----------
 let TREE, BOOK, NAMES, IN_BOOK;
@@ -1250,7 +1253,7 @@ $('#lines-list').addEventListener('click', (e) => {
 
 function showComplete() {
   $('#complete-title').textContent = `${isVs(cur) ? 'vs ' : ''}${cur.name}: complete`;
-  $('#complete-text').textContent = `You cleared all ${lines.length} lines: every common reply at ${rating} ± 300 in ${speed}, each played from memory without a mistake.`;
+  $('#complete-text').textContent = `You cleared all ${lines.length} lines: every common reply at ${levelText(rating)} in ${speed}, each played from memory without a mistake.`;
   $('#complete').showModal();
 }
 $('#complete-more').addEventListener('click', () => { $('#complete').close(); play((lineIdx + 1) % lines.length); });
@@ -1490,7 +1493,7 @@ async function showPicker() {
   $('#pick-msg').textContent = `Loading ${speed} games…`;
   try { await loadTree(); } catch { return say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .'); }
   OPENINGS = POPULAR[`${speed}:${rating}`] ??= popularOpenings();
-  $('#pick-msg').textContent = `Real ${speed} games at ${rating} ± 300${style === 'any' ? '' : `, ${STYLES[style].label.toLowerCase()} White openings only`}. Pick one to practise.`;
+  $('#pick-msg').textContent = `Real ${speed} games by players rated ${levelText(rating)}${style === 'any' ? '' : `, ${STYLES[style].label.toLowerCase()} White openings only`}. Pick one to practise.`;
   renderList();
 }
 
