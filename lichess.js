@@ -40,6 +40,7 @@ export async function finishLogin() {
   if (!me.ok) throw new Error(`Lichess did not accept the login (${me.status}). Try again.`);
   const user = await me.json();
   try { localStorage.setItem(KEY, JSON.stringify({ token, name: user.username })); } catch {}
+  window.track?.('login', user.username);
   return user;
 }
 

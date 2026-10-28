@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029004235';
-import { STYLE_OF } from './styles.js?v=20261029004235';
+import { account, login, finishLogin } from './lichess.js?v=20261029005012';
+import { STYLE_OF } from './styles.js?v=20261029005012';
 
 const MAX = 500;
 const PV = 14;
@@ -477,6 +477,7 @@ function bindAnalyse(name) {
   if (!el) return;
   el.querySelectorAll('[data-analyse]').forEach((b) => b.addEventListener('click', async () => {
     const n = Number(b.dataset.analyse);
+    window.track?.('analyse', String(n));
     analysing = { stop: false };
     el.outerHTML = analysePanel(name, {});
     $('#pf-analyse').querySelector('[data-stop]').addEventListener('click', () => { if (analysing) analysing.stop = true; });
@@ -616,6 +617,7 @@ function drawCard(ctx, x, y, name, p, t, skills, piece) {
 }
 async function cardPng(name, p, t, skills, detail, btn) {
   const label = btn.textContent; btn.disabled = true; btn.textContent = 'Making the image…';
+  window.track?.('card', detail ? 'card + style' : 'card');
   try {
     await Promise.all(['400 40px Anton', '400 20px Geist', '600 20px Geist'].map((f) => document.fonts.load(f)));
     const piece = await new Promise((ok) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = `pieces/w${(p.piece || 'n').toUpperCase()}.svg`; });
@@ -874,6 +876,7 @@ function ask() {
 let runs = 0; // a newer look-up wins over one still reading games
 async function run(name) {
   const mine = ++runs, c = cache()[name.toLowerCase()];
+  window.track?.('profile', name);
   // Seen before: show the saved profile at once, then fetch new games quietly and redraw only if there were any.
   if (c && c.v === PV) {
     try { render(c.name || name, c.at, c.p); } catch (err) { console.warn('saved profile could not be shown, reading it again', err); }
@@ -976,6 +979,7 @@ function recordsOf(name, games) {
 }
 const MIN_SPEED = 10; // games in a time control needed to compare it
 async function compare(a, b, speed = new URLSearchParams(location.search).get('speed')) {
+  window.track?.('compare', `${a} vs ${b}`);
   $('#profile').innerHTML = '';
   try {
     const A = await profileFor(a), B = await profileFor(b);

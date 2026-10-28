@@ -1,11 +1,11 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029004235';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029004235';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261029004235';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029004235';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029004235';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029004235';
-import { storedGames } from './profile.js?v=20261029004235';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029005012';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029005012';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261029005012';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029005012';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029005012';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029005012';
+import { storedGames } from './profile.js?v=20261029005012';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1118,6 +1118,7 @@ function start(op, keepTraps = false) {
   if (!keepTraps) trapRun = null; // choosing an opening ends trap training
   if (mode === 'explore') setMode('learn', false);
   cur = op;
+  window.track?.('practise', `${op.side === 'b' ? 'Black' : 'White'}: ${(isVs(op) ? 'vs ' : '') + op.name}`);
   line = []; lines = []; game = new Chess();
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   misses = 0; missesHere = 0; busy = true;
