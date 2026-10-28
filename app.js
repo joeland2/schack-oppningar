@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028144706';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028144706';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028144706';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028144706';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028144851';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028144851';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028144851';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028144851';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -811,8 +811,9 @@ function renderWhy() {
   // Before the first move, an introduction: what the opening is about and which line this is.
   if (!hist.length && lines[lineIdx]) {
     const l = lines[lineIdx], about = ABOUT[cur.family] || ABOUT[shortName(cur.family)] || '';
+    const plan = planOf(cur);
     parts.push(`<p class="intro"><b>${isVs(cur) ? 'vs ' : ''}${cur.name}.</b> ${about} This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level (${pctOf(l.share)}). It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap
-      ? ` <b>A trap:</b> at your level your opponent often plays ${numbered(lineKey(l.moves.slice(0, l.trap.ply + 1))).split(' ').at(-1)} here and scores only ${pct(l.trap.score)} after it. Learn how to punish it.` : ''}</p>`);
+      ? ` <b>A trap:</b> at your level your opponent often plays ${Math.floor(l.trap.ply / 2) + 1}${l.trap.ply % 2 ? '...' : '.'}${l.trap.san} and scores only ${pct(l.trap.score)} after it. Learn how to punish it.` : ''}</p>${plan ? `<p class="intro plan"><b>Your plan:</b> ${plan}</p>` : ''}`);
   }
   // First what to play and why (Learn), then a quiet line on the last move, then the other replies
   // folded away: the board and the move to make come first.
@@ -837,7 +838,8 @@ function renderWhy() {
   // The line-done summary is made at the line's end and stays while you play on from there. The tips
   // are about the move to play at the line's end, so they go once you have played on.
   if (ply >= line.length && hist.length === line.length) {
-    lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p><p><b>What this line gave you</b> ${lineSummary()}</p>${lineFacts()}`;
+    const plan = planOf(cur);
+    lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p><p><b>What this line gave you</b> ${lineSummary()}</p>${lineFacts()}${plan ? `<p class="plan"><b>Your plan from here:</b> ${plan}</p>` : ''}`;
   }
   // "How to go on" is for the moment you start playing on: shown at the line's end, gone once you move.
   let tips = '';
@@ -906,6 +908,9 @@ function lineSummary() {
 
 // How to go on, for your move now: the move that scores best in games at your level, the next best,
 // and Stockfish's choice, each with what the move does. Game moves need MIN_GAMES games to count.
+// The plan for an opening, from the side you play it: your own opening's plan, or Black's against it.
+const planOf = (o) => (isVs(o) ? VS_PLAN : PLAN)[o.family] || (isVs(o) ? VS_PLAN : PLAN)[shortName(o.family)] || '';
+
 // The rating group that played a move here most often, e.g. "1600–1800" (the data has no names).
 function whoPlayed(moves, san) {
   let node = TREE;
