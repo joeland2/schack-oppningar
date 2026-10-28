@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028142645';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028142645';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028142645';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028142645';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028143434';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028143434';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028143434';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028143434';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -806,6 +806,7 @@ function renderWhy() {
     const reps = !yours && repliesText(before, san);
     if (reps) parts.push(`<details class="reps-box"><summary>What players at your level answer here</summary>${reps}</details>`);
   }
+  if (game.isGameOver()) parts.unshift(gameStats());
   // Your last own move, when it was a slip: what it was and what was better (play-out only).
   const mine = hist.length - ((hist.length - 1) % 2 === (cur.side === 'w' ? 0 : 1) ? 1 : 2);
   if (playing && mine >= line.length && betters[mine]) {
@@ -1201,6 +1202,19 @@ function ended() {
   return true;
 }
 
+// When the game is over: how your moves were rated, kind by kind (badges arrive as Stockfish rates them).
+const KINDS = ['brilliant', 'best', 'good', 'book', 'inaccuracy', 'mistake', 'blunder'];
+const KIND_NAME = { brilliant: 'Brilliant', best: 'Best', good: 'Good', book: 'Book', inaccuracy: 'Inaccuracies', mistake: 'Mistakes', blunder: 'Blunders' };
+function gameStats() {
+  const mine = notes.filter((k, i) => k && (i % 2 === 0) === (cur.side === 'w'));
+  const count = (k) => mine.filter((x) => x === k).length;
+  const badge = (k) => `<span class="mark k-${k} legend-badge">${k === 'book' ? BOOK_ICON : GLYPH[k]}</span>`;
+  const result = game.isCheckmate() ? (game.turn() === cur.side ? 'You were checkmated' : 'You won by checkmate') : 'Draw';
+  return `<div class="game-stats"><p class="gs-head">${result} · your ${plural(mine.length, 'move')}</p>
+    <ul>${KINDS.map((k) => `<li class="${count(k) ? '' : 'none'}">${badge(k)}<b>${count(k)}</b> ${KIND_NAME[k]}</li>`).join('')}</ul></div>`;
+}
+const BOOK_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c3-1.5 5.5-1.5 8 0 2.5-1.5 5-1.5 8 0v12c-3-1.5-5.5-1.5-8 0-2.5-1.5-5-1.5-8 0zM12 6v12"/></svg>';
+
 // A short banner over the board, for the end of a line.
 function flash(text) {
   const frame = $('.board-frame');
@@ -1312,6 +1326,8 @@ function renderLineBox() {
   const oneIn = Math.max(1, Math.round(1 / (cur.share * l.share)));
   $('#line-box').innerHTML = `
     <h2 class="lb-name">Line ${lineIdx + 1} of ${n}: ${lineName(l)} <small>${lineEnd(l)}</small></h2>
+    ${s.done?.includes(lineKey(l.moves)) ? '<p class="lb-status cleared"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>You have cleared this line</p>'
+      : s.played?.includes(lineKey(l.moves)) ? '<p class="lb-status"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>You have learned this line</p>' : ''}
     <div class="lb-stats">
       <div><b>${pctOf(l.share)}</b><span>of games in this opening go this way</span></div>
       <div><b>1 in ${oneIn.toLocaleString('en')}</b><span>of all your ${speed} games reach it</span></div>
@@ -1329,7 +1345,7 @@ function renderLines() {
   const state = (l) => (done.includes(lineKey(l.moves)) ? ' cleared' : learned.includes(lineKey(l.moves)) ? ' learned' : '');
   $('#lines-list').innerHTML = lines.map((l, i) => `<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}" data-i="${i}">
       <span class="line-n">${i + 1}.</span><span class="line-name">${lineName(l)}<small>${lineEnd(l)}</small></span>
-      <span class="line-share">${pctOf(l.share)}</span><span class="line-ok">${done.includes(lineKey(l.moves)) ? '<svg class="ico" viewBox="0 0 24 24" role="img" aria-label="Cleared"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}</span>
+      <span class="line-share">${pctOf(l.share)}</span><span class="line-ok">${state(l) ? `<span class="done-tag"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${state(l) === ' cleared' ? 'Cleared' : 'Learned'}</span>` : ''}</span>
     </button></li>`).join('');
 }
 $('#lines-list').addEventListener('click', (e) => {

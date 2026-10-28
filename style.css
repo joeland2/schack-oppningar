@@ -276,7 +276,7 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 /* Lines overview */
 .lines summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
 .lines ol { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; max-height: 320px; overflow: auto; }
-.line-btn { width: 100%; display: grid; grid-template-columns: 2.2em 1fr auto 1.4em; gap: 6px; align-items: center; text-align: left;
+.line-btn { width: 100%; display: grid; grid-template-columns: 2.2em 1fr auto auto; gap: 6px; align-items: center; text-align: left;
   padding: 6px 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink); cursor: pointer; font-size: .9rem; }
 .line-btn:hover { background: var(--bg); }
 .line-btn.now { border-color: var(--accent); background: var(--bg); }
@@ -614,3 +614,25 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
 .line-btn.cleared { background: color-mix(in srgb, var(--good) 22%, transparent); }
 .line-btn.learned .line-name, .line-btn.cleared .line-name { color: var(--ink); }
 .line-btn.now.learned, .line-btn.now.cleared { border-color: var(--good); }
+
+/* Done lines stand out: a green edge and a labelled tag; the line box says it too */
+.line-btn.learned, .line-btn.cleared { box-shadow: inset 3px 0 0 var(--good); }
+.done-tag { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px 1px 5px; border-radius: 99px; font-size: 11px; font-weight: 600;
+  color: var(--good); background: color-mix(in srgb, var(--good) 15%, transparent); white-space: nowrap; }
+.line-btn.cleared .done-tag { color: #fff; background: var(--good); }
+.line-btn.cleared .done-tag .ico { stroke: #fff; }
+.done-tag .ico { width: 12px; height: 12px; stroke-width: 3.2; }
+.lb-status { display: flex; align-items: center; gap: 6px; margin: 0; padding: 6px 10px; border-radius: 6px; font-size: 13px; font-weight: 600;
+  color: var(--good); background: color-mix(in srgb, var(--good) 12%, transparent); }
+.lb-status.cleared { color: #fff; background: var(--good); }
+.lb-status .ico { width: 16px; height: 16px; stroke-width: 3; }
+.lb-status.cleared .ico { stroke: #fff; }
+
+/* Game over: how your moves were rated */
+.game-stats { display: grid; gap: 8px; padding: 10px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); }
+.game-stats .gs-head { margin: 0; padding: 0; border: 0; background: none; font-weight: 600; color: var(--ink); font-size: .95rem; }
+.game-stats ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }
+.game-stats li { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.game-stats li b { color: var(--ink); font-family: var(--font-body); min-width: 1.2em; text-align: right; }
+.game-stats li.none { opacity: .45; }
+.game-stats .legend-badge { position: static; flex: none; width: 20px; height: 20px; font-size: 10px; animation: none; }
