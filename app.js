@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028141655';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028141655';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028141655';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028141655';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028142133';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028142133';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028142133';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028142133';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
 const MAX_LINES = 20;
-const MIN_LINE = 0.01;   // a side line needs 1% of the opening's games to become a line of its own
+const MIN_LINE = 0.03;   // a side line needs 3% of the opening's games to become a line of its own
 const MIN_GAMES = 20;     // below this, real-game data is too thin to trust
 const MAX_PLY = 20;       // data/explorer-*.json goes this deep
 const DATA = '2026-10-28-k8'; // version of data/explorer-*.json
@@ -198,7 +198,7 @@ function buildLines(op) {
   const done = [];
   // A system's move orders count like opponent replies: each one played in ≥ MIN_SHARE of its games.
   const open = (op.roots || [{ moves: op.root.split(' '), share: op.share }]).filter((r) => r.share / op.share >= MIN_SHARE)
-    .map((r) => ({ moves: r.moves, share: r.share / op.share, name: op.roots ? op.name : '' }));
+    .map((r, i) => ({ moves: r.moves, share: r.share / op.share, name: op.roots ? op.name : '', branch: i ? r.share / op.share : 1 }));
   while (open.length) {
     open.sort((a, b) => b.share - a.share);
     const l = open.shift();
@@ -212,11 +212,16 @@ function buildLines(op) {
     const x = gamesAt(moves);
     const name = nameOf(moves, l.name);
     const replies = x.total < MIN_GAMES ? [] : x.moves.filter((m) => m.n >= MIN_GAMES && m.n / x.total >= MIN_SHARE);
-    if (!replies.length) { done.push({ moves, share: l.share, name }); continue; }
+    if (!replies.length) { done.push({ moves, share: l.share, name, branch: l.branch }); continue; }
     const room = Math.max(1, MAX_LINES - done.length - open.length);
     // The most common reply always carries the line on; others branch off only if they come up in at
     // least MIN_LINE of games in this opening, so the line budget goes to depth, not to rarities.
-    for (const m of replies.filter((m, i) => i === 0 || l.share * m.n / x.total >= MIN_LINE).slice(0, room)) open.push({ moves: [...moves, m.san], share: l.share * m.n / x.total, name: nameOf([...moves, m.san], name) });
+    // branch: how many of the opening's games reach the point where this line leaves its parent; the
+    // main line (always the most common reply) keeps 1, so it is learned first.
+    for (const [i, m] of replies.filter((m, i) => i === 0 || l.share * m.n / x.total >= MIN_LINE).slice(0, room).entries()) {
+      const share = l.share * m.n / x.total;
+      open.push({ moves: [...moves, m.san], share, name: nameOf([...moves, m.san], name), branch: i ? share : l.branch });
+    }
   }
   // Every line ends on the opponent's move: you see their answer, then play on from there. A line that
   // ends on your move gets their most common reply, or loses that last move where no game goes further.
@@ -226,7 +231,8 @@ function buildLines(op) {
     const reply = gamesAt(l.moves).moves[0];
     return { ...l, moves: reply ? [...l.moves, reply.san] : l.moves.slice(0, -1) };
   }).filter((l) => l.moves.length && !seen.has(lineKey(l.moves)) && seen.add(lineKey(l.moves)))
-    .sort((a, b) => b.share - a.share);
+    // As a course does it: the main line first, then the lines that leave it, the most common first.
+    .sort((a, b) => b.branch - a.branch || b.share - a.share);
 }
 
 // The most played White openings at your level, found by walking real games from the start position,
@@ -596,7 +602,7 @@ function renderMistakes(state = 'ready', found = [], checked = 0, total = 0) {
   el.innerHTML = `${state === 'running' ? `<p class="info">Checking game ${checked} of ${total}…</p>` : ''}<ul class="ml-list">${groups.map(([theme, list]) => `<li class="ml-row ml-static">
       <span class="ml-name">${THEMES[theme].title}</span><span class="ml-meta"><b>${list.length}</b> in ${plural(checked, 'game')}</span></li>`).join('')
     || (state === 'running' ? '' : '<li class="info">No clear mistakes found.</li>')}</ul>
-    ${found.length && state !== 'running' ? `<a class="cta" href="mistakes.html">Train these ${Math.min(found.length, 80)} positions</a>` : ''}`;
+    ${found.length && state !== 'running' ? `<a class="cta" href="mistakes.html">Train your ${pickPuzzles(found).length} biggest mistakes</a>` : ''}`;
 }
 
 async function runMistakes() {
@@ -611,7 +617,7 @@ async function runMistakes() {
     onProgress: (checked, total, sofar) => { done = checked; if (run === mistakeRun) renderMistakes('running', sofar, checked, total); },
   });
   if (run !== mistakeRun) return;
-  store(MISTAKES_KEY, byTheme(found).flatMap(([, list]) => list).slice(0, 80)); // the kinds you repeat most first
+  store(MISTAKES_KEY, pickPuzzles(found));
   renderMistakes('done', found, done);
 }
 
@@ -1031,7 +1037,7 @@ function search(fen, { elo = null, ms = 500, skip = null, multi = 1 } = {}) {
       engine.addEventListener('error', () => { engine = null; engineDone?.(null); });
     }
     engineDone = resolve;
-    let cp = 0, mate = null;
+    let cp = 0, mate = null, pv = [];
     const lines = [];
     const toMove = (uci) => (uci && uci !== '(none)' ? { from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] } : null);
     engine.onmessage = (e) => {
@@ -1039,11 +1045,11 @@ function search(fen, { elo = null, ms = 500, skip = null, multi = 1 } = {}) {
       const sc = e.data.match(/ score (cp|mate) (-?\d+)/);
       if (sc && !/ (lower|upper)bound/.test(e.data)) {
         const k = Number(e.data.match(/ multipv (\d+)/)?.[1] || 1);
-        if (k === 1) { if (sc[1] === 'cp') { cp = Number(sc[2]); mate = null; } else mate = Number(sc[2]); }
+        if (k === 1) { if (sc[1] === 'cp') { cp = Number(sc[2]); mate = null; } else mate = Number(sc[2]); pv = (e.data.match(/ pv (.+)$/)?.[1] || '').split(' '); }
         lines[k - 1] = toMove(e.data.match(/ pv (\S+)/)?.[1]);
       }
       if (!e.data.startsWith('bestmove')) return;
-      resolve({ move: toMove(e.data.split(' ')[1]), cp, mate, lines: lines.filter(Boolean) });
+      resolve({ move: toMove(e.data.split(' ')[1]), cp, mate, pv, lines: lines.filter(Boolean) });
     };
     engine.postMessage(`setoption name MultiPV value ${multi}`);
     engine.postMessage(`setoption name UCI_LimitStrength value ${!!elo}`);

@@ -129,7 +129,7 @@ export function explainMistake({ fen, played, best, theme }) {
     if (mineNow.length && !hanging(after, me).some((h) => h.square === mineNow[0].square)) {
       right.push(`It also takes care of your ${PIECE[mineNow[0].type]} on ${mineNow[0].square}, which was under attack.`);
     }
-    const idea = ideaAt(new Chess(fen), best);
+    const idea = ideaAt(new Chess(fen), best).replace(/(^|\. )Gives check(\.|$)/, '$1').trim(); // the check is said above
     if (idea) right.push(idea);
   }
   const NUDGE = {

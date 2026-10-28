@@ -1,6 +1,6 @@
-import { drill } from './drill.js?v=20261028141655';
-import { THEMES } from './mistakes.js?v=20261028141655';
-import { explainMistake, dangerAfter } from './ideas.js?v=20261028141655';
+import { drill } from './drill.js?v=20261028142133';
+import { THEMES } from './mistakes.js?v=20261028142133';
+import { explainMistake, dangerAfter } from './ideas.js?v=20261028142133';
 
 // Positions from your own games where you went wrong, saved by "Find my mistakes" on the openings page.
 // Everything is explained here, on the board: what your move did wrong, nudges while you look for
@@ -25,9 +25,9 @@ if (!found.length) {
       title: `${theme.title}, ${moveNo}`,
       side: f.side,
       fen: f.fen,
-      solution: [f.best],
+      solution: f.solution || [f.best],
       intro: `From one of your games${f.opening ? ` (${f.opening.split(':')[0]})` : ''}, ${moveNo}. You played ${f.played} here. ${e.wrong} Can you find the better move?`,
-      explain: `<p><b>${f.best}</b> was the move. ${e.right}</p>
+      explain: `<p><b>${f.best}</b> was the move. ${e.right}</p>${(f.solution || []).length > 1 ? `<p><b>The idea:</b> ${f.solution.join(' ')}</p>` : ''}
         <p><b>What to take with you:</b> ${theme.tip}</p>`,
       wrong: (san) => {
         tries++;
