@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028165430';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028165430';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028165430';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028165430';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028170444';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028170444';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028170444';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028170444';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1105,6 +1105,7 @@ function play(i, again = false) {
   game = new Chess();
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null; trapShow = false;
   punish = 0; punishDone = false; endLen = 0;
+  closeMoment();
   misses = again ? misses : 0; missesHere = 0; busy = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
   playing = false;
@@ -1287,7 +1288,7 @@ function renderEval() {
 let notes = [], betters = [];
 // Why the move at ply n was a slip: what goes wrong on the board (a mate or a piece left hanging),
 // or else the opponent's best answer to it and what that answer does; then the better move and its point.
-function slipWhy(n) {
+function slipWhy(n, arrows = true) {
   const m = game.history({ verbose: true })[n], better = betters[n];
   const after = new Chess(m.before);
   after.move(m.san);
@@ -1297,7 +1298,7 @@ function slipWhy(n) {
   const replyIdea = reply && ideaAt(new Chess(after.fen()), reply.san);
   const wrong = danger || (reply ? `${sideName(after.turn())} answers ${reply.san}${replyIdea ? `: ${replyIdea.replace(/^./, (c) => c.toLowerCase())}` : '.'}` : '');
   const bestIdea = ideaAt(new Chess(m.before), better.san);
-  return `${wrong ? `Why: ${wrong} ` : ''}Better was <b>${better.san}</b>${bestIdea ? `: ${bestIdea.replace(/^./, (c) => c.toLowerCase())}` : '.'} (Green arrow; the move played is red.)`;
+  return `${wrong ? `Why: ${wrong} ` : ''}Better was <b>${better.san}</b>${bestIdea ? `: ${bestIdea.replace(/^./, (c) => c.toLowerCase())}` : '.'}${arrows ? ' (Green arrow; the move played is red.)' : ''}`;
 }
 const NOTE_WORD = { brilliant: 'brilliant', best: 'the best move', good: 'good', inaccuracy: 'an inaccuracy', mistake: 'a mistake', blunder: 'a blunder' };
 const VALUE_OF = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
@@ -1322,6 +1323,20 @@ async function rate(i, before, m) {
     : isBest ? (leavesPieceHanging(g, m) && winPct(-toCp(a)) >= 45 ? 'brilliant' : 'best') : 'good';
   if (loss >= 5 && b.move) betters[i] = new Chess(before).move(b.move);
   renderNotes(gen);
+  if (notes[i] === 'blunder' && playing && mode !== 'explore' && view === null && !momentOpen) bigMoment(i, a);
+}
+// A blunder while you play on stops the game: yours can be taken back, theirs is a chance to find.
+// after: Stockfish on the position after the move (its best move is your answer to their blunder).
+function bigMoment(i, after) {
+  const m = game.history({ verbose: true })[i], label = moveLabel(i, m.san);
+  if (m.color === cur.side) {
+    return moment('blunder', 'Blunder', `<b>${label}</b> throws away a lot. ${slipWhy(i, false)}`,
+      [{ label: 'Take it back', run: () => takeBackTo(i) }, { label: 'Play on', run: () => {} }], null, m.to);
+  }
+  if (i !== game.history().length - 1) return; // you have moved on already
+  const best = after?.move && new Chess(game.fen()).move(after.move);
+  moment('chance', 'Chance!', `${sideName(m.color)}'s <b>${label}</b> was a blunder. There is a strong move for you now: look at checks, captures and threats.`,
+    [{ label: 'Find it', run: () => {} }, ...(best ? [{ label: 'Show me', run: () => { hintSq = [best.from, best.to]; renderBoard(); say(`${moveWords(best)}.`, 'good'); } }] : [])], null, m.to);
 }
 function renderNotes(gen) { if (gen === gameGen && cur) { renderBoard(); renderMoves(); renderWhy(); } }
 
@@ -1394,6 +1409,31 @@ $('#why').addEventListener('click', (e) => {
   goTo((mine.find((i) => i > at) ?? mine[0]) + 1);
 });
 const BOOK_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c3-1.5 5.5-1.5 8 0 2.5-1.5 5-1.5 8 0v12c-3-1.5-5.5-1.5-8 0-2.5-1.5-5-1.5-8 0zM12 6v12"/></svg>';
+
+// A moment that matters (a trap, a blunder, a chance) stops the game: a card over the board, which
+// stays until you choose what to do. kind: trap | blunder | chance. actions: [{ label, run }], the
+// first is the main one. swing: [before, after] your score, drawn as a bar.
+let momentOpen = false;
+function moment(kind, title, html, actions, swing = null, sq = null) {
+  const frame = $('.board-frame');
+  // The card sits on the half of the board away from the move it is about, so the move stays in view.
+  const top = sq && (cur.side === 'w' ? Number(sq[1]) <= 4 : Number(sq[1]) >= 5);
+  frame.querySelector('.moment')?.remove();
+  momentOpen = true;
+  const bar = swing ? `<div class="moment-swing"><span>Your chances</span><b>${pct(swing[0])}</b><i aria-hidden="true"><s style="width:${swing[0] * 100}%"></s><s class="to" style="width:${swing[1] * 100}%"></s></i><b>${pct(swing[1])}</b></div>` : '';
+  frame.insertAdjacentHTML('beforeend', `<div class="moment moment-${kind}${top ? ' at-top' : sq ? ' at-bottom' : ''}" role="alertdialog" aria-labelledby="moment-title"><div class="moment-card">
+    <p class="moment-title" id="moment-title">${title}</p><p>${html}</p>${bar}
+    <div class="moment-actions">${actions.map((a, i) => `<button type="button" class="${i ? 'ghost' : 'cta'}" data-act="${i}">${a.label}</button>`).join('')}</div></div></div>`);
+  const el = frame.querySelector('.moment');
+  el.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if (!b) return;
+    el.remove(); momentOpen = false;
+    actions[Number(b.dataset.act)].run();
+  });
+  el.querySelector('[data-act]').focus();
+}
+function closeMoment() { $('.board-frame .moment')?.remove(); momentOpen = false; }
 
 // A short banner over the board, for the end of a line.
 function flash(text, kind = 'line') {
@@ -1612,8 +1652,7 @@ function showComplete() {
 $('#complete-more').addEventListener('click', () => { $('#complete').close(); play((lineIdx + 1) % lines.length); });
 $('#complete-back').addEventListener('click', () => { $('#complete').close(); showPicker(); });
 
-const TRAP_PAUSE = 1500; // ms the board stops when the opponent falls into the line's trap
-let trapShow = false;
+let trapShow = false; // the trap's move in red while its card is up
 function reply() {
   busy = true;
   // A newer game or a switch to Explore cancels this, through the game counter.
@@ -1624,17 +1663,20 @@ function reply() {
     lastMove = m; ply++; busy = false; hintSq = [];
     notes[ply - 1] = 'book';
     // The trap's slip: the board stops for a moment with the move in red, so it cannot be missed.
-    if (mode !== 'time' && lines[lineIdx]?.trap?.ply === ply - 1) {
+    const t = lines[lineIdx]?.trap;
+    if (mode !== 'time' && t?.ply === ply - 1) {
       busy = true; trapShow = true;
       render();
-      flash(`Trap! ${trapMove(lines[lineIdx].trap)}`, 'trap');
-      return setTimeout(() => {
+      const before = resultsAt(line.slice(0, t.ply)), was = before ? before.win + before.draw / 2 : null;
+      const go = () => {
         if (gen !== gameGen) return;
         busy = false; trapShow = false;
         render();
         if (ply >= line.length) return finish();
         if (!playPremove()) prompt('Your move: punish it.');
-      }, TRAP_PAUSE);
+      };
+      return moment('trap', 'Trap!', `${sideName(m.color)} played <b>${trapMove(t)}</b>, the mistake this line is about. It looks natural, but it lets you win: players at your level score ${pct(1 - t.score)} after it. ${mode === 'learn' ? punishText(t) || 'The arrow will show how to punish it.' : 'Find the move that punishes it.'}`,
+        [{ label: 'Punish it', run: go }], was === null ? null : [was, 1 - t.score], m.to);
     }
     render();
     if (ply >= line.length) return finish();
@@ -1893,14 +1935,25 @@ function leaveView(sq) {
   game.history().slice(0, n).forEach((m) => g.move(m));
   if (g.get(sq)?.color !== g.turn()) { showMove(Infinity); return false; }
   if (n < line.length || g.turn() !== cur.side) { exploreFrom(n, 'Explore from here: move any piece, for either side. '); return true; }
+  takeBackTo(n);
+  return true;
+}
+// Back to the position after n moves, for you to play on from (the moves after it are gone).
+function takeBackTo(n) {
   gameGen++; // a reply still on its way no longer applies
+  closeMoment();
   while (game.history().length > n) game.undo();
   ply = n; notes.length = betters.length = n; view = null;
   lastMove = game.history({ verbose: true }).at(-1) || null;
   premove = null; busy = false; sel = null; hintSq = [];
+  if (punishDone && !endLen) { // still punishing the trap: count again the moves you have made after it
+    const mine = game.history({ verbose: true }).slice(line.length).filter((x) => x.color === cur.side).length;
+    punish = Math.max(0, punishMoves() - mine);
+  }
   render();
   say('Moves taken back. Your move.');
-  return true;
+  if (game.turn() !== cur.side) opponentPlays();
+  else if (punish > 0) guide();
 }
 const reviewing = () => mode !== 'explore' && playing;
 

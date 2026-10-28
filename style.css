@@ -664,3 +664,21 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .message button.link { display: block; margin-top: 6px; }
 .lb-choice { margin: 0; font-size: 13px; color: var(--ink); }
 .lb-choice button.link { margin-left: 6px; font-size: 12px; color: var(--muted); }
+/* A moment that matters: a card over the board that stays until you choose what to do. */
+.moment { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; padding: 4%; background: rgb(0 0 0 / .18); border-radius: inherit; animation: moment-in .2s ease-out; }
+.moment-card { display: grid; gap: 10px; width: min(100%, 420px); padding: 18px 20px; border-radius: 12px; background: var(--surface); color: var(--ink); border: 2px solid var(--tone); box-shadow: 0 12px 40px rgb(0 0 0 / .35); }
+.moment-trap, .moment-blunder { --tone: var(--bad); }
+.moment-chance { --tone: var(--good); }
+.moment-card .moment-title { margin: 0; font: 800 clamp(28px, 9cqi, 44px)/1 var(--font-display); color: var(--tone); letter-spacing: -.01em; }
+.moment-card p { margin: 0; font-size: .95rem; line-height: 1.45; }
+.moment-swing { display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.moment-swing b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.moment-swing i { position: relative; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.moment-swing s { position: absolute; inset: 0 auto 0 0; background: var(--muted); }
+.moment-swing s.to { background: var(--good); opacity: .85; animation: moment-grow .8s .2s ease-out both; }
+.moment-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@keyframes moment-in { from { opacity: 0; } }
+@keyframes moment-grow { from { transform: scaleX(.6); transform-origin: left; } }
+@media (prefers-reduced-motion: reduce) { .moment, .moment-swing s.to { animation: none; } }
+.moment.at-top { align-items: start; }
+.moment.at-bottom { align-items: end; }
