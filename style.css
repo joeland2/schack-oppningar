@@ -1125,14 +1125,15 @@ a { text-underline-offset: .18em; }
 /* Profile hero: the portrait in two sentences, the rest in one fold; the card explained in a fold */
 .pf-why-type { margin-top: 12px; }
 .pf-card-help > summary { cursor: pointer; color: var(--hot); font-weight: 600; font-size: 14px; list-style-position: inside; }
-/* The type fold: just a small arrow under the portrait */
-.pf-why-type > summary { list-style: none; cursor: pointer; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--hot); }
-.pf-why-type > summary::-webkit-details-marker { display: none; }
-.pf-why-type > summary::before { content: ""; width: 8px; height: 8px; border: solid currentColor; border-width: 0 2px 2px 0; transform: translateY(-2px) rotate(45deg); transition: transform .2s; }
-.pf-why-type[open] > summary::before { transform: translateY(2px) rotate(-135deg); }
-.pf-why-type > summary:hover { border-color: var(--hot); }
-.pf-why-type[open] > summary { margin-bottom: 10px; }
-@media (max-width: 860px) { .pf-why-type > summary { margin-inline: auto; } }
+/* Opening taste: one tile per colour, with its king */
+.pf-taste-tiles { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 4px; }
+.pf-taste-tile { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; border: 1px solid var(--line); border-top: 3px solid var(--hot); background: var(--surface); }
+.pf-taste-tile img { width: 36px; height: 36px; }
+.pf-taste-tile span { display: grid; line-height: 1.15; text-align: left; }
+.pf-taste-tile b { font: 400 22px/1.05 var(--font-poster); letter-spacing: .02em; text-transform: uppercase; }
+.pf-taste-tile small { color: var(--muted); font-size: 11.5px; }
+.pf-taste-tile small:first-child { font-weight: 700; letter-spacing: .1em; text-transform: uppercase; font-size: 10.5px; }
+@media (max-width: 860px) { .pf-taste-tiles { justify-content: center; } }
 .pf-why-type .pf-about p { color: var(--ink); }
 .pf-more-portrait { margin: 12px 0 0; color: var(--muted); max-width: 64ch; }
 .pf-card-help { max-width: 300px; text-align: left; }

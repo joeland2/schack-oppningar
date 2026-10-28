@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028234112';
-import { STYLE_OF } from './styles.js?v=20261028234112';
+import { account, login, finishLogin } from './lichess.js?v=20261028234219';
+import { STYLE_OF } from './styles.js?v=20261028234219';
 
 const MAX = 500;
 const PV = 13;
@@ -594,7 +594,8 @@ const taste = (m) => (m && m.n >= 10 ? m.parts.find((x) => x.k !== 'other' && x.
 function tasteLine(mix, me) {
   const w = taste(mix?.w), b = taste(mix?.b);
   if (!w && !b) return '';
-  return `<p class="pf-taste">Opening taste: ${[w && `<b>${w.label}</b> as White`, b && `<b>${b.label}</b> as Black`].filter(Boolean).join(' · ')}</p>`;
+  const tile = (x, c, side) => x ? `<div class="pf-taste-tile"><img src="pieces/${c}K.svg" alt=""><span><small>Openings as ${side}</small><b>${x.label}</b><small>${pct(x.share)} of ${me ? 'your' : 'their'} choices</small></span></div>` : '';
+  return `<div class="pf-taste-tiles" aria-label="Opening taste">${tile(w, 'w', 'White')}${tile(b, 'b', 'Black')}</div>`;
 }
 function tastePanel(mix, me, folded) {
   if (!mix) return '';
@@ -692,11 +693,11 @@ function render(name, at, p) {
         <h1 class="pf-h1">${esc(t[0].name)}</h1>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}
         <p class="pf-portrait">${portrait(name, p, skills, me)}</p>
-        <details class="pf-why-type"><summary aria-label="Why ${esc(t.map((x) => x.name.toLowerCase()).join(' + '))}? More about ${me ? 'your' : 'their'} game" title="Why ${esc(t.map((x) => x.name.toLowerCase()).join(' + '))}? Read more"></summary>
+        ${tasteLine(p.styleMix, me)}
+        <div class="pf-why-type">
           <div class="pf-about">${t.map((x) => `<p><b>${esc(x.name)}.</b> ${esc(TYPE_ABOUT[x.name] || '')} <span>${esc(say(x.why))}</span></p>`).join('')}</div>
-          ${tasteLine(p.styleMix, me)}
           <p class="pf-more-portrait">${portrait(name, p, skills, me, 'more')}</p>
-        </details>
+        </div>
       </div>
     </section>
     ${leadStory(name, p, skills, me)}
