@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028154001';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028154001';
-import { ideaAt, asMover, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028154001';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028154001';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028154759';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028154759';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028154759';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028154759';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1656,7 +1656,32 @@ const move = (from, to) => (mode === 'explore' ? exploreMove(from, to) : tryMove
 let premove = null;
 const canPremove = () => !!cur && mode !== 'explore' && line.length > 0 && (ply < line.length || playing)
   && game.turn() !== cur.side && !game.isGameOver();
-const premoveDests = (sq) => asMover(game, cur.side)?.moves({ square: sq, verbose: true }) || [];
+// Where a piece may be premoved, as on Lichess: every square it could reach on an empty board, own
+// pieces included, so a recapture can be queued while your piece still stands there. Whether the move
+// is legal is checked when it is played.
+function premoveDests(sq, g = game) {
+  const p = g.get(sq);
+  if (!p) return [];
+  const f = sq.charCodeAt(0) - 97, r = Number(sq[1]) - 1, out = [];
+  const add = (df, dr) => { const nf = f + df, nr = r + dr; if (nf >= 0 && nf < 8 && nr >= 0 && nr < 8) out.push(String.fromCharCode(97 + nf) + (nr + 1)); };
+  const ray = (df, dr) => { for (let i = 1; i < 8; i++) add(df * i, dr * i); };
+  const diag = [[1, 1], [1, -1], [-1, 1], [-1, -1]], line = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  if (p.type === 'n') [[1, 2], [2, 1], [2, -1], [1, -2], [-1, -2], [-2, -1], [-2, 1], [-1, 2]].forEach(([a, b]) => add(a, b));
+  if ('bq'.includes(p.type)) diag.forEach(([a, b]) => ray(a, b));
+  if ('rq'.includes(p.type)) line.forEach(([a, b]) => ray(a, b));
+  if (p.type === 'k') {
+    [...diag, ...line].forEach(([a, b]) => add(a, b));
+    if (sq === (p.color === 'w' ? 'e1' : 'e8')) { add(2, 0); add(-2, 0); }
+  }
+  if (p.type === 'p') {
+    const up = p.color === 'w' ? 1 : -1;
+    add(0, up); add(1, up); add(-1, up);
+    if (r === (p.color === 'w' ? 1 : 6)) add(0, 2 * up);
+  }
+  return out.map((to) => ({ to, captured: g.get(to) && g.get(to).color !== p.color }));
+}
+console.assert(premoveDests('e4', new Chess('4k3/8/8/8/4P3/3P4/8/4K3 w - - 0 1')).map((m) => m.to).sort().join() === 'd5,e5,f5', 'premove pawn');
+console.assert(premoveDests('d3', new Chess('4k3/8/8/8/4P3/3N4/8/4K3 w - - 0 1')).some((m) => m.to === 'e1'), 'premove onto own piece');
 function setPremove(from, to) {
   if (!premoveDests(from).some((m) => m.to === to)) return false;
   premove = { from, to };
