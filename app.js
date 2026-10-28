@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028171732';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028171732';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028171732';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028171732';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028171910';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028171910';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028171910';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028171910';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1746,6 +1746,8 @@ function tryMove(from, to) {
   if (!m) return false;
   if (playing) {
     if (punish > 0) punish--;
+    // Playing on from the line's end is practice: the mode says so (without starting the line again).
+    if (mode === 'learn' && endLen && ply === endLen) setMode('try', false, false);
     lastMove = m; ply++; sel = null; hintSq = [];
     rate(ply - 1, game.history({ verbose: true }).at(-1).before, m);
     render();
@@ -1948,6 +1950,7 @@ let redo = [];
 // position of yours takes the moves after it back.
 let view = null;
 function showMove(n) {
+  closeMoment(); // looking through the moves leaves the moment behind; the board is yours again
   view = n >= game.history().length ? null : Math.max(0, n);
   sel = null;
   render();
