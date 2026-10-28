@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028230135';
-import { STYLE_OF } from './styles.js?v=20261028230135';
+import { account, login, finishLogin } from './lichess.js?v=20261028230348';
+import { STYLE_OF } from './styles.js?v=20261028230348';
 
 const MAX = 500;
 const PV = 12;
@@ -507,8 +507,8 @@ function analysePanel(name, p) {
   const few = p.analysed < ENOUGH, first = opts[0];
   return `<div id="pf-analyse" class="pf-analyse${few ? ' few' : ''}">
     <div class="pf-an-row"><span><b>${p.analysed}/${p.n}</b> games analysed${p.ours ? ` (${p.ours} here)` : ''}
-      <details class="pf-help"><summary title="${WHY_ANALYSE}" aria-label="Why analyse?">?</summary><p>${WHY_ANALYSE}</p></details>. Analyse the newest:</span>
-    ${opts.map((o) => `<button type="button" class="pf-an-opt" data-analyse="${o.n}" ${o.games ? '' : 'disabled'} title="${o.games ? `${o.games} games without analysis, ${minutes(o.sec)}, with Stockfish in your browser` : 'All analysed'}">${o.n} <small>${o.games ? `${o.games} new · ${minutes(o.sec).replace('about ', '~')}` : 'done'}</small></button>`).join('')}</div>
+      <details class="pf-help"><summary title="${WHY_ANALYSE}" aria-label="Why analyse?">?</summary><p>${WHY_ANALYSE}</p></details>. Analyse:</span>
+    ${opts.map((o) => `<button type="button" class="pf-an-opt" data-analyse="${o.n}" ${o.games ? '' : 'disabled'} title="${o.games ? `${o.games} games without analysis, ${minutes(o.sec)}, with Stockfish in your browser` : 'All analysed'}">Newest ${o.n} <small>${o.games ? `${o.games} to analyse · ${minutes(o.sec).replace('about ', '~')}` : 'all done'}</small></button>`).join('')}</div>
     ${few ? `<p class="pf-an-few">Analyse at least ${ENOUGH} games to unlock Openings, Tactics, Winning when ahead, Defending, accuracy and blunders.</p>` : ''}
   </div>`;
 }
@@ -633,7 +633,7 @@ function render(name, at, p) {
   document.title = me ? 'Your Profile' : `${name} · Profile`;
   const list = (items, empty) => verdictList(items.map((i) => ({ ...i, why: say(i.why), href: me ? i.href : null })), empty);
   const known = skills.filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
-  const kpis = [['Win rate', pct(p.winRate ?? p.score)], p.acc !== null && p.analysed >= ENOUGH && ['Accuracy', `${p.acc}%`], p.blunders !== null && p.analysed >= ENOUGH && ['Blunders / game', p.blunders.toFixed(1)], ['Draws', pct(p.draws)]].filter(Boolean);
+  const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= ENOUGH ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= ENOUGH ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
     ${playerBar(name)}
     <section class="pf-hero">
@@ -647,6 +647,7 @@ function render(name, at, p) {
         ${known.length >= 2 ? `<p class="pf-best">Strongest: <b>${known[0].label}</b> · To train: <b>${known[known.length - 1].label}</b></p>` : ''}
       </div>
     </section>
+    ${leadStory(name, p, skills, me)}
     <section class="pf-card pf-chart" id="pf-chart"></section>
     <dl class="pf-kpis">${kpis.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
     ${analysePanel(name, p)}
@@ -654,14 +655,14 @@ function render(name, at, p) {
       <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
         <button type="button" class="link" data-skill-text aria-expanded="${showSkillText}">${showSkillText ? 'Hide explanations' : 'What each one means'}</button></div>
       ${skillBars(skills, say, me)}
-      <p class="info pf-note pf-skill-more">Every player is on the same scale, like a sports card: the base is where the rating ranks among all Lichess players in that time control (the middle player is 50, the very top 99), and each bar moves up to 25 above or below it by how the games go in that area compared with the player's own average.</p>
+      <p class="info pf-note pf-skill-more">Each skill compares ${me ? 'you' : 'the player'} with ${me ? 'your' : 'their'} own opponents rated within ${PEER} points, from the same games: 50 means as good as them, higher is better.</p>
     </section>
     <div class="pf-two">
       <section class="pf-card"><h2 class="pf-good">Strengths</h2>${list(p.good, 'Nothing stands out yet. More games give a clearer picture.')}</section>
       <section class="pf-card"><h2 class="pf-bad">Train next</h2>${list(p.work, 'Nothing stands out as a weakness in these games.')}</section>
     </div>
-    <section class="pf-card">
-      <h2>Results</h2>
+    <section class="pf-card" id="pf-games"></section>
+    <details class="pf-card pf-more"><summary><h2>Results</h2><span>Wins by colour and time control, how games end</span></summary>
       <dl class="pf-stats">
         <div><dt>Wins as White</dt><dd>${p.winW == null ? '–' : pct(p.winW)}</dd></div>
         <div><dt>Wins as Black</dt><dd>${p.winB == null ? '–' : pct(p.winB)}</dd></div>
@@ -671,26 +672,26 @@ function render(name, at, p) {
       <ul class="pf-rows">${p.speeds.map((x) => `<li><span>${x.speed[0].toUpperCase() + x.speed.slice(1)}</span><small>${x.n} games · ${pct(x.win ?? x.score)} wins · now ${x.rating} (${x.change >= 0 ? '+' : ''}${x.change})</small>${bar(x.win ?? x.score)}</li>`).join('')}</ul>
       <h3>How ${me ? 'your' : 'their'} games end</h3>
       ${endsGrid(p.ends)}
-    </section>
-    ${tastePanel(p.styleMix, me)}
-    <div class="pf-two">
-      <section class="pf-card"><h2>Openings as White</h2>${openingRows(p.openings.w)}</section>
-      <section class="pf-card"><h2>Openings as Black</h2>${openingRows(p.openings.b)}</section>
-    </div>
-    <section class="pf-card" id="pf-games"></section>
+    </details>
+    <details class="pf-card pf-more"><summary><h2>Opening style</h2><span>${tasteShort(p.styleMix)}</span></summary>${tastePanel(p.styleMix, me)}</details>
+    <details class="pf-card pf-more"><summary><h2>Openings</h2><span>The ones played most, with wins</span></summary><div class="pf-two pf-more-body">
+      <section><h3>As White</h3>${openingRows(p.openings.w)}</section>
+      <section><h3>As Black</h3>${openingRows(p.openings.b)}</section>
+    </div></details>
     <section class="pf-about-data">
       <h2>About these numbers</h2>
       <p class="info">Read from ${me ? 'your' : `${esc(name)}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
       <p class="info">Results, openings, opening style, the clock, endgames and the rating graph use all ${p.n} games.
         Accuracy, blunders and the Openings, Tactics, Winning when ahead and Defending skills need a computer's verdict on every move, so they use only the
         ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'}${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. Analyse more from the bar at the top.</p>
-      <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Score counts a win as 1 and a draw as a half.</p>
-    </section>`;
+      <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Win rate counts wins out of all games; an endgame score counts a draw as half.</p>
+    </section>
+    ${nextActions(name, me)}`;
   $('#refresh').addEventListener('click', () => run(name));
   bindSearch();
   bindAnalyse(name);
   bindPlayerBar(name);
-  gamesList(name, 15);
+  gamesList(name, 8);
   $('[data-skill-text]').addEventListener('click', (e) => {
     showSkillText = !showSkillText;
     $('.pf-skills-card').classList.toggle('open', showSkillText);
@@ -698,6 +699,32 @@ function render(name, at, p) {
     e.currentTarget.textContent = showSkillText ? 'Hide explanations' : 'What each one means';
   });
   ratingChart(name, p);
+}
+
+addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('details.pf-help[open]').forEach((d) => { d.open = false; d.querySelector('summary').focus(); }); });
+// The lead story under the card: recent form (the last ten results) and the one thing to train now.
+function leadStory(name, p, skills, me) {
+  const games = (storedGames(name) || []).slice(0, 10), low = name.toLowerCase();
+  const form = games.map((g) => { const side = g.players.white.user?.id === low ? 'white' : 'black'; return !g.winner ? 'D' : g.winner === side ? 'W' : 'L'; });
+  const wins = form.filter((x) => x === 'W').length;
+  // The skill furthest below your opponents leads; only without one does a Work-on item stand in.
+  const weak = skills.filter((x) => x.raw !== null && x.raw < 50).sort((a, b) => a.raw - b.raw)[0], leak = weak ? null : p.work[0];
+  const say = me ? (x) => x : they;
+  return `<section class="pf-lead">
+    ${form.length ? `<div class="pf-form"><h2>Form</h2><p class="pf-form-row" aria-label="Last ${form.length} games: ${form.join(' ')}">${form.map((x) => `<span class="pf-res r-${x}">${x}</span>`).join('')}</p><p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length} games, newest first.</p></div>` : ''}
+    ${leak || weak ? `<div class="pf-leak"><h2>${me ? 'Your biggest leak' : 'Biggest leak'}</h2>
+      <p class="pf-leak-title">${esc(leak ? leak.title : weak.label)}</p>
+      <p>${esc(say(leak ? leak.why : `${weak.why} ${weak.train}`))}</p>
+      ${me ? `<a class="cta" href="${(leak?.href) || weak?.href || 'practice.html'}">Train it</a>` : ''}</div>` : ''}
+  </section>`;
+}
+// The page ends on what to do next, not on the fine print.
+function nextActions(name, me) {
+  const friend = favs()[0];
+  return `<section class="pf-next"><h2>What next</h2><div>
+    ${me ? '<a class="cta" href="practice.html">Open your training plan</a>' : `<a class="cta" href="${compareLink(myName() || name, name)}">Compare with me</a>`}
+    ${me && friend ? `<a class="ghost" href="${compareLink(name, friend)}">Compare with ${esc(friend)}</a>` : me ? '<span class="info">Look up a friend with Find a player and star them to compare.</span>' : ''}
+  </div></section>`;
 }
 
 // ---------- Rating over time ----------
@@ -863,6 +890,7 @@ function playerBar(name) {
   return `<div class="pf-players">
     ${me ? '' : `<button type="button" class="ghost pf-star" data-fav aria-pressed="${isFav(name)}">${isFav(name) ? `<svg class="ico ico-solid" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg> Starred` : `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg> Star player`}</button>`}
     ${!me && mine ? `<a class="ghost" href="${compareLink(mine, name)}">Compare with me</a>` : ''}
+    ${me ? '' : `<a class="link-out" href="https://lichess.org/@/${encodeURIComponent(name)}" target="_blank" rel="noopener">${esc(name)} on Lichess</a>`}
     ${list.length ? `<span class="pf-players-list"><small>${me ? 'Your players' : 'Starred'}</small>${list.map((x) => `<a class="pf-chip" href="${profileLink(x)}">${esc(x)}</a>${me ? `<a class="pf-chip pf-vs" href="${compareLink(name, x)}" title="Compare ${esc(name)} with ${esc(x)}">vs</a>` : ''}`).join('')}</span>` : ''}
   </div>`;
 }
@@ -972,7 +1000,7 @@ function compareStory(A, B, sa, sb) {
   if (forA.length || forB.length) out.push([forA.length && `${a} is better at ${list(forA)}`, forB.length && `${b} at ${list(forB)}`].filter(Boolean).join(', while ') + '.');
   const ta = A.p.type[0].name, tb = B.p.type[0].name;
   out.push(ta === tb ? `Both play as ${article(ta)} ${ta.toLowerCase()}${tasteShort(A.p.styleMix) === tasteShort(B.p.styleMix) ? ', with the same taste in openings' : ''}.`
-    : `${a} plays as ${article(ta)} ${ta.toLowerCase()} (${tasteShort(A.p.styleMix).toLowerCase()}), ${b} as ${article(tb)} ${tb.toLowerCase()} (${tasteShort(B.p.styleMix).toLowerCase()}).`);
+    : `${a} plays as ${article(ta)} ${ta.toLowerCase()} (${tasteShort(A.p.styleMix)}), ${b} as ${article(tb)} ${tb.toLowerCase()} (${tasteShort(B.p.styleMix)}).`);
   const ds = Math.round((A.p.winRate - B.p.winRate) * 100);
   out.push(Math.abs(ds) < 3 ? `They win about as often against their own opponents (${pct(A.p.winRate)} and ${pct(B.p.winRate)} of games).`
     : `${ds > 0 ? a : b} wins more often against their own opponents (${pct(Math.max(A.p.winRate, B.p.winRate))} of games against ${pct(Math.min(A.p.winRate, B.p.winRate))}).`);
