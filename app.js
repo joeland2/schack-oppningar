@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028123113';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028123113';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028123113';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028123113';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028123451';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028123451';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028123451';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028123451';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -719,7 +719,7 @@ function repliesText(before, played) {
     const tag = m.san === played ? ' (this line)' : i >= 0 ? ` (line ${i + 1})` : '';
     return `<span class="rep${m.san === played ? ' now' : ''}"><b>${m.san}</b> ${pct(m.n / x.total)}${tag}</span>`;
   };
-  return `<span class="reps">At your level: ${top.map(part).join(' ')}${rest >= 0.01 ? ` <span class="rep">others ${pct(rest)}</span>` : ''}</span>`;
+  return `<span class="reps">${top.map(part).join(' ')}${rest >= 0.01 ? ` <span class="rep">others ${pct(rest)}</span>` : ''}</span>`;
 }
 
 let lineDone = ''; // the summary shown at the end of the line, kept while you play on
@@ -728,22 +728,24 @@ function renderWhy() {
   if (!cur || !line.length || mode === 'explore') { $('#line-done').hidden = true; return (el.innerHTML = ''); } // Explore explains in the message
   const hist = game.history();
   const label = (n, san) => `${Math.floor(n / 2) + 1}.${n % 2 ? '..' : ''}${san}`;
+  const lower = (t) => t.replace(/^./, (c) => c.toLowerCase());
   const parts = [];
+  // First what to play and why (Learn), then a quiet line on the last move, then the other replies
+  // folded away: the board and the move to make come first.
+  if (mode === 'learn' && userTurn() && ply < line.length) parts.push(`<p class="why-now"><b>Why</b> ${why(line.slice(0, ply), line[ply])}</p>`);
   if (hist.length) {
     const n = hist.length - 1;
     const before = hist.slice(0, n).map(clean), san = clean(hist[n]);
     const yours = (n % 2 === 0) === (cur.side === 'w');
-    parts.push(yours
-      ? `<p><b>You played ${label(n, hist[n])}</b> ${why(before, san)}</p>`
-      : `<p><b>${sideName(n % 2 ? 'b' : 'w')} played ${label(n, hist[n])}</b> ${idea(before, san)} ${repliesText(before, san)}</p>`);
+    const text = yours ? why(before, san) : idea(before, san);
+    parts.push(`<p class="prev">${yours ? 'You' : sideName(n % 2 ? 'b' : 'w')} played <b>${label(n, hist[n])}</b>${text ? `: ${lower(text)}` : ''}</p>`);
+    const reps = !yours && repliesText(before, san);
+    if (reps) parts.push(`<details class="reps-box"><summary>What players at your level answer here</summary>${reps}</details>`);
   }
   // Your last own move, when it was a slip: what it was and what was better (play-out only).
   const mine = hist.length - ((hist.length - 1) % 2 === (cur.side === 'w' ? 0 : 1) ? 1 : 2);
   if (playing && mine >= line.length && betters[mine]) {
     parts.push(`<p class="verdict k-${notes[mine]}"><b>${label(mine, hist[mine])} was ${NOTE_WORD[notes[mine]]}.</b> Better was ${moveWords(betters[mine])}.</p>`);
-  }
-  if (mode === 'learn' && userTurn() && ply < line.length) {
-    parts.push(`<p><b>Your move: ${label(ply, line[ply])}</b> ${why(line.slice(0, ply), line[ply])}</p>`);
   }
   // The line-done summary is made at the line's end and stays while you play on from there. The tips
   // are about the move to play at the line's end, so they go once you have played on.

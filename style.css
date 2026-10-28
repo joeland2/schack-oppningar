@@ -557,3 +557,11 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
 .line-done .done-head { font-weight: 600; color: var(--good); }
 .line-done b { font-family: var(--font-body); }
 @media (max-width: 820px) { .line-done { order: -1; } } /* after the coach, before the panel head */
+
+/* Coach, clearest first: what to play and why, then the last move, then the other replies folded */
+.coach .why .why-now { color: var(--ink); font-size: 1rem; }
+.coach .why .why-now b { font-family: var(--font-body); margin-right: 4px; }
+.coach .why .prev { font-size: .88rem; }
+.coach .why .prev b { font-family: var(--font-mono); font-weight: 500; }
+.reps-box summary { cursor: pointer; font-size: .85rem; color: var(--muted); }
+.reps-box .reps { margin-top: 6px; }
