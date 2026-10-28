@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028104341';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028104341';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028104905';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028104905';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -10,10 +10,10 @@ const MAX_PLY = 20;       // data/explorer-*.json goes this deep
 const BUCKETS = [0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]; // Lichess explorer rating groups
 // Rating groups whose moves count as yours: 2200+ in blitz; 2000+ in classical, where 2200+ games are scarce.
 const STRONG = { blitz: [7, 8], classical: [6, 7, 8] };
-const WANT = { w: 30, b: 15 };   // openings listed per colour
+const WANT = { w: 30 };   // White openings listed; Black's list is the same openings from the other side
 const POOL = 80;          // White openings collected, so a style filter still has enough to show
-// White openings listed must occur in at least 1% of games at your level: rarer ones are often hard to reach
-// or played mostly by specialists, so their score says little about what you would get.
+// White openings in at least 1% of games at your level are listed first; the rest of the list is filled with
+// the most played among players within 500 of your rating (see popularOpenings).
 const MIN_REACH = 0.01;
 // First-move names that are not an opening plan of their own.
 const GENERIC = new Set(["King's Pawn Game", "Queen's Pawn Game", "King's Knight Opening"]);
@@ -192,6 +192,14 @@ function buildLines(op) {
 
 // The most played White openings at your level, found by walking real games from the start position,
 // most common positions first. An opening is White's when White's move first gives it its name.
+// The share of games in the given rating groups that reach a move sequence.
+function reachOf(moves, groups) {
+  let node = TREE;
+  for (const m of moves) node = node?.[3]?.[m];
+  const sum = (n) => groups.reduce((s, i) => s + n[0][i], 0);
+  return node ? sum(node) / sum(TREE) : 0;
+}
+
 function popularOpenings() {
   const mine = ratingsAround(rating);
   const found = new Map();
@@ -234,8 +242,16 @@ function popularOpenings() {
     }
   }
   const white = [...found.values()].sort((a, b) => b.share - a.share);
+  // The listed White openings: every one played in at least 1% of games at your level, then the most
+  // played among players within 500 of your rating until there are WANT.w. Their figures stay those of
+  // your own level.
+  const wide = BUCKETS.flatMap((b, i) => (b <= rating + 500 && (BUCKETS[i + 1] ?? Infinity) > rating - 500 ? [i] : []));
+  const reach = (o) => (o.roots || [{ moves: o.root.split(' ') }]).reduce((s, r) => s + reachOf(r.moves, wide), 0);
+  const common = white.filter((o) => o.share >= MIN_REACH);
+  const more = white.filter((o) => o.share < MIN_REACH).sort((a, b) => reach(b) - reach(a)).slice(0, Math.max(0, WANT.w - common.length));
+  for (const o of [...common, ...more]) o.listed = true;
   // As Black you face White's openings: the same ones, practised from the other side.
-  const meet = white.slice(0, WANT.b).map((o) => ({ ...o, id: `vs:${o.family}`, side: 'b' }));
+  const meet = white.filter((o) => o.listed).map((o) => ({ ...o, id: `vs:${o.family}`, side: 'b' }));
   return [...white, ...meet, ...defences.values()];
 }
 
@@ -266,7 +282,7 @@ const fitsStyle = (o) => style === 'any' || (STYLE_OF[o.family] || []).includes(
 const yourScore = (o) => (o.side === 'w' ? o.score : 1 - o.score);
 const byChoice = (a, b) => (sort === 'played' ? b.share - a.share : yourScore(b) - yourScore(a));
 function shown() {
-  const white = OPENINGS.filter((o) => o.side === 'w' && o.share >= MIN_REACH && fitsStyle(o)).sort(byChoice).slice(0, WANT.w);
+  const white = OPENINGS.filter((o) => o.side === 'w' && o.listed && fitsStyle(o)).sort(byChoice);
   return [...white, ...OPENINGS.filter(isVs).sort(byChoice)];
 }
 
@@ -306,12 +322,12 @@ const showAll = { w: false, b: false };
 const PHONE = matchMedia('(max-width: 560px)');
 
 function renderList() {
-  const whiteAll = OPENINGS.filter((o) => o.side === 'w' && o.share >= MIN_REACH).length;
+  const whiteAll = OPENINGS.filter((o) => o.side === 'w' && o.listed).length;
   const about = {
     w: (n) => `${sort === 'played' ? 'Most played first' : 'Best results first'}. ${style === 'any'
-      ? `All ${n} openings played in at least 1% of games at your level.`
+      ? `The ${n} most played openings at your level, topped up with the most played within 500 of your rating.`
       : `${n} of ${whiteAll} are ${STYLES[style].label.toLowerCase()}; change style to see the rest.`}`,
-    b: (n) => `The ${n} White openings you meet most often, ${sort === 'played' ? 'most often first' : 'the ones Black does best against first'}. Search for your own defences, like the Sicilian.`,
+    b: (n) => `The same ${n} White openings, from Black's side: how to meet them, ${sort === 'played' ? 'most often met first' : 'the ones Black does best against first'}. Search for your own defences, like the Sicilian.`,
   };
   const q = query.trim().toLowerCase();
   const list = q ? OPENINGS.filter((o) => o.family.toLowerCase().includes(q)).sort((a, b) => b.share - a.share) : shown();
@@ -725,23 +741,31 @@ function renderWhy() {
   }
   if (ply >= line.length && hist.length === line.length) {
     const tips = lineTips();
-    parts.push(`<div class="summary"><p><b>What this line gave you</b> ${lineSummary()}</p>${tips.length
+    parts.push(`<div class="summary"><p><b>What this line gave you</b> ${lineSummary()}</p>${lineFacts()}${tips.length
       ? `<p><b>How to go on</b></p><ul class="tips">${tips.map((t) => `<li>${t}</li>`).join('')}</ul>` : ''}</div>`);
   }
   el.innerHTML = parts.join('');
 }
 
-// Your side's share of the points (a draw is half) in games at your level that reached a position,
-// or null when too few did.
-function scoreAt(moves) {
+// Your side's wins, draws and losses (as shares) in games at your level that reached a position, or null.
+function resultsAt(moves) {
   let node = TREE;
   for (const m of moves) node = node?.[3]?.[m];
   if (!node) return null;
   const sum = (c) => ratingsAround(rating).reduce((s, i) => s + c[i], 0);
   const n = sum(node[0]);
   if (n < MIN_GAMES) return null;
-  const white = (sum(node[1]) + sum(node[2]) / 2) / n;
-  return cur.side === 'w' ? white : 1 - white;
+  const whiteWin = sum(node[1]) / n, draw = sum(node[2]) / n;
+  const win = cur.side === 'w' ? whiteWin : 1 - whiteWin - draw;
+  return { n, win, draw, loss: 1 - win - draw };
+}
+// The facts box at the end of a line: how games at your level went from the last position with enough games.
+function lineFacts() {
+  let k = line.length, r = null;
+  while (k > 0 && !(r = resultsAt(line.slice(0, k)))) k--;
+  if (!r) return '';
+  const cell = (v, label) => `<div><b>${v}</b><span>${label}</span></div>`;
+  return `<div class="facts" aria-label="From here at your level">${cell(pct(r.win), 'you win')}${cell(pct(r.draw), 'draws')}${cell(pct(r.loss), 'you lose')}${cell(r.n.toLocaleString('en'), 'games at your level')}</div>`;
 }
 
 // The end of the line, in a few plain sentences: whether players at your level do well from here
@@ -763,13 +787,6 @@ const andList = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs
 
 function lineSummary() {
   const out = [];
-  const base = scoreAt([]);
-  let k = line.length, here = null;
-  while (k > 0 && (here = scoreAt(line.slice(0, k))) === null) k--;
-  if (here !== null && base !== null) {
-    out.push(here - base >= 0.03 ? 'Players at your level do well from here: a line worth knowing.'
-      : here - base <= -0.03 ? 'Players at your level find this position hard, so know your plan.' : 'You get a normal, healthy position.');
-  }
   const p = endPosition();
   const facts = [];
   if (p.castled) facts.push('your king is castled');
@@ -855,17 +872,22 @@ function play(i) {
 
 // ---------- Explore: any move for either side, rated by what real players do ----------
 // What the side to move plays here at your level, with the most common move as an arrow.
+// What comes next, in words: the usual move here (or Stockfish's where games run out) as an arrow, and
+// what it aims to do.
 function exploreSay(prefix = '') {
-  const x = explore(game.history().map(clean), ratingsAround(rating));
-  const top = x.moves.filter((m) => m.n >= MIN_GAMES).slice(0, 4);
-  const side = game.turn();
-  const first = top[0] && new Chess(game.fen()).move(top[0].san);
-  hintSq = first ? [first.from, first.to] : [];
+  const at = game.fen(), side = game.turn();
+  const top = explore(game.history().map(clean), ratingsAround(rating)).moves.find((m) => m.n >= MIN_GAMES);
+  const next = (m, who) => {
+    hintSq = [m.from, m.to];
+    renderBoard();
+    const aim = ideaAt(new Chess(at), m.san);
+    say(`${prefix}Next for ${sideName(side)}: ${moveWords(m)}${who}.${aim ? ' ' + aim : ''}`);
+  };
+  if (top) return next(new Chess(at).move(top.san), '');
+  hintSq = [];
   renderBoard();
-  const best = [...top].sort((a, b) => scoreFor(b, side) - scoreFor(a, side))[0];
-  say(prefix + (top.length
-    ? `${sideName(side)} at your level plays ${top.map((m) => `${m.san} ${pct(m.n / x.total)}`).join(', ')}. Best results: ${best.san} (${sideName(side)} scores ${pct(scoreFor(best, side))}).`
-    : 'Too few games at your level reach this position to say what players do next.'));
+  say(prefix + 'Real games at your level run out here.');
+  evaluate(at).then((r) => { if (r?.move && game.fen() === at && mode === 'explore') next(new Chess(at).move(r.move), ', Stockfish\'s choice'); });
 }
 
 function enterExplore() {
@@ -887,11 +909,9 @@ function exploreMove(from, to, promotion = 'q', keepRedo = false, prefix = '') {
   render();
   if (game.isCheckmate()) { say(`${prefix}${m.san} is checkmate. ${sideName(m.color)} wins.`, 'good'); return true; }
   if (game.isGameOver()) { say(`${prefix}${m.san}: the game is drawn.`); return true; }
-  const x = explore(hist, ratingsAround(rating));
-  const seen = x.moves.find((s) => s.san === clean(m.san));
-  const verdict = seen
-    ? `${m.san}: ${pct(seen.n / x.total)} of players at your level play it here, and ${sideName(m.color)} scores ${pct(scoreFor(seen, m.color))} after it. `
-    : `${m.san}: ${x.total ? 'no one at your level played it here' : 'no games at your level reach this far'}. `;
+  // Why the move: what it does on the board.
+  const idea = ideaAt(new Chess(m.before), m.san);
+  const verdict = `${m.color === cur.side ? '' : `${sideName(m.color)} answers `}${m.san}${idea ? `: ${idea.replace(/^./, (c) => c.toLowerCase())}` : '.'} `;
   // Your move: the opponent answers by itself, as players at your level most often do.
   // To try another answer for them, step back and move their piece yourself.
   if (m.color === cur.side && !keepRedo && !prefix) opponentAnswers(verdict);
@@ -1332,7 +1352,7 @@ function stepBack() {
   premove = null;
   busy = false; sel = null;
   render();
-  exploreSay('Stepped back. Move any piece, for either side, to see how often players at your level choose it. ');
+  exploreSay('Stepped back. Move any piece, for either side. ');
 }
 
 function stepForward() {
