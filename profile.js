@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029002106';
-import { STYLE_OF } from './styles.js?v=20261029002106';
+import { account, login, finishLogin } from './lichess.js?v=20261029002744';
+import { STYLE_OF } from './styles.js?v=20261029002744';
 
 const MAX = 500;
 const PV = 14;
@@ -686,7 +686,6 @@ function render(name, at, p) {
       ${skillBars(skills, say, me)}
       <p class="pf-skill-more pf-skill-scale">Each skill compares ${me ? 'you' : 'the player'} with ${me ? 'your' : 'their'} own opponents rated within ${PEER} points, from the same games: 50 means as good as them, higher is better.</p>
     </section>
-    <section class="pf-card" id="pf-games"></section>
     <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From all ${p.n} games</span></div>
       <div class="pf-two pf-more-body">
         <section><h3>By colour and time control</h3>
@@ -703,6 +702,7 @@ function render(name, at, p) {
           <h3>Openings as Black</h3>${openingRows(p.openings.b)}</section>
       </div>
     </section>
+    <section class="pf-card" id="pf-games"></section>
     <section class="pf-about-data">
       <h2>About these numbers</h2>
       <p class="info">Read from ${me ? 'your' : `${esc(name)}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
