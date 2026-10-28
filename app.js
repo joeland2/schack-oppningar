@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028130426';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028130426';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028130426';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028130426';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028130921';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028130921';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028130921';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028130921';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -840,18 +840,23 @@ function lineSummary() {
 
 // How to go on, for your move now: the move that scores best in games at your level, the next best,
 // and Stockfish's choice, each with what the move does. Game moves need MIN_GAMES games to count.
-// Always three when the position has them: games first, then Stockfish's ranking for the rest (where
-// real games run out, all three are Stockfish's). A move already listed is not repeated.
+// Two moves from real games and one from Stockfish: the best-scoring moves among those played in
+// enough games, topped up with the most played ones (with their game count, since a score from a few
+// games says little), then Stockfish's best move not already listed. Where no game reaches the
+// position, Stockfish fills all three.
 function lineTips() {
   const at = game.fen(), me = cur.side;
   const say = (m) => { const idea = ideaAt(new Chess(at), m.san); return `${moveWords(m)}${idea ? `. ${idea}` : '.'}`; };
-  const games = explore(game.history().map(clean), ratingsAround(rating)).moves.filter((m) => m.n >= MIN_GAMES)
-    .sort((a, b) => scoreFor(b, me) - scoreFor(a, me)).slice(0, 2);
+  const played = explore(game.history().map(clean), ratingsAround(rating)).moves; // most played first
+  const solid = played.filter((m) => m.n >= MIN_GAMES).sort((a, b) => scoreFor(b, me) - scoreFor(a, me));
+  const games = [...solid, ...played.filter((m) => m.n < MIN_GAMES)].slice(0, 2);
   const engine = topMoves(at).map((m) => new Chess(at).move(m));
   const tips = games.map((m, i) => {
     const move = new Chess(at).move(m.san);
     const agrees = move.san === engine[0]?.san ? ' Stockfish agrees.' : '';
-    return { move, html: `<b>${i ? 'Next best in games' : 'Best results in games'}:</b> ${say(move)} You score ${pct(scoreFor(m, me))} after it at your level.${agrees}` };
+    const label = m.n < MIN_GAMES ? 'Also played' : i ? 'Next best in games' : 'Best results in games';
+    const how = m.n < MIN_GAMES ? `Played in ${plural(m.n, 'game')} at your level.` : `You score ${pct(scoreFor(m, me))} after it at your level.`;
+    return { move, html: `<b>${label}:</b> ${say(move)} ${how}${agrees}` };
   });
   const RANK = ["Stockfish's choice", "Stockfish's second choice", "Stockfish's third choice"];
   engine.forEach((move, i) => {
