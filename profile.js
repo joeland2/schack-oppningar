@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028215852';
-import { STYLE_OF } from './styles.js?v=20261028215852';
+import { account, login, finishLogin } from './lichess.js?v=20261028220206';
+import { STYLE_OF } from './styles.js?v=20261028220206';
 
 const MAX = 500;
-const PV = 5;
+const PV = 6;
 const ENOUGH = 20;
 const WHY_ANALYSE = 'Lichess only analyses games you ask it to. Analysed games give your blunders, accuracy and four of the skills, and become puzzles in My practice. Stockfish runs in your browser; no game is done twice.'; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -26,13 +26,15 @@ function readGame(g, me) {
   const moves = g.moves ? g.moves.split(' ') : [];
   const c = new Chess();
   let castled = null, queensOff = null, endgameAt = null;
+  const pieces = { n: 0, b: 0, r: 0, q: 0 }; // how much each piece of yours does: moves, plus captures and checks
   for (let i = 0; i < moves.length; i++) {
     let m;
     try { m = c.move(moves[i]); } catch { break; }
     if (m.color === side && /[kq]/.test(m.flags) && castled === null) castled = i;
-    const pieces = c.board().flat().filter(Boolean);
-    if (queensOff === null && !pieces.some((p) => p.type === 'q')) queensOff = i;
-    if (endgameAt === null && pieces.filter((p) => p.type !== 'p' && p.type !== 'k').length <= 6) endgameAt = i;
+    if (m.color === side && m.piece in pieces) pieces[m.piece] += 1 + (m.captured ? 1 : 0) + (m.san.includes('+') ? 1 : 0);
+    const onBoard = c.board().flat().filter(Boolean);
+    if (queensOff === null && !onBoard.some((p) => p.type === 'q')) queensOff = i;
+    if (endgameAt === null && onBoard.filter((p) => p.type !== 'p' && p.type !== 'k').length <= 6) endgameAt = i;
   }
   const phase = (i) => (i < 20 ? 'opening' : endgameAt !== null && i >= endgameAt ? 'endgame' : 'middlegame');
   // Lichess's analysis: the evaluation after every move, from White; here from your side.
@@ -46,7 +48,7 @@ function readGame(g, me) {
     side, speed: g.speed, at: g.createdAt, status: g.status, plies: moves.length,
     result: !g.winner ? 0.5 : (g.winner === 'white') === (side === 'w') ? 1 : 0,
     family: (g.opening?.name || 'Unknown').split(':')[0], rating: mine.rating, diff: mine.ratingDiff || 0, them: theirs.rating,
-    castled, queensOff, endgame: endgameAt !== null,
+    castled, queensOff, endgame: endgameAt !== null, pieces,
     analysed: v.length > 0, ours: !!g.ours, acc: mine.analysis?.accuracy ?? null, blunders: mine.analysis?.blunder ?? null, mistakes: mine.analysis?.mistake ?? null,
     best: v.length ? Math.max(...v) : null, worst: v.length ? Math.min(...v) : null, after12: v.length > 23 ? v[23] : null, slips,
     lowTime: left !== null && g.clock ? left < Math.max(10, g.clock.initial * 0.1) : false,
@@ -108,6 +110,10 @@ export function profileOf(games) {
     badStarts: share(an.filter((g) => g.after12 !== null), (g) => g.after12 <= -150),
     openings: { w: byOpening('w'), b: byOpening('b') },
     styleMix: { w: styleMix(games, 'w'), b: styleMix(games, 'b') },
+    // Your piece: the one that does the most in your games (moves, captures and checks), against how
+    // much each piece does in a normal game (a queen moves less than the knights and bishops together).
+    piece: Object.entries(games.reduce((t, g) => { for (const k in g.pieces || {}) t[k] = (t[k] || 0) + g.pieces[k]; return t; }, {}))
+      .map(([k, n]) => [k, n / ({ n: 2, b: 2, r: 2, q: 1 }[k] ** 0.5)]).sort((a, b) => b[1] - a[1])[0]?.[0] || 'n',
     // Rating after each game, oldest first, per time control: the graph's fallback when Lichess's
     // own rating history is not available.
     history: games.reduce((h, g) => (g.at ? { ...h, [g.speed]: [[g.at, g.rating + g.diff], ...(h[g.speed] || [])] } : h), {}),
@@ -173,9 +179,17 @@ function verdicts(p) {
   return [good.slice(0, 4), work.slice(0, 4)];
 }
 // Skill bars, 0-100, each read from one thing in the games; null when there are too few games to say.
-// The scales are rules of thumb (50 is a so-so result), not a comparison with other players.
+// The raw scales are rules of thumb (50 is a so-so result for the player); skillsOf puts them on the card's scale.
 const clamp = (x) => Math.round(Math.max(0, Math.min(100, x)));
+// Each skill is on one scale for every player, like a sports card: the rating in the time control
+// played most sets the base (about 33 at 1200, 67 at 2000, 99 from 2800), and how the player does in
+// that area, judged against themselves (raw, 50 = about their usual), moves it up to 25 either way.
+const levelOf = (rating) => clamp(((rating - 400) / 2400) * 100);
 function skillsOf(p) {
+  const level = levelOf(p.speeds?.[0]?.rating ?? 1500);
+  return rawSkills(p).map((x) => ({ ...x, raw: x.v, v: x.v === null ? null : clamp(level + (x.v - 50) * 0.5) }));
+}
+function rawSkills(p) {
   return [
     { label: 'Openings', needs: true, v: p.analysed >= ENOUGH ? clamp(100 - p.badStarts * 250) : null,
       means: 'Whether you come out of the first 12 moves with a playable position.',
@@ -203,7 +217,8 @@ function skillsOf(p) {
       train: 'Play the opening fast (you know it), and save your thinking time for the critical moments.' },
   ];
 }
-console.assert(skillsOf({ analysed: 20, badStarts: 0.1, blunders: 1, ups: 0, downs: 0, endgames: 0, n: 10 }).map((x) => x.v).slice(0, 3).join() === '75,70,', 'skillsOf');
+console.assert(levelOf(1200) === 33 && levelOf(2800) === 100, 'levelOf');
+console.assert(rawSkills({ analysed: 20, badStarts: 0.1, blunders: 1, ups: 0, downs: 0, endgames: 0, n: 10 }).map((x) => x.v).slice(0, 3).join() === '75,70,', 'skillsOf');
 const worstPhase = (p) => Object.entries(p.slips).sort((a, b) => b[1] - a[1])[0][0];
 {
   const g = (o) => ({ side: 'w', speed: 'blitz', status: 'resign', plies: 60, result: 1, family: 'Italian Game', rating: 1500, diff: 5, castled: 8, queensOff: null, endgame: false, analysed: false, acc: null, blunders: null, best: null, worst: null, after12: null, slips: { opening: 0, middlegame: 0, endgame: 0 }, lowTime: false, ...o });
@@ -445,7 +460,7 @@ function skillBars(skills, say, me) {
       ${x.v === null && x.needs ? '<small class="pf-skill-lock">Needs more analysed games</small>' : ''}
       <div class="pf-skill-more"><p class="pf-means">${esc(x.means)}</p>
       <small>${x.v === null ? 'Not enough games to say.' : esc(say(x.why))}</small>
-      ${x.v !== null && x.v < 50 ? `<p class="pf-train"><b>How to train:</b> ${esc(x.train)}${me && x.href ? ` <a href="${x.href}">Start</a>` : ''}</p>` : ''}</div></li>`).join('')}</ul>`;
+      ${x.raw !== null && x.raw < 50 ? `<p class="pf-train"><b>How to train:</b> ${esc(x.train)}${me && x.href ? ` <a href="${x.href}">Start</a>` : ''}</p>` : ''}</div></li>`).join('')}</ul>`;
 }
 // Which kind of opening each side mostly picks: the top style when it is a quarter or more of them.
 const taste = (m) => (m && m.n >= 10 ? m.parts.find((x) => x.k !== 'other' && x.share >= 0.25) || null : null);
@@ -474,18 +489,21 @@ function endsGrid(ends) {
   return `<div class="pf-ends">${row('Wins', 'won', ends.won)}${row('Losses', 'lost', ends.lost)}</div>`;
 }
 // The player card: the overall (the mean of the known skills), a short code for the type, the six skills.
-const CODE = { Attacker: 'ATK', 'Solid builder': 'SOL', 'Endgame player': 'EGP', Fighter: 'FTR', 'Comeback player': 'CMB', 'Time scrambler': 'TIM', 'King walker': 'KNG', 'All-rounder': 'ALL' };
+// The piece is drawn white for the black card; in dark mode, where the card is cream, CSS inverts it.
+const CARD_INK = 'w';
+const PIECE_NAME = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
 const ABBR = { Openings: 'OPN', Tactics: 'TAC', 'Finishing won games': 'FIN', Defending: 'DEF', Endgames: 'END', Clock: 'CLK' };
 function playerCard(name, p, t, skills) {
   const known = skills.filter((x) => x.v !== null);
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
   const main = p.speeds[0];
   return `<div class="pf-pcard" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">
-    <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${CODE[t[0].name] || 'ALL'}</span></div>
-      ${main ? `<div class="pf-pcard-rating"><b>${main.rating}</b><span>${main.speed}</span></div>` : '<span class="pf-piece" aria-hidden="true">♞</span>'}</div>
+    <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span></div>
+      <div class="pf-pcard-side"><img class="pf-pcard-piece" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title="${esc(name)}'s piece: the ${PIECE_NAME[p.piece || 'n']}, the piece that moves, captures and checks most in these games">
+        ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
     <p class="pf-pcard-name">${esc(name)}</p>
     <div class="pf-pcard-stats">${skills.map((x) => `<span><b>${x.v ?? '–'}</b>${ABBR[x.label]}</span>`).join('')}</div>
-    <p class="pf-pcard-foot">♞ ${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
+    <p class="pf-pcard-foot">${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
   </div>`;
 }
 function render(name, at, p) {
@@ -513,7 +531,7 @@ function render(name, at, p) {
       <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
         <button type="button" class="link" data-skill-text aria-expanded="${showSkillText}">${showSkillText ? 'Hide explanations' : 'What each one means'}</button></div>
       ${skillBars(skills, say, me)}
-      <p class="info pf-note pf-skill-more">Each bar is read from one thing in the games. 50 is a so-so result.</p>
+      <p class="info pf-note pf-skill-more">Every player is on the same scale, like a sports card: the rating sets the base (about 33 at 1200, 67 at 2000, 99 from 2800), and each bar moves up to 25 above or below it by how the games go in that area compared with the player's own average.</p>
     </section>
     <div class="pf-two">
       <section class="pf-card"><h2 class="pf-good">Strengths</h2>${list(p.good, 'Nothing stands out yet. More games give a clearer picture.')}</section>

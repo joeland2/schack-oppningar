@@ -2,9 +2,9 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261028215852';
-import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028215852';
-import { build, cache, myName, skillsOf, storedGames, PV } from './profile.js?v=20261028215852';
+import { login } from './lichess.js?v=20261028220206';
+import { findMistakes, pickPuzzles } from './mistakes.js?v=20261028220206';
+import { build, cache, myName, skillsOf, storedGames, PV } from './profile.js?v=20261028220206';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -40,10 +40,10 @@ function step(n, title, body, action) {
 
 function render(name, p) {
   const steps = [];
-  const weak = skillsOf(p).filter((x) => x.v !== null && x.v < 50).sort((a, b) => a.v - b.v);
+  const weak = skillsOf(p).filter((x) => x.raw !== null && x.raw < 50).sort((a, b) => a.raw - b.raw); // weak for you, whatever your level
   for (const x of weak.slice(0, 2)) {
     const go = SKILL_GO[x.label];
-    steps.push([`Train ${x.label.toLowerCase()} <small>${x.v}/100</small>`, `<p>${esc(x.means)} ${esc(x.why)}</p><p class="pr-how"><b>How:</b> ${esc(x.train)}</p>`,
+    steps.push([`Train ${x.label.toLowerCase()} <small>${x.v}</small>`, `<p>${esc(x.means)} ${esc(x.why)}</p><p class="pr-how"><b>How:</b> ${esc(x.train)}</p>`,
       go ? `<a class="cta" href="${go.href}">${go.label}</a>` : x.label === 'Openings' ? '<a class="cta" href="#pr-openings">See the openings below</a>' : '']);
   }
   const mine = puzzles();

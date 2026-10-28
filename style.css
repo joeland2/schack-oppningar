@@ -1015,9 +1015,6 @@ a.cta { color: var(--accent-ink); }
 .gm-move:hover { background: var(--raised); }
 .gm-move.on { background: var(--ink); color: var(--bg); }
 /* Player card: the rating in the main time control, top right */
-.pf-pcard-rating { text-align: right; line-height: 1; }
-.pf-pcard-rating b { display: block; font: 400 44px/0.95 var(--font-poster); }
-.pf-pcard-rating span { font: 400 16px var(--font-poster); letter-spacing: .06em; text-transform: uppercase; opacity: .75; }
 .cmp-speeds { margin-top: 12px; }
 .cmp-speeds button:disabled { opacity: .4; cursor: default; }
 
@@ -1035,3 +1032,12 @@ a.cta { color: var(--accent-ink); }
 .pf-help[open] summary, .pf-help summary:hover { border-color: var(--hot); color: var(--hot); }
 .pf-help p { position: absolute; z-index: 15; left: 0; top: calc(100% + 6px); width: min(300px, 80vw); margin: 0; padding: 10px 12px; font-size: 13px; line-height: 1.45; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--rule); border-radius: var(--radius); box-shadow: 0 10px 24px rgb(0 0 0 / .25); }
 .pf-an-few { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+
+/* Player card: the type in words under the overall; the player's piece and rating, top right */
+.pf-pos { display: block; max-width: 9em; font-size: 17px; line-height: 1.05; text-transform: uppercase; }
+.pf-pcard-side { display: grid; justify-items: end; gap: 6px; }
+.pf-pcard-piece { width: 58px; height: 58px; }
+.pf-pcard-rating { font: 400 20px/1 var(--font-poster); letter-spacing: .02em; }
+.pf-pcard-rating small { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pf-pcard-piece { filter: invert(1); } }
+:root[data-theme="dark"] .pf-pcard-piece { filter: invert(1); }
