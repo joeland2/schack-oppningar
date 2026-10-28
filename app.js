@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028175707';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028175707';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028175707';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028175707';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028180127';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028180127';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028180127';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028180127';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -771,7 +771,7 @@ function renderBoard() {
   const n = game.history().length - 1, note = notes[n];
   // At the line's end every offered move gets an arrow (green: real games, blue: Stockfish), unless
   // one is pointed at.
-  const offered = endLen && game.history().length >= endLen && userTurn() && !(tipHint !== null) ? tipArrows : []; // every move once the line is done
+  const offered = endLen && game.history().length === endLen && userTurn() && !(tipHint !== null) ? tipArrows : []; // only at the line's end
   drawBoard(boardEl, game, { side: cur.side, sel, last: lastMove, hint: hintSq, wrong: wrongSq,
     arrow: hintSq.length === 2 && !offered.length ? hintSq : null, arrows: offered,
     mark: (wrongSq && { sq: wrongSq, ok: false }) || (note && lastMove && { sq: lastMove.to, kind: note }),
@@ -799,7 +799,7 @@ function say(text, tone = '') {
   msgEl.className = 'message ' + tone;
 }
 
-function render() { renderBoard(); renderMoves(); renderWhy(); renderControls(); renderMaterial(); renderEval(); }
+function render() { renderBoard(); renderMoves(); renderWhy(); renderControls(); renderMaterial(); renderEval(); leaveMoment(); }
 
 // ---------- Material and evaluation ----------
 const START = { q: 1, r: 2, b: 2, n: 2, p: 8 };
@@ -936,9 +936,9 @@ function renderWhy() {
   if (ply >= line.length && hist.length === endLen) {
     lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p>${lineWhy()}${lineFacts()}`;
   }
-  // "How to go on": from the line's end on, at every move of yours while you play on, with its arrows.
+  // "How to go on" is for the moment you start playing on: shown at the line's end, gone once you move.
   let tips = '';
-  if (endLen && hist.length >= endLen && userTurn()) {
+  if (endLen && hist.length === endLen && userTurn()) {
     const t = lineTips();
     const arrows = t.map((x) => [x.move.from, x.move.to, x.engine ? '#1d5fbf' : '#15781b']);
     if (JSON.stringify(arrows) !== JSON.stringify(tipArrows)) { tipArrows = arrows; renderBoard(); }
@@ -1431,7 +1431,7 @@ let momentOpen = false;
 // without one blocks the board until you press its button.
 function moment(kind, title, html, actions, swing = null, arrows = null, onBoard = undefined) {
   closeMoment();
-  momentOpen = true; momentArrows = arrows; momentOnBoard = onBoard;
+  momentOpen = true; momentArrows = arrows; momentOnBoard = onBoard; momentAt = game.history().join(' ');
   const bar = swing ? `<div class="moment-swing"><span>Your chances</span><b>${pct(swing[0])}</b><i aria-hidden="true"><s style="width:${swing[0] * 100}%"></s><s class="to" style="width:${swing[1] * 100}%"></s></i><b>${pct(swing[1])}</b></div>` : '';
   // Above the board, not on it: the board stays in full view with the moment's arrows on it.
   $('.board-row').insertAdjacentHTML('beforebegin', `<div class="moment moment-${kind}" role="alertdialog" aria-labelledby="moment-title">
@@ -1448,13 +1448,20 @@ function moment(kind, title, html, actions, swing = null, arrows = null, onBoard
   renderBoard();
 }
 // Arrows for the moment on the board: [from, to, colour]; red for the move it is about.
-let momentArrows = null, momentOnBoard;
-// Touching the board while a moment is up: the moment goes and its board action runs.
+let momentArrows = null, momentOnBoard, momentAt = '';
+// Touching the board while a moment is up runs its board action; the strip itself stays until a move
+// has been made and the piece let go, so the board does not jump under your hand.
 function settleMoment() {
-  if (!momentOpen || momentOnBoard === undefined) return;
+  if (!momentOpen || !momentOnBoard) return;
   const run = momentOnBoard;
-  closeMoment();
-  run?.();
+  momentOnBoard = null;
+  run();
+}
+let boardHeld = false;
+boardEl.addEventListener('pointerdown', () => { boardHeld = true; });
+for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, () => { boardHeld = false; setTimeout(leaveMoment); });
+function leaveMoment() {
+  if (momentOpen && momentOnBoard !== undefined && !boardHeld && game.history().join(' ') !== momentAt) closeMoment();
 }
 const boardBlocked = () => momentOpen && momentOnBoard === undefined;
 const RED = '#c4242a', ORANGE = '#e07b00', GREEN = '#15781b';
@@ -2245,7 +2252,6 @@ function leaveView(sq) {
 // Back to the position after n moves, for you to play on from (the moves after it are gone).
 function takeBackTo(n) {
   gameGen++; // a reply still on its way no longer applies
-  closeMoment();
   while (game.history().length > n) game.undo();
   ply = n; notes.length = betters.length = n; view = null;
   lastMove = game.history({ verbose: true }).at(-1) || null;
