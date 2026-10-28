@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028145144';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028145144';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028145144';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028145144';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028145207';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028145207';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028145207';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028145207';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1761,6 +1761,34 @@ $('#mode-learn').addEventListener('click', () => setMode('learn'));
 $('#mode-try').addEventListener('click', () => setMode('try'));
 $('#mode-explore').addEventListener('click', () => setMode('explore'));
 $('#mode-time').addEventListener('click', () => setMode('time'));
+// ---------- Progress to a file and back ----------
+// Everything the site keeps in this browser except the engine cache (it rebuilds itself), as JSON.
+const KEEP_KEY = (k) => (k.startsWith(STORE) && k !== STORE + '-sf') || k.endsWith('-solved-v1') || k === 'chess-theme';
+$('#export').addEventListener('click', () => {
+  const data = {};
+  for (const k of Object.keys(localStorage)) if (KEEP_KEY(k)) data[k] = localStorage.getItem(k);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: 'chess-trainer', saved: new Date().toISOString(), data }, null, 1)], { type: 'application/json' }));
+  a.download = `chess-trainer-progress-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  $('#backup-msg').textContent = 'Saved.';
+});
+$('#import').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const { app, data } = JSON.parse(await file.text());
+    if (app !== 'chess-trainer' || typeof data !== 'object') throw new Error('not a Chess Trainer progress file');
+    const keys = Object.keys(data).filter(KEEP_KEY); // only our own keys, whatever the file holds
+    for (const k of keys) localStorage.setItem(k, String(data[k]));
+    $('#backup-msg').textContent = `Loaded ${keys.length} saved items. Reloading…`;
+    setTimeout(() => location.reload(), 600);
+  } catch (err) {
+    $('#backup-msg').textContent = `Could not load that file: ${err.message}.`;
+  }
+});
+
 function setRating(r) {
   rating = r >= 400 && r <= 3200 ? Math.round(r) : null;
   store(ratingKey(), rating);
