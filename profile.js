@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, so the page opens at once next time; Refresh reads the games again.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028205235';
-import { STYLE_OF } from './styles.js?v=20261028205235';
+import { account, login, finishLogin } from './lichess.js?v=20261028205818';
+import { STYLE_OF } from './styles.js?v=20261028205818';
 
 const MAX = 500;
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -250,24 +250,6 @@ function verdictList(items, empty) {
 function openingRows(list) {
   return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><span>${esc(o.fam)}</span><small>${o.n} games · ${pct(o.score)}</small>${bar(o.score)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
 }
-const article = (w) => (/^[AEIOU]/.test(w) ? 'an' : 'a');
-function diploma(name, at, p, t, say) {
-  const known = skillsOf(p).filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
-  const date = new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-  return `<section class="pf-diploma pf-type" aria-label="Player type">
-    <p class="pf-dip-kicker">Chess Trainer · Certificate of play style</p>
-    <p class="pf-dip-lead">This certifies that</p>
-    <p class="pf-dip-player">${esc(name)}</p>
-    <p class="pf-dip-lead">plays as ${article(t[0].name)}</p>
-    <p class="pf-name">${t.map((x) => esc(x.name)).join(' · ')}</p>
-    <ul class="pf-why">${t.map((x) => `<li><b>${esc(x.name)}.</b> ${esc(TYPE_ABOUT[x.name] || '')} <span>${esc(say(x.why))}</span></li>`).join('')}</ul>
-    ${known.length >= 2 ? `<p class="pf-dip-best">Strongest: <b>${known[0].label}</b> · To train: <b>${known[known.length - 1].label}</b></p>` : ''}
-    <div class="pf-dip-foot">
-      <span>From ${p.n} rated Lichess games<br>${date}</span>
-      <svg class="pf-seal" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="36"/><circle cx="40" cy="40" r="29"/><text x="40" y="54" text-anchor="middle">♞</text></svg>
-    </div>
-  </section>`;
-}
 // Each bar: what it measures, what the games show, and below 50 how to train it.
 function skillBars(skills, say, me) {
   return `<ul class="pf-skills">${skills.map((x) => `<li${x.v === null ? ' class="pf-skill-none"' : ''}>
@@ -277,39 +259,59 @@ function skillBars(skills, say, me) {
       <small>${x.v === null ? 'Not enough games to say.' : esc(say(x.why))}</small>
       ${x.v !== null && x.v < 50 ? `<p class="pf-train"><b>How to train:</b> ${esc(x.train)}${me && x.href ? ` <a href="${x.href}">Start</a>` : ''}</p>` : ''}</li>`).join('')}</ul>`;
 }
+// The player card: the overall (the mean of the known skills), a short code for the type, the six skills.
+const CODE = { Attacker: 'ATK', 'Solid builder': 'SOL', 'Endgame player': 'EGP', Fighter: 'FTR', 'Comeback player': 'CMB', 'Time scrambler': 'TIM', 'King walker': 'KNG', 'All-rounder': 'ALL' };
+const ABBR = { Openings: 'OPN', Tactics: 'TAC', 'Finishing won games': 'FIN', Defending: 'DEF', Endgames: 'END', Clock: 'CLK' };
+function playerCard(name, p, t, skills) {
+  const known = skills.filter((x) => x.v !== null);
+  const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
+  const main = p.speeds[0];
+  return `<div class="pf-pcard" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">
+    <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${CODE[t[0].name] || 'ALL'}</span></div><span class="pf-piece" aria-hidden="true">♞</span></div>
+    <p class="pf-pcard-name">${esc(name)}</p>
+    <div class="pf-pcard-stats">${skills.map((x) => `<span><b>${x.v ?? '–'}</b>${ABBR[x.label]}</span>`).join('')}</div>
+    <p class="pf-pcard-foot">${main ? `${main.speed.toUpperCase()} ${main.rating} · ` : ''}${p.n} GAMES</p>
+  </div>`;
+}
 function render(name, at, p) {
-  const t = p.type, me = isMe(name), say = me ? (x) => x : they;
+  const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
   const list = (items, empty) => verdictList(items.map((i) => ({ ...i, why: say(i.why), href: me ? i.href : null })), empty);
+  const known = skills.filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
+  const kpis = [['Score', pct(p.score)], p.acc !== null && ['Accuracy', `${p.acc}%`], p.blunders !== null && ['Blunders / game', p.blunders.toFixed(1)], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
-    <div class="pf-head">
-      <div><h1>${esc(name)}</h1>
-        <p class="info">${me ? 'Your profile, from your' : `From ${esc(name)}'s`} last ${p.n} rated Lichess games${p.analysed ? `, ${p.analysed} of them with computer analysis` : ''}. Updated ${ago(at)}.</p></div>
-      <button id="refresh" class="ghost" type="button">Refresh</button>
+    <div class="pf-bar">
+      <p class="info">${me ? 'Your profile, from your' : `${esc(name)}, from their`} last ${p.n} rated Lichess games${p.analysed ? ` (${p.analysed} with computer analysis)` : ''}. Updated ${ago(at)}. <button id="refresh" class="link" type="button">Refresh</button></p>
+      ${search('Look up a player')}
     </div>
-    ${search('Look up a player')}
-    ${diploma(name, at, p, t, say)}
+    <section class="pf-hero">
+      ${playerCard(name, p, t, skills)}
+      <div class="pf-hero-text">
+        <p class="pf-kick">${me ? 'Your player type' : 'Player type'}</p>
+        <h1 class="pf-h1">${esc(t[0].name)}</h1>
+        ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}
+        <div class="pf-about">${t.map((x) => `<p><b>${esc(x.name)}:</b> ${esc(TYPE_ABOUT[x.name] || '')} <span>${esc(say(x.why))}</span></p>`).join('')}</div>
+        ${known.length >= 2 ? `<p class="pf-best">Strongest: <b>${known[0].label}</b> · To train: <b>${known[known.length - 1].label}</b></p>` : ''}
+      </div>
+    </section>
+    <dl class="pf-kpis">${kpis.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
     <section class="pf-card">
-      <h2>${me ? 'Your skills' : `${esc(name)}'s skills`}</h2>
+      <h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
       <p class="info pf-note">Each bar is read from one thing in the games. 50 is a so-so result.</p>
-      ${skillBars(skillsOf(p), say, me)}
+      ${skillBars(skills, say, me)}
     </section>
     <div class="pf-two">
-      <section class="pf-card"><h2>Good at</h2>${list(p.good, 'Nothing stands out yet. More games give a clearer picture.')}</section>
-      <section class="pf-card"><h2>Work on</h2>${list(p.work, 'Nothing stands out as a weakness in these games.')}</section>
+      <section class="pf-card"><h2 class="pf-good">Strengths</h2>${list(p.good, 'Nothing stands out yet. More games give a clearer picture.')}</section>
+      <section class="pf-card"><h2 class="pf-bad">Train next</h2>${list(p.work, 'Nothing stands out as a weakness in these games.')}</section>
     </div>
     <section class="pf-card">
       <h2>Results</h2>
       <dl class="pf-stats">
-        <div><dt>Score</dt><dd>${pct(p.score)}</dd></div>
         <div><dt>As White</dt><dd>${p.white === null ? '–' : pct(p.white)}</dd></div>
         <div><dt>As Black</dt><dd>${p.black === null ? '–' : pct(p.black)}</dd></div>
-        <div><dt>Draws</dt><dd>${pct(p.draws)}</dd></div>
         <div><dt>Moves a game</dt><dd>${p.moves}</dd></div>
-        ${p.acc !== null ? `<div><dt>Accuracy</dt><dd>${p.acc}%</dd></div>` : ''}
-        ${p.blunders !== null ? `<div><dt>Blunders a game</dt><dd>${p.blunders.toFixed(1)}</dd></div>` : ''}
       </dl>
       <h3>By time control</h3>
-      <ul class="pf-rows">${p.speeds.map((s) => `<li><span>${s.speed[0].toUpperCase() + s.speed.slice(1)}</span><small>${s.n} games · ${pct(s.score)} · now ${s.rating} (${s.change >= 0 ? '+' : ''}${s.change})</small>${bar(s.score)}</li>`).join('')}</ul>
+      <ul class="pf-rows">${p.speeds.map((x) => `<li><span>${x.speed[0].toUpperCase() + x.speed.slice(1)}</span><small>${x.n} games · ${pct(x.score)} · now ${x.rating} (${x.change >= 0 ? '+' : ''}${x.change})</small>${bar(x.score)}</li>`).join('')}</ul>
       <h3>How ${me ? 'your' : 'their'} games end</h3>
       <p class="info">Wins: ${pct(p.ends.won.mate)} by mate, ${pct(p.ends.won.resign)} resigned, ${pct(p.ends.won.time)} on time.
         Losses: ${pct(p.ends.lost.mate)} by mate, ${pct(p.ends.lost.resign)} resigned, ${pct(p.ends.lost.time)} on time.</p>
@@ -318,7 +320,7 @@ function render(name, at, p) {
       <section class="pf-card"><h2>Openings as White</h2>${openingRows(p.openings.w)}</section>
       <section class="pf-card"><h2>Openings as Black</h2>${openingRows(p.openings.b)}</section>
     </div>
-    <p class="info">The style labels and thresholds are rules of thumb, not a rating. Score counts a win as 1 and a draw as a half.</p>`;
+    <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Score counts a win as 1 and a draw as a half.</p>`;
   $('#refresh').addEventListener('click', () => run(name));
   bindSearch();
 }
