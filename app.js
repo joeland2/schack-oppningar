@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028154759';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028154759';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028154759';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028154759';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028154954';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028154954';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028154954';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028154954';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -582,7 +582,7 @@ function renderMine({ counted, slips, openings }, name) {
     const mark = avg === null ? '' : you - avg >= 0.05 ? 'up' : avg - you >= 0.05 ? 'down' : '';
     return `<li><button type="button" class="ml-row" data-my="${openings.indexOf(o)}">
       <span class="ml-name">${o.vs ? `${o.side === 'w' ? `1.${o.root[0]} ` : ''}vs ` : ''}${shortName(o.family)}</span>
-      <span class="ml-meta">${plural(o.games, 'game')} · <b class="${mark}">${pct(you)}</b>${avg === null ? '' : ` <small>vs ${pct(avg)} at your level</small>`}</span>
+      <span class="ml-meta" title="Score: a win counts 1, a draw a half. Others: players rated like you, in this opening">${plural(o.games, 'game')} · you score <b class="${mark}">${pct(you)}</b>${avg === null ? '' : ` <small>· others at your rating ${pct(avg)}</small>`}</span>
     </button></li>`;
   };
   const side = (c) => openings.filter((o) => o.side === c).slice(0, 3);
