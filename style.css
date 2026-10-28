@@ -1,43 +1,50 @@
 /* Layout: board on the left, opening panel on the right, opening list below. One column on mobile. */
 :root {
-  /* "Achromatic ledger" (taste-skill): no colour in the chrome. Ink text, a near-black primary, flat white
-     panels on a ground taken from the board's wood. --data is the one hue, kept for what you are working
-     on (the line you are on, its progress); green and red stay for right and wrong. */
-  --bg: #f4f3f1;
-  --surface: #ffffff;
-  --raised: #eeeeee;
-  --ink: #0a0a0a;
-  --muted: #6b6b6b;
-  --line: #e6e6e6;
+  /* Sports-magazine look: cream paper, ink type, a heavy black rule over each panel, one orange.
+     --data (orange) marks what you are working on; green and red stay for right and wrong. Headlines
+     are Anton (--font-poster), the rest Geist. A dark variant below swaps paper and ink. */
+  --bg: #f4efe6;
+  --surface: #fbf8f2;
+  --raised: #ece4d6;
+  --ink: #141414;
+  --muted: #6b6458;
+  --line: #e2d9c8;
   --accent: #141414;
-  --accent-ink: #ffffff;
-  --data: #1d5fbf;
-  --data-ink: #ffffff;
-  --good: #2e7d32;
-  --bad: #c4242a;
+  --accent-ink: #f4efe6;
+  --data: #ff5a1f;
+  --data-ink: #141414;
+  --hot: #c2410c;          /* orange for text on paper (readable), --data for marks */
+  --good: #2f7d4f;
+  --bad: #b42318;
   --hint: #e0b23a;
-  --radius: 8px;
+  --rule: #141414;
+  --track: #e7dfcf;
+  --card: #141414; --card-ink: #f4efe6; --card-hot: #ff5a1f;
+  --radius: 4px;
   /* Spacing roles: inside a group, between related parts, between groups. */
   --gap-tight: 8px;
   --gap-group: 12px;
   --gap-section: 24px;
   --shadow: none;
   --gutter: max(clamp(16px, 4vw, 56px), env(safe-area-inset-left, 0px));
+  --font-poster: "Anton", "Impact", sans-serif;
   --font-display: "Geist", Inter, system-ui, sans-serif;
   --font-body: "Geist", Inter, system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0f0e0d; --surface: #171615; --raised: #2b2a28; --ink: #ffffff; --muted: #b4b4b4; --line: #2b2a28;
-    --accent: #ffffff; --accent-ink: #0a0a0a; --data: #6aa1ff; --data-ink: #0a0a0a;
-    --good: #3fc07a; --bad: #e5566f; --hint: #e8c25a; color-scheme: dark;
+    --bg: #12100e; --surface: #1b1815; --raised: #26221e; --ink: #f4efe6; --muted: #a8a093; --line: #2e2a25;
+    --accent: #f4efe6; --accent-ink: #141414; --data: #ff6a2f; --data-ink: #141414; --hot: #ff7a45;
+    --good: #5fc48a; --bad: #ff6b6b; --hint: #e8c25a; --rule: #f4efe6; --track: #2e2a25;
+    --card: #f4efe6; --card-ink: #141414; --card-hot: #c2410c; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0f0e0d; --surface: #171615; --raised: #2b2a28; --ink: #ffffff; --muted: #b4b4b4; --line: #2b2a28;
-  --accent: #ffffff; --accent-ink: #0a0a0a; --data: #6aa1ff; --data-ink: #0a0a0a;
-  --good: #3fc07a; --bad: #e5566f; --hint: #e8c25a; color-scheme: dark;
+  --bg: #12100e; --surface: #1b1815; --raised: #26221e; --ink: #f4efe6; --muted: #a8a093; --line: #2e2a25;
+  --accent: #f4efe6; --accent-ink: #141414; --data: #ff6a2f; --data-ink: #141414; --hot: #ff7a45;
+  --good: #5fc48a; --bad: #ff6b6b; --hint: #e8c25a; --rule: #f4efe6; --track: #2e2a25;
+  --card: #f4efe6; --card-ink: #141414; --card-hot: #c2410c; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -503,8 +510,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .tag { background: var(--raised); color: var(--ink); }
 
 /* Each card in its side's colour: White's openings on white, Black's on black, in both themes */
-.ocard.side-w { --accent: #141414; --surface: #ffffff; --ink: #0a0a0a; --muted: #5f5f5f; --line: #dedede; --raised: #eeeeee; --good: #2e7d32; --bad: #c4242a; }
-.ocard.side-b { --accent: #ffffff; --surface: #121110; --ink: #ffffff; --muted: #b4b4b4; --line: #34322f; --raised: #2b2a28; --good: #3fc07a; --bad: #e5566f; }
+.ocard.side-w { --accent: #141414; --surface: #fbf8f2; --ink: #141414; --muted: #6b6458; --line: #e2d9c8; --raised: #ece4d6; --good: #2f7d4f; --bad: #b42318; }
+.ocard.side-b { --accent: #f4efe6; --surface: #141414; --ink: #f4efe6; --muted: #a8a093; --line: #2e2a25; --raised: #26221e; --good: #5fc48a; --bad: #ff6b6b; }
 .ocard.side-w, .ocard.side-b { background: var(--surface); color: var(--ink); border-color: var(--line); }
 .ocard.side-w:hover, .ocard.side-w:focus-visible, .ocard.side-b:hover, .ocard.side-b:focus-visible { border-color: var(--ink); }
 
@@ -722,28 +729,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 }
 @media (max-width: 560px) { .top-search { flex: 1 1 100%; } }
 
-/* Profile: sports-magazine look (cream paper, black card, one orange). Only on profile.html (body.pf-ed). */
-body.pf-ed {
-  --bg: #f4efe6; --surface: #fbf8f2; --raised: #ece4d6; --ink: #141414; --muted: #6b6458; --line: #e2d9c8;
-  --accent: #141414; --accent-ink: #f4efe6; --data: #ff5a1f; --good: #2f7d4f; --bad: #c2410c;
-  --hot: #c2410c; --card: #141414; --card-ink: #f4efe6; --card-hot: #ff5a1f; --rule: #141414; --track: #e7dfcf;
-  --font-poster: "Anton", "Impact", sans-serif;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) body.pf-ed {
-    --bg: #12100e; --surface: #1b1815; --raised: #26221e; --ink: #f4efe6; --muted: #a8a093; --line: #2e2a25;
-    --accent: #f4efe6; --accent-ink: #141414; --data: #ff6a2f; --good: #5fc48a; --bad: #ff7a50;
-    --hot: #ff7a45; --card: #f4efe6; --card-ink: #141414; --card-hot: #c2410c; --rule: #f4efe6; --track: #2e2a25;
-  }
-}
-:root[data-theme="dark"] body.pf-ed {
-  --bg: #12100e; --surface: #1b1815; --raised: #26221e; --ink: #f4efe6; --muted: #a8a093; --line: #2e2a25;
-  --accent: #f4efe6; --accent-ink: #141414; --data: #ff6a2f; --good: #5fc48a; --bad: #ff7a50;
-  --hot: #ff7a45; --card: #f4efe6; --card-ink: #141414; --card-hot: #c2410c; --rule: #f4efe6; --track: #2e2a25;
-}
-.pf-ed .brand { font-family: var(--font-poster); font-weight: 400; text-transform: uppercase; letter-spacing: .02em; }
-.pf-ed .brand span { color: var(--hot); }
-.pf-ed .top-nav a[aria-current="page"] { background: none; border-radius: 0; box-shadow: inset 0 -2px 0 var(--hot); }
+/* Profile: the player card, poster headline and skill panels */
 .profile { max-width: 1080px; margin-inline: auto; padding-block: clamp(16px, 3vh, 28px) 48px; display: grid; gap: 18px; }
 #profile { display: grid; gap: 18px; }
 #profile-msg:empty { display: none; }
@@ -813,8 +799,6 @@ body.pf-ed {
   .pf-about { text-align: left; }
   .pf-pcard { width: min(300px, 100%); }
 }
-.pf-ed main a, .pf-ed main button.link { color: var(--hot); font-weight: 600; }
-.pf-ed .ghost { color: var(--ink); }
 /* Profile: rating over time (one line, one axis) */
 .pf-chart { position: relative; }
 .pf-chart-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 8px; }
@@ -858,4 +842,23 @@ body.pf-ed {
 .pr-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
 .pr-list li { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .pr-list small { color: var(--muted); white-space: nowrap; }
-.pf-ed main a.cta { color: var(--accent-ink); }
+
+/* Magazine details, site-wide: poster headlines, the brand, the current section, panels under a heavy rule */
+.brand { font-family: var(--font-poster); font-weight: 400; font-size: 1.45rem; text-transform: uppercase; letter-spacing: .02em; }
+.brand span { color: var(--hot); }
+.top-nav a[aria-current="page"] { background: none; border-radius: 0; box-shadow: inset 0 -2px 0 var(--hot); }
+h1, .picker h1 { font-family: var(--font-poster); font-weight: 400; text-transform: uppercase; letter-spacing: 0; line-height: .95; }
+.picker h1 { font-size: clamp(2.6rem, 7vw, 4.6rem); }
+.panel, .mine, .card { border-radius: var(--radius); border-top: 3px solid var(--rule); }
+.ocard { border-radius: var(--radius); }
+.ocard h3 { font-family: var(--font-poster); font-weight: 400; font-size: 22px; text-transform: uppercase; letter-spacing: .01em; }
+.seg { border-radius: var(--radius); }
+.seg button { border-radius: 2px; }
+.ghost, .controls button { color: var(--ink); }
+main a:not(.cta):not(.ocard):not(.card), button.link { color: var(--hot); }
+.cta { border-radius: var(--radius); }
+a.cta { color: var(--accent-ink); }
+@media (max-width: 560px) { /* five sections on a phone: one row that scrolls sideways if it must */
+  .top-nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 0; margin-inline: -8px; }
+  .top-nav a { white-space: nowrap; padding: 6px 8px; }
+}
