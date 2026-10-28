@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028231646';
-import { STYLE_OF } from './styles.js?v=20261028231646';
+import { account, login, finishLogin } from './lichess.js?v=20261028232234';
+import { STYLE_OF } from './styles.js?v=20261028232234';
 
 const MAX = 500;
-const PV = 12;
+const PV = 13;
 const ENOUGH = 20;
 const WHY_ANALYSE = 'Lichess only analyses games you ask it to. Analysed games give your blunders, accuracy and four of the skills, and become puzzles in My practice. Stockfish runs in your browser; no game is done twice.'; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -16,6 +16,36 @@ const pct = (x) => `${Math.round(x * 100)}%`;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const sum = (xs, f) => xs.reduce((s, x) => s + f(x), 0);
 const score = (gs) => (gs.length ? sum(gs, (g) => g.result) / gs.length : null);
+
+// ---------- Tactics on the board ----------
+const VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 100 };
+// The squares the piece on board[r][f] attacks (board as chess.js gives it: row 0 is rank 8).
+function attacksOf(board, r, f) {
+  const pc = board[r][f], out = [], on = (y, x) => y >= 0 && y < 8 && x >= 0 && x < 8;
+  const step = (dirs) => dirs.forEach(([dy, dx]) => on(r + dy, f + dx) && out.push([r + dy, f + dx]));
+  const ray = (dirs) => dirs.forEach(([dy, dx]) => { for (let y = r + dy, x = f + dx; on(y, x); y += dy, x += dx) { out.push([y, x]); if (board[y][x]) break; } });
+  const D = [[1, 1], [1, -1], [-1, 1], [-1, -1]], O = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  if (pc.type === 'p') step(pc.color === 'w' ? [[-1, -1], [-1, 1]] : [[1, -1], [1, 1]]);
+  else if (pc.type === 'n') step([[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]]);
+  else if (pc.type === 'k') step([...D, ...O]);
+  else ray(pc.type === 'b' ? D : pc.type === 'r' ? O : [...D, ...O]);
+  return out;
+}
+// What one move of yours did: a safe fork (two targets worth more than the piece, or the king, and
+// nothing can take it), a discovered check, mate (on the back rank or not), a promotion.
+function tacticOf(board, m) {
+  const r = 8 - Number(m.to[1]), f = m.to.charCodeAt(0) - 97, them = m.color === 'w' ? 'b' : 'w', out = [];
+  const hits = attacksOf(board, r, f).map(([y, x]) => board[y][x]).filter((t) => t && t.color === them);
+  const king = board.flat().find((t) => t && t.type === 'k' && t.color === them);
+  if (m.piece !== 'k' && hits.filter((t) => t.type === 'k' || VALUE[t.type] > VALUE[m.piece]).length >= 2) {
+    const safe = !board.some((row, y) => row.some((t, x) => t && t.color === them && attacksOf(board, y, x).some(([a, b]) => a === r && b === f)));
+    if (safe) out.push('fork');
+  }
+  if (/[+#]/.test(m.san) && !hits.some((t) => t.type === 'k')) out.push('disc');
+  if (m.san.endsWith('#')) out.push(/[rq]/.test(m.piece) && king.square[1] === (them === 'w' ? '1' : '8') && m.to[1] === king.square[1] ? 'backRank' : 'mate');
+  if (m.promotion) out.push('promo');
+  return out;
+}
 
 // ---------- One game, from your side ----------
 const cpOf = (a) => (!a ? null : a.mate !== undefined ? Math.sign(a.mate) * 1000 : Math.max(-1000, Math.min(1000, a.eval)));
@@ -28,6 +58,7 @@ function readGame(g, me) {
   let castled = null, queensOff = null, endgameAt = null;
   const pieces = { n: 0, b: 0, r: 0, q: 0 }; // how much each piece of yours does: moves, plus captures and checks
   const played = { n: [0, 0], b: [0, 0], r: [0, 0], q: [0, 0] }; // per piece, in analysed games: [moves, mistakes (a blunder counts 2)]
+  const tactics = []; // [kind, ply, piece] for each tactic of yours
   for (let i = 0; i < moves.length; i++) {
     let m;
     try { m = c.move(moves[i]); } catch { break; }
@@ -37,7 +68,8 @@ function readGame(g, me) {
       const j = g.analysis?.[i]?.judgment?.name;
       if (g.analysis) { played[m.piece][0]++; played[m.piece][1] += j === 'Blunder' ? 2 : j === 'Mistake' ? 1 : 0; }
     }
-    const onBoard = c.board().flat().filter(Boolean);
+    const board = c.board(), onBoard = board.flat().filter(Boolean);
+    if (m.color === side) for (const k of tacticOf(board, m)) tactics.push([k, i + 1, m.piece]);
     if (queensOff === null && !onBoard.some((p) => p.type === 'q')) queensOff = i;
     if (endgameAt === null && onBoard.filter((p) => p.type !== 'p' && p.type !== 'k').length <= 6) endgameAt = i;
   }
@@ -53,7 +85,7 @@ function readGame(g, me) {
     side, speed: g.speed, at: g.createdAt, status: g.status, plies: moves.length,
     result: !g.winner ? 0.5 : (g.winner === 'white') === (side === 'w') ? 1 : 0,
     family: (g.opening?.name || 'Unknown').split(':')[0], rating: mine.rating, diff: mine.ratingDiff || 0, them: theirs.rating,
-    castled, queensOff, endgame: endgameAt !== null, pieces, played,
+    id: g.id, castled, queensOff, endgame: endgameAt !== null, pieces, played, tactics,
     analysed: v.length > 0, ours: !!g.ours, acc: mine.analysis?.accuracy ?? null, blunders: mine.analysis?.blunder ?? null, mistakes: mine.analysis?.mistake ?? null,
     best: v.length ? Math.max(...v) : null, worst: v.length ? Math.min(...v) : null, after12: v.length > 23 ? v[23] : null, slips,
     lowTime: left !== null && g.clock ? left < Math.max(10, g.clock.initial * 0.1) : false,
@@ -92,6 +124,15 @@ function styleMix(games, side) {
   return { n: gs.length, parts: KINDS.map(([k, label, words]) => ({ k, label, words, share: gs.length ? gs.filter((g) => kindOf(g.family) === k).length / gs.length : 0 })).filter((x) => x.share > 0).sort((a, b) => b.share - a.share) };
 }
 console.assert(styleMix([{ side: 'w', family: 'Danish Gambit' }, { side: 'w', family: 'London System' }, { side: 'b', family: 'Italian Game' }], 'w').parts[0].share === 0.5, 'styleMix');
+// Tactics over all games: how many of each, which piece forks most, and the newest example of each.
+function tacticsOf(games) {
+  const t = {};
+  for (const g of games) for (const [k, ply, piece] of g.tactics || []) {
+    const x = (t[k] ||= { n: 0, by: {}, ex: [g.id, ply] });
+    x.n++; x.by[piece] = (x.by[piece] || 0) + 1;
+  }
+  return t;
+}
 const styleOf = (fam) => [...(STYLE_OF[fam] || []), ...(/Gambit/.test(fam) ? ['attacking'] : [])];
 export function profileOf(games) {
   const n = games.length, an = games.filter((g) => g.analysed);
@@ -139,6 +180,7 @@ export function profileOf(games) {
     openings: { w: byOpening('w'), b: byOpening('b') },
     styleMix: { w: styleMix(games, 'w'), b: styleMix(games, 'b') },
     ...pieceOf(games, an.length),
+    tactics: tacticsOf(games),
     peer: peerOf(games),
     // Rating after each game, oldest first, per time control: the graph's fallback when Lichess's
     // own rating history is not available.
@@ -637,7 +679,7 @@ function playerCard(name, p, t, skills) {
   return `<div class="pf-pcard" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span></div>
       <div class="pf-pcard-side"><img class="pf-pcard-piece" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title="${esc(name)}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
-        ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span><span class="pf-pcard-rank">${rankText(main)}</span>` : ''}</div></div>
+        ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
     <p class="pf-pcard-name">${esc(name)}</p>
     <div class="pf-pcard-stats">${skills.map((x) => `<span><b>${x.v ?? '–'}</b>${ABBR[x.label]}</span>`).join('')}</div>
     <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
@@ -688,7 +730,7 @@ function render(name, at, p) {
       <section class="pf-card"><h2 class="pf-bad">Train next</h2>${list(J.work, `Nothing is clearly below ${me ? 'your' : 'their'} opponents.`)}</section>
     </div>
     <section class="pf-card" id="pf-games"></section>
-    <details class="pf-card pf-more"><summary><h2>Results</h2><span>Wins by colour and time control, how games end</span></summary>
+    <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results</h2><span>Wins by colour and time control, how games end</span></div>
       <dl class="pf-stats">
         <div><dt>Wins as White</dt><dd>${p.winW == null ? '–' : pct(p.winW)}</dd></div>
         <div><dt>Wins as Black</dt><dd>${p.winB == null ? '–' : pct(p.winB)}</dd></div>
@@ -698,12 +740,12 @@ function render(name, at, p) {
       <ul class="pf-rows">${p.speeds.map((x) => `<li><span>${x.speed[0].toUpperCase() + x.speed.slice(1)}</span><small>${games(x.n)} · ${pct(x.win ?? x.score)} wins · now ${x.rating} (${x.change >= 0 ? '+' : ''}${x.change})</small>${bar(x)}</li>`).join('')}</ul>
       <h3>How ${me ? 'your' : 'their'} games end</h3>
       ${endsGrid(p.ends)}
-    </details>
-    <details class="pf-card pf-more"><summary><h2>Opening style</h2><span>${tasteShort(p.styleMix)}</span></summary>${tastePanel(p.styleMix, me, true)}</details>
-    <details class="pf-card pf-more"><summary><h2>Openings</h2><span>The ones played most, with wins</span></summary><div class="pf-two pf-more-body">
+    </section>
+    <section class="pf-card pf-more"><div class="pf-more-head"><h2>Opening style</h2><span>${tasteShort(p.styleMix)}</span></div>${tastePanel(p.styleMix, me, true)}</section>
+    <section class="pf-card pf-more"><div class="pf-more-head"><h2>Openings</h2><span>The ones played most, with wins</span></div><div class="pf-two pf-more-body">
       <section><h3>As White</h3>${openingRows(p.openings.w)}</section>
       <section><h3>As Black</h3>${openingRows(p.openings.b)}</section>
-    </div></details>
+    </div></section>
     <section class="pf-about-data">
       <h2>About these numbers</h2>
       <p class="info">Read from ${me ? 'your' : `${esc(name)}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
@@ -729,6 +771,21 @@ function render(name, at, p) {
 
 addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('details.pf-help[open]').forEach((d) => { d.open = false; d.querySelector('summary').focus(); }); });
 // The lead story under the card: recent form (the last ten results) and the one thing to train now.
+const PIECE_WORD = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
+function tacticsList(name, p) {
+  const t = p.tactics || {}, see = (x) => `<a href="game.html?u=${encodeURIComponent(name)}&id=${x.ex[0]}&ply=${x.ex[1]}">See one</a>`;
+  const top = (x) => Object.entries(x.by).sort((a, b) => b[1] - a[1])[0];
+  const mates = (t.mate?.n || 0) + (t.backRank?.n || 0);
+  const rows = [
+    t.fork && [t.fork.n, `fork${t.fork.n === 1 ? '' : 's'}`, `most with the ${PIECE_WORD[top(t.fork)[0]]} (${top(t.fork)[1]})`, t.fork],
+    t.disc && [t.disc.n, `discovered check${t.disc.n === 1 ? '' : 's'}`, 'a piece moves away and uncovers check', t.disc],
+    mates && [mates, `mate${mates === 1 ? '' : 's'} given`, t.backRank ? `${t.backRank.n} on the back rank` : `most with the ${PIECE_WORD[top(t.mate)[0]]}`, t.backRank || t.mate],
+    t.promo && [t.promo.n, `promotion${t.promo.n === 1 ? '' : 's'}`, 'a pawn made it all the way', t.promo],
+  ].filter(Boolean);
+  if (!rows.length) return '';
+  return `<h3 class="pf-tac-h">Tactics you used <small>last ${p.n} games</small></h3>
+    <ul class="pf-tac">${rows.map(([n, what, how, x]) => `<li><b>${n}</b><span>${what}<small>${how} · ${see(x)}</small></span></li>`).join('')}</ul>`;
+}
 function leadStory(name, p, skills, me) {
   const games = storedGames(name) || [], low = name.toLowerCase(), say = me ? (x) => x : they;
   const sideOf = (g) => (g.players.white.user?.id === low ? 'white' : 'black');
@@ -746,7 +803,7 @@ function leadStory(name, p, skills, me) {
       ${main ? `<p class="pf-news-big"><b>${after(mine[0])}</b> ${change !== null ? `<span class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</span> <small>${main} this week, ${recent.length} game${recent.length === 1 ? '' : 's'}</small>` : `<small>${main} · no games this week</small>`}</p>` : ''}
       ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${form.map((x) => `<span class="pf-res r-${x}">${x}</span>`).join('')}</p>
         <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}, newest first · last played ${day(latest.createdAt)}</p>` : ''}
-      ${latest ? `<a class="pf-latest" href="game.html?u=${encodeURIComponent(name)}&id=${latest.id}">Latest game: <b>${{ W: 'won', L: 'lost', D: 'drew' }[res(latest)]}</b> against ${esc(latest.players[sideOf(latest) === 'white' ? 'black' : 'white'].user?.id || 'anonymous')}. Review it</a>` : ''}
+      ${tacticsList(name, p)}
     </div>
     <div class="pf-leak${leak ? '' : ' none'}"><h2>${leak ? (me ? 'Your biggest leak' : 'Biggest leak') : 'No clear leak'}</h2>
       ${leak ? `<p class="pf-leak-title">${esc(leak.title)} <small>${leak.v}</small></p><p>${esc(say(leak.why))} ${esc(leak.train)}</p>${me ? `<a class="cta" href="${leak.href || 'practice.html'}">Train it</a>` : ''}`

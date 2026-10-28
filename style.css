@@ -728,7 +728,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .pf-search input { background: var(--surface); }
 
 /* Hero: the black player card and the type in poster type */
-.pf-hero { display: grid; grid-template-columns: auto 1fr; gap: clamp(24px, 5vw, 48px); align-items: center; padding-block: 12px; }
+.pf-hero { display: grid; grid-template-columns: auto 1fr; gap: clamp(24px, 5vw, 48px); align-items: start; padding-block: 12px; }
 .pf-pcard { width: 300px; padding: 20px 20px 14px; background: var(--card); color: var(--card-ink); border-radius: 4px; box-shadow: 0 22px 44px rgb(20 20 20 / .25); }
 .pf-pcard-top { display: flex; justify-content: space-between; align-items: flex-start; }
 .pf-ovr { display: block; font: 400 72px/0.9 var(--font-poster); color: var(--card-hot); }
@@ -1178,3 +1178,15 @@ a { text-underline-offset: .18em; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pf-ovr { color: #c63f0a; } }
 :root[data-theme="dark"] .pf-ovr { color: #c63f0a; }
 .pf-analyse:not(.few):not(.running) { padding: 8px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+/* Profile: the tactics you used, in the lead */
+.pf-tac-h { margin: 18px 0 8px; font: 700 12px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.pf-tac-h small { letter-spacing: 0; text-transform: none; font-weight: 400; }
+.pf-tac { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.pf-tac li { display: grid; grid-template-columns: 3.2ch 1fr; gap: 12px; align-items: baseline; }
+.pf-tac b { font: 400 30px/1 var(--font-poster); color: var(--hot); text-align: right; }
+.pf-tac span { font-weight: 600; }
+.pf-tac small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+/* Panels that used to fold: always open, heading and a short line beside it */
+.pf-more-head { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.pf-more-head h2 { margin: 0; }
+.pf-more-head span { color: var(--muted); font-size: 13.5px; }

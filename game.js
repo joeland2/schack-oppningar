@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261028231646';
-import { account } from './lichess.js?v=20261028231646';
-import { storedGames, keepGame, engineEval, applyEvals, winPct } from './profile.js?v=20261028231646';
+import { drawBoard } from './board.js?v=20261028232234';
+import { account } from './lichess.js?v=20261028232234';
+import { storedGames, keepGame, engineEval, applyEvals, winPct } from './profile.js?v=20261028232234';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -37,7 +37,7 @@ async function load() {
     moves.push(m);
     fens.push(c.fen());
   }
-  idx = moves.length;
+  idx = q.has('ply') ? Math.min(moves.length, Number(q.get('ply')) || 0) : moves.length; // ?ply= opens on that move
 }
 
 // ---------- Reading the analysis ----------
