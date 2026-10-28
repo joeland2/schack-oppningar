@@ -3,12 +3,13 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028215503';
-import { STYLE_OF } from './styles.js?v=20261028215503';
+import { account, login, finishLogin } from './lichess.js?v=20261028215852';
+import { STYLE_OF } from './styles.js?v=20261028215852';
 
 const MAX = 500;
 const PV = 5;
-const ENOUGH = 20; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
+const ENOUGH = 20;
+const WHY_ANALYSE = 'Lichess only analyses games you ask it to. Analysed games give your blunders, accuracy and four of the skills, and become puzzles in My practice. Stockfish runs in your browser; no game is done twice.'; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
 const $ = (s) => document.querySelector(s);
 const pct = (x) => `${Math.round(x * 100)}%`;
@@ -398,12 +399,10 @@ function analysePanel(name, p) {
   const opts = [100, 250, 500].filter((n) => n <= Math.max(100, p.n)).map((n) => ({ n, ...costOf(p, n) }));
   const few = p.analysed < ENOUGH, first = opts[0];
   return `<div id="pf-analyse" class="pf-analyse${few ? ' few' : ''}">
-    <div class="pf-an-row"><span><b>${p.analysed}/${p.n}</b> games analysed${p.ours ? ` (${p.ours} here)` : ''}. Analyse the newest:</span>
+    <div class="pf-an-row"><span><b>${p.analysed}/${p.n}</b> games analysed${p.ours ? ` (${p.ours} here)` : ''}
+      <details class="pf-help"><summary title="${WHY_ANALYSE}" aria-label="Why analyse?">?</summary><p>${WHY_ANALYSE}</p></details>. Analyse the newest:</span>
     ${opts.map((o) => `<button type="button" class="pf-an-opt" data-analyse="${o.n}" ${o.games ? '' : 'disabled'} title="${o.games ? `${o.games} games without analysis, ${minutes(o.sec)}, with Stockfish in your browser` : 'All analysed'}">${o.n} <small>${o.games ? `${o.games} new · ${minutes(o.sec).replace('about ', '~')}` : 'done'}</small></button>`).join('')}</div>
-    <p class="pf-an-why">${few
-      ? `<b>Analyse at least ${ENOUGH} games to see your Openings, Tactics, Finishing and Defending skills, your accuracy and your blunders.</b> They need a computer's verdict on every move, and ${p.analysed ? `only ${p.analysed} of your games have one` : 'none of your games has one yet'}. The newest 100 takes ${minutes(first?.sec || 0)}.`
-      : 'Why analyse? Lichess only analyses the games you ask it to. A computer verdict on every move shows your blunders and accuracy, how you come out of the opening, whether you win won positions and save lost ones, and it turns your mistakes into puzzles in My practice. The more games, the more reliable the numbers.'}
-      Stockfish runs in your browser; analysed games are kept and never done twice.</p>
+    ${few ? `<p class="pf-an-few">Analyse at least ${ENOUGH} games to unlock Openings, Tactics, Finishing, Defending, accuracy and blunders.</p>` : ''}
   </div>`;
 }
 function bindAnalyse(name) {
@@ -618,7 +617,7 @@ function lineChart(pts, from, end) {
   const top = pts.reduce((a, q) => (q[1] > a[1] ? q : a)), low = pts.reduce((a, q) => (q[1] < a[1] ? q : a));
   const mark = (q, cls) => `<circle class="${cls}" cx="${x(q[0]).toFixed(1)}" cy="${y(q[1]).toFixed(1)}" r="4"/>`;
   return `<p class="pf-chart-now"><b>${pts[pts.length - 1][1]}</b> <span class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</span> <small>since ${fmtDay(pts[0][0])}</small>
-      <span class="pf-hilo"><span><i class="hi"></i>High <b>${top[1]}</b> <small>${fmtDay(top[0])}</small></span><span><i class="lo"></i>Low <b>${low[1]}</b> <small>${fmtDay(low[0])}</small></span></span></p>
+      <span class="pf-hilo"><span><small><i class="hi"></i>High</small><b>${top[1]}</b><small>${fmtDay(top[0])}</small></span><span><small><i class="lo"></i>Low</small><b>${low[1]}</b><small>${fmtDay(low[0])}</small></span></span></p>
     <svg class="pf-line" viewBox="0 0 ${W} ${H}" role="img" aria-label="Rating from ${pts[0][1]} to ${pts[pts.length - 1][1]} between ${fmtDay(from)} and ${fmtDay(end)}"
       data-pts='${JSON.stringify(pts.map(([t, r]) => [Math.round(x(t)), Math.round(y(r)), r, t]))}'>
       ${ticks.map((r) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(r)}" y2="${y(r)}"/><text class="ax" x="${L - 8}" y="${y(r) + 4}" text-anchor="end">${r}</text>`).join('')}

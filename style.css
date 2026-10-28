@@ -934,9 +934,7 @@ a.cta { color: var(--accent-ink); }
 
 .pf-analyse { display: grid; gap: 8px; }
 .pf-an-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
-.pf-an-why { margin: 0; max-width: 90ch; font-size: 13px; color: var(--muted); }
 .pf-analyse.few { padding: 12px 14px; border: 1px solid var(--hot); border-radius: var(--radius); background: var(--surface); }
-.pf-analyse.few .pf-an-why { color: var(--ink); font-size: 14px; }
 .pf-skill-lock { grid-column: 1 / -1; color: var(--hot); font-size: 12.5px; font-weight: 600; }
 /* How games end: two rows of three numbers, each with a bar of its share (green wins, red losses) */
 .pf-ends { display: grid; gap: 10px; }
@@ -963,9 +961,6 @@ a.cta { color: var(--accent-ink); }
 @media (max-width: 1360px) { .top-players { order: 5; } }
 /* Rating graph: the period's high and low */
 .pf-chart-now { flex-wrap: wrap; }
-.pf-hilo { display: inline-flex; gap: 16px; margin-left: auto; font-size: 13px; color: var(--muted); }
-.pf-hilo b { color: var(--ink); font: 400 20px/1 var(--font-poster); }
-.pf-hilo i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
 .pf-hilo i.hi, .pf-line circle.hi { background: var(--good); fill: var(--good); }
 .pf-hilo i.lo, .pf-line circle.lo { background: var(--bad); fill: var(--bad); }
 .pf-line circle.hi, .pf-line circle.lo { stroke: var(--surface); stroke-width: 2; }
@@ -1025,3 +1020,18 @@ a.cta { color: var(--accent-ink); }
 .pf-pcard-rating span { font: 400 16px var(--font-poster); letter-spacing: .06em; text-transform: uppercase; opacity: .75; }
 .cmp-speeds { margin-top: 12px; }
 .cmp-speeds button:disabled { opacity: .4; cursor: default; }
+
+/* Rating graph: high and low as two small stat blocks, label over number over day */
+.pf-hilo { display: inline-flex; gap: 22px; margin-left: auto; }
+.pf-hilo > span { display: grid; justify-items: end; gap: 2px; }
+.pf-hilo small { font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+.pf-hilo small:first-child { font-weight: 600; letter-spacing: .14em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 5px; }
+.pf-hilo b { font: 400 26px/1 var(--font-poster); color: var(--ink); }
+.pf-hilo i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+/* "?" help: the why on hover (title) or click */
+.pf-help { display: inline-block; position: relative; vertical-align: middle; margin-left: 4px; }
+.pf-help summary { list-style: none; cursor: pointer; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--muted); color: var(--muted); font: 700 11px var(--font-body); }
+.pf-help summary::-webkit-details-marker { display: none; }
+.pf-help[open] summary, .pf-help summary:hover { border-color: var(--hot); color: var(--hot); }
+.pf-help p { position: absolute; z-index: 15; left: 0; top: calc(100% + 6px); width: min(300px, 80vw); margin: 0; padding: 10px 12px; font-size: 13px; line-height: 1.45; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--rule); border-radius: var(--radius); box-shadow: 0 10px 24px rgb(0 0 0 / .25); }
+.pf-an-few { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink); }
