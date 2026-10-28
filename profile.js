@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028232703';
-import { STYLE_OF } from './styles.js?v=20261028232703';
+import { account, login, finishLogin } from './lichess.js?v=20261028232845';
+import { STYLE_OF } from './styles.js?v=20261028232845';
 
 const MAX = 500;
 const PV = 13;
@@ -124,11 +124,11 @@ function styleMix(games, side) {
   return { n: gs.length, parts: KINDS.map(([k, label, words]) => ({ k, label, words, share: gs.length ? gs.filter((g) => kindOf(g.family) === k).length / gs.length : 0 })).filter((x) => x.share > 0).sort((a, b) => b.share - a.share) };
 }
 console.assert(styleMix([{ side: 'w', family: 'Danish Gambit' }, { side: 'w', family: 'London System' }, { side: 'b', family: 'Italian Game' }], 'w').parts[0].share === 0.5, 'styleMix');
-// Tactics over all games: how many of each, which piece forks most, and the newest example of each.
+// Tactics over some games: how many of each, and with which piece.
 function tacticsOf(games) {
   const t = {};
-  for (const g of games) for (const [k, ply, piece] of g.tactics || []) {
-    const x = (t[k] ||= { n: 0, by: {}, ex: [g.id, ply] });
+  for (const g of games) for (const [k, , piece] of g.tactics || []) {
+    const x = (t[k] ||= { n: 0, by: {} });
     x.n++; x.by[piece] = (x.by[piece] || 0) + 1;
   }
   return t;
@@ -180,7 +180,6 @@ export function profileOf(games) {
     openings: { w: byOpening('w'), b: byOpening('b') },
     styleMix: { w: styleMix(games, 'w'), b: styleMix(games, 'b') },
     ...pieceOf(games, an.length),
-    tactics: tacticsOf(games),
     peer: peerOf(games),
     // Rating after each game, oldest first, per time control: the graph's fallback when Lichess's
     // own rating history is not available.
@@ -786,19 +785,20 @@ function render(name, at, p) {
 addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('details.pf-help[open]').forEach((d) => { d.open = false; d.querySelector('summary').focus(); }); });
 // The lead story under the card: recent form (the last ten results) and the one thing to train now.
 const PIECE_WORD = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
-function tacticsList(name, p) {
-  const t = p.tactics || {}, see = (x) => `<a href="game.html?u=${encodeURIComponent(name)}&id=${x.ex[0]}&ply=${x.ex[1]}">See one</a>`;
-  const top = (x) => Object.entries(x.by).sort((a, b) => b[1] - a[1])[0];
+// The tactics in the same last 10 games as the form row above.
+function tacticsList(name, games) {
+  const recent = games.slice(0, 10), t = tacticsOf(recent.map((g) => readGame(g, name.toLowerCase())));
+  const by = (x) => Object.entries(x.by).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${n} with ${k === 'p' ? 'a' : 'the'} ${PIECE_WORD[k]}`).join(', ');
   const mates = (t.mate?.n || 0) + (t.backRank?.n || 0);
   const rows = [
-    t.fork && [t.fork.n, `fork${t.fork.n === 1 ? '' : 's'}`, `most with the ${PIECE_WORD[top(t.fork)[0]]} (${top(t.fork)[1]})`, t.fork],
-    t.disc && [t.disc.n, `discovered check${t.disc.n === 1 ? '' : 's'}`, 'a piece moves away and uncovers check', t.disc],
-    mates && [mates, `mate${mates === 1 ? '' : 's'} given`, t.backRank ? `${t.backRank.n} on the back rank` : `most with the ${PIECE_WORD[top(t.mate)[0]]}`, t.backRank || t.mate],
-    t.promo && [t.promo.n, `promotion${t.promo.n === 1 ? '' : 's'}`, 'a pawn made it all the way', t.promo],
+    t.fork && [t.fork.n, `fork${t.fork.n === 1 ? '' : 's'}`, `one piece attacks two at once${Object.keys(t.fork.by).length > 1 ? `: ${by(t.fork)}` : ''}`],
+    t.disc && [t.disc.n, `discovered check${t.disc.n === 1 ? '' : 's'}`, 'a piece moves away and uncovers check'],
+    mates && [mates, `mate${mates === 1 ? '' : 's'} given`, t.backRank ? `${t.backRank.n} on the back rank` : `with ${by(t.mate).replace(/^\d+ with /, '')}`],
+    t.promo && [t.promo.n, `promotion${t.promo.n === 1 ? '' : 's'}`, 'a pawn made it all the way'],
   ].filter(Boolean);
-  if (!rows.length) return '';
-  return `<h3 class="pf-tac-h">Tactics you used <small>last ${p.n} games</small></h3>
-    <ul class="pf-tac">${rows.map(([n, what, how, x]) => `<li><b>${n}</b><span>${what}<small>${how} · ${see(x)}</small></span></li>`).join('')}</ul>`;
+  if (!recent.length) return '';
+  return `<h3 class="pf-tac-h">Tactics used <small>last ${recent.length} games</small></h3>
+    ${rows.length ? `<ul class="pf-tac">${rows.map(([n, what, how]) => `<li><b>${n}</b><span>${what}<small>${how}</small></span></li>`).join('')}</ul>` : '<p class="info">No forks, discovered checks, mates or promotions in these games.</p>'}`;
 }
 function leadStory(name, p, skills, me) {
   const games = storedGames(name) || [], low = name.toLowerCase(), say = me ? (x) => x : they;
@@ -817,7 +817,7 @@ function leadStory(name, p, skills, me) {
       ${main ? `<p class="pf-news-big"><b>${after(mine[0])}</b> ${change !== null ? `<span class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</span> <small>${main} this week, ${recent.length} game${recent.length === 1 ? '' : 's'}</small>` : `<small>${main} · no games this week</small>`}</p>` : ''}
       ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${form.map((x) => `<span class="pf-res r-${x}">${x}</span>`).join('')}</p>
         <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}, newest first · last played ${day(latest.createdAt)}</p>` : ''}
-      ${tacticsList(name, p)}
+      ${tacticsList(name, games)}
     </div>
     <div class="pf-leak${leak ? '' : ' none'}"><h2>${leak ? (me ? 'Your biggest leak' : 'Biggest leak') : 'No clear leak'}</h2>
       ${leak ? `<p class="pf-leak-title">${esc(leak.title)} <small>${leak.v}</small></p><p>${esc(say(leak.why))} ${esc(leak.train)}</p>${me ? `<a class="cta" href="${leak.href || 'practice.html'}">Train it</a>` : ''}`
