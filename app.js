@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction } from './board.js?v=20261028093614';
-import { STYLES, STYLE_OF } from './styles.js?v=20261028093614';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction } from './board.js?v=20261028095636';
+import { STYLES, STYLE_OF } from './styles.js?v=20261028095636';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -684,7 +684,52 @@ function renderWhy() {
   if (mode === 'learn' && userTurn()) {
     parts.push(`<p><b>Your move: ${label(ply, line[ply])}</b> ${why(line.slice(0, ply), line[ply])}</p>`);
   }
+  if (ply >= line.length && hist.length === line.length) parts.push(`<p class="summary"><b>What this line gave you</b> ${lineSummary()}</p>`);
   el.innerHTML = parts.join('');
+}
+
+// Your side's share of the points (a draw is half) in games at your level that reached a position,
+// or null when too few did.
+function scoreAt(moves) {
+  let node = TREE;
+  for (const m of moves) node = node?.[3]?.[m];
+  if (!node) return null;
+  const sum = (c) => ratingsAround(rating).reduce((s, i) => s + c[i], 0);
+  const n = sum(node[0]);
+  if (n < MIN_GAMES) return null;
+  const white = (sum(node[1]) + sum(node[2]) / 2) / n;
+  return cur.side === 'w' ? white : 1 - white;
+}
+
+// The end of the line, in a few plain sentences: how players at your level score from here compared
+// with your colour on average, then what the position offers you (king, pieces, centre, material).
+function lineSummary() {
+  const out = [];
+  const base = scoreAt([]);
+  let k = line.length, here = null;
+  while (k > 0 && (here = scoreAt(line.slice(0, k))) === null) k--;
+  if (here !== null && base !== null) {
+    const diff = Math.round((here - base) * 100);
+    out.push(`From here you score ${pct(here)} at your level, ${diff > 1 ? `${diff} points more than` : diff < -1 ? `${-diff} points less than` : 'about the same as'} ${sideName(cur.side)} does on average (${pct(base)}).`);
+  }
+  const me = cur.side, them = me === 'w' ? 'b' : 'w', home = me === 'w' ? '1' : '8';
+  const pieces = game.board().flat().filter(Boolean);
+  const kingOf = (c) => pieces.find((p) => p.type === 'k' && p.color === c).square;
+  const castled = game.history({ verbose: true }).some((m) => m.color === me && /[kq]/.test(m.flags));
+  const minors = pieces.filter((p) => p.color === me && 'nb'.includes(p.type));
+  const out_ = minors.filter((p) => !['b', 'c', 'f', 'g'].map((f) => f + home).includes(p.square)).length;
+  const centre = pieces.filter((p) => p.color === me && p.type === 'p' && CENTRE.includes(p.square)).map((p) => p.square);
+  const board = [];
+  if (castled) board.push('your king is castled');
+  if (minors.length) board.push(`${out_} of your ${minors.length} knights and bishops are developed`);
+  if (centre.length) board.push(`you have ${centre.length === 1 ? 'a pawn' : 'pawns'} on ${centre.join(' and ')} in the centre`);
+  if (board.length) out.push((board.length > 1 ? `${board.slice(0, -1).join(', ')} and ${board.at(-1)}` : board[0]).replace(/^./, (c) => c.toUpperCase()) + '.');
+  const points = (c) => pieces.filter((p) => p.color === c && p.type !== 'k').reduce((s, p) => s + VALUE[p.type], 0);
+  const lead = points(me) - points(them);
+  if (lead) out.push(lead > 0 ? `You are ${plural(lead, 'point')} ahead in material.` : `You are ${plural(-lead, 'point')} down in material${here !== null && here >= (base ?? 0) ? ', but the results show it is worth it' : ''}.`);
+  const theirKing = kingOf(them);
+  if (theirKing[0] === 'e' && theirKing[1] === (them === 'w' ? '1' : '8') && line.length >= 8) out.push('Their king is still in the centre.');
+  return out.join(' ');
 }
 
 // ---------- Game ----------
