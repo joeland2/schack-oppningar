@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction } from './board.js?v=20261028095636';
-import { STYLES, STYLE_OF } from './styles.js?v=20261028095636';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction } from './board.js?v=20261028100820';
+import { STYLES, STYLE_OF } from './styles.js?v=20261028100820';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -526,7 +526,7 @@ function renderMoves() {
     html += `<li><span class="num">${i / 2 + 1}.</span>${cell(i)}${cell(i + 1)}</li>`;
   }
   movesEl.innerHTML = html;
-  $('#progress').textContent = mode === 'explore' ? 'Exploring' : line.length ? `${Math.min(ply, line.length)} of ${line.length} moves` : '';
+  $('#progress').textContent = mode === 'explore' ? 'Exploring' : playing ? 'Line done · playing it out' : line.length ? `${Math.min(ply, line.length)} of ${line.length} moves` : '';
   $('#bar').style.width = line.length ? `${Math.min(ply / line.length, 1) * 100}%` : '0';
 }
 
@@ -568,6 +568,10 @@ function renderControls() {
   $('#step-fwd').disabled = mode !== 'explore' || !redo.length;
   $('#hint').disabled = !userTurn();
   $('#show').disabled = !userTurn();
+  // At the end of a line Hint and Show move make way for Play it out; while you play on they come back.
+  const lineDone = mode !== 'explore' && line.length > 0 && ply >= line.length && !playing && !game.isGameOver();
+  $('#playout').hidden = !lineDone;
+  $('#hint').hidden = $('#show').hidden = mode === 'explore' || lineDone;
 }
 
 // ---------- Move explanations ----------
@@ -634,17 +638,7 @@ console.assert(idea(['e4', 'e5'], 'Nf3').startsWith('Develops the knight. Attack
 
 // The idea plus what real games say: how often the move is chosen here, and how you do after it.
 function why(before, san) {
-  const yours = (before.length % 2 === 0) === (cur.side === 'w');
-  const mine = ratingsAround(rating);
-  const strong = yours && strongGroups(before);
-  const pick = yours ? strong.x : explore(before, mine);
-  const chosen = pick.moves.find((x) => x.san === san);
-  const after = explore(before, mine).moves.find((x) => x.san === san);
-  const stat = chosen ? (yours
-    ? ` Players rated ${BUCKETS[strong.groups[0]]}+ choose it here in ${pct(chosen.n / pick.total)} of games.`
-    : '') : '';
-  const res = after ? ` You score ${pct(scoreFor(after, cur.side))} after it.` : '';
-  return (idea(before, san) + stat + res).trim();
+  return idea(before, san) || 'The move strong players choose most here.';
 }
 
 // A side's share of the points after a move (a draw is half a point); explore() gives White's.
@@ -681,10 +675,14 @@ function renderWhy() {
       ? `<p><b>You played ${label(n, hist[n])}</b> ${why(before, san)}</p>`
       : `<p><b>${sideName(n % 2 ? 'b' : 'w')} played ${label(n, hist[n])}</b> ${idea(before, san)} ${repliesText(before, san)}</p>`);
   }
-  if (mode === 'learn' && userTurn()) {
+  if (mode === 'learn' && userTurn() && ply < line.length) {
     parts.push(`<p><b>Your move: ${label(ply, line[ply])}</b> ${why(line.slice(0, ply), line[ply])}</p>`);
   }
-  if (ply >= line.length && hist.length === line.length) parts.push(`<p class="summary"><b>What this line gave you</b> ${lineSummary()}</p>`);
+  if (ply >= line.length && hist.length === line.length) {
+    const tips = lineTips();
+    parts.push(`<div class="summary"><p><b>What this line gave you</b> ${lineSummary()}</p>${tips.length
+      ? `<p><b>How to go on</b></p><ul class="tips">${tips.map((t) => `<li>${t}</li>`).join('')}</ul>` : ''}</div>`);
+  }
   el.innerHTML = parts.join('');
 }
 
@@ -701,35 +699,69 @@ function scoreAt(moves) {
   return cur.side === 'w' ? white : 1 - white;
 }
 
-// The end of the line, in a few plain sentences: how players at your level score from here compared
-// with your colour on average, then what the position offers you (king, pieces, centre, material).
+// The end of the line, in a few plain sentences: whether players at your level do well from here
+// (in words, not numbers), what the position offers you, and the material.
+function endPosition() {
+  const me = cur.side, them = me === 'w' ? 'b' : 'w', home = me === 'w' ? '1' : '8';
+  const pieces = game.board().flat().filter(Boolean);
+  const kingOf = (c) => pieces.find((p) => p.type === 'k' && p.color === c).square;
+  const castled = game.history({ verbose: true }).some((m) => m.color === me && /[kq]/.test(m.flags));
+  const minors = pieces.filter((p) => p.color === me && 'nb'.includes(p.type));
+  const undeveloped = minors.filter((p) => ['b', 'c', 'f', 'g'].map((f) => f + home).includes(p.square));
+  const centre = pieces.filter((p) => p.color === me && p.type === 'p' && CENTRE.includes(p.square)).map((p) => p.square);
+  const points = (c) => pieces.filter((p) => p.color === c && p.type !== 'k').reduce((s, p) => s + VALUE[p.type], 0);
+  const theirKing = kingOf(them);
+  return { me, them, castled, kingHome: kingOf(me)[0] === 'e' && kingOf(me)[1] === home, minors, undeveloped, centre,
+    lead: points(me) - points(them), theirKingInCentre: theirKing[0] === 'e' && theirKing[1] === (them === 'w' ? '1' : '8') };
+}
+const andList = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : xs[0]);
+
 function lineSummary() {
   const out = [];
   const base = scoreAt([]);
   let k = line.length, here = null;
   while (k > 0 && (here = scoreAt(line.slice(0, k))) === null) k--;
   if (here !== null && base !== null) {
-    const diff = Math.round((here - base) * 100);
-    out.push(`From here you score ${pct(here)} at your level, ${diff > 1 ? `${diff} points more than` : diff < -1 ? `${-diff} points less than` : 'about the same as'} ${sideName(cur.side)} does on average (${pct(base)}).`);
+    out.push(here - base >= 0.03 ? 'Players at your level do well from here: a line worth knowing.'
+      : here - base <= -0.03 ? 'Players at your level find this position hard, so know your plan.' : 'You get a normal, healthy position.');
   }
-  const me = cur.side, them = me === 'w' ? 'b' : 'w', home = me === 'w' ? '1' : '8';
-  const pieces = game.board().flat().filter(Boolean);
-  const kingOf = (c) => pieces.find((p) => p.type === 'k' && p.color === c).square;
-  const castled = game.history({ verbose: true }).some((m) => m.color === me && /[kq]/.test(m.flags));
-  const minors = pieces.filter((p) => p.color === me && 'nb'.includes(p.type));
-  const out_ = minors.filter((p) => !['b', 'c', 'f', 'g'].map((f) => f + home).includes(p.square)).length;
-  const centre = pieces.filter((p) => p.color === me && p.type === 'p' && CENTRE.includes(p.square)).map((p) => p.square);
-  const board = [];
-  if (castled) board.push('your king is castled');
-  if (minors.length) board.push(`${out_} of your ${minors.length} knights and bishops are developed`);
-  if (centre.length) board.push(`you have ${centre.length === 1 ? 'a pawn' : 'pawns'} on ${centre.join(' and ')} in the centre`);
-  if (board.length) out.push((board.length > 1 ? `${board.slice(0, -1).join(', ')} and ${board.at(-1)}` : board[0]).replace(/^./, (c) => c.toUpperCase()) + '.');
-  const points = (c) => pieces.filter((p) => p.color === c && p.type !== 'k').reduce((s, p) => s + VALUE[p.type], 0);
-  const lead = points(me) - points(them);
-  if (lead) out.push(lead > 0 ? `You are ${plural(lead, 'point')} ahead in material.` : `You are ${plural(-lead, 'point')} down in material${here !== null && here >= (base ?? 0) ? ', but the results show it is worth it' : ''}.`);
-  const theirKing = kingOf(them);
-  if (theirKing[0] === 'e' && theirKing[1] === (them === 'w' ? '1' : '8') && line.length >= 8) out.push('Their king is still in the centre.');
+  const p = endPosition();
+  const facts = [];
+  if (p.castled) facts.push('your king is castled');
+  if (p.minors.length) facts.push(p.undeveloped.length ? `${p.minors.length - p.undeveloped.length} of your ${p.minors.length} knights and bishops are out` : 'all your knights and bishops are out');
+  if (p.centre.length) facts.push(`you have ${p.centre.length === 1 ? 'a pawn' : 'pawns'} on ${p.centre.join(' and ')}`);
+  if (facts.length) out.push(andList(facts).replace(/^./, (c) => c.toUpperCase()) + '.');
+  if (p.lead > 0) out.push('You are ahead in material.');
+  if (p.lead < 0) out.push('You have given material for activity.');
   return out.join(' ');
+}
+
+// How to go on from the end of the line: what strong players play next (after the opponent's usual
+// reply), then plain advice read off the board. At most three tips.
+function lineTips() {
+  const tips = [];
+  const p = endPosition();
+  const mine = ratingsAround(rating);
+  const reply = game.turn() === p.me ? null : explore(line, mine).moves.find((m) => m.n >= MIN_GAMES);
+  const at = reply ? [...line, reply.san] : game.turn() === p.me ? line : null;
+  if (at) {
+    const g = new Chess();
+    at.forEach((m) => g.move(m));
+    const next = strongGroups(at).x.moves.filter((m) => m.n >= MIN_GAMES).slice(0, 2).map((m) => new Chess(g.fen()).move(m.san));
+    if (next.length) tips.push(`${reply ? `After their usual ${reply.san}, strong` : 'Strong'} players go on with ${next.map(moveWords).join(' or ')}.`);
+  }
+  if (!p.castled && p.kingHome) tips.push('Castle soon, so your king is safe.');
+  if (p.undeveloped.length) tips.push(`Bring out ${andList(p.undeveloped.map((x) => `the ${PIECE[x.type]} on ${x.square}`))}.`);
+  if (p.theirKingInCentre && line.length >= 8) tips.push('Their king is still in the centre: open lines with a pawn break before they castle.');
+  if (p.lead > 0) tips.push('Trade pieces to make your extra material count.');
+  if (p.lead < 0) tips.push('Keep the initiative: you gave material, so attack before they get organised.');
+  if (!p.centre.length) tips.push(`Claim the centre with a pawn to ${p.me === 'w' ? 'd4 or e4' : 'd5 or e5'} when you can.`);
+  if (p.centre.length === 1) {
+    const other = { d4: 'e4', e4: 'd4', d5: 'e5', e5: 'd5' }[p.centre[0]];
+    if (other && !game.get(other)) tips.push(`Prepare ${other} to take more of the centre.`);
+  }
+  if (p.castled && !p.undeveloped.length) tips.push('Connect your rooks and put one on an open file.');
+  return tips.slice(0, 3);
 }
 
 // ---------- Game ----------
@@ -763,6 +795,7 @@ function play(i) {
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   misses = 0; missesHere = 0; busy = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
+  playing = false;
   clearShapes(boardEl);
   redo = [];
   $('#restart').textContent = 'Restart';
@@ -833,22 +866,90 @@ function opponentAnswers(prefix) {
 }
 
 let gameGen = 0; // bumped when the game is reset or left; a pending opponent reply checks it
-const userTurn = () => ply < line.length && game.turn() === cur.side;
+let playing = false; // the line is done and you play the game on: real players' moves, then Stockfish
+const userTurn = () => (ply < line.length || playing) && !game.isGameOver() && game.turn() === cur.side;
 
-// A move that is not the line's: how often strong players choose it, and how you score after it
-// compared with the line's move, at your level.
+// ---------- Play it out ----------
+// Stockfish 18 lite (WebAssembly, single-threaded, GPLv3) from github.com/nmrugg/stockfish.js, in engine/.
+// Only used once you play a game out past the line: as the opponent where real games run out, and for hints.
+const ENGINE_SRC = 'engine/stockfish-18-lite-single.js';
+let engine = null, engineDone = null, engineQueue = Promise.resolve();
+// The opponent plays at your rating; Stockfish's lowest setting is 1320, so below that it is a little stronger.
+const opponentElo = () => Math.max(1320, Math.min(3190, rating));
+// One search at a time: changing options while the WebAssembly engine searches crashes it.
+function bestMove(fen, { elo = null, ms = 500 } = {}) {
+  const run = () => new Promise((resolve) => {
+    if (!engine) {
+      engine = new Worker(ENGINE_SRC);
+      engine.addEventListener('error', () => { engine = null; engineDone?.(null); });
+    }
+    engineDone = resolve;
+    engine.onmessage = (e) => {
+      if (typeof e.data !== 'string' || !e.data.startsWith('bestmove')) return;
+      const uci = e.data.split(' ')[1];
+      resolve(uci && uci !== '(none)' ? { from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] } : null);
+    };
+    engine.postMessage(`setoption name UCI_LimitStrength value ${!!elo}`);
+    if (elo) engine.postMessage(`setoption name UCI_Elo value ${elo}`);
+    engine.postMessage(`position fen ${fen}`);
+    engine.postMessage(`go movetime ${ms}`);
+  });
+  return (engineQueue = engineQueue.then(run, run));
+}
+
+// A good move for you here: what strong players play most, or Stockfish's choice where games run out.
+async function goodMove() {
+  const at = game.fen();
+  const strong = strongGroups(game.history().map(clean)).x.moves.find((m) => m.n >= MIN_GAMES);
+  if (strong) return new Chess(at).move(strong.san);
+  const m = await bestMove(at);
+  return m && game.fen() === at ? new Chess(at).move(m) : null;
+}
+
+let engineSaid = false; // the switch to Stockfish is mentioned once per game
+async function opponentPlays() {
+  busy = true;
+  const gen = gameGen, at = game.fen();
+  const real = explore(game.history().map(clean), ratingsAround(rating)).moves.find((m) => m.n >= MIN_GAMES);
+  const m = real ? { san: real.san } : await bestMove(at, { elo: opponentElo() });
+  await new Promise((x) => setTimeout(x, 450));
+  if (gen !== gameGen || game.fen() !== at || !m) { if (gen === gameGen) busy = false; return; }
+  lastMove = game.move(m.san ?? m); ply++; busy = false; hintSq = [];
+  render();
+  if (ended()) return;
+  const note = !real && !engineSaid ? ' Real games at your level run out here, so Stockfish plays the opponent now, at your rating.' : '';
+  if (!real) engineSaid = true;
+  say(`Your move.${note}`);
+}
+
+function ended() {
+  if (!game.isGameOver()) return false;
+  if (!game.isCheckmate()) say('Draw. Press Next line to go on.');
+  else if (game.turn() === cur.side) say('Checkmate: you lost this one. Press Restart to play the line again.', 'bad');
+  else say('Checkmate! You won.', 'good');
+  return true;
+}
+
+$('#playout').addEventListener('click', () => {
+  playing = true; engineSaid = false;
+  render();
+  if (game.turn() === cur.side) say('Your move. Hint and Show move help when you are stuck.');
+  else { say('Your opponent answers…'); opponentPlays(); }
+});
+
+// A move that is not the line's: whether strong players choose it too, and whether it does worse
+// in games at your level than the line's move. In words, not numbers.
 function explainWrong(san) {
   const before = line.slice(0, ply);
   const strong = strongGroups(before);
   const want = expectedMove();
   const share = (s) => strong.x.moves.find((x) => x.san === s)?.n / strong.x.total || 0;
   const mine = explore(before, ratingsAround(rating)).moves;
-  const score = (s) => { const m = mine.find((x) => x.san === s); return m && m.n >= MIN_GAMES ? pct(scoreFor(m, cur.side)) : null; };
-  const theirs = share(clean(san)), lineMove = mode === 'learn' ? want.san : "the line's move";
-  const parts = [theirs >= RARE
-    ? `It is a real option: players rated ${BUCKETS[strong.groups[0]]}+ choose it in ${pct(theirs)} of games, ${lineMove} in ${pct(share(want.san))}.`
-    : `Players rated ${BUCKETS[strong.groups[0]]}+ ${theirs ? `choose it in only ${pct(theirs)} of games` : 'never choose it here'}; ${lineMove} in ${pct(share(want.san))}.`];
-  if (score(clean(san)) && score(want.san)) parts.push(`At your level you score ${score(clean(san))} after ${san} and ${score(want.san)} after ${lineMove}.`);
+  const score = (s) => { const m = mine.find((x) => x.san === s); return m && m.n >= MIN_GAMES ? scoreFor(m, cur.side) : null; };
+  const lineMove = mode === 'learn' ? want.san : "the line's move";
+  const parts = [share(clean(san)) >= RARE ? 'It is playable, but this line practises another move.' : 'Strong players rarely play it here.'];
+  const a = score(clean(san)), b = score(want.san);
+  if (a !== null && b !== null && b - a >= 0.03) parts.push(`Players at your level do better after ${lineMove}.`);
   if (mode === 'learn') parts.push(`The line plays ${moveWords(want)}.`);
   else if (missesHere >= 2) parts.push('The piece to move is highlighted.');
   else parts.push('Try again.');
@@ -967,6 +1068,12 @@ function tryMove(from, to) {
   let m;
   try { m = game.move({ from, to, promotion: 'q' }); } catch { return false; }
   if (!m) return false;
+  if (playing) {
+    lastMove = m; ply++; sel = null; hintSq = [];
+    render();
+    if (!ended()) opponentPlays();
+    return true;
+  }
   if (clean(m.san) !== line[ply]) {
     game.undo();
     misses++; missesHere++;
@@ -993,7 +1100,7 @@ function expectedMove() {
 
 // In Learn mode the move to play is always shown.
 function prompt(text) {
-  if (mode !== 'learn' || !userTurn()) return say(text);
+  if (mode !== 'learn' || !userTurn() || ply >= line.length) return say(text);
   const m = expectedMove();
   hintSq = [m.from, m.to];
   renderBoard();
@@ -1017,7 +1124,7 @@ function finish() {
   renderLines();
   renderLineBox();
   $('#restart').textContent = mode === 'try' && misses ? 'Try again' : 'Next line';
-  if (mode === 'learn') return say('Line learned. Press Next line, or switch to Practice to play it from memory.', 'good');
+  if (mode === 'learn') return say('Line learned. Play it out, press Next line, or switch to Practice to play it from memory.', 'good');
   if (misses) return say(`Line done with ${plural(misses, 'mistake')}, so it is not cleared. Press Try again.`, 'bad');
   if (!wasComplete && cleared() === lines.length) showComplete();
   const back = `It comes back for review in ${plural(INTERVALS[r.box], 'day')}.`;
@@ -1079,9 +1186,25 @@ $('#restart').addEventListener('click', () => {
   if (mode === 'learn') return play(ply >= line.length ? nextLine() : lineIdx);
   play(ply >= line.length && misses === 0 ? nextLine() : lineIdx);
 });
-$('#hint').addEventListener('click', () => { if (userTurn()) { showHint(); say('The piece to move is highlighted.'); } });
-$('#show').addEventListener('click', () => {
-  if (!userTurn()) return;
+$('#hint').addEventListener('click', async () => {
+  if (!userTurn() || busy) return;
+  if (playing) {
+    const m = await goodMove();
+    if (!m || !userTurn()) return;
+    hintSq = [m.from]; renderBoard();
+    return say('The piece to move is highlighted.');
+  }
+  showHint(); say('The piece to move is highlighted.');
+});
+$('#show').addEventListener('click', async () => {
+  if (!userTurn() || busy) return;
+  if (playing) {
+    const at = game.fen(), m = await goodMove();
+    if (!m || game.fen() !== at) return;
+    const why = ideaAt(new Chess(at), m.san);
+    hintSq = [m.from, m.to]; renderBoard();
+    return say(`${instruction(m)}.${why ? ' ' + why : ''}`);
+  }
   const m = expectedMove();
   misses++;
   say(`The move: ${instruction(m)}.`);
@@ -1148,7 +1271,6 @@ function setMode(m, restart = true, remember = true) {
     try: 'Practice: play the line from memory. A line played without mistakes is cleared and comes back for review after 1, 3, 7, 14 and 30 days.',
     explore: 'Play any move: the opponent answers as players at your level most often do, and you see how often each move is played and how it scores. To try another answer, step back and move their piece.',
   }[m];
-  $('#hint').hidden = $('#show').hidden = m === 'explore';
   if (!lines.length) return;
   if (!restart) return;
   if (m === 'explore') enterExplore(); // carry on from the current position
