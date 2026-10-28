@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028103241';
-import { STYLES, STYLE_OF } from './styles.js?v=20261028103241';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028103836';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028103836';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -271,6 +271,8 @@ function shown() {
 }
 
 // ---------- Opening list ----------
+// One opening per row: a board that plays the moves, the name, a sentence on what the opening is about,
+// how often it comes up and how your side does, and your progress.
 function card(o) {
   const s = stats[statKey(o.id)] || { done: [], total: 0 };
   const due = dueCount(s);
@@ -278,47 +280,59 @@ function card(o) {
   const levelTxt = due ? `${due} due` : { sitter: 'Cleared', pagar: `${s.done.length}/${s.total} lines`, ny: 'New' }[level];
   const moves = numbered(o.root).split(' ');
   const tags = (STYLE_OF[o.family] || []).map((t) => `<span class="tag">${STYLES[t].label}</span>`).join('');
-  return `<article class="ocard" role="button" tabindex="0" data-id="${o.id}" aria-label="${o.name}">
+  const about = ABOUT[o.family] || ABOUT[shortName(o.family)] || '';
+  const win = o.side === 'w' ? o.win : 1 - o.win - o.draw;
+  return `<article class="ocard" role="button" tabindex="0" data-id="${o.id}" aria-label="${isVs(o) ? 'vs ' : ''}${o.name}">
     <div class="board mini" data-mini="${o.id}" inert></div>
     <div class="ocard-body">
-      <div class="ocard-top"><span class="eco">${o.eco}</span><span class="chip ${level}">${levelTxt}</span></div>
-      <h3>${isVs(o) ? 'vs ' : ''}${o.name}</h3>
-      <p class="omoves">${moves.slice(0, -1).join(' ')} <b>${moves.at(-1)}</b></p>
-      ${tags ? `<p class="tags">${tags}</p>` : ''}
-      <p class="ometa">${pctOf(o.share)} of games · you win <b>${pct(o.side === 'w' ? o.win : 1 - o.win - o.draw)}</b></p>
-      <p class="played">${isVs(o) ? 'You meet it' : 'Played'} in <b>${pctOf(o.share)}</b> of games</p>
-      ${wdl(o, o.side)}
+      <div class="ocard-top"><h3>${isVs(o) ? 'vs ' : ''}${o.name}</h3><span class="chip ${level}">${levelTxt}</span></div>
+      <p class="omoves"><span class="eco">${o.eco}</span> ${moves.slice(0, -1).join(' ')} <b>${moves.at(-1)}</b></p>
+      ${about ? `<p class="odesc">${about}</p>` : ''}
+      <div class="ostats">
+        <span>${isVs(o) ? 'You meet it in' : 'Played in'} <b>${pctOf(o.share)}</b> of games</span>
+        <span>${sideName(o.side)} wins <b>${pct(win)}</b></span>
+        ${wdl(o, o.side)}
+        ${tags ? `<span class="tags">${tags}</span>` : ''}
+      </div>
     </div>
   </article>`;
 }
 
 let query = '';
-// Phones show the first few openings per colour, with a button for the rest.
-const PHONE = matchMedia('(max-width: 560px)'), PHONE_FIRST = 8;
+let listSide = load(STORE + '-side', 'w'); // which list shows: openings you play as White, or as Black
+const FIRST = 8; // the first few openings show, with a button for the rest
 const showAll = { w: false, b: false };
+// Kept for the phone's filter box, which starts folded.
+const PHONE = matchMedia('(max-width: 560px)');
 
 function renderList() {
   const whiteAll = OPENINGS.filter((o) => o.side === 'w' && o.share >= MIN_REACH).length;
-  const groups = [
-    ['w', 'You play White', (n) => `Your openings, ${sort === 'played' ? 'most played first' : 'best results first (a draw counts as half a win)'}. ${style === 'any'
-      ? `All ${n} played in at least 1% of games at your level.`
-      : `${n} of ${whiteAll} are ${STYLES[style].label.toLowerCase()}; change style to see the rest.`}`],
-    ['b', 'You play Black', (n) => `The ${n} White openings you meet most often at your level, ${sort === 'played' ? 'most often first' : "the ones Black does best against first"}. Your style does not filter these: White picks them. Search for your own defences, like the Sicilian.`],
-  ];
+  const about = {
+    w: (n) => `${sort === 'played' ? 'Most played first' : 'Best results first'}. ${style === 'any'
+      ? `All ${n} openings played in at least 1% of games at your level.`
+      : `${n} of ${whiteAll} are ${STYLES[style].label.toLowerCase()}; change style to see the rest.`}`,
+    b: (n) => `The ${n} White openings you meet most often, ${sort === 'played' ? 'most often first' : 'the ones Black does best against first'}. Search for your own defences, like the Sicilian.`,
+  };
   const q = query.trim().toLowerCase();
   const list = q ? OPENINGS.filter((o) => o.family.toLowerCase().includes(q)).sort((a, b) => b.share - a.share) : shown();
-  const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for White at your level. Try another style.</p>`;
-  listEl.innerHTML = q
-    ? `<section class="og"><h2>Search results</h2><p class="og-about">${list.length
-      ? 'Openings played at your level whose name matches. "as Black" means your own defence; "vs" means a White opening you answer.'
+  const count = (side) => list.filter((o) => o.side === side).length;
+  let body;
+  if (q) {
+    body = `<p class="og-about">${list.length
+      ? `${list.length} openings at your level match. "vs" means a White opening you answer as Black.`
       : `No opening at your level matches "${q.replace(/[<&"]/g, '')}".`}</p>
-      <div class="ocards">${list.map((o) => card(o).replace('</h3>', `<small class="as">${isVs(o) ? 'you play Black' : `you play ${sideName(o.side)}`}</small></h3>`)).join('')}</div></section>`
-    : `<div class="cols">${groups.map(([side, label, about]) => {
-      const ops = list.filter((o) => o.side === side);
-      const cut = PHONE.matches && !showAll[side] && ops.length > PHONE_FIRST + 2;
-      const more = cut ? `<button type="button" class="ghost more" data-more="${side}">Show all ${ops.length}</button>` : '';
-      return `<section class="og og-${side}"><h2>${label} <span class="og-n">${ops.length}</span></h2><p class="og-about">${about(ops.length)}</p>${ops.length ? '' : empty}<div class="ocards">${(cut ? ops.slice(0, PHONE_FIRST) : ops).map(card).join('')}</div>${more}</section>`;
-    }).join('')}</div>`;
+      <div class="olist">${list.map((o) => card(o).replace('</h3>', `<small class="as">you play ${sideName(o.side)}</small></h3>`)).join('')}</div>`;
+  } else {
+    const ops = list.filter((o) => o.side === listSide);
+    const cut = !showAll[listSide] && ops.length > FIRST + 2;
+    const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for White at your level. Try another style.</p>`;
+    body = `<p class="og-about">${about[listSide](ops.length)}</p>${ops.length ? '' : empty}
+      <div class="olist">${(cut ? ops.slice(0, FIRST) : ops).map(card).join('')}</div>
+      ${cut ? `<button type="button" class="ghost more" data-more="${listSide}">Show all ${ops.length}</button>` : ''}`;
+  }
+  listEl.innerHTML = `${q ? '<h2 class="og-h">Search results</h2>' : `<div class="seg side-seg" role="group" aria-label="Your side">
+      ${['w', 'b'].map((side) => `<button type="button" data-side="${side}" aria-pressed="${side === listSide}">You play ${sideName(side)} <span class="og-n">${count(side)}</span></button>`).join('')}
+    </div>`}${body}`;
   seen.disconnect();
   listEl.querySelectorAll('.ocard').forEach((c) => {
     const op = list.find((o) => o.id === c.dataset.id);
@@ -335,13 +349,12 @@ function renderList() {
 }
 
 listEl.addEventListener('click', (e) => {
-  const b = e.target.closest('[data-more]');
-  if (b) { showAll[b.dataset.more] = true; renderList(); }
+  const more = e.target.closest('[data-more]');
+  if (more) { showAll[more.dataset.more] = true; renderList(); }
+  const side = e.target.closest('[data-side]');
+  if (side) { listSide = side.dataset.side; store(STORE + '-side', listSide); renderList(); }
 });
-PHONE.addEventListener('change', (e) => {
-  if (!e.matches) $('#filters').open = true; // desktop always shows the filters
-  if (OPENINGS.length) renderList();
-});
+PHONE.addEventListener('change', (e) => { if (!e.matches) $('#filters').open = true; }); // desktop always shows the filters
 
 // ---------- Animated previews ----------
 const REDUCE_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -402,10 +415,11 @@ function analyse(games, name) {
     if (!side || !g.moves) continue;
     counted++;
     const points = !g.winner ? 0.5 : g.winner === (side === 'w' ? 'white' : 'black') ? 1 : 0;
-    const family = g.opening?.name && familyOf(g.opening.name);
+    const named = g.opening?.name;
+    const family = named && (SYSTEMS.find((s) => s.book.test(named))?.family ?? familyOf(named));
     if (family) {
-      const o = openings.get(`${side}:${family}`) ?? { family, side, games: 0, points: 0 };
-      o.games++; o.points += points;
+      const o = openings.get(`${side}:${family}`) ?? { family, side, games: 0, points: 0, won: 0, drawn: 0 };
+      o.games++; o.points += points; o.won += points === 1; o.drawn += points === 0.5;
       openings.set(`${side}:${family}`, o);
     }
     const moves = g.moves.split(' ').map(clean).slice(0, MAX_PLY);
@@ -426,7 +440,7 @@ function analyse(games, name) {
   return {
     counted,
     slips: [...slips.values()].sort((a, b) => b.games - a.games || a.points - b.points).slice(0, 6),
-    openings: [...openings.values()].sort((a, b) => b.games - a.games).slice(0, 8),
+    openings: [...openings.values()].filter((o) => o.games >= 2).sort((a, b) => b.games - a.games).slice(0, 8),
   };
 }
 console.assert(analyse([], 'x').counted === 0, 'analyse');
@@ -454,9 +468,8 @@ function renderMine({ counted, slips, openings }, name) {
           ${OPENINGS.some((o) => o.family === s.family && o.side === s.side) ? `<button type="button" class="cta" data-practise="${n}">Practise ${shortName(s.family)}</button>` : ''}
         </div>
       </article>`;
-    }).join('')}</div>
-    <h3 class="mine-h">Your openings</h3>
-    <ul class="mine-ops">${openings.map((o) => `<li><span>${shortName(o.family)} <small>as ${o.side === 'w' ? 'White' : 'Black'}</small></span><span>${o.games} games · ${pct(o.points / o.games)}</span></li>`).join('')}</ul>`;
+    }).join('')}</div>`;
+  renderMyOpenings(openings, counted, name);
   slips.forEach((s, n) => {
     const g = new Chess();
     s.before.forEach((m) => g.move(m));
@@ -470,6 +483,32 @@ function renderMine({ counted, slips, openings }, name) {
     const i = lines.findIndex((l) => lineKey(l.moves).startsWith(want));
     if (i >= 0) play(i);
   }));
+}
+
+// Your most played openings in your recent games, how you score with each, and how that compares with
+// players at your level in the same opening. Shown above the opening list, with a way to practise each.
+function renderMyOpenings(openings, counted, name) {
+  const el = $('#my-openings');
+  el.hidden = !openings.length;
+  if (!openings.length) return;
+  const find = (o) => OPENINGS.find((x) => x.family === o.family && x.side === o.side);
+  el.innerHTML = `<div class="my-head"><h2>Your openings on Lichess</h2><p class="info">${name}'s last ${counted} rated ${speed} games, most played first.</p></div>
+    <div class="my-list">${openings.map((o, n) => {
+      const op = find(o);
+      const you = o.points / o.games, lost = o.games - o.won - o.drawn;
+      const avg = op ? (o.side === 'w' ? op.score : 1 - op.score) : null;
+      const vs = avg === null ? '' : you - avg >= 0.05 ? 'better than' : avg - you >= 0.05 ? 'worse than' : 'about the same as';
+      return `<div class="my-row">
+        <div class="my-name"><b>${(o.side === 'w') === BLACKS.test(o.family) ? 'vs ' : ''}${shortName(o.family)}</b><small>as ${sideName(o.side)} · ${plural(o.games, 'game')}</small></div>
+        <div class="my-score">
+          <div class="wdl" role="img" aria-label="Won ${o.won}, drawn ${o.drawn}, lost ${lost}"><span class="w" style="width:${o.won / o.games * 100}%"></span><span class="d" style="width:${o.drawn / o.games * 100}%"></span><span class="l" style="width:${lost / o.games * 100}%"></span></div>
+          <small>${o.won} won · ${o.drawn} drawn · ${lost} lost</small>
+        </div>
+        <p class="my-verdict">You score <b>${pct(you)}</b>${vs ? `, ${vs} players at your level (${pct(avg)})` : ''}.</p>
+        ${op ? `<button type="button" class="ghost" data-my="${n}">Practise</button>` : '<span></span>'}
+      </div>`;
+    }).join('')}</div>`;
+  el.querySelectorAll('[data-my]').forEach((b) => b.addEventListener('click', () => start(find(openings[Number(b.dataset.my)]))));
 }
 
 async function checkMyGames(name) {
