@@ -1,10 +1,10 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028211503';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028211503';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028211503';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028211503';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028211503';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028211503';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028211801';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028211801';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028211801';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028211801';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028211801';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028211801';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -365,22 +365,25 @@ function shown() {
 // ---------- Opening list ----------
 // One opening per row: a board that plays the moves, the name, a sentence on what the opening is about,
 // how often it comes up and how your side does, and your progress.
+// What the opening is about, from your side: "you" for your own opening, "they" for one you face.
+function aboutOf(o) {
+  const t = ABOUT[o.family] || ABOUT[shortName(o.family)] || '';
+  return isVs(o) ? t.replace(/\b(Y|y)our\b/g, (_, y) => (y === 'Y' ? 'Their' : 'their')).replace(/\b(Y|y)ou\b/g, (_, y) => (y === 'Y' ? 'They' : 'they')).replace(/\bBlack's\b/g, 'your') : t;
+}
 function card(o) {
   const s = stats[statKey(o.id)] || { done: [], total: 0 };
   const due = dueCount(s);
   const level = due ? 'pagar' : s.total && s.done.length >= s.total ? 'sitter' : s.done.length ? 'pagar' : 'ny';
   const levelTxt = due ? `${due} due` : { sitter: 'Cleared', pagar: `${s.done.length}/${s.total} lines`, ny: 'New' }[level];
-  const moves = numbered(o.root).split(' ');
   const tags = stylesOf(o).map((t) => `<span class="tag">${STYLES[t].label}</span>`).join('');
-  const about = ABOUT[o.family] || ABOUT[shortName(o.family)] || '';
+  const about = aboutOf(o);
   const win = o.side === 'w' ? o.win : 1 - o.win - o.draw;
   return `<article class="ocard side-${o.side}" role="button" tabindex="0" data-id="${o.id}" aria-label="${isVs(o) ? 'vs ' : ''}${o.name}">
     <div class="board mini" data-mini="${o.id}" inert></div>
     <div class="ocard-body">
       <div class="ocard-top"><h3>${isVs(o) ? 'vs ' : ''}${o.name}</h3><span class="ocard-tags">${tags}<span class="chip ${level}">${levelTxt}</span>
         <button type="button" class="star" data-star="${o.id}" aria-pressed="${repertoire.has(o.id)}" title="${repertoire.has(o.id) ? 'In your repertoire' : 'Add to your repertoire'}" aria-label="${repertoire.has(o.id) ? 'Remove from' : 'Add to'} my repertoire">★</button></span></div>
-      <p class="omoves"><span class="eco">${o.eco}</span> ${moves.slice(0, -1).join(' ')} <b>${moves.at(-1)}</b></p>
-      <p class="odesc">${about || `Starts ${numbered(o.root)}.`}</p>
+      ${about ? `<p class="odesc">${about}</p>` : ''}
       <div class="ostats">
         <span>${popularity(o)}</span>
         <span>${sideName(o.side)} wins <b>${pct(win)}</b></span>
@@ -907,7 +910,7 @@ function renderWhy() {
   const parts = [];
   // Before the first move, an introduction: what the opening is about and which line this is.
   if (!hist.length && lines[lineIdx]) {
-    const l = lines[lineIdx], about = ABOUT[cur.family] || ABOUT[shortName(cur.family)] || '';
+    const l = lines[lineIdx], about = aboutOf(cur);
     const plan = planOf(cur);
     parts.push(`<p class="intro"><b>${isVs(cur) ? 'vs ' : ''}${cur.name}.</b> ${about} This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level${bigShare(l.share) ? ` (${bigShare(l.share)})` : ''}. It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap ? ` <b>${l.trap.kind === 'mistake' ? 'A common mistake' : 'A trap'}.</b> ${trapStory(l)}` : ''}</p>${plan ? `<p class="intro plan"><b>Your plan:</b> ${plan}</p>` : ''}`);
   }

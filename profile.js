@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, so the page opens at once next time; Refresh reads the games again.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028211503';
-import { STYLE_OF } from './styles.js?v=20261028211503';
+import { account, login, finishLogin } from './lichess.js?v=20261028211801';
+import { STYLE_OF } from './styles.js?v=20261028211801';
 
 const MAX = 500;
 const PV = 3; // bumped when the profile gains something new: older saved profiles are read again
