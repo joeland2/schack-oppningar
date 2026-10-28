@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028161350';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028161350';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028161350';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028161350';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028165430';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028165430';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028165430';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028165430';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1889,7 +1889,7 @@ function showMove(n) {
 // own earlier move, the moves after it are taken back and you play on from there.
 function leaveView(sq) {
   if (view === null) return true;
-  const n = view, g = new Chess();
+  const n = betters[view - 1] ? view - 1 : view, g = new Chess(); // a slip is shown before it is played (see renderBoard)
   game.history().slice(0, n).forEach((m) => g.move(m));
   if (g.get(sq)?.color !== g.turn()) { showMove(Infinity); return false; }
   if (n < line.length || g.turn() !== cur.side) { exploreFrom(n, 'Explore from here: move any piece, for either side. '); return true; }
