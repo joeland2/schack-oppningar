@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029002744';
-import { STYLE_OF } from './styles.js?v=20261029002744';
+import { account, login, finishLogin } from './lichess.js?v=20261029002946';
+import { STYLE_OF } from './styles.js?v=20261029002946';
 
 const MAX = 500;
 const PV = 14;
@@ -238,7 +238,7 @@ function rawSkills(p) {
     { label: 'Winning when ahead', needs: true, v: an && q.meUp != null && q.oppUp != null ? clamp(50 + (50 * (q.oppUp - q.meUp)) / Math.max(0.2, q.oppUp + q.meUp)) : null,
       means: 'Keeping it clean when you are clearly ahead (1.5 pawns or more): how often you make a mistake then, against your opponents when they are ahead.',
       why: `When ahead: ${(q.meUp ?? 0).toFixed(1)} mistakes per 10 moves; your opponents ${(q.oppUp ?? 0).toFixed(1)}.`,
-      train: 'When ahead: trade pieces, not pawns, take away their counterplay first, and do not rush.', href: './basics.html' },
+      train: 'When ahead: trade pieces, not pawns, take away their counterplay first, and do not rush.', href: './mistakes.html' },
     { label: 'Defending', needs: true, v: an && q.meDown != null && q.oppDown != null ? clamp(50 + (50 * (q.oppDown - q.meDown)) / Math.max(0.2, q.oppDown + q.meDown)) : null,
       means: 'Holding on when you are clearly behind (1.5 pawns or more): how often you make another mistake then, against your opponents when they are behind.',
       why: `When behind: ${(q.meDown ?? 0).toFixed(1)} mistakes per 10 moves; your opponents ${(q.oppDown ?? 0).toFixed(1)}.`,
@@ -246,7 +246,7 @@ function rawSkills(p) {
     { label: 'Endgames', v: q.endgames >= 10 ? clamp(50 + (q.endScore - 0.5) * 150) : null,
       means: 'How you do against players at your level once most pieces are gone (6 or fewer besides kings and pawns).',
       why: `You score ${pct(q.endScore ?? 0)} in ${q.endgames} endgames against them (50% is even).`,
-      train: 'Learn the basic endgames: king activity, passed pawns, and the key king-and-pawn positions.', href: './basics.html' },
+      train: 'Learn the basic endgames: king activity, passed pawns, and the key king-and-pawn positions.' },
     { label: 'Clock', v: q.n >= 30 ? clamp(50 + (q.oppLow - q.myLow) * 100 + (q.timeWins - q.timeLosses) * 200) : null,
       means: 'Using your time well compared with your opponents: who ends up short of time, and who loses on it.',
       why: `Short of time in ${pct(q.myLow ?? 0)} of games (they ${pct(q.oppLow ?? 0)}); you win ${pct(q.timeWins ?? 0)} and lose ${pct(q.timeLosses ?? 0)} of games on time.`,
