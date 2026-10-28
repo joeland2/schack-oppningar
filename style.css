@@ -608,3 +608,9 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
 .line-done .done-head .ico { stroke: var(--good); stroke-width: 3; }
 .line-done .done-next { justify-self: start; margin-top: 4px; }
 .line-banner { background: rgb(46 125 50 / .25); font-size: clamp(18px, 8cqi, 44px); }
+
+/* Lines you have played through (green) and cleared (stronger green, with a tick) */
+.line-btn.learned { background: color-mix(in srgb, var(--good) 10%, transparent); }
+.line-btn.cleared { background: color-mix(in srgb, var(--good) 22%, transparent); }
+.line-btn.learned .line-name, .line-btn.cleared .line-name { color: var(--ink); }
+.line-btn.now.learned, .line-btn.now.cleared { border-color: var(--good); }

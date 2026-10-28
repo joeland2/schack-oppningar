@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028142133';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028142133';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028142133';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028142133';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028142645';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028142645';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028142645';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028142645';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -881,6 +881,15 @@ function lineSummary() {
 
 // How to go on, for your move now: the move that scores best in games at your level, the next best,
 // and Stockfish's choice, each with what the move does. Game moves need MIN_GAMES games to count.
+// The rating group that played a move here most often, e.g. "1600–1800" (the data has no names).
+function whoPlayed(moves, san) {
+  let node = TREE;
+  for (const m of [...moves, san]) node = node?.[3]?.[m];
+  if (!node) return 'unknown';
+  const i = node[0].indexOf(Math.max(...node[0]));
+  return BUCKETS[i + 1] ? `${BUCKETS[i]}–${BUCKETS[i + 1]}` : `${BUCKETS[i]}+`;
+}
+
 // Two moves from real games and one from Stockfish: the best-scoring moves among those played in
 // enough games, topped up with the most played ones (with their game count, since a score from a few
 // games says little), then Stockfish's best move not already listed. Where no game reaches the
@@ -896,7 +905,9 @@ function lineTips() {
     const move = new Chess(at).move(m.san);
     const agrees = move.san === engine[0]?.san ? ' Stockfish agrees.' : '';
     const label = m.n < MIN_GAMES ? 'Also played' : i ? 'Next best in games' : 'Best results in games';
-    const how = m.n < MIN_GAMES ? `Played in ${plural(m.n, 'game')}.` : `You score ${pct(scoreFor(m, me))} after it in ${plural(m.n, 'game')}.`;
+    const how = m.n < MIN_GAMES
+      ? `Played in ${plural(m.n, 'game')}, mostly by players rated ${whoPlayed(game.history().map(clean), m.san)}; they scored ${pct(scoreFor(m, me))}.`
+      : `You score ${pct(scoreFor(m, me))} after it in ${plural(m.n, 'game')}.`;
     return { move, html: `<b>${label}:</b> ${say(move)} ${how}${agrees}` };
   });
   const RANK = ["Stockfish's choice", "Stockfish's second choice", "Stockfish's third choice"];
@@ -1312,9 +1323,11 @@ function renderLineBox() {
 }
 
 function renderLines() {
-  const done = stats[statKey(cur.id)]?.done || [];
+  const s = stats[statKey(cur.id)] || {}, done = s.done || [], learned = s.played || [];
   $('#lines-sum').textContent = `All ${lines.length} lines`; // the line box above already counts the cleared ones
-  $('#lines-list').innerHTML = lines.map((l, i) => `<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}" data-i="${i}">
+  // Green once you have played a line through (Learn), stronger with a tick once cleared (Practice).
+  const state = (l) => (done.includes(lineKey(l.moves)) ? ' cleared' : learned.includes(lineKey(l.moves)) ? ' learned' : '');
+  $('#lines-list').innerHTML = lines.map((l, i) => `<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}" data-i="${i}">
       <span class="line-n">${i + 1}.</span><span class="line-name">${lineName(l)}<small>${lineEnd(l)}</small></span>
       <span class="line-share">${pctOf(l.share)}</span><span class="line-ok">${done.includes(lineKey(l.moves)) ? '<svg class="ico" viewBox="0 0 24 24" role="img" aria-label="Cleared"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}</span>
     </button></li>`).join('');
