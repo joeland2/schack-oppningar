@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028105516';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028105516';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028105614';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028105614';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -305,14 +305,13 @@ function card(o) {
   return `<article class="ocard side-${o.side}" role="button" tabindex="0" data-id="${o.id}" aria-label="${isVs(o) ? 'vs ' : ''}${o.name}">
     <div class="board mini" data-mini="${o.id}" inert></div>
     <div class="ocard-body">
-      <div class="ocard-top"><h3>${isVs(o) ? 'vs ' : ''}${o.name}</h3><span class="chip ${level}">${levelTxt}</span></div>
+      <div class="ocard-top"><h3>${isVs(o) ? 'vs ' : ''}${o.name}</h3><span class="ocard-tags">${tags}<span class="chip ${level}">${levelTxt}</span></span></div>
       <p class="omoves"><span class="eco">${o.eco}</span> ${moves.slice(0, -1).join(' ')} <b>${moves.at(-1)}</b></p>
-      ${about ? `<p class="odesc">${about}</p>` : ''}
+      <p class="odesc">${about || `Starts ${numbered(o.root)}.`}</p>
       <div class="ostats">
         <span>${isVs(o) ? 'You meet it in' : 'Played in'} <b>${pctOf(o.share)}</b> of games</span>
         <span>${sideName(o.side)} wins <b>${pct(win)}</b></span>
         ${wdl(o, o.side)}
-        ${tags ? `<span class="tags">${tags}</span>` : ''}
       </div>
     </div>
   </article>`;
