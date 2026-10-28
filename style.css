@@ -187,11 +187,12 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 #items { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 
 /* Opening list: one opening per row */
-.picks { display: grid; gap: 14px; padding-block: 8px 40px; max-width: 980px; }
+.picks { display: grid; gap: 14px; padding-block: 8px 40px; }
 .side-seg { justify-self: start; }
 .side-seg .og-n { margin-left: 4px; }
 .og-h { margin: 0; font-size: 16px; font-weight: 600; }
-.olist { display: grid; gap: 10px; }
+/* Two openings per row once each card can be at least 560px wide; one on narrower screens */
+.olist { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(560px, 100%), 1fr)); }
 .ocard { display: grid; grid-template-columns: 136px minmax(0, 1fr); gap: 20px; align-items: start; padding: 16px;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; transition: border-color .15s; }
 .ocard:hover, .ocard:focus-visible { border-color: var(--ink); outline: none; }
@@ -509,7 +510,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .ostats .wdl-key { display: none; }
 
 /* Your openings on Lichess: one row each, name, result bar, how you compare, practise */
-.my-openings { display: grid; gap: 10px; margin: 14px 0 6px; padding: 16px; max-width: 980px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.my-openings { display: grid; gap: 10px; margin: 14px 0 6px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
 .my-head h2 { margin: 0; font-size: 16px; font-weight: 600; }
 .my-head .info { margin: 2px 0 0; font-size: 13px; }
 .my-list { display: grid; }
