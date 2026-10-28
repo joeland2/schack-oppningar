@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028145331';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028145331';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028145331';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028145331';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028145423';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028145423';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028145423';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028145423';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1678,15 +1678,22 @@ $('#restart').addEventListener('click', () => {
   if (mode === 'learn') return play(ply >= line.length ? nextLine() : lineIdx);
   play(ply >= line.length && misses === 0 ? nextLine() : lineIdx);
 });
+// Hint in three steps, one per press: the piece, then what kind of move it is, then the move itself
+// (step three is Show move, which in Practice counts as a mistake).
+let hintStep = 0, hintFen = '';
 $('#hint').addEventListener('click', async () => {
   if (!userTurn() || busy) return;
-  if (playing) {
-    const m = await goodMove();
-    if (!m || !userTurn()) return;
-    hintSq = [m.from]; renderBoard();
-    return say(`The piece to move is highlighted. ${hintFor(m)}`);
-  }
-  showHint(); say('The piece to move is highlighted.');
+  const at = game.fen();
+  if (hintFen !== at) { hintFen = at; hintStep = 0; }
+  const m = playing ? await goodMove() : expectedMove();
+  if (!m || game.fen() !== at) return;
+  hintStep++;
+  if (hintStep >= 3) return $('#show').click();
+  hintSq = [m.from]; renderBoard();
+  if (hintStep === 1) return say('Hint 1 of 3: the piece to move is highlighted. Press Hint again for more.');
+  const kind = hintFor(m);
+  const where = m.piece === 'p' ? `the pawn moves ${Math.abs(m.to[1] - m.from[1]) === 2 ? 'two squares' : 'one square'} forward.` : `the ${PIECE[m.piece]} goes to the ${m.to[0]}-file.`;
+  say(`Hint 2 of 3: ${kind.startsWith('Look for the move that improves') ? where : kind}`);
 });
 $('#show').addEventListener('click', async () => {
   if (!userTurn() || busy) return;
