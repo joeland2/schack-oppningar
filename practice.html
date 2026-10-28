@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>My Practice</title>
+  <meta name="description" content="A training plan built from your own Lichess games: weakest skills first, puzzles from your mistakes, openings that cost you points.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="style.css?v=20261028211023">
+  <script src="theme.js?v=20261028211023"></script>
+</head>
+<body class="pf-ed">
+  <header class="top">
+    <div class="wrap top-in">
+      <a class="brand" href="./">Chess<span>Trainer</span></a>
+      <nav class="top-nav" aria-label="Sections"><a href="./">Openings</a><a href="basics.html">Basics</a><a href="pros.html">Puzzles</a><a href="practice.html" aria-current="page">My practice</a><a href="profile.html">Profile</a></nav>
+      <form class="top-search" action="profile.html" role="search"><input name="u" type="search" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="Find a player" aria-label="Find a Lichess player" title="A Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false"></form>
+      <button id="theme" class="ghost theme" type="button" aria-label="Switch theme"></button>
+    </div>
+  </header>
+
+    <main class="wrap profile">
+    <p id="profile-msg" class="info" aria-live="polite"></p>
+    <div id="practice"></div>
+  </main>
+
+  <script type="module" src="practice.js?v=20261028211023"></script>
+</body>
+</html>

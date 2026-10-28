@@ -840,3 +840,22 @@ body.pf-ed {
 .pf-taste-say { margin: 0 0 10px; }
 .pf-taste-grid h3 { margin-top: 0; }
 .pf-rows li .pf-meter { height: 6px; }
+.pf-about-data { border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 8px; }
+.pf-about-data h2 { margin: 0; font: 600 12px var(--font-body); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+.pf-about-data .info { max-width: 80ch; font-size: 13.5px; }
+/* My practice: the plan, numbered like a training card */
+.pr-head { padding-block: 8px 4px; }
+.pr-head .info { margin-top: 10px; max-width: 70ch; }
+.pr-steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+.pr-step { display: grid; grid-template-columns: auto 1fr; gap: 18px; padding: clamp(16px, 2vw, 24px); background: var(--surface); border-top: 3px solid var(--rule, var(--ink)); }
+.pr-n { font: 400 48px/0.9 var(--font-poster, var(--font-display)); color: var(--hot, var(--data)); min-width: 1.2em; }
+.pr-step h2 { margin: 0 0 6px; font: 400 26px/1.1 var(--font-poster, var(--font-display)); text-transform: uppercase; }
+.pr-step h2 small { font: 600 13px var(--font-body); color: var(--muted); text-transform: none; margin-left: 6px; }
+.pr-step p { margin: 0 0 6px; max-width: 70ch; }
+.pr-how { font-size: 14px; color: var(--muted); }
+.pr-go { margin-top: 12px !important; }
+.pr-go .cta, .pr-ghost { display: inline-block; text-decoration: none; }
+.pr-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.pr-list li { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.pr-list small { color: var(--muted); white-space: nowrap; }
+.pf-ed main a.cta { color: var(--accent-ink); }

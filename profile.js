@@ -3,10 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, so the page opens at once next time; Refresh reads the games again.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028210533';
-import { STYLE_OF } from './styles.js?v=20261028210533';
+import { account, login, finishLogin } from './lichess.js?v=20261028211023';
+import { STYLE_OF } from './styles.js?v=20261028211023';
 
 const MAX = 500;
+const PV = 3; // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
 const $ = (s) => document.querySelector(s);
 const pct = (x) => `${Math.round(x * 100)}%`;
@@ -240,7 +241,7 @@ async function build(name) {
   }
   const p = profileOf(games);
   const keep = Object.entries(cache()).sort((a, b) => b[1].at - a[1].at).slice(0, 9);
-  try { localStorage.setItem(KEY, JSON.stringify(Object.fromEntries([[me, { name, at: Date.now(), p }], ...keep.filter(([k]) => k !== me)]))); } catch {}
+  try { localStorage.setItem(KEY, JSON.stringify(Object.fromEntries([[me, { name, at: Date.now(), p, v: PV }], ...keep.filter(([k]) => k !== me)]))); } catch {}
   msg.textContent = '';
   return p;
 }
@@ -312,9 +313,6 @@ function render(name, at, p) {
   const known = skills.filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
   const kpis = [['Score', pct(p.score)], p.acc !== null && ['Accuracy', `${p.acc}%`], p.blunders !== null && ['Blunders / game', p.blunders.toFixed(1)], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
-    <div class="pf-bar">
-      <p class="info">${me ? 'Your profile, from your' : `${esc(name)}, from their`} last ${p.n} rated Lichess games${p.analysed ? ` (${p.analysed} with computer analysis)` : ''}. Updated ${ago(at)}. <button id="refresh" class="link" type="button">Refresh</button></p>
-    </div>
     <section class="pf-hero">
       ${playerCard(name, p, t, skills)}
       <div class="pf-hero-text">
@@ -355,7 +353,14 @@ function render(name, at, p) {
       <section class="pf-card"><h2>Openings as White</h2>${openingRows(p.openings.w)}</section>
       <section class="pf-card"><h2>Openings as Black</h2>${openingRows(p.openings.b)}</section>
     </div>
-    <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Score counts a win as 1 and a draw as a half.</p>`;
+    <section class="pf-about-data">
+      <h2>About these numbers</h2>
+      <p class="info">Read from ${me ? 'your' : `${esc(name)}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
+      <p class="info">Results, openings, opening style, the clock, endgames and the rating graph use all ${p.n} games.
+        Accuracy, blunders and the Openings, Tactics, Finishing and Defending skills need a computer's verdict on every move, so they use only the
+        ${p.analysed} game${p.analysed === 1 ? '' : 's'} Lichess has analysed${p.analysed < 50 ? ` (on Lichess, Request a computer analysis after a game to add more)` : ''}.</p>
+      <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Score counts a win as 1 and a draw as a half.</p>
+    </section>`;
   $('#refresh').addEventListener('click', () => run(name));
   bindSearch();
   ratingChart(name, p);
@@ -458,17 +463,20 @@ async function run(name) {
   try { const p = await build(name); if (mine === runs) render(name, Date.now(), p); } catch (err) { if (mine === runs) $('#profile-msg').textContent = err.message; }
 }
 
-try { await finishLogin(); } catch (err) { $('#profile-msg').textContent = err.message; } // back from logging in on this page
+export { build, cache, myName, skillsOf, PV };
+if ($('#profile')) { // the practice page imports this module for the above; only the profile page draws itself
+  try { await finishLogin(); } catch (err) { $('#profile-msg').textContent = err.message; } // back from logging in on this page
+  start();
+}
 // A player's profile: from this browser when it was read before, else from their games. The address
 // keeps the name (?u=), so a profile can be shared or bookmarked.
 function show(name, push) {
   if (push) history.pushState(null, '', isMe(name) ? location.pathname : `?u=${encodeURIComponent(name)}`);
   const c = cache()[name.toLowerCase()];
-  if (c) render(c.name, c.at, c.p); else run(name);
+  if (c && c.v === PV) render(c.name, c.at, c.p); else run(name);
 }
-addEventListener('popstate', () => start());
 function start() {
   const name = new URLSearchParams(location.search).get('u') || myName();
   if (name) show(name, false); else ask();
 }
-start();
+if ($('#profile')) addEventListener('popstate', () => start());

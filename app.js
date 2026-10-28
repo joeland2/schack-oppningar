@@ -1,10 +1,10 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028210533';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028210533';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028210533';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028210533';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028210533';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028210533';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028211023';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028211023';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028211023';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028211023';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028211023';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028211023';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2595,7 +2595,32 @@ try { await loadBook(); } catch {
 // Left over from when the page logged in to Lichess and cached its API answers.
 try { for (const k of Object.keys(localStorage)) if (k === STORE + '-token' || k.startsWith(STORE + '-x')) localStorage.removeItem(k); } catch {}
 setMode(mode);
-showPicker();
+showPicker().then(deepLink);
+
+// Links from My practice: ?practise=<w|b>~<opening> opens that opening's lines (or the list searched
+// for it), ?do=traps runs the traps of your openings, ?do=mistakes checks your games for mistakes.
+async function deepLink() {
+  const q = new URLSearchParams(location.search), want = q.get('practise'), act = q.get('do');
+  if ((!want && !act) || !rating || !OPENINGS.length) return;
+  history.replaceState(null, '', location.pathname);
+  if (want) {
+    const [side, family] = [want.slice(0, 1), want.slice(2)];
+    const vs = BLACKS.test(family) !== (side === 'b');
+    const op = OPENINGS.find((x) => x.family === family && x.side === side && isVs(x) === vs)
+      ?? OPENINGS.find((x) => x.side === side && (family.startsWith(x.family) || x.family.startsWith(family)));
+    if (op) return start(op);
+    $('#search').value = query = family;
+    return renderList();
+  }
+  if (act === 'traps') return startTraps();
+  if (act === 'mistakes') {
+    const name = load(STORE + '-lichess-name', '') || account()?.name;
+    if (!name) return;
+    await checkMyGames(name);
+    $('details.mine').scrollIntoView({ behavior: 'smooth' });
+    if (lastGames) runMistakes();
+  }
+}
 
 // ---------- Lichess login ----------
 function renderLogin() {
@@ -2611,5 +2636,18 @@ $('#lichess-login').addEventListener('click', () => {
   if (confirm(`Log out of Lichess (${a.name})?`)) { logout(); renderLogin(); }
 });
 renderLogin();
-finishLogin().then((user) => { if (user) { renderLogin(); return useLichess(user.username); } }).catch((err) => alert(err.message));
+// Logged in: your Lichess ratings fill in on every visit and stay current, so the openings match your level.
+async function ratingsFromLichess() {
+  const a = account();
+  if (!a) return;
+  try {
+    const res = await fetch(`https://lichess.org/api/user/${encodeURIComponent(a.name)}`);
+    if (!res.ok) return;
+    const perfs = (await res.json()).perfs || {};
+    for (const sp of ['blitz', 'classical']) if (perfs[sp]?.rating) store(`${STORE}-${sp}-rating`, perfs[sp].rating);
+    const r = load(ratingKey(), null);
+    if (r && r !== rating && $('#trainer').hidden) { rating = r; showPicker(); } // never under a line you are playing
+  } catch {}
+}
+finishLogin().then((user) => { if (user) { renderLogin(); return useLichess(user.username); } return ratingsFromLichess(); }).catch((err) => alert(err.message));
 if (PHONE.matches) $('#filters').open = false;
