@@ -1,9 +1,10 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028201928';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028201928';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028201928';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028201928';
-import { maiaMove, MAIA_MAX } from './maia.js?v=20261028201928';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028202738';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028202738';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028202738';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028202738';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261028202738';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261028202738';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -791,7 +792,7 @@ function renderMoves() {
   }
   movesEl.innerHTML = html;
   if (mode === 'time') return; // the trial's clock owns the progress bar
-  $('#progress').textContent = mode === 'explore' ? 'Exploring' : playing ? 'Line done · playing it out' : line.length ? `${Math.min(ply, line.length)} of ${line.length} moves` : '';
+  $('#progress').textContent = mode === 'explore' ? 'Exploring' : playing ? `Line done · playing it out${opponent ? ` · opponent: ${opponent}` : ''}` : line.length ? `${Math.min(ply, line.length)} of ${line.length} moves` : '';
   $('#bar').style.width = line.length ? `${Math.min(ply / line.length, 1) * 100}%` : '0';
 }
 
@@ -1126,7 +1127,7 @@ function play(i, again = false) {
   closeMoment();
   misses = again ? misses : 0; missesHere = 0; busy = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
-  playing = false;
+  playing = false; opponent = saidOpponent = null;
   premove = null; notes = []; betters = []; lineDone = ''; view = null;
   clearShapes(boardEl);
   redo = [];
@@ -1381,36 +1382,44 @@ function hintFor(m) {
   return 'Look for the move that improves your worst piece.';
 }
 
-let engineSaid = false; // the switch to Maia or Stockfish is mentioned once per game
-// Where real games run out: Maia, a net trained on Lichess games, plays the move a player of your
-// rating would likely play (its own human mistakes included). Above its range, or if it cannot load,
+let opponent = null, saidOpponent = null; // who plays the opponent now (shown over the board), and who was announced
+// Where the saved real games run out: when you are logged in to Lichess, real games from its whole
+// database; then Maia, a net trained on Lichess games, which plays the move a player of your rating
+// would likely play (its own human mistakes included); above its range, or if it cannot load,
 // Stockfish at your rating.
 async function engineReply(at) {
+  const live = await liveGames(at, ratingsAround(rating).map((i) => BUCKETS[i]), speed);
+  const total = live ? live.white + live.draws + live.black : 0;
+  if (live?.moves?.length && total >= MIN_GAMES) {
+    return { san: live.moves[0].san, label: `Lichess games ${levelText(rating)}`,
+      note: `The saved games run out here, so the moves now come from all ${total.toLocaleString('en')} Lichess games at your level in this position.` };
+  }
   if (rating < MAIA_MAX + 100) {
     try {
       const h = game.history({ verbose: true });
       const { move } = await maiaMove(rating, h.length ? [h[0].before, ...h.map((x) => x.after)] : [at], game.moves({ verbose: true }));
-      return { san: move.san, by: 'Maia (a computer trained on Lichess games to play like people at your rating)' };
+      return { san: move.san, label: `Maia ${maiaLevel(rating)}`,
+        note: `Real games at your level run out here, so Maia plays the opponent now: a computer trained on Lichess games to play like people rated about ${maiaLevel(rating)}.` };
     } catch (e) { console.warn(e); }
   }
   const best = await bestMove(at, { elo: opponentElo() });
-  return best && { ...best, by: 'Stockfish, at your rating,' };
+  return best && { ...best, label: `Stockfish ${opponentElo()}`, note: `Real games at your level run out here, so Stockfish plays the opponent now, set to about ${opponentElo()}.` };
 }
 async function opponentPlays() {
   busy = true;
   const gen = gameGen, at = game.fen();
   // Follow the real games as long as any reach this position: the reply played most there.
   const real = gamesAt(game.history().map(clean)).moves[0];
-  const m = real ? { san: real.san } : await engineReply(at);
+  const m = real ? { san: real.san, label: `Real games ${levelText(rating)}` } : await engineReply(at);
   await new Promise((x) => setTimeout(x, 450));
   if (gen !== gameGen || game.fen() !== at || !m) { if (gen === gameGen) busy = false; return; }
-  lastMove = game.move(m.san ?? m); ply++; busy = false; hintSq = [];
+  lastMove = game.move(m.san ?? m); ply++; busy = false; hintSq = []; opponent = m.label;
   rate(ply - 1, at, lastMove);
   render();
   if (ended()) return;
   if (playPremove()) return;
-  const note = !real && !engineSaid ? ` Real games at your level run out here, so ${m.by} plays the opponent now.` : '';
-  if (!real) engineSaid = true;
+  const note = m.note && m.label !== saidOpponent ? ` ${m.note}` : '';
+  saidOpponent = m.label;
   if (punishDone && !endLen) return punish > 0 ? (say('Your move: keep punishing it.', 'good'), guide()) : finish();
   say(`Your move.${note}`);
 }
@@ -2593,4 +2602,20 @@ try { await loadBook(); } catch {
 try { for (const k of Object.keys(localStorage)) if (k === STORE + '-token' || k.startsWith(STORE + '-x')) localStorage.removeItem(k); } catch {}
 setMode(mode);
 showPicker();
+
+// ---------- Lichess login ----------
+function renderLogin() {
+  const a = account(), b = $('#lichess-login');
+  b.textContent = a ? a.name : 'Log in';
+  b.title = a ? `Logged in to Lichess as ${a.name}: play-outs follow real games from all of Lichess. Click to log out.`
+    : 'Log in with Lichess: play-outs then follow real games from all of Lichess, and your rating and games are filled in.';
+  b.setAttribute('aria-pressed', String(!!a));
+}
+$('#lichess-login').addEventListener('click', () => {
+  const a = account();
+  if (!a) return login();
+  if (confirm(`Log out of Lichess (${a.name})?`)) { logout(); renderLogin(); }
+});
+renderLogin();
+finishLogin().then((user) => { if (user) { renderLogin(); return useLichess(user.username); } }).catch((err) => alert(err.message));
 if (PHONE.matches) $('#filters').open = false;
