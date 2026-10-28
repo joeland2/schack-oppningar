@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028213056';
-import { STYLE_OF } from './styles.js?v=20261028213056';
+import { account, login, finishLogin } from './lichess.js?v=20261028213527';
+import { STYLE_OF } from './styles.js?v=20261028213527';
 
 const MAX = 500;
 const PV = 4; // bumped when the profile gains something new: older saved profiles are read again
@@ -220,15 +220,20 @@ async function fetchGames(name, onGame, since = null) {
   if (!res.ok) throw new Error(`Lichess answered with an error (${res.status}).`);
   const reader = res.body.pipeThrough(new TextDecoderStream()).getReader(), games = [];
   let rest = '';
-  for (;;) {
+  // Lichess does not always stop at max, so reading stops by itself once there are enough games.
+  while (games.length < MAX) {
     const { value, done } = await reader.read();
     if (done) break;
     const lines = (rest + value).split('\n');
     rest = lines.pop();
-    for (const l of lines) if (l.trim()) { games.push(JSON.parse(l)); onGame(games.length); }
+    for (const l of lines) {
+      const g = l.trim() && JSON.parse(l);
+      if (g?.variant === 'standard' && games.length < MAX) { games.push(g); onGame(games.length); }
+    }
   }
-  if (rest.trim()) games.push(JSON.parse(rest));
-  return games.filter((g) => g.variant === 'standard').slice(0, MAX);
+  reader.cancel().catch(() => {});
+  if (rest.trim() && games.length < MAX) { const g = JSON.parse(rest); if (g.variant === 'standard') games.push(g); }
+  return games;
 }
 
 // ---------- Games kept in this browser ----------
