@@ -1,6 +1,6 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction } from './board.js?v=20261028092453';
-import { STYLES, STYLE_OF } from './styles.js?v=20261028092453';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction } from './board.js?v=20261028093210';
+import { STYLES, STYLE_OF } from './styles.js?v=20261028093210';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -157,7 +157,8 @@ function userMove(moves, book) {
 }
 
 // Grow lines from the root, most common first. Each opponent reply played in ≥ MIN_SHARE of games
-// at your rating becomes its own branch; stop branching once MAX_LINES lines exist.
+// at your rating becomes its own branch, until MAX_LINES lines exist; after that each line goes on
+// with the most common reply only, so every line runs until real games run out (or MAX_PLY).
 function buildLines(op) {
   const book = familyBook(op);
   const mine = ratingsAround(rating);
@@ -169,7 +170,7 @@ function buildLines(op) {
   // A system's move orders count like opponent replies: each one played in ≥ MIN_SHARE of its games.
   const open = (op.roots || [{ moves: op.root.split(' '), share: op.share }]).filter((r) => r.share / op.share >= MIN_SHARE)
     .map((r) => ({ moves: r.moves, share: r.share / op.share, name: op.roots ? op.name : '' }));
-  while (open.length && done.length + open.length < MAX_LINES) {
+  while (open.length) {
     open.sort((a, b) => b.share - a.share);
     const l = open.shift();
     let moves = l.moves;
@@ -183,14 +184,10 @@ function buildLines(op) {
     const name = nameOf(moves, l.name);
     const replies = x.total < MIN_GAMES ? [] : x.moves.filter((m) => m.n >= MIN_GAMES && m.n / x.total >= MIN_SHARE);
     if (!replies.length) { done.push({ moves, share: l.share, name }); continue; }
-    for (const m of replies) open.push({ moves: [...moves, m.san], share: l.share * m.n / x.total, name: nameOf([...moves, m.san], name) });
+    const room = Math.max(1, MAX_LINES - done.length - open.length);
+    for (const m of replies.slice(0, room)) open.push({ moves: [...moves, m.san], share: l.share * m.n / x.total, name: nameOf([...moves, m.san], name) });
   }
-  // Lines cut off by the cap end on the opponent's move; finish them with your answer.
-  for (const l of open) {
-    const san = userMove(l.moves, book);
-    if (san) l.moves = [...l.moves, san];
-  }
-  return [...done, ...open].sort((a, b) => b.share - a.share);
+  return done.sort((a, b) => b.share - a.share);
 }
 
 // The most played White openings at your level, found by walking real games from the start position,
