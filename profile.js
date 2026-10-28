@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028235024';
-import { STYLE_OF } from './styles.js?v=20261028235024';
+import { account, login, finishLogin } from './lichess.js?v=20261029000723';
+import { STYLE_OF } from './styles.js?v=20261029000723';
 
 const MAX = 500;
 const PV = 13;
@@ -557,18 +557,6 @@ function tasteLine(mix, me) {
   const tile = (x, c, side) => x ? `<div class="pf-taste-tile"><img src="pieces/${c}K.svg" alt=""><span><small>Openings as ${side}</small><b>${x.label}</b><small>${pct(x.share)} of ${me ? 'your' : 'their'} choices</small></span></div>` : '';
   return `<div class="pf-taste-tiles" aria-label="Opening taste">${tile(w, 'w', 'White')}${tile(b, 'b', 'Black')}</div>`;
 }
-function tastePanel(mix, me, folded) {
-  if (!mix) return '';
-  const side = (m, name) => {
-    if (m.n < 10) return `<div><h3>As ${name}</h3><p class="info">Too few games in openings ${me ? 'you' : 'they'} choose as ${name}.</p></div>`;
-    const t = taste(m);
-    return `<div><h3>As ${name}</h3><p class="pf-taste-say">${t ? `Mostly <b>${t.words}</b> (${pct(t.share)} of the openings ${me ? 'you' : 'they'} choose).` : 'A mix of openings, no style stands out.'}</p>
-      <ul class="pf-rows">${m.parts.map((x) => `<li><span>${x.label}</span><small>${pct(x.share)}</small><div class="pf-meter"><i style="width:${x.share * 100}%"></i></div></li>`).join('')}</ul></div>`;
-  };
-  return `<section class="${folded ? 'pf-more-body' : 'pf-card'}">${folded ? '' : '<h2>Opening style</h2>'}
-    <p class="info pf-note">Gambits give material for attack, attacking openings go for the initiative, positional and solid ones build first. Counted from the openings ${me ? 'you pick yourself' : 'they pick themselves'}: the defence as Black, the opening as White.</p>
-    <div class="pf-two pf-taste-grid">${side(mix.w, 'White')}${side(mix.b, 'Black')}</div></section>`;
-}
 // How games end: wins and losses split by mate, resignation and time, as numbers with a small bar each.
 function endsGrid(ends) {
   const kinds = [['mate', 'By mate'], ['resign', 'Resigned'], ['time', 'On time']];
@@ -612,11 +600,6 @@ function portrait(name, p, skills, me, part = 'lead') {
   if (part === 'lead') return out.join(' ');
   out.length = 0;
   if (p.piece) out.push(`${me ? 'Your' : 'Their'} most important piece is the ${PIECE_NAME[p.piece]}.`);
-  const e = p.ends.won, l = p.ends.lost;
-  const winsBy = e.mate >= e.resign && e.mate >= e.time ? `${pct(e.mate)} of wins by mate` : e.time >= e.resign ? `${pct(e.time)} of wins on the clock` : `${pct(e.resign)} of wins by resignation`;
-  out.push(`Games last ${p.moves} moves on average, with ${winsBy}${l.time >= 0.2 ? ` and ${pct(l.time)} of losses on time` : ''}.`);
-  const dw = (p.winW ?? 0) - (p.winB ?? 0);
-  if (Math.abs(dw) >= 0.06) out.push(`${you} win${me ? '' : 's'} clearly more often with ${dw > 0 ? 'White' : 'Black'} (${pct(Math.max(p.winW, p.winB))} against ${pct(Math.min(p.winW, p.winB))}).`);
   return out.join(' ');
 }
 // The player card: the overall (the mean of the known skills), a short code for the type, the six skills.
@@ -700,6 +683,10 @@ function render(name, at, p) {
         </div>
       </div>
     </section>
+    <div class="pf-two pf-verdicts">
+      <section class="pf-card"><h2 class="pf-good">Strengths</h2>${verdictList(J.good.map((i) => ({ ...i, why: say(i.why), href: null })), `Nothing is clearly above ${me ? 'your' : 'their'} opponents yet.`)}</section>
+      <section class="pf-card"><h2 class="pf-bad">Train next</h2>${list(J.work, `Nothing is clearly below ${me ? 'your' : 'their'} opponents.`)}</section>
+    </div>
     ${leadStory(name, p, skills, me)}
     <section class="pf-card pf-chart" id="pf-chart"></section>
     <dl class="pf-kpis">${kpis.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
@@ -710,33 +697,29 @@ function render(name, at, p) {
       ${skillBars(skills, say, me)}
       <p class="pf-skill-more pf-skill-scale">Each skill compares ${me ? 'you' : 'the player'} with ${me ? 'your' : 'their'} own opponents rated within ${PEER} points, from the same games: 50 means as good as them, higher is better.</p>
     </section>
-    <div class="pf-two">
-      <section class="pf-card"><h2 class="pf-good">Strengths</h2>${verdictList(J.good.map((i) => ({ ...i, why: say(i.why), href: null })), `Nothing is clearly above ${me ? 'your' : 'their'} opponents yet.`)}</section>
-      <section class="pf-card"><h2 class="pf-bad">Train next</h2>${list(J.work, `Nothing is clearly below ${me ? 'your' : 'their'} opponents.`)}</section>
-    </div>
     <section class="pf-card" id="pf-games"></section>
-    <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results</h2><span>Wins by colour and time control, how games end</span></div>
-      <dl class="pf-stats">
-        <div><dt>Wins as White</dt><dd>${p.winW == null ? '–' : pct(p.winW)}</dd></div>
-        <div><dt>Wins as Black</dt><dd>${p.winB == null ? '–' : pct(p.winB)}</dd></div>
-        <div><dt>Moves a game</dt><dd>${p.moves}</dd></div>
-      </dl>
-      <h3>By time control</h3>
-      <ul class="pf-rows">${p.speeds.map((x) => `<li><span>${x.speed[0].toUpperCase() + x.speed.slice(1)}</span><small>${games(x.n)} · ${pct(x.win ?? x.score)} wins · now ${x.rating} (${x.change >= 0 ? '+' : ''}${x.change})</small>${bar(x)}</li>`).join('')}</ul>
-      <h3>How ${me ? 'your' : 'their'} games end</h3>
-      ${endsGrid(p.ends)}
+    <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From all ${p.n} games</span></div>
+      <div class="pf-two pf-more-body">
+        <section><h3>By colour and time control</h3>
+          <dl class="pf-stats">
+            <div><dt>Wins as White</dt><dd>${p.winW == null ? '–' : pct(p.winW)}</dd></div>
+            <div><dt>Wins as Black</dt><dd>${p.winB == null ? '–' : pct(p.winB)}</dd></div>
+            <div><dt>Moves a game</dt><dd>${p.moves}</dd></div>
+          </dl>
+          <ul class="pf-rows">${p.speeds.map((x) => `<li><span>${x.speed[0].toUpperCase() + x.speed.slice(1)}</span><small>${games(x.n)} · ${pct(x.win ?? x.score)} wins · now ${x.rating} (${x.change >= 0 ? '+' : ''}${x.change} over these games)</small>${bar(x)}</li>`).join('')}</ul>
+          <h3>How ${me ? 'your' : 'their'} games end</h3>
+          ${endsGrid(p.ends)}
+        </section>
+        <section><h3>Openings as White</h3>${openingRows(p.openings.w)}
+          <h3>Openings as Black</h3>${openingRows(p.openings.b)}</section>
+      </div>
     </section>
-    <section class="pf-card pf-more"><div class="pf-more-head"><h2>Opening style</h2><span>${tasteShort(p.styleMix)}</span></div>${tastePanel(p.styleMix, me, true)}</section>
-    <section class="pf-card pf-more"><div class="pf-more-head"><h2>Openings</h2><span>The ones played most, with wins</span></div><div class="pf-two pf-more-body">
-      <section><h3>As White</h3>${openingRows(p.openings.w)}</section>
-      <section><h3>As Black</h3>${openingRows(p.openings.b)}</section>
-    </div></section>
     <section class="pf-about-data">
       <h2>About these numbers</h2>
       <p class="info">Read from ${me ? 'your' : `${esc(name)}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
       <p class="info">Results, openings, opening style, the clock, endgames and the rating graph use all ${p.n} games.
         Accuracy, blunders and the Openings, Tactics, Winning when ahead and Defending skills need a computer's verdict on every move, so they use only the
-        ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'}${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. ${p.todo ? 'Analyse more with the button at the top of the page.' : ''}</p>
+        ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'}${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. ${p.todo ? 'Analyse more with the Analyse button above Skills.' : ''}</p>
       <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Win rate counts wins out of all games; an endgame score counts a draw as half.</p>
     </section>
     ${nextActions(name, me)}`;

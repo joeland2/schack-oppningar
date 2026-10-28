@@ -1206,6 +1206,25 @@ a.pf-res:hover, a.pf-res:focus-visible { transform: translateY(-2px); outline: 2
 .pf-type-row .pf-taste-tiles { flex-direction: column; margin: 0 0 6px; }
 @media (max-width: 860px) { .pf-type-row { justify-content: center; } .pf-type-row .pf-taste-tiles { flex-direction: row; } }
 /* Result squares are links: black letters, not link orange */
-a.pf-res, a.pf-res:visited { color: #141414; }
+/* Light edition: paper letters on the dark result green and red (about 6:1); dark edition: ink on the brighter ones */
+a.pf-res, a.pf-res:visited { color: #f4efe6; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) a.pf-res { color: #141414; } }
+:root[data-theme="dark"] a.pf-res { color: #141414; }
 /* Download card */
 .pf-card-actions { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; justify-content: center; }
+/* Strengths and Train next, straight under the hero */
+.pf-verdicts { margin-top: 8px; }
+/* Results and openings: headings spaced inside each column; the endings grid fits a half column,
+   three cells a row with the label above, on phones too */
+.pf-more-body h3:not(:first-child) { margin-top: 26px; }
+.pf-more-body .pf-ends-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pf-more-body .pf-ends-label { grid-column: 1 / -1; margin-top: 4px; }
+.pf-more-body .pf-ends-cell { grid-template-columns: 1fr; padding: 8px 10px; }
+.pf-more-body .pf-ends-cell b { font-size: 24px; }
+@media (max-width: 560px) {
+  /* Ten results always on one row; each square stays a full-height tap target */
+  .pf-form-row { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
+  .pf-form-row .pf-res { width: auto; height: 36px; }
+  .pf-facts div { grid-template-columns: 1fr; gap: 2px; }
+}
+.pf-more-body .pf-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 16px; }
