@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028150420';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028150420';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028150420';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028150420';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028151147';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028151147';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028151147';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028151147';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -66,6 +66,14 @@ const clean = (san) => san.replace(/[+#]/g, '');
 const lineKey = (moves) => moves.join(' ');
 const pct = (x) => `${Math.round(x * 100)}%`;
 const pctOf = (x) => (x < 0.01 ? '<1%' : pct(x));
+// How popular an opening is among those of its kind (White openings, or Black's answers to them): a
+// share under 1% says little, a place in the list says more.
+const ordinal = (n) => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+console.assert(['1st', '2nd', '3rd', '4th', '11th', '22nd'].join() === [1, 2, 3, 4, 11, 22].map(ordinal).join(), 'ordinal');
+function popularity(o) {
+  const n = 1 + OPENINGS.filter((x) => x.side === o.side && isVs(x) === isVs(o) && x.share > o.share).length;
+  return `${n === 1 ? 'The' : `The ${ordinal(n)}`} most ${isVs(o) ? 'common opening you meet' : `played ${sideName(o.side)} opening`}`;
+}
 // Win / draw / loss bar from the player's side.
 function wdl(o, side) {
   const win = side === 'w' ? o.win : 1 - o.win - o.draw, loss = 1 - win - o.draw;
@@ -364,7 +372,7 @@ function card(o) {
       <p class="omoves"><span class="eco">${o.eco}</span> ${moves.slice(0, -1).join(' ')} <b>${moves.at(-1)}</b></p>
       <p class="odesc">${about || `Starts ${numbered(o.root)}.`}</p>
       <div class="ostats">
-        <span>${isVs(o) ? 'You meet it in' : 'Played in'} <b>${pctOf(o.share)}</b> of games</span>
+        <span>${popularity(o)}</span>
         <span>${sideName(o.side)} wins <b>${pct(win)}</b></span>
         ${wdl(o, o.side)}
       </div>
@@ -983,7 +991,7 @@ function start(op) {
   misses = 0; missesHere = 0; busy = true;
   $('#op-title').textContent = (isVs(op) ? 'vs ' : '') + op.name;
   $('#op-eco').textContent = op.eco;
-  $('#op-info').textContent = `Starts ${numbered(op.root)}. ${isVs(op) ? 'You meet it' : 'Played'} in ${pctOf(op.share)} of ${speed} games at your level; ${sideName(op.side)} wins ${pct(op.side === 'w' ? op.win : 1 - op.win - op.draw)}.`;
+  $('#op-info').textContent = `Starts ${numbered(op.root)}. ${popularity(op)} in ${speed} at your level; ${sideName(op.side)} wins ${pct(op.side === 'w' ? op.win : 1 - op.win - op.draw)}.`;
   $('#op-side').textContent = op.side === 'w' ? 'You play White' : 'You play Black';
   $('#restart').textContent = 'Restart';
   $('#picker').hidden = true;
