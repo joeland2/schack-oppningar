@@ -904,11 +904,6 @@ a.cta { color: var(--accent-ink); }
 .cmp-skills li { display: grid; grid-template-columns: 150px 1fr auto; gap: 4px 16px; align-items: center; }
 .cmp-label { font-weight: 600; }
 .cmp-bars { display: grid; gap: 4px; }
-.cmp-bar { display: grid; grid-template-columns: 1fr 2.4em; gap: 8px; align-items: center; }
-.cmp-bar i { display: block; height: 8px; border-radius: 4px; min-width: 2px; }
-.cmp-bar { background: none; }
-.cmp-bar b { font: 400 18px/1 var(--font-poster); text-align: right; }
-.cmp-bar i { grid-column: 1; justify-self: start; }
 .cmp-skills small { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
 .cmp-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .cmp-table th, .cmp-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
@@ -1048,3 +1043,9 @@ a.cta { color: var(--accent-ink); }
 .gm-player small { color: var(--muted); margin-left: auto; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
 .gm-sides { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 2px 0 4px; }
 .gm-sides span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Compare: thicker bars, each value right where its bar ends */
+.cmp-bars { gap: 6px; }
+.cmp-bar { display: flex; align-items: center; gap: 8px; }
+.cmp-bar i { display: block; flex: none; height: 14px; border-radius: 7px; min-width: 4px; }
+.cmp-bar b { font: 400 22px/1 var(--font-poster); }

@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028221010';
-import { STYLE_OF } from './styles.js?v=20261028221010';
+import { account, login, finishLogin } from './lichess.js?v=20261028221126';
+import { STYLE_OF } from './styles.js?v=20261028221126';
 
 const MAX = 500;
 const PV = 7;
@@ -821,8 +821,8 @@ function renderCompare(A, B, speed = 'all', avail = []) {
         const y = sb[i], d = x.v !== null && y.v !== null ? x.v - y.v : null;
         return `<li><span class="cmp-label">${x.label}</span>
           <div class="cmp-bars" role="img" aria-label="${x.label}: ${esc(A.name)} ${x.v ?? 'no data'}, ${esc(B.name)} ${y.v ?? 'no data'}">
-            <div class="cmp-bar a"><i style="width:${x.v ?? 0}%"></i><b>${x.v ?? '–'}</b></div>
-            <div class="cmp-bar b"><i style="width:${y.v ?? 0}%"></i><b>${y.v ?? '–'}</b></div></div>
+            <div class="cmp-bar a"><i style="width:calc((100% - 3em) * ${(x.v ?? 0) / 100})"></i><b>${x.v ?? '–'}</b></div>
+            <div class="cmp-bar b"><i style="width:calc((100% - 3em) * ${(y.v ?? 0) / 100})"></i><b>${y.v ?? '–'}</b></div></div>
           <small>${d === null ? 'Not enough games for both.' : d === 0 ? 'Even.' : `${esc(d > 0 ? A.name : B.name)} +${Math.abs(d)}`}</small></li>`;
       }).join('')}</ul>
     </section>
