@@ -1,0 +1,202 @@
+// One game, replayed here: the board with every move, how the advantage swung, the moves that
+// decided it (yours and your opponent's mistakes, with the better move), and a short read of what
+// went well and what went badly. The game comes from the games kept for the profile, or straight
+// from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
+import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
+import { drawBoard } from './board.js?v=20261028215503';
+import { account } from './lichess.js?v=20261028215503';
+import { storedGames, keepGame, engineEval, applyEvals, winPct } from './profile.js?v=20261028215503';
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+const q = new URLSearchParams(location.search), name = q.get('u') || '', id = q.get('id') || '';
+const RED = 'var(--bad)', GREEN = 'var(--good)';
+const GLYPHS = { Inaccuracy: '?!', Mistake: '?', Blunder: '??' };
+const HOW = { mate: 'by mate', resign: 'by resignation', outoftime: 'on time', timeout: 'on time', draw: 'by agreement', stalemate: 'by stalemate', insufficientMaterialClaim: 'by insufficient material', repetition: 'by repetition' };
+
+let g = null, moves = [], fens = [], side = 'white', idx = 0, flip = false, focus = null;
+
+async function load() {
+  g = (storedGames(name) || []).find((x) => x.id === id);
+  if (!g) {
+    $('#profile-msg').textContent = 'Fetching the game from Lichess…';
+    const a = account();
+    const res = await fetch(`https://lichess.org/game/export/${encodeURIComponent(id)}?` + new URLSearchParams({ evals: 'true', clocks: 'true', opening: 'true', accuracy: 'true' }),
+      { headers: { Accept: 'application/json', ...(a ? { Authorization: `Bearer ${a.token}` } : {}) } });
+    if (!res.ok) throw new Error(`Lichess has no game ${id}.`);
+    g = await res.json();
+    $('#profile-msg').textContent = '';
+  }
+  side = g.players.white.user?.id === name.toLowerCase() ? 'white' : g.players.black.user?.id === name.toLowerCase() ? 'black' : 'white';
+  const c = new Chess();
+  fens = [c.fen()];
+  moves = [];
+  for (const san of (g.moves || '').split(' ').filter(Boolean)) {
+    let m;
+    try { m = c.move(san); } catch { break; }
+    moves.push(m);
+    fens.push(c.fen());
+  }
+  idx = moves.length;
+}
+
+// ---------- Reading the analysis ----------
+const pov = () => (side === 'white' ? 1 : -1);
+const cpAt = (i) => { const a = g.analysis?.[i]; return a ? (a.mate !== undefined ? Math.sign(a.mate) * 1000 : Math.max(-1000, Math.min(1000, a.eval ?? 0))) : null; };
+const chanceAt = (i) => (i < 0 ? 50 : winPct((cpAt(i) ?? 0) * pov())); // your winning chances after move i
+const mine = (i) => (i % 2 === 0) === (side === 'white');
+const moveNo = (i) => `${Math.floor(i / 2) + 1}${i % 2 ? '…' : '.'}`;
+// Lichess writes castling as king takes rook; the board wants the king's square.
+function bestMove(i) {
+  let uci = g.analysis?.[i]?.best;
+  if (!uci) return null;
+  const castle = { e1h1: 'e1g1', e1a1: 'e1c1', e8h8: 'e8g8', e8a8: 'e8c8' }[uci.slice(0, 4)];
+  const before = new Chess(fens[i]);
+  if (castle && before.get(uci.slice(0, 2))?.type === 'k') uci = castle;
+  try { return before.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || 'q' }); } catch { return null; }
+}
+// The moves that decided the game: every mistake and blunder, by either side.
+function moments() {
+  if (!g.analysis) return [];
+  return moves.flatMap((m, i) => {
+    const j = g.analysis[i]?.judgment?.name;
+    if (j !== 'Mistake' && j !== 'Blunder') return [];
+    const before = chanceAt(i - 1), after = chanceAt(i);
+    return [{ i, j, m, best: bestMove(i), mine: mine(i), swing: Math.round(mine(i) ? before - after : after - before) }];
+  });
+}
+
+// What went well and what went badly, read from the result and the analysis.
+function story() {
+  const me = side, them = me === 'white' ? 'black' : 'white';
+  const won = g.winner === me, lost = g.winner && g.winner !== me;
+  const how = HOW[g.status] || g.status;
+  const n = Math.ceil(moves.length / 2);
+  const head = `${won ? 'You won' : lost ? 'You lost' : 'A draw'} ${how} in ${n} moves${g.opening?.name ? `, in the ${esc(g.opening.name.split(':')[0])}` : ''}.`;
+  const good = [], bad = [];
+  if (!g.analysis) return { head, good, bad, acc: null };
+  const myA = g.players[me].analysis || {}, theirA = g.players[them].analysis || {};
+  const after12 = moves.length > 23 ? (cpAt(23) ?? 0) * pov() : null;
+  if (after12 !== null) {
+    if (after12 >= 100) good.push(`You came out of the opening better (${(after12 / 100).toFixed(1)} pawns up after move 12).`);
+    else if (after12 <= -100) bad.push(`You came out of the opening worse (${(-after12 / 100).toFixed(1)} pawns down after move 12): look at the opening again.`);
+    else good.push('The opening went fine: about equal after move 12.');
+  }
+  const chances = moves.map((_, i) => chanceAt(i));
+  const best = Math.max(...chances), worst = Math.min(...chances);
+  if (best >= 85 && !won) bad.push(`You had a winning position (${Math.round(best)}% winning chances) but did not win it.`);
+  if (best >= 85 && won) good.push('You got a winning position and converted it.');
+  if (worst <= 15 && !lost) good.push(`You were lost (${Math.round(worst)}%) and still ${won ? 'won' : 'saved a draw'}: good fighting.`);
+  if (!myA.blunder) good.push('No blunders from you.');
+  else bad.push(`${myA.blunder} blunder${myA.blunder > 1 ? 's' : ''} from you${myA.mistake ? ` and ${myA.mistake} mistake${myA.mistake > 1 ? 's' : ''}` : ''}. They are in the list below.`);
+  const theirBlunders = moments().filter((x) => !x.mine && x.j === 'Blunder');
+  if (theirBlunders.length) {
+    const punished = theirBlunders.filter((x) => !moments().some((y) => y.mine && y.i === x.i + 1));
+    if (punished.length === theirBlunders.length) good.push(`Your opponent blundered ${theirBlunders.length === 1 ? 'once' : `${theirBlunders.length} times`} and you made them pay.`);
+    else bad.push('Your opponent blundered and you missed the chance on the next move.');
+  }
+  if (lost && /outoftime|timeout/.test(g.status)) bad.push('You lost on time: play the opening faster to keep time for the hard moments.');
+  const swing = moments().filter((x) => x.mine).sort((a, b) => b.swing - a.swing)[0];
+  if (swing && swing.swing >= 20) bad.push(`The turning point: ${moveNo(swing.i)} ${swing.m.san} cost ${swing.swing}% of your winning chances${swing.best ? `; ${swing.best.san} was better` : ''}.`);
+  return { head, good, bad, acc: myA.accuracy != null ? [myA.accuracy, theirA.accuracy] : null };
+}
+
+// ---------- Drawing ----------
+function drawPosition() {
+  const c = new Chess(fens[idx]);
+  const arrows = [];
+  let last = idx ? { from: moves[idx - 1].from, to: moves[idx - 1].to } : null;
+  if (focus !== null && idx === focus) { // a key moment: the move played in red, the better one in green
+    const m = moves[focus], b = bestMove(focus);
+    arrows.push([m.from, m.to, RED]);
+    if (b) arrows.push([b.from, b.to, GREEN]);
+    last = null;
+  }
+  drawBoard($('#board'), c, { side: (side === 'white') !== flip ? 'w' : 'b', last, arrows });
+  const i = idx - 1, j = g.analysis?.[i]?.judgment?.name;
+  $('#here').innerHTML = focus !== null && idx === focus
+    ? `${moveNo(focus)} <b>${moves[focus].san}</b> was played here (red)${bestMove(focus) ? `; <b>${bestMove(focus).san}</b> (green) was better` : ''}.`
+    : idx ? `${moveNo(i)} <b>${moves[i].san}</b>${j ? ` <span class="gm-j j-${j}">${GLYPHS[j]} ${j.toLowerCase()}</span>` : ''}${g.analysis ? ` · your chances ${Math.round(chanceAt(i))}%` : ''}` : 'The start position.';
+  document.querySelectorAll('.gm-move').forEach((b) => b.classList.toggle('on', Number(b.dataset.i) === idx - 1));
+  const cur = document.querySelector('.gm-move.on');
+  cur?.scrollIntoView({ block: 'nearest' });
+  const dot = document.querySelector('.gm-graph .now');
+  if (dot) dot.setAttribute('x1', gx(idx - 1)), dot.setAttribute('x2', gx(idx - 1));
+}
+const W = 300, H = 70;
+const gx = (i) => (moves.length ? (Math.max(0, i + 1) / moves.length) * W : 0);
+function graph() {
+  if (!g.analysis) return '';
+  const pts = [[0, 50], ...moves.map((_, i) => [gx(i), chanceAt(i)])];
+  const yy = (c) => H - (c / 100) * H;
+  const line = pts.map(([x, c], k) => `${k ? 'L' : 'M'}${x.toFixed(1)},${yy(c).toFixed(1)}`).join('');
+  const area = `${line}L${W},${H}L0,${H}Z`;
+  const dots = moments().filter((x) => x.mine).map((x) => `<circle class="${x.j}" cx="${gx(x.i).toFixed(1)}" cy="${yy(chanceAt(x.i)).toFixed(1)}" r="3"/>`).join('');
+  return `<figure class="gm-graph"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Your winning chances move by move">
+      <path class="area" d="${area}"/><line class="mid" x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}"/><path class="ln" d="${line}"/>${dots}
+      <line class="now" x1="0" x2="0" y1="0" y2="${H}"/><rect class="hit" width="${W}" height="${H}"/></svg>
+    <figcaption>Your winning chances, move by move. Above the middle line you were better. Red dots are your blunders, yellow your mistakes.</figcaption></figure>`;
+}
+function render() {
+  const s = story(), me = g.players[side], opp = g.players[side === 'white' ? 'black' : 'white'];
+  const list = moments();
+  const pairs = [];
+  for (let i = 0; i < moves.length; i += 2) pairs.push(i);
+  $('#game').innerHTML = `
+    <p class="pf-kick">Game review</p>
+    <h1 class="gm-title">${esc(name || me.user?.id || 'White')} <span>vs</span> ${esc(opp.user?.id || 'anonymous')}</h1>
+    <p class="info">${esc(side)} · ${me.rating || ''} vs ${opp.rating || ''} · ${g.speed} · ${new Date(g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · <a href="https://lichess.org/${g.id}${side === 'black' ? '/black' : ''}" target="_blank" rel="noopener">On Lichess</a></p>
+    <section class="gm-story">
+      <p class="gm-head">${s.head}</p>
+      ${s.acc ? `<p class="gm-acc">Accuracy: <b>${s.acc[0]}%</b> you, <b>${s.acc[1] ?? '–'}%</b> your opponent</p>` : ''}
+      ${g.analysis ? `${s.good.length ? `<h2 class="pf-good">What went well</h2><ul>${s.good.map((x) => `<li>${x}</li>`).join('')}</ul>` : ''}
+        ${s.bad.length ? `<h2 class="pf-bad">What went badly</h2><ul>${s.bad.map((x) => `<li>${x}</li>`).join('')}</ul>` : ''}`
+      : `<p class="gm-noan">This game has no computer analysis yet, so there is no read on what went well or badly. <button type="button" class="cta" data-analyse>Analyse it now</button> <small>About ${Math.max(2, Math.round(moves.length * 0.035))} seconds, with Stockfish in your browser.</small></p>`}
+    </section>
+    ${graph()}
+    ${list.length ? `<section class="gm-moments"><h2>The moves that decided it</h2><ul>${list.map((x) => `<li><button type="button" class="gm-moment ${x.mine ? 'mine' : 'theirs'}" data-moment="${x.i}">
+      <span class="gm-j j-${x.j}">${GLYPHS[x.j]}</span><span><b>${moveNo(x.i)} ${x.m.san}</b> ${x.mine ? 'by you' : 'by your opponent'}${x.best ? `: <b>${x.best.san}</b> was better` : ''}<br><small>${x.mine ? `cost you ${x.swing}% of your winning chances` : `gave you ${x.swing}%`}</small></span></button></li>`).join('')}</ul></section>` : ''}
+    <section class="gm-moves"><h2>Moves</h2><ol>${pairs.map((i) => `<li><span class="n">${i / 2 + 1}.</span>${[i, i + 1].filter((k) => k < moves.length).map((k) => {
+      const j = g.analysis?.[k]?.judgment?.name;
+      return `<button type="button" class="gm-move${j ? ` j-${j}` : ''}" data-i="${k}">${moves[k].san}${j ? GLYPHS[j] : ''}</button>`;
+    }).join('')}</li>`).join('')}</ol></section>`;
+  $('#game').querySelectorAll('.gm-move').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.i) + 1)));
+  $('#game').querySelectorAll('[data-moment]').forEach((b) => b.addEventListener('click', () => { focus = Number(b.dataset.moment); idx = focus; drawPosition(); }));
+  $('#game').querySelector('[data-analyse]')?.addEventListener('click', analyse);
+  const svg = $('#game').querySelector('.gm-graph svg');
+  svg?.addEventListener('click', (e) => { const r = svg.getBoundingClientRect(); go(Math.round(((e.clientX - r.left) / r.width) * moves.length)); });
+  drawPosition();
+}
+function go(n) { focus = null; idx = Math.max(0, Math.min(moves.length, n)); drawPosition(); }
+
+async function analyse() {
+  const btn = $('[data-analyse]');
+  btn.disabled = true;
+  const c = new Chess(), cps = [], best = [];
+  for (let k = 0; k < moves.length; k++) {
+    c.move(moves[k].san);
+    const r = await engineEval(c.fen());
+    cps.push(r.cp);
+    best[cps.length] = r.best;
+    btn.textContent = `Analysing… ${Math.round(((k + 1) / moves.length) * 100)}%`;
+  }
+  applyEvals(g, cps, best);
+  keepGame(name, g);
+  render();
+}
+
+$('#first').addEventListener('click', () => go(0));
+$('#prev').addEventListener('click', () => go(idx - 1));
+$('#next').addEventListener('click', () => go(idx + 1));
+$('#last').addEventListener('click', () => go(moves.length));
+$('#flip').addEventListener('click', () => { flip = !flip; drawPosition(); });
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea')) return;
+  if (e.key === 'ArrowLeft') go(idx - 1);
+  else if (e.key === 'ArrowRight') go(idx + 1);
+  else if (e.key === 'Home') go(0);
+  else if (e.key === 'End') go(moves.length);
+});
+
+if (!name || !id) $('#profile-msg').innerHTML = 'Open a game from <a href="profile.html">your profile</a>.';
+else load().then(render).catch((err) => { $('#profile-msg').textContent = err.message; });

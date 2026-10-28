@@ -969,3 +969,59 @@ a.cta { color: var(--accent-ink); }
 .pf-hilo i.hi, .pf-line circle.hi { background: var(--good); fill: var(--good); }
 .pf-hilo i.lo, .pf-line circle.lo { background: var(--bad); fill: var(--bad); }
 .pf-line circle.hi, .pf-line circle.lo { stroke: var(--surface); stroke-width: 2; }
+/* Profile: the games list */
+.pf-games { margin: 0 0 12px; padding: 0; list-style: none; display: grid; }
+.pf-game { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; padding: 10px 8px; margin: 0 -8px; border-bottom: 1px solid var(--line); color: var(--ink) !important; text-decoration: none; border-radius: 4px; }
+.pf-game:hover, .pf-game:focus-visible { background: var(--raised); }
+.pf-game small { color: var(--muted); font-weight: 400; }
+.pf-game-meta { text-align: right; font-size: 13px; }
+.pf-res { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 4px; font: 400 18px var(--font-poster); color: var(--surface); }
+.pf-res.r-W { background: var(--good); }
+.pf-res.r-L { background: var(--bad); }
+.pf-res.r-D { background: var(--muted); }
+/* Game review: the story, the swing graph, the deciding moves and the move list */
+.game-layout .controls button { min-width: 44px; font-size: 16px; }
+.gm-here { margin: 10px 0 0; min-height: 1.5em; font-size: 14px; }
+.gm-title { font-size: clamp(1.8rem, 3.5vw, 2.6rem); margin: 4px 0; overflow-wrap: anywhere; }
+.gm-title span { color: var(--muted); font-size: .6em; }
+.gm-story { display: grid; gap: 6px; }
+.gm-story h2, .gm-moments h2, .gm-moves h2 { margin: 10px 0 4px; font: 600 12px var(--font-body); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.gm-story h2.pf-good { color: var(--good); }
+.gm-story h2.pf-bad { color: var(--hot); }
+.gm-story ul { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; }
+.gm-head { margin: 0; font-size: 17px; font-weight: 600; }
+.gm-acc { margin: 0; color: var(--muted); }
+.gm-acc b { color: var(--ink); }
+.gm-noan { margin: 6px 0 0; display: grid; gap: 8px; justify-items: start; }
+.gm-noan small { color: var(--muted); }
+.gm-graph { margin: 0; }
+.gm-graph svg { display: block; width: 100%; height: 90px; background: var(--bg); border-radius: var(--radius); cursor: pointer; }
+.gm-graph .area { fill: color-mix(in srgb, var(--data) 18%, transparent); }
+.gm-graph .ln { fill: none; stroke: var(--data); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.gm-graph .mid { stroke: var(--muted); stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; opacity: .6; }
+.gm-graph .now { stroke: var(--ink); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.gm-graph circle.Blunder { fill: var(--bad); }
+.gm-graph circle.Mistake { fill: var(--hint); }
+.gm-graph .hit { fill: transparent; }
+.gm-graph figcaption { margin-top: 6px; font-size: 12px; color: var(--muted); }
+.gm-moments ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.gm-moment { width: 100%; display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: center; text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); color: var(--ink); cursor: pointer; font: inherit; font-size: 14px; }
+.gm-moment:hover { border-color: var(--hot); }
+.gm-moment.theirs { opacity: .8; }
+.gm-moment small { color: var(--muted); }
+.gm-j { font: 700 15px var(--font-mono); }
+.gm-j.j-Blunder, .gm-move.j-Blunder { color: var(--bad); }
+.gm-j.j-Mistake, .gm-move.j-Mistake { color: var(--hot); }
+.gm-j.j-Inaccuracy, .gm-move.j-Inaccuracy { color: var(--hint); }
+.gm-moves ol { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px 8px; max-height: 260px; overflow: auto; }
+.gm-moves li { display: grid; grid-template-columns: 2.4em 1fr 1fr; align-items: center; }
+.gm-moves .n { color: var(--muted); font: 12px var(--font-mono); }
+.gm-move { border: 0; background: none; color: var(--ink); text-align: left; padding: 3px 6px; border-radius: 3px; cursor: pointer; font: 14px var(--font-mono); }
+.gm-move:hover { background: var(--raised); }
+.gm-move.on { background: var(--ink); color: var(--bg); }
+/* Player card: the rating in the main time control, top right */
+.pf-pcard-rating { text-align: right; line-height: 1; }
+.pf-pcard-rating b { display: block; font: 400 44px/0.95 var(--font-poster); }
+.pf-pcard-rating span { font: 400 16px var(--font-poster); letter-spacing: .06em; text-transform: uppercase; opacity: .75; }
+.cmp-speeds { margin-top: 12px; }
+.cmp-speeds button:disabled { opacity: .4; cursor: default; }

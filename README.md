@@ -15,6 +15,7 @@ Plain HTML, CSS and JavaScript with no build step. Move logic comes from [chess.
 - `drill.js` – the find-the-move trainer used by Basics and Pros
 - `basics.js` – the lessons
 - `practice.html` + `practice.js` – My practice: a training plan from your own games, linking into the trainer (`?practise=`, `?do=traps|mistakes`)
+- `game.html` + `game.js` – one game replayed: moves, a winning-chances graph, the deciding moves with the better move, what went well and badly
 - `profile.html` + `profile.js` – a player profile from their last 500 rated Lichess games: player type, good at / work on, results, openings; any player can be looked up (`?u=name`)
 - `mistakes.js` + `mistakes.html`/`mistakes-page.js` – mistakes from your whole Lichess games, trained as puzzles
 - `pros.js` + `data/pros.json` – pro puzzles; rebuild with `python tools/make_pros.py` (needs `pip install chess` and Stockfish)

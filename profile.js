@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028215039';
-import { STYLE_OF } from './styles.js?v=20261028215039';
+import { account, login, finishLogin } from './lichess.js?v=20261028215503';
+import { STYLE_OF } from './styles.js?v=20261028215503';
 
 const MAX = 500;
 const PV = 5;
@@ -265,6 +265,13 @@ function saveGames(name, games) {
   const keep = Object.entries(all).filter(([k]) => k !== me).sort((a, b) => b[1].at - a[1].at).slice(0, 2);
   try { localStorage.setItem(GAMES, JSON.stringify(Object.fromEntries([[me, { at: Date.now(), games: games.map(pack) }], ...keep]))); } catch {}
 }
+// One game changed here (analysed on its own page) goes back into the kept games.
+function keepGame(name, g) {
+  const games = storedGames(name);
+  if (!games) return;
+  const i = games.findIndex((x) => x.id === g.id);
+  if (i >= 0) { games[i] = g; saveGames(name, games); }
+}
 // A player's games as kept here, in Lichess's shape, or null.
 function storedGames(name) {
   const t = gamesStore()[name.toLowerCase()];
@@ -475,10 +482,11 @@ function playerCard(name, p, t, skills) {
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
   const main = p.speeds[0];
   return `<div class="pf-pcard" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">
-    <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${CODE[t[0].name] || 'ALL'}</span></div><span class="pf-piece" aria-hidden="true">♞</span></div>
+    <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${CODE[t[0].name] || 'ALL'}</span></div>
+      ${main ? `<div class="pf-pcard-rating"><b>${main.rating}</b><span>${main.speed}</span></div>` : '<span class="pf-piece" aria-hidden="true">♞</span>'}</div>
     <p class="pf-pcard-name">${esc(name)}</p>
     <div class="pf-pcard-stats">${skills.map((x) => `<span><b>${x.v ?? '–'}</b>${ABBR[x.label]}</span>`).join('')}</div>
-    <p class="pf-pcard-foot">${main ? `${main.speed.toUpperCase()} ${main.rating} · ` : ''}${p.n} GAMES</p>
+    <p class="pf-pcard-foot">♞ ${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
   </div>`;
 }
 function render(name, at, p) {
@@ -512,6 +520,7 @@ function render(name, at, p) {
       <section class="pf-card"><h2 class="pf-good">Strengths</h2>${list(p.good, 'Nothing stands out yet. More games give a clearer picture.')}</section>
       <section class="pf-card"><h2 class="pf-bad">Train next</h2>${list(p.work, 'Nothing stands out as a weakness in these games.')}</section>
     </div>
+    <section class="pf-card" id="pf-games"></section>
     <section class="pf-card">
       <h2>Results</h2>
       <dl class="pf-stats">
@@ -541,6 +550,7 @@ function render(name, at, p) {
   bindSearch();
   bindAnalyse(name);
   bindPlayerBar(name);
+  gamesList(name, 15);
   $('[data-skill-text]').addEventListener('click', (e) => {
     showSkillText = !showSkillText;
     $('.pf-skills-card').classList.toggle('open', showSkillText);
@@ -651,11 +661,36 @@ async function run(name) {
   try { const p = await build(name); if (mine === runs) render(name, Date.now(), p); } catch (err) { if (mine === runs) $('#profile-msg').textContent = err.message; }
 }
 
-export { build, cache, myName, skillsOf, storedGames, PV };
+export { build, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV };
 if ($('#profile')) { // the practice page imports this module for the above; only the profile page draws itself
   try { await finishLogin(); } catch (err) { $('#profile-msg').textContent = err.message; } // back from logging in on this page
   start();
 }
+// ---------- The games themselves ----------
+// The newest games as a list; each opens on game.html with the board, how it went and the key moves.
+const STATUS = { mate: 'mate', resign: 'resignation', outoftime: 'time', timeout: 'time', draw: 'agreement', stalemate: 'stalemate', aborted: 'abort' };
+function gamesList(name, n) {
+  const el = $('#pf-games'), games = storedGames(name) || (RAW_NAME.toLowerCase() === name.toLowerCase() ? RAW : null);
+  if (!el || !games?.length) return;
+  const me = name.toLowerCase();
+  const row = (g) => {
+    const side = g.players.white.user?.id === me ? 'white' : 'black', opp = g.players[side === 'white' ? 'black' : 'white'];
+    const res = !g.winner ? 'D' : g.winner === side ? 'W' : 'L';
+    const acc = g.players[side].analysis?.accuracy;
+    const blunders = g.players[side].analysis?.blunder;
+    return `<li><a class="pf-game" href="game.html?u=${encodeURIComponent(name)}&id=${g.id}">
+      <span class="pf-res r-${res}" title="${{ W: 'Won', L: 'Lost', D: 'Draw' }[res]}">${res}</span>
+      <span class="pf-game-main"><b>vs ${esc(opp.user?.id || 'anonymous')}</b> <small>${opp.rating || ''}</small><br><small>${esc((g.opening?.name || '').split(':')[0])}</small></span>
+      <span class="pf-game-meta">${g.speed} · ${Math.ceil((g.moves || '').split(' ').length / 2)} moves<br><small>${new Date(g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}${acc != null ? ` · ${acc}% acc` : ''}${blunders ? ` · ${blunders} blunder${blunders > 1 ? 's' : ''}` : ''}</small></span>
+    </a></li>`;
+  };
+  el.innerHTML = `<h2>${isMe(name) ? 'Your games' : 'Games'}</h2>
+    <p class="info pf-note">Open a game to replay it here: how it went, the moves that decided it, and what to take from it.</p>
+    <ul class="pf-games">${games.slice(0, n).map(row).join('')}</ul>
+    ${games.length > n ? `<button type="button" class="ghost" data-more-games>Show more</button>` : ''}`;
+  el.querySelector('[data-more-games]')?.addEventListener('click', () => gamesList(name, n + 15));
+}
+
 // ---------- Starred players and comparing ----------
 const FAVS = 'opening-book-v2-players'; // the players you star: friends or favourites, by name
 function favs() { try { return JSON.parse(localStorage.getItem(FAVS)) || []; } catch { return []; } }
@@ -688,14 +723,24 @@ async function profileFor(name) {
   return c && c.v === PV ? { name: c.name, p: c.p } : { name, p: await build(name) };
 }
 // Two players side by side: cards, types, skills as paired bars, the key numbers and opening taste.
-async function compare(a, b) {
+// Compare in one time control (bullet, blitz, rapid, classical) or all games: the profile is read
+// again from just those games of each player, so a blitz player and a bullet player compare like
+// for like. The default is the time control the first player plays most, when the other has games in it too.
+const SPEEDS = ['bullet', 'blitz', 'rapid', 'classical'];
+const MIN_SPEED = 10; // games in a time control needed to compare it
+async function compare(a, b, speed = new URLSearchParams(location.search).get('speed')) {
   $('#profile').innerHTML = '';
   try {
     const A = await profileFor(a), B = await profileFor(b);
-    renderCompare(A, B);
+    const ga = storedGames(a) || [], gb = storedGames(b) || [];
+    const count = (gs, sp) => gs.filter((g) => g.speed === sp).length;
+    const avail = SPEEDS.filter((sp) => count(ga, sp) >= MIN_SPEED && count(gb, sp) >= MIN_SPEED);
+    if (speed === null) speed = avail.includes(A.p.speeds[0]?.speed) ? A.p.speeds[0].speed : 'all';
+    const sub = (X, gs) => (speed === 'all' || !gs.length ? X : { name: X.name, p: profileOf(gs.filter((g) => g.speed === speed).map((g) => readGame(g, X.name.toLowerCase()))) });
+    renderCompare(sub(A, ga), sub(B, gb), speed, avail);
   } catch (err) { $('#profile-msg').textContent = err.message; }
 }
-function renderCompare(A, B) {
+function renderCompare(A, B, speed = 'all', avail = []) {
   const sa = skillsOf(A.p), sb = skillsOf(B.p);
   const num = (v, f = (x) => x) => (v === null || v === undefined ? '–' : f(v));
   const main = (p) => p.speeds[0];
@@ -712,7 +757,8 @@ function renderCompare(A, B) {
   ];
   $('#profile').innerHTML = `
     <div class="pf-players"><a class="ghost" href="${profileLink(A.name)}">← ${esc(A.name)}</a><a class="ghost" href="${profileLink(B.name)}">${esc(B.name)} →</a></div>
-    <header class="cmp-head"><p class="pf-kick">Compare</p><h1 class="pf-h1">${esc(A.name)} <span>vs</span> ${esc(B.name)}</h1></header>
+    <header class="cmp-head"><p class="pf-kick">Compare</p><h1 class="pf-h1">${esc(A.name)} <span>vs</span> ${esc(B.name)}</h1>
+      <div class="pf-seg cmp-speeds" role="group" aria-label="Time control">${['all', ...SPEEDS].map((sp) => `<button type="button" data-speed="${sp}" aria-pressed="${sp === speed}" ${sp === 'all' || avail.includes(sp) ? '' : `disabled title="Fewer than ${MIN_SPEED} ${sp} games for one of you"`}>${sp === 'all' ? 'All games' : sp[0].toUpperCase() + sp.slice(1)}</button>`).join('')}</div></header>
     <section class="cmp-cards">
       <div>${playerCard(A.name, A.p, A.p.type, sa)}<p class="cmp-type"><b>${A.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
       <div>${playerCard(B.name, B.p, B.p.type, sb)}<p class="cmp-type"><b>${B.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
@@ -734,7 +780,13 @@ function renderCompare(A, B) {
       <table class="cmp-table"><thead><tr><th></th><th>${esc(A.name)}</th><th>${esc(B.name)}</th></tr></thead>
         <tbody>${rows.map(([k, x, y]) => `<tr><th scope="row">${k}</th><td>${x}</td><td>${y}</td></tr>`).join('')}</tbody></table>
     </section>
-    <p class="info">Both read from each player's last ${MAX} rated Lichess games. Skills are rules of thumb; ones that need analysed games are only as good as the number analysed.</p>`;
+    <p class="info">Both read from each player's last ${MAX} rated Lichess games${speed === 'all' ? '' : `, ${speed} only`}. Skills are rules of thumb; ones that need analysed games are only as good as the number analysed.</p>`;  document.querySelectorAll('.cmp-speeds [data-speed]').forEach((btn) => btn.addEventListener('click', () => {
+    const q = new URLSearchParams(location.search);
+    q.set('speed', btn.dataset.speed);
+    history.replaceState(null, '', `?${q}`);
+    compare(A.name, B.name, btn.dataset.speed);
+  }));
+
 }
 const tasteShort = (mix) => [taste(mix?.w) && `${taste(mix.w).label} as White`, taste(mix?.b) && `${taste(mix.b).label} as Black`].filter(Boolean).join(', ') || 'Mixed';
 
