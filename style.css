@@ -1198,3 +1198,8 @@ a { text-underline-offset: .18em; }
 .pf-more-head h2 { margin: 0; }
 .pf-more-head span { color: var(--muted); font-size: 13.5px; }
 .account .acct-stat input:read-only { border-bottom-color: transparent; cursor: default; }
+/* Profile: facts about the last 10 games, under the form row */
+.pf-facts { margin: 14px 0 0; display: grid; gap: 8px; }
+.pf-facts div { display: grid; grid-template-columns: 6.5em 1fr; gap: 12px; align-items: baseline; }
+.pf-facts dt { font: 700 11.5px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.pf-facts dd { margin: 0; font-size: 15px; }

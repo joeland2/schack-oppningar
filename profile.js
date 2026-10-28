@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028233343';
-import { STYLE_OF } from './styles.js?v=20261028233343';
+import { account, login, finishLogin } from './lichess.js?v=20261028234001';
+import { STYLE_OF } from './styles.js?v=20261028234001';
 
 const MAX = 500;
 const PV = 13;
@@ -756,9 +756,23 @@ function render(name, at, p) {
 addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('details.pf-help[open]').forEach((d) => { d.open = false; d.querySelector('summary').focus(); }); });
 // The lead story under the card: recent form (the last ten results) and the one thing to train now.
 const PIECE_WORD = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
-// The tactics in the same last 10 games as the form row above.
-function tacticsList(name, games) {
-  const recent = games.slice(0, 10), t = tacticsOf(recent.map((g) => readGame(g, name.toLowerCase())));
+// The same last 10 games as the form row above: openings, colours, how they ended, accuracy, then tactics.
+function recentFacts(rs, p) {
+  const n = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`, wins = (xs) => xs.filter((r) => r.result === 1).length;
+  const fams = Object.entries(rs.reduce((m, r) => ({ ...m, [r.family]: [...(m[r.family] || []), r] }), {})).sort((a, b) => b[1].length - a[1].length);
+  const how = { mate: 'by mate', resign: 'by resignation', outoftime: 'on time', timeout: 'on time' };
+  const ends = (xs) => { const c = xs.reduce((m, r) => ({ ...m, [how[r.status] || 'other ways']: (m[how[r.status] || 'other ways'] || 0) + 1 }), {}); return Object.entries(c).sort((a, b) => b[1] - a[1])[0]; };
+  const won = rs.filter((r) => r.result === 1), lost = rs.filter((r) => r.result === 0), w = rs.filter((r) => r.side === 'w'), b = rs.filter((r) => r.side === 'b');
+  const acc = rs.filter((r) => r.acc !== null);
+  return [
+    fams.length && ['Openings', fams[0][1].length > 1 ? `${esc(fams[0][0])} ${fams[0][1].length} times, ${n(wins(fams[0][1]), 'win')}${fams[1] ? `; also ${esc(fams[1][0])}` : ''}` : `${fams.length} different openings, none twice`],
+    ['Colours', `${n(wins(w), 'win')} in ${w.length} as White, ${wins(b)} in ${b.length} as Black`],
+    (won.length || lost.length) && ['Endings', [won.length && `${ends(won)[1]} of ${n(won.length, 'win')} ${ends(won)[0]}`, lost.length && `${ends(lost)[1]} of ${n(lost.length, 'loss').replace('losss', 'losses')} ${ends(lost)[0]}`].filter(Boolean).join(', ')],
+    acc.length >= 3 && p.acc !== null && ['Accuracy', `${Math.round(sum(acc, (r) => r.acc) / acc.length)}% in the ${acc.length} analysed, against ${p.acc}% usually`],
+  ].filter(Boolean);
+}
+function tacticsList(name, games, p) {
+  const recent = games.slice(0, 10), rs = recent.map((g) => readGame(g, name.toLowerCase())), t = tacticsOf(rs);
   const by = (x) => Object.entries(x.by).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${n} with ${k === 'p' ? 'a' : 'the'} ${PIECE_WORD[k]}`).join(', ');
   const mates = (t.mate?.n || 0) + (t.backRank?.n || 0);
   const rows = [
@@ -768,7 +782,8 @@ function tacticsList(name, games) {
     t.promo && [t.promo.n, `promotion${t.promo.n === 1 ? '' : 's'}`, 'a pawn made it all the way'],
   ].filter(Boolean);
   if (!recent.length) return '';
-  return `<h3 class="pf-tac-h">Tactics used <small>last ${recent.length} games</small></h3>
+  return `<dl class="pf-facts">${recentFacts(rs, p).map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
+    <h3 class="pf-tac-h">Tactics used <small>last ${recent.length} games</small></h3>
     ${rows.length ? `<ul class="pf-tac">${rows.map(([n, what, how]) => `<li><b>${n}</b><span>${what}<small>${how}</small></span></li>`).join('')}</ul>` : '<p class="info">No forks, discovered checks, mates or promotions in these games.</p>'}`;
 }
 function leadStory(name, p, skills, me) {
@@ -788,7 +803,7 @@ function leadStory(name, p, skills, me) {
       ${main ? `<p class="pf-news-big"><b>${after(mine[0])}</b> ${change !== null ? `<span class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</span> <small>${main} this week, ${recent.length} game${recent.length === 1 ? '' : 's'}</small>` : `<small>${main} · no games this week</small>`}</p>` : ''}
       ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${form.map((x) => `<span class="pf-res r-${x}">${x}</span>`).join('')}</p>
         <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}, newest first · last played ${day(latest.createdAt)}</p>` : ''}
-      ${tacticsList(name, games)}
+      ${tacticsList(name, games, p)}
     </div>
     <div class="pf-leak${leak ? '' : ' none'}"><h2>${leak ? (me ? 'Your biggest leak' : 'Biggest leak') : 'No clear leak'}</h2>
       ${leak ? `<p class="pf-leak-title">${esc(leak.title)} <small>${leak.v}</small></p><p>${esc(say(leak.why))} ${esc(leak.train)}</p>${me ? `<a class="cta" href="${leak.href || 'practice.html'}">Train it</a>` : ''}`
