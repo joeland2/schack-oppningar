@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028123451';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028123451';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028123451';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028123451';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028123950';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028123950';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028123950';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028123950';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -42,6 +42,7 @@ let ply = 0;
 let sel = null;
 let hintSq = [];     // highlighted squares
 let mode = load(STORE + '-mode', 'learn'); // learn: every move is shown; try: test yourself
+if (mode === 'explore') mode = 'learn'; // Explore is for the moment; an opening always opens in Learn or Practice
 let wrongSq = null;
 let lastMove = null;
 let misses = 0;      // mistakes in this run
@@ -722,7 +723,7 @@ function repliesText(before, played) {
   return `<span class="reps">${top.map(part).join(' ')}${rest >= 0.01 ? ` <span class="rep">others ${pct(rest)}</span>` : ''}</span>`;
 }
 
-let lineDone = ''; // the summary shown at the end of the line, kept while you play on
+let lineDone = '', goOn = ''; // the summary shown at the end of the line, and the current tips
 function renderWhy() {
   const el = $('#why');
   if (!cur || !line.length || mode === 'explore') { $('#line-done').hidden = true; return (el.innerHTML = ''); } // Explore explains in the message
@@ -749,13 +750,15 @@ function renderWhy() {
   }
   // The line-done summary is made at the line's end and stays while you play on from there. The tips
   // are about the move to play at the line's end, so they go once you have played on.
-  const atEnd = ply >= line.length && hist.length === line.length;
-  let tips = '';
-  if (atEnd) {
+  if (ply >= line.length && hist.length === line.length) {
     lineDone = `<p class="done-head">Line done</p><p><b>What this line gave you</b> ${lineSummary()}</p>${lineFacts()}`;
-    const t = lineTips();
-    tips = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x) => `<li>${x}</li>`).join('')}</ul>` : '';
   }
+  // "How to go on" follows the game: worked out afresh on each of your turns, kept while they think.
+  if (ply >= line.length && userTurn()) {
+    const t = lineTips();
+    goOn = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x) => `<li>${x}</li>`).join('')}</ul>` : '';
+  }
+  const tips = ply >= line.length ? goOn : '';
   el.innerHTML = parts.join('');
   $('#line-done').innerHTML = ply >= line.length && lineDone ? `<div class="summary">${lineDone}${tips}</div>` : '';
   $('#line-done').hidden = !$('#line-done').innerHTML;
@@ -818,17 +821,21 @@ function lineTips() {
   const tips = [];
   const p = endPosition();
   const mine = ratingsAround(rating);
-  const reply = game.turn() === p.me ? null : explore(line, mine).moves.find((m) => m.n >= MIN_GAMES);
-  const at = reply ? [...line, reply.san] : game.turn() === p.me ? line : null;
+  const now = game.history().map(clean);
+  const reply = game.turn() === p.me ? null : explore(now, mine).moves.find((m) => m.n >= MIN_GAMES);
+  const at = reply ? [...now, reply.san] : game.turn() === p.me ? now : null;
   if (at) {
     const g = new Chess();
     at.forEach((m) => g.move(m));
     const next = strongGroups(at).x.moves.filter((m) => m.n >= MIN_GAMES).slice(0, 2).map((m) => new Chess(g.fen()).move(m.san));
     if (next.length) tips.push(`${reply ? `After their usual ${reply.san}, strong` : 'Strong'} players go on with ${next.map(moveWords).join(' or ')}.`);
   }
+  // Where games run out, Stockfish's choice (once the evaluation bar's search has it).
+  const best = !tips.length && game.turn() === p.me && EVALS.get(evalKey(game.fen()))?.move;
+  if (best) tips.push(`Stockfish's choice here: ${moveWords(new Chess(game.fen()).move(best))}.`);
   if (!p.castled && p.kingHome) tips.push('Castle soon, so your king is safe.');
   if (p.undeveloped.length) tips.push(`Bring out ${andList(p.undeveloped.map((x) => `the ${PIECE[x.type]} on ${x.square}`))}.`);
-  if (p.theirKingInCentre && line.length >= 8) tips.push('Their king is still in the centre: open lines with a pawn break before they castle.');
+  if (p.theirKingInCentre && now.length >= 8) tips.push('Their king is still in the centre: open lines with a pawn break before they castle.');
   if (p.lead > 0) tips.push('Trade pieces to make your extra material count.');
   if (p.lead < 0) tips.push('Keep the initiative: you gave material, so attack before they get organised.');
   if (!p.centre.length) tips.push(`Claim the centre with a pawn to ${p.me === 'w' ? 'd4 or e4' : 'd5 or e5'} when you can.`);
@@ -842,6 +849,7 @@ function lineTips() {
 
 // ---------- Game ----------
 function start(op) {
+  if (mode === 'explore') setMode('learn', false);
   cur = op;
   line = []; lines = []; game = new Chess();
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
@@ -872,7 +880,7 @@ function play(i) {
   misses = 0; missesHere = 0; busy = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
   playing = false;
-  premove = null; notes = []; betters = []; lineDone = '';
+  premove = null; notes = []; betters = []; lineDone = ''; goOn = '';
   clearShapes(boardEl);
   redo = [];
   $('#restart').textContent = 'Restart';
@@ -999,7 +1007,7 @@ function evaluate(fen, { keep = false, ms = 350 } = {}) {
   if (EVALS_PENDING.has(k)) return EVALS_PENDING.get(k);
   const p = search(fen, { ms, skip: () => !keep && (!cur || game.fen() !== fen) }).then((r) => {
     EVALS_PENDING.delete(k);
-    if (r) { EVALS.set(k, r); renderEval(); }
+    if (r) { EVALS.set(k, r); renderEval(); if (playing && cur && game.fen() === fen) renderWhy(); } // the tips can use it
     return r;
   });
   EVALS_PENDING.set(k, p);
@@ -1497,7 +1505,7 @@ $('#weakest').addEventListener('click', () => {
 });
 function setMode(m, restart = true, remember = true) {
   mode = m;
-  if (remember) store(STORE + '-mode', m);
+  if (remember && m !== 'explore') store(STORE + '-mode', m);
   for (const k of ['learn', 'try', 'explore']) $(`#mode-${k}`).setAttribute('aria-pressed', m === k);
   $('#mode-about').textContent = {
     learn: 'Every move is shown, with the replies you can expect at your level. Nothing is scored.',
