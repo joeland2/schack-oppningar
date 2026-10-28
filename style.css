@@ -682,3 +682,21 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 @keyframes moment-in { from { opacity: 0; transform: translateY(-4px); } }
 @keyframes moment-grow { from { transform: scaleX(.6); transform-origin: left; } }
 @media (prefers-reduced-motion: reduce) { .moment, .moment-swing s.to { animation: none; } }
+/* The lines as a list or as a tree */
+.lines-view { display: flex; gap: 4px; margin: 8px 0 6px; }
+.chip-btn { padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+.chip-btn[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.lines-tree { max-height: 420px; overflow: auto; font-size: 13px; }
+.lines-tree ul { margin: 0; padding: 0 0 0 14px; list-style: none; border-left: 1px solid var(--line); }
+.lines-tree > ul { padding-left: 0; border-left: 0; }
+.lines-tree li { margin: 4px 0; }
+.tree-moves { font-family: var(--font-mono); color: var(--ink); margin-right: 6px; }
+.tree-end { display: inline-flex; align-items: baseline; gap: 4px; margin: 2px 4px 2px 0; padding: 2px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
+.tree-end small { color: var(--muted); }
+.tree-end.learned { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); }
+.tree-end.cleared { border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--surface)); }
+.tree-end.now { outline: 2px solid var(--ink); outline-offset: 1px; }
+.streak { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.streak b { color: var(--ink); }
+.streak b.up { color: var(--good); }
+@media (max-width: 560px) { .streak { display: none; } }

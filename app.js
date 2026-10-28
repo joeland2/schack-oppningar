@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028172720';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028172720';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028172720';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028172720';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028173931';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028173931';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028173931';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028173931';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1555,7 +1555,7 @@ const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 function review(ok) {
   const s = stats[statKey(cur.id)];
   s.rep ??= {};
-  const key = lineKey(line);
+  const key = lineKey(lines[lineIdx].moves); // the line as listed, whatever move order you took
   const r = s.rep[key] ?? { box: 0, due: 0 };
   r.box = ok ? Math.min(r.box + 1, INTERVALS.length - 1) : 0;
   r.due = Date.now() + INTERVALS[r.box] * DAY;
@@ -1670,11 +1670,52 @@ function renderLines() {
       <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? '<span class="trap-tag">Trap</span> ' : ''}${lineName(l)}<small>${lineTag(l)}</small></span>
       <span class="line-share">${bigShare(l.share)}</span><span class="line-ok">${state(l) ? `<span class="done-tag"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${state(l) === ' cleared' ? 'Cleared' : 'Learned'}</span>` : ''}</span>
     </button></li>`).join('');
+  if (linesView === 'tree') renderTree();
 }
 $('#lines-list').addEventListener('click', (e) => {
   const b = e.target.closest('.line-btn');
   if (b) play(Number(b.dataset.i));
 });
+
+// The lines as a tree, as a course's overview: the moves they share once, a branch where they part,
+// and at each line's end its number and how far you are with it.
+let linesView = load(STORE + '-lines-view', 'list');
+function renderTree() {
+  const s = stats[statKey(cur.id)] || {}, done = s.done || [], learned = s.played || [];
+  const root = { kids: new Map(), ends: [] };
+  lines.forEach((l, i) => {
+    let node = root;
+    for (const m of l.moves) { if (!node.kids.has(m)) node.kids.set(m, { kids: new Map(), ends: [] }); node = node.kids.get(m); }
+    node.ends.push(i);
+  });
+  const label = (ply, san, first) => (ply % 2 === 0 ? `${ply / 2 + 1}.${san}` : first ? `${(ply + 1) / 2}...${san}` : san);
+  const end = (i) => {
+    const k = lineKey(lines[i].moves), st = done.includes(k) ? 'cleared' : learned.includes(k) ? 'learned' : 'new';
+    return `<button type="button" class="tree-end ${st}${i === lineIdx ? ' now' : ''}" data-i="${i}">${lines[i].trap ? '<span class="trap-tag">Trap</span> ' : ''}Line ${i + 1}<small>${st === 'new' ? 'not played' : st}</small></button>`;
+  };
+  // One branch: its moves up to the next fork or line end, then what follows.
+  const branch = (san, node, ply) => {
+    const seq = [label(ply, san, true)];
+    while (node.kids.size === 1 && !node.ends.length) { const [m, next] = [...node.kids][0]; ply++; seq.push(label(ply, m, false)); node = next; }
+    return `<li><span class="tree-moves">${seq.join(' ')}</span>${node.ends.map(end).join('')}${node.kids.size ? `<ul>${[...node.kids].map(([m, n]) => branch(m, n, ply + 1)).join('')}</ul>` : ''}</li>`;
+  };
+  $('#lines-tree').innerHTML = `<ul>${[...root.kids].map(([m, n]) => branch(m, n, 0)).join('')}</ul>`;
+}
+$('#lines-tree').addEventListener('click', (e) => { const b = e.target.closest('.tree-end'); if (b) play(Number(b.dataset.i)); });
+function showLinesView() {
+  $('#lines-list').hidden = linesView === 'tree';
+  $('#lines-tree').hidden = linesView !== 'tree';
+  document.querySelectorAll('.lines-view [data-view]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === linesView));
+  if (linesView === 'tree' && cur) renderTree();
+}
+document.querySelector('.lines-view').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-view]');
+  if (!b) return;
+  linesView = b.dataset.view;
+  store(STORE + '-lines-view', linesView);
+  showLinesView();
+});
+showLinesView();
 
 function showComplete() {
   $('#complete-title').textContent = `${isVs(cur) ? 'vs ' : ''}${cur.name}: complete`;
@@ -1777,7 +1818,8 @@ function tryMove(from, to) {
     return true;
   }
   if (mode === 'time') { trial.end += TRIAL_RIGHT * 1000; trial.score++; }
-  if (clean(m.san) !== line[ply]) {
+  const moved = clean(m.san) !== line[ply] && transpose(); // another move order to a line's position counts as that line's move
+  if (clean(m.san) !== line[ply] && !moved) {
     game.undo();
     misses++; missesHere++;
     wrongSq = to; sel = null;
@@ -1797,12 +1839,67 @@ function tryMove(from, to) {
     return true;
   }
   lastMove = m; ply++; sel = null; hintSq = []; missesHere = 0;
-  say(mode === 'time' ? `Right: ${m.san}. +${TRIAL_RIGHT} s` : `Right: ${moveWords(m)}.`, 'good');
+  say(mode === 'time' ? `Right: ${m.san}. +${TRIAL_RIGHT} s` : moved === 'swap' ? `${m.san} first is fine: same moves, another order. The line goes on.` : moved ? `${m.san} reaches the same position by another move order. Fine: the line goes on from here.` : `Right: ${moveWords(m)}.`, 'good');
   notes[ply - 1] = 'book';
   render();
   if (ply >= line.length) finish(); else reply();
   return true;
 }
+
+// Your streak and daily goal: lines finished per day (Learn or Practice), { 'YYYY-MM-DD': n }. The
+// streak is the days in a row with at least one line, up to today (or yesterday, before today's first).
+const DAYS_KEY = STORE + '-days', GOAL = 5;
+const dayOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function streakOf(days, today = new Date()) {
+  const d = new Date(today);
+  if (!days[dayOf(d)]) d.setDate(d.getDate() - 1);
+  let n = 0;
+  while (days[dayOf(d)]) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+console.assert(streakOf({ '2026-10-27': 2, '2026-10-26': 1, '2026-10-24': 3 }, new Date(2026, 9, 28)) === 2, 'streak from yesterday');
+console.assert(streakOf({ '2026-10-28': 1 }, new Date(2026, 9, 28)) === 1 && streakOf({}, new Date(2026, 9, 28)) === 0, 'streak');
+function countDay() {
+  const days = load(DAYS_KEY, {}), today = dayOf(new Date());
+  days[today] = (days[today] || 0) + 1;
+  store(DAYS_KEY, days);
+  renderStreak();
+  if (days[today] === GOAL) setTimeout(() => flash('Daily goal reached!'), 1900); // after the line's own banner
+}
+function renderStreak() {
+  const days = load(DAYS_KEY, {}), today = days[dayOf(new Date())] || 0, n = streakOf(days);
+  const el = $('#streak');
+  el.hidden = !n && !today;
+  el.innerHTML = `<b>${n}</b> ${n === 1 ? 'day' : 'days'} in a row · <b class="${today >= GOAL ? 'up' : ''}">${Math.min(today, GOAL)}/${GOAL}</b> lines today`;
+  el.title = today >= GOAL ? 'Daily goal reached' : `Finish ${GOAL - today} more ${GOAL - today === 1 ? 'line' : 'lines'} today to reach your daily goal`;
+}
+renderStreak();
+
+// A transposition: after a move that is not the line's, the position is the one a line has at this
+// point (this line's or another's). Then that line is the one you are in. Not in a time trial, where
+// the move order is the drill.
+const posAt = (moves) => { const g = new Chess(); moves.forEach((x) => g.move(x)); return evalKey(g.fen()); };
+function transpose() {
+  if (mode === 'time') return false;
+  const n = game.history().length, at = evalKey(game.fen()), san = clean(game.history().at(-1));
+  // Your next two moves the other way round: fine when, after their reply, the line's move you skipped
+  // reaches the line's position. The line is then played in your order.
+  if (line[ply + 2] === san) {
+    const g = new Chess(game.fen());
+    try { g.move(line[ply + 1]); g.move(line[ply]); } catch { /* not this time */ }
+    if (g.history().length === 2 && evalKey(g.fen()) === posAt(line.slice(0, ply + 3))) {
+      line = [...line];
+      [line[ply], line[ply + 2]] = [line[ply + 2], line[ply]];
+      return 'swap';
+    }
+  }
+  const j = lines.findIndex((l) => l.moves.length >= n && posAt(l.moves.slice(0, n)) === at);
+  if (j < 0) return false;
+  lineIdx = j; line = lines[j].moves;
+  renderLines(); renderLineBox();
+  return true;
+}
+console.assert(posAt(['Nf3', 'd5', 'd4', 'Nf6']) === posAt(['d4', 'd5', 'Nf3', 'Nf6']), 'posAt: a transposition is the same position');
 
 function expectedMove() {
   return new Chess(game.fen()).move(line[ply]);
@@ -1859,8 +1956,10 @@ function finish() {
     return guide();
   }
   endLen = game.history().length;
+  countDay();
   const s = stats[statKey(cur.id)];
-  if (!s.played.includes(lineKey(line))) s.played.push(lineKey(line));
+  const k = lineKey(lines[lineIdx].moves);
+  if (!s.played.includes(k)) s.played.push(k);
   store(STORE, stats);
   const wasComplete = cleared() === lines.length;
   const r = mode === 'try' ? review(misses === 0) : null;
