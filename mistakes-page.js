@@ -1,6 +1,6 @@
-import { drill } from './drill.js?v=20261028181542';
-import { THEMES } from './mistakes.js?v=20261028181542';
-import { explainMistake, dangerAfter } from './ideas.js?v=20261028181542';
+import { drill } from './drill.js?v=20261028181916';
+import { THEMES } from './mistakes.js?v=20261028181916';
+import { explainMistake, dangerAfter } from './ideas.js?v=20261028181916';
 
 // Positions from your own games where you went wrong, saved by "Find my mistakes" on the openings page.
 // Everything is explained here, on the board: what your move did wrong, nudges while you look for
@@ -10,7 +10,7 @@ try { found = JSON.parse(localStorage.getItem('opening-book-v2-mistakes')) || []
 
 if (!found.length) {
   document.querySelector('.layout').innerHTML = `<section class="picker"><h1>No mistakes yet</h1>
-    <p class="info">Open <a href="openings.html">Practise openings</a>, check your Lichess games and press Find my mistakes.
+    <p class="info">Open <a href="./">Practise openings</a>, check your Lichess games and press Find my mistakes.
     The positions where you went wrong show up here to train.</p></section>`;
 } else {
   drill(found.map((f, n) => {

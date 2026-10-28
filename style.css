@@ -373,8 +373,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .card .go .ico { width: 16px; height: 16px; transition: transform .15s; }
 .card:hover .go .ico { transform: translateX(3px); }
 
-/* Phone header: the rating label is read out but not shown, so the header fits one row */
-@media (max-width: 560px) {
+/* Narrower headers (the section links take room): the rating label is read out but not shown, so the header fits one row */
+@media (max-width: 1280px) {
   .account-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .account { flex-wrap: nowrap; }
   .account .ghost { padding: 8px 12px; }
@@ -707,3 +707,9 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .moment-quiz .moment-actions button { text-align: left; font-weight: 500; background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
 .moment-quiz .moment-actions button:hover { border-color: var(--ink); }
 .coach .why .careful { color: var(--ink); border-left: 3px solid #e07b00; padding-left: 8px !important; }
+/* The sections, in the header of every page */
+.top-nav { display: flex; gap: 4px; margin-right: auto; margin-left: 12px; }
+.top-nav a { padding: 6px 10px; border-radius: 8px; color: var(--muted); font-weight: 500; text-decoration: none; }
+.top-nav a:hover { color: var(--ink); background: var(--bg); }
+.top-nav a[aria-current="page"] { color: var(--ink); background: var(--bg); box-shadow: inset 0 -2px 0 var(--ink); }
+@media (max-width: 560px) { .top-in { flex-wrap: wrap; } .top-nav { order: 3; width: 100%; margin: 0; } }

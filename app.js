@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028181542';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028181542';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028181542';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028181542';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028181916';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261028181916';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261028181916';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261028181916';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
