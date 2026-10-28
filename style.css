@@ -862,3 +862,9 @@ a.cta { color: var(--accent-ink); }
   .top-nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 0; margin-inline: -8px; }
   .top-nav a { white-space: nowrap; padding: 6px 8px; }
 }
+/* Dark mode: White's cards are dimmed warm paper, not bright cream, so they do not glare beside the
+   black ones; the two sides still read apart. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ocard.side-w { --accent: #f4efe6; --surface: #2c2823; --ink: #f4efe6; --muted: #b5ad9f; --line: #3d3730; --raised: #39342d; --good: #5fc48a; --bad: #ff6b6b; }
+}
+:root[data-theme="dark"] .ocard.side-w { --accent: #f4efe6; --surface: #2c2823; --ink: #f4efe6; --muted: #b5ad9f; --line: #3d3730; --raised: #39342d; --good: #5fc48a; --bad: #ff6b6b; }
