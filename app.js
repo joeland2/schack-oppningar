@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028111002';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028111002';
-import { ideaAt, asMover, CENTRE } from './ideas.js?v=20261028111002';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028111002';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028111250';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028111250';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028111250';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028111250';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1081,13 +1081,26 @@ async function rate(i, before, m) {
 }
 function renderNotes(gen) { if (gen === gameGen && cur) { renderBoard(); renderMoves(); renderWhy(); } }
 
-// A good move for you here: what strong players play most, or Stockfish's choice where games run out.
+// The best move for you here, by Stockfish at full strength (the same search the evaluation bar uses,
+// so it is usually ready already); what strong players play most if the engine has no answer.
 async function goodMove() {
   const at = game.fen();
+  const r = await evaluate(at, { keep: true, ms: 600 });
+  if (game.fen() !== at) return null;
+  if (r?.move) return new Chess(at).move(r.move);
   const strong = strongGroups(game.history().map(clean)).x.moves.find((m) => m.n >= MIN_GAMES);
-  if (strong) return new Chess(at).move(strong.san);
-  const m = await bestMove(at);
-  return m && game.fen() === at ? new Chess(at).move(m) : null;
+  return strong ? new Chess(at).move(strong.san) : null;
+}
+// What kind of move the best one is, without giving it away.
+function hintFor(m) {
+  const g = new Chess(game.fen());
+  g.move(m.san);
+  if (g.isCheckmate()) return 'There is a checkmate.';
+  if (g.inCheck()) return 'Look for a check.';
+  if (m.captured) return `Look for a capture: the best move takes a ${PIECE[m.captured]}.`;
+  const danger = hanging(game, game.turn())[0];
+  if (danger) return `Your ${PIECE[danger.type]} on ${danger.square} is in danger.`;
+  return 'Look for the move that improves your worst piece.';
 }
 
 let engineSaid = false; // the switch to Stockfish is mentioned once per game
@@ -1416,7 +1429,7 @@ $('#hint').addEventListener('click', async () => {
     const m = await goodMove();
     if (!m || !userTurn()) return;
     hintSq = [m.from]; renderBoard();
-    return say('The piece to move is highlighted.');
+    return say(`The piece to move is highlighted. ${hintFor(m)}`);
   }
   showHint(); say('The piece to move is highlighted.');
 });
@@ -1427,7 +1440,7 @@ $('#show').addEventListener('click', async () => {
     if (!m || game.fen() !== at) return;
     const why = ideaAt(new Chess(at), m.san);
     hintSq = [m.from, m.to]; renderBoard();
-    return say(`${instruction(m)}.${why ? ' ' + why : ''}`);
+    return say(`Best move: ${instruction(m)}.${why ? ' ' + why : ''}`);
   }
   const m = expectedMove();
   misses++;
