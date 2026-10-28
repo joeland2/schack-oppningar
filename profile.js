@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261028230348';
-import { STYLE_OF } from './styles.js?v=20261028230348';
+import { account, login, finishLogin } from './lichess.js?v=20261028231646';
+import { STYLE_OF } from './styles.js?v=20261028231646';
 
 const MAX = 500;
 const PV = 12;
@@ -504,11 +504,15 @@ function analysePanel(name, p) {
   if (analysing) return `<div id="pf-analyse" class="pf-analyse running"><span class="pf-an-progress">Analysing…</span><div class="pf-an-bar"><i></i></div><button type="button" class="link" data-stop>Stop</button></div>`;
   if (!p.todo) return '';
   const opts = [100, 250, 500].filter((n) => n <= Math.max(100, p.n)).map((n) => ({ n, ...costOf(p, n) }));
-  const few = p.analysed < ENOUGH, first = opts[0];
+  const few = p.analysed < ENOUGH;
+  const todo = opts.filter((o) => o.games), main = todo[0], rest = todo.slice(1);
+  if (!main) return '';
+  const btn = (o, cls) => `<button type="button" class="${cls}" data-analyse="${o.n}" title="${games(o.games)} without analysis among your newest ${o.n}, ${minutes(o.sec)}, with Stockfish in your browser">Analyse ${o.games} more <small>~${minutes(o.sec).replace('about ', '')}</small></button>`;
   return `<div id="pf-analyse" class="pf-analyse${few ? ' few' : ''}">
     <div class="pf-an-row"><span><b>${p.analysed}/${p.n}</b> games analysed${p.ours ? ` (${p.ours} here)` : ''}
-      <details class="pf-help"><summary title="${WHY_ANALYSE}" aria-label="Why analyse?">?</summary><p>${WHY_ANALYSE}</p></details>. Analyse:</span>
-    ${opts.map((o) => `<button type="button" class="pf-an-opt" data-analyse="${o.n}" ${o.games ? '' : 'disabled'} title="${o.games ? `${o.games} games without analysis, ${minutes(o.sec)}, with Stockfish in your browser` : 'All analysed'}">Newest ${o.n} <small>${o.games ? `${o.games} to analyse · ${minutes(o.sec).replace('about ', '~')}` : 'all done'}</small></button>`).join('')}</div>
+      <details class="pf-help"><summary title="${WHY_ANALYSE}" aria-label="Why analyse?">?</summary><p>${WHY_ANALYSE}</p></details></span>
+    ${btn(main, 'cta pf-an-go')}
+    ${rest.length ? `<details class="pf-an-menu"><summary>More</summary><div>${rest.map((o) => btn(o, 'pf-an-opt')).join('')}</div></details>` : ''}</div>
     ${few ? `<p class="pf-an-few">Analyse at least ${ENOUGH} games to unlock Openings, Tactics, Winning when ahead, Defending, accuracy and blunders.</p>` : ''}
   </div>`;
 }
@@ -535,13 +539,16 @@ const search = (label) => `<form id="pf-form" class="rating-row pf-search" role=
 function bindSearch() {
   $('#pf-form')?.addEventListener('submit', (e) => { e.preventDefault(); show($('#pf-name').value.trim(), true); });
 }
-const bar = (s) => `<div class="wdl" role="img" aria-label="Score ${pct(s)}"><span class="w" style="width:${s * 100}%"></span><span class="l" style="width:${(1 - s) * 100}%"></span></div>`;
+const games = (n) => `${n} game${n === 1 ? '' : 's'}`;
+// Wins, draws, losses; a row with only a score (no win count) draws as wins and losses.
+const bar = (o) => { const w = o.win ?? o.score, d = o.win == null ? 0 : Math.max(0, 2 * (o.score - o.win)), l = Math.max(0, 1 - w - d);
+  return `<div class="wdl" role="img" aria-label="${pct(w)} wins, ${pct(d)} draws, ${pct(l)} losses"><span class="w" style="width:${w * 100}%"></span><span class="d" style="width:${d * 100}%"></span><span class="l" style="width:${l * 100}%"></span></div>`; };
 const ago = (t) => { const h = (Date.now() - t) / 3.6e6; return h < 1 ? 'less than an hour ago' : h < 48 ? `${Math.round(h)} hours ago` : `${Math.round(h / 24)} days ago`; };
 function verdictList(items, empty) {
   return items.length ? `<ul class="pf-list">${items.map((i) => `<li><b>${esc(i.title)}</b><span>${esc(i.why)}${i.href ? ` <a href="${i.href}">Train it</a>` : ''}</span></li>`).join('')}</ul>` : `<p class="info">${empty}</p>`;
 }
 function openingRows(list) {
-  return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><span>${esc(o.fam)}</span><small>${o.n} games · ${pct(o.win ?? o.score)} wins</small>${bar(o.win ?? o.score)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
+  return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><span>${esc(o.fam)}</span><small>${games(o.n)} · ${pct(o.win ?? o.score)} wins</small>${bar(o)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
 }
 // Each bar: what it measures, what the games show, and below 50 how to train it; the words show on request.
 let showSkillText = false;
@@ -552,7 +559,7 @@ function skillBars(skills, say, me) {
       ${x.v === null && x.needs ? '<small class="pf-skill-lock">Needs more analysed games</small>' : ''}
       <div class="pf-skill-more"><p class="pf-means">${esc(x.means)}</p>
       <small>${x.v === null ? 'Not enough games to say.' : esc(say(x.why))}</small>
-      ${x.raw !== null && x.raw < 50 ? `<p class="pf-train"><b>How to train:</b> ${esc(x.train)}${me && x.href ? ` <a href="${x.href}">Start</a>` : ''}</p>` : ''}</div></li>`).join('')}</ul>`;
+      ${x.raw !== null && x.raw <= 45 ? `<p class="pf-train"><b>How to train:</b> ${esc(x.train)}${me && x.href ? ` <a href="${x.href}">Start</a>` : ''}</p>` : ''}</div></li>`).join('')}</ul>`;
 }
 // Which kind of opening each side mostly picks: the top style when it is a quarter or more of them.
 const taste = (m) => (m && m.n >= 10 ? m.parts.find((x) => x.k !== 'other' && x.share >= 0.25) || null : null);
@@ -561,7 +568,7 @@ function tasteLine(mix, me) {
   if (!w && !b) return '';
   return `<p class="pf-taste">Opening taste: ${[w && `<b>${w.label}</b> as White`, b && `<b>${b.label}</b> as Black`].filter(Boolean).join(' · ')}</p>`;
 }
-function tastePanel(mix, me) {
+function tastePanel(mix, me, folded) {
   if (!mix) return '';
   const side = (m, name) => {
     if (m.n < 10) return `<div><h3>As ${name}</h3><p class="info">Too few games in openings ${me ? 'you' : 'they'} choose as ${name}.</p></div>`;
@@ -569,7 +576,7 @@ function tastePanel(mix, me) {
     return `<div><h3>As ${name}</h3><p class="pf-taste-say">${t ? `Mostly <b>${t.words}</b> (${pct(t.share)} of the openings ${me ? 'you' : 'they'} choose).` : 'A mix of openings, no style stands out.'}</p>
       <ul class="pf-rows">${m.parts.map((x) => `<li><span>${x.label}</span><small>${pct(x.share)}</small><div class="pf-meter"><i style="width:${x.share * 100}%"></i></div></li>`).join('')}</ul></div>`;
   };
-  return `<section class="pf-card"><h2>Opening style</h2>
+  return `<section class="${folded ? 'pf-more-body' : 'pf-card'}">${folded ? '' : '<h2>Opening style</h2>'}
     <p class="info pf-note">Gambits give material for attack, attacking openings go for the initiative, positional and solid ones build first. Counted from the openings ${me ? 'you pick yourself' : 'they pick themselves'}: the defence as Black, the opening as White.</p>
     <div class="pf-two pf-taste-grid">${side(mix.w, 'White')}${side(mix.b, 'Black')}</div></section>`;
 }
@@ -580,9 +587,22 @@ function endsGrid(ends) {
     <div class="pf-ends-cell"><b>${pct(x[k])}</b><small>${name}</small><span class="pf-ends-bar"><i style="width:${x[k] * 100}%"></i></span></div>`).join('')}</div>`;
   return `<div class="pf-ends">${row('Wins', 'won', ends.won)}${row('Losses', 'lost', ends.lost)}</div>`;
 }
+// One judgement for the whole page, from the skills against your opponents: strengths are skills
+// clearly above them (56+), weaknesses clearly below (45 or less), and the leak is the worst of those;
+// within that band it is noise and nothing is called a leak. Opening and colour verdicts are added.
+const SKILL_VERDICTS = new Set(['Winning when ahead', 'Fighting back', 'Avoiding blunders', 'Getting out of the opening', 'Endgames', 'The clock', 'Using your time', 'Early collapses']);
+function judge(p, skills) {
+  const known = skills.filter((x) => x.raw !== null);
+  const item = (x) => ({ title: x.label, why: x.why, href: x.href, train: x.train, v: x.v });
+  const work = known.filter((x) => x.raw <= 45).sort((a, b) => a.raw - b.raw).slice(0, 2).map(item);
+  const good = known.filter((x) => x.raw >= 56).sort((a, b) => b.raw - a.raw).slice(0, 2).map(item);
+  const extra = (list) => (list || []).filter((x) => !SKILL_VERDICTS.has(x.title));
+  return { good: [...good, ...extra(p.good)].slice(0, 4), work: [...work, ...extra(p.work)].slice(0, 4), leak: work[0] || null };
+}
+
 // A portrait in words, from this player's own games: the openings they actually choose, how their
 // games end, their best piece, and the area that lifts or holds them back. No two read the same.
-function portrait(name, p, skills, me) {
+function portrait(name, p, skills, me, part = 'lead') {
   const you = me ? 'You' : esc(name), your = me ? 'your' : 'their', are = me ? 'are' : 'is';
   // The openings chosen, by family: the King's Gambit Accepted and Declined are one King's Gambit.
   const own = (list) => [...new Set(list.filter((o) => !o.fam.startsWith('vs ')).map((o) => o.fam.replace(/ (Accepted|Declined)$/, '')))].slice(0, 2).map(esc);
@@ -592,7 +612,11 @@ function portrait(name, p, skills, me) {
   const t = p.type.map((x) => x.name.toLowerCase());
   out.push(`${you} ${are} ${article(t[0])} ${t[0]}${t[1] ? ` with a ${t[1]}'s streak` : ''}${w.length || b.length ? `, reaching for ${[w.length && `the ${and(w)} as White`, b.length && `the ${and(b)} as Black`].filter(Boolean).join(' and ')}` : ''}.`);
   const known = skills.filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
-  if (known.length >= 2) out.push(`${me ? 'Your' : 'Their'} game is carried by ${known[0].label.toLowerCase()} and held back most by ${known[known.length - 1].label.toLowerCase()}.`);
+  const { leak } = judge(p, skills);
+  const named = (x) => ({ Clock: 'the clock', Openings: 'the openings' }[x.label || x.title] || (x.label || x.title).toLowerCase());
+  if (known.length >= 2) out.push(`${me ? 'Your' : 'Their'} game is carried by ${named(known[0])}${leak ? ` and held back most by ${named(leak)}` : `, and ${me ? 'you match your' : 'they match their'} opponents everywhere else`}.`);
+  if (part === 'lead') return out.join(' ');
+  out.length = 0;
   if (p.piece) out.push(`${me ? 'Your' : 'Their'} most important piece is the ${PIECE_NAME[p.piece]}.`);
   const e = p.ends.won, l = p.ends.lost;
   const winsBy = e.mate >= e.resign && e.mate >= e.time ? `${pct(e.mate)} of wins by mate` : e.time >= e.resign ? `${pct(e.time)} of wins on the clock` : `${pct(e.resign)} of wins by resignation`;
@@ -626,13 +650,13 @@ const rankText = (main) => (pctOf(main) >= 50 ? `Top ${Math.max(1, 100 - pctOf(m
 function cardNote(name, p, me) {
   const main = p.speeds[0];
   if (!main) return '';
-  return `<p class="pf-card-note">The six skills compare ${me ? 'you' : esc(name)} with ${me ? 'your' : 'their'} own opponents rated ${main.rating - PEER}–${main.rating + PEER}, in the same games: <b>50 means as good as them</b>, higher is better. The big number is the average of the six. <b>${rankText(main)}</b>: where ${main.rating} ranks among all Lichess ${main.speed} players this week.</p>`;
+  return `<details class="pf-card-help"><summary>How the card works</summary><p class="pf-card-note">The six skills compare ${me ? 'you' : esc(name)} with ${me ? 'your' : 'their'} own opponents rated ${main.rating - PEER}–${main.rating + PEER}, in the same games: <b>50 means as good as them</b>, higher is better. The big number is the average of the six. <b>${rankText(main)}</b>: where ${main.rating} ranks among all Lichess ${main.speed} players this week.</p></details>`;
 }
 function render(name, at, p) {
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
   document.title = me ? 'Your Profile' : `${name} · Profile`;
   const list = (items, empty) => verdictList(items.map((i) => ({ ...i, why: say(i.why), href: me ? i.href : null })), empty);
-  const known = skills.filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
+  const J = judge(p, skills);
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= ENOUGH ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= ENOUGH ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
     ${playerBar(name)}
@@ -642,9 +666,11 @@ function render(name, at, p) {
         <h1 class="pf-h1">${esc(t[0].name)}</h1>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}
         <p class="pf-portrait">${portrait(name, p, skills, me)}</p>
-        <div class="pf-about">${t.map((x) => `<p title="${esc(TYPE_ABOUT[x.name] || '')}"><b>${esc(x.name)}:</b> ${esc(say(x.why))}</p>`).join('')}</div>
-        ${tasteLine(p.styleMix, me)}
-        ${known.length >= 2 ? `<p class="pf-best">Strongest: <b>${known[0].label}</b> · To train: <b>${known[known.length - 1].label}</b></p>` : ''}
+        <details class="pf-why-type"><summary>Why ${esc(t.map((x) => x.name.toLowerCase()).join(' + '))}? More about ${me ? 'your' : 'their'} game</summary>
+          <div class="pf-about">${t.map((x) => `<p><b>${esc(x.name)}.</b> ${esc(TYPE_ABOUT[x.name] || '')} <span>${esc(say(x.why))}</span></p>`).join('')}</div>
+          ${tasteLine(p.styleMix, me)}
+          <p class="pf-more-portrait">${portrait(name, p, skills, me, 'more')}</p>
+        </details>
       </div>
     </section>
     ${leadStory(name, p, skills, me)}
@@ -658,8 +684,8 @@ function render(name, at, p) {
       <p class="info pf-note pf-skill-more">Each skill compares ${me ? 'you' : 'the player'} with ${me ? 'your' : 'their'} own opponents rated within ${PEER} points, from the same games: 50 means as good as them, higher is better.</p>
     </section>
     <div class="pf-two">
-      <section class="pf-card"><h2 class="pf-good">Strengths</h2>${list(p.good, 'Nothing stands out yet. More games give a clearer picture.')}</section>
-      <section class="pf-card"><h2 class="pf-bad">Train next</h2>${list(p.work, 'Nothing stands out as a weakness in these games.')}</section>
+      <section class="pf-card"><h2 class="pf-good">Strengths</h2>${verdictList(J.good.map((i) => ({ ...i, why: say(i.why), href: null })), `Nothing is clearly above ${me ? 'your' : 'their'} opponents yet.`)}</section>
+      <section class="pf-card"><h2 class="pf-bad">Train next</h2>${list(J.work, `Nothing is clearly below ${me ? 'your' : 'their'} opponents.`)}</section>
     </div>
     <section class="pf-card" id="pf-games"></section>
     <details class="pf-card pf-more"><summary><h2>Results</h2><span>Wins by colour and time control, how games end</span></summary>
@@ -669,11 +695,11 @@ function render(name, at, p) {
         <div><dt>Moves a game</dt><dd>${p.moves}</dd></div>
       </dl>
       <h3>By time control</h3>
-      <ul class="pf-rows">${p.speeds.map((x) => `<li><span>${x.speed[0].toUpperCase() + x.speed.slice(1)}</span><small>${x.n} games · ${pct(x.win ?? x.score)} wins · now ${x.rating} (${x.change >= 0 ? '+' : ''}${x.change})</small>${bar(x.win ?? x.score)}</li>`).join('')}</ul>
+      <ul class="pf-rows">${p.speeds.map((x) => `<li><span>${x.speed[0].toUpperCase() + x.speed.slice(1)}</span><small>${games(x.n)} · ${pct(x.win ?? x.score)} wins · now ${x.rating} (${x.change >= 0 ? '+' : ''}${x.change})</small>${bar(x)}</li>`).join('')}</ul>
       <h3>How ${me ? 'your' : 'their'} games end</h3>
       ${endsGrid(p.ends)}
     </details>
-    <details class="pf-card pf-more"><summary><h2>Opening style</h2><span>${tasteShort(p.styleMix)}</span></summary>${tastePanel(p.styleMix, me)}</details>
+    <details class="pf-card pf-more"><summary><h2>Opening style</h2><span>${tasteShort(p.styleMix)}</span></summary>${tastePanel(p.styleMix, me, true)}</details>
     <details class="pf-card pf-more"><summary><h2>Openings</h2><span>The ones played most, with wins</span></summary><div class="pf-two pf-more-body">
       <section><h3>As White</h3>${openingRows(p.openings.w)}</section>
       <section><h3>As Black</h3>${openingRows(p.openings.b)}</section>
@@ -683,7 +709,7 @@ function render(name, at, p) {
       <p class="info">Read from ${me ? 'your' : `${esc(name)}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
       <p class="info">Results, openings, opening style, the clock, endgames and the rating graph use all ${p.n} games.
         Accuracy, blunders and the Openings, Tactics, Winning when ahead and Defending skills need a computer's verdict on every move, so they use only the
-        ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'}${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. Analyse more from the bar at the top.</p>
+        ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'}${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. ${p.todo ? 'Analyse more with the button at the top of the page.' : ''}</p>
       <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Win rate counts wins out of all games; an endgame score counts a draw as half.</p>
     </section>
     ${nextActions(name, me)}`;
@@ -704,18 +730,28 @@ function render(name, at, p) {
 addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('details.pf-help[open]').forEach((d) => { d.open = false; d.querySelector('summary').focus(); }); });
 // The lead story under the card: recent form (the last ten results) and the one thing to train now.
 function leadStory(name, p, skills, me) {
-  const games = (storedGames(name) || []).slice(0, 10), low = name.toLowerCase();
-  const form = games.map((g) => { const side = g.players.white.user?.id === low ? 'white' : 'black'; return !g.winner ? 'D' : g.winner === side ? 'W' : 'L'; });
-  const wins = form.filter((x) => x === 'W').length;
-  // The skill furthest below your opponents leads; only without one does a Work-on item stand in.
-  const weak = skills.filter((x) => x.raw !== null && x.raw < 50).sort((a, b) => a.raw - b.raw)[0], leak = weak ? null : p.work[0];
-  const say = me ? (x) => x : they;
+  const games = storedGames(name) || [], low = name.toLowerCase(), say = me ? (x) => x : they;
+  const sideOf = (g) => (g.players.white.user?.id === low ? 'white' : 'black');
+  const res = (g) => (!g.winner ? 'D' : g.winner === sideOf(g) ? 'W' : 'L');
+  const after = (g) => (g ? g.players[sideOf(g)].rating + (g.players[sideOf(g)].ratingDiff || 0) : null);
+  const day = (t) => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const main = p.speeds[0]?.speed, mine = games.filter((g) => g.speed === main);
+  const week = Date.now() - 7 * 864e5, recent = mine.filter((g) => g.createdAt >= week);
+  const before = mine.find((g) => g.createdAt < week);
+  const change = recent.length ? after(recent[0]) - (before ? after(before) : recent.at(-1).players[sideOf(recent.at(-1))].rating) : null;
+  const form = games.slice(0, 10).map(res), wins = form.filter((x) => x === 'W').length, latest = games[0];
+  const { leak } = judge(p, skills);
   return `<section class="pf-lead">
-    ${form.length ? `<div class="pf-form"><h2>Form</h2><p class="pf-form-row" aria-label="Last ${form.length} games: ${form.join(' ')}">${form.map((x) => `<span class="pf-res r-${x}">${x}</span>`).join('')}</p><p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length} games, newest first.</p></div>` : ''}
-    ${leak || weak ? `<div class="pf-leak"><h2>${me ? 'Your biggest leak' : 'Biggest leak'}</h2>
-      <p class="pf-leak-title">${esc(leak ? leak.title : weak.label)}</p>
-      <p>${esc(say(leak ? leak.why : `${weak.why} ${weak.train}`))}</p>
-      ${me ? `<a class="cta" href="${(leak?.href) || weak?.href || 'practice.html'}">Train it</a>` : ''}</div>` : ''}
+    <div class="pf-news"><h2>Latest</h2>
+      ${main ? `<p class="pf-news-big"><b>${after(mine[0])}</b> ${change !== null ? `<span class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</span> <small>${main} this week, ${recent.length} game${recent.length === 1 ? '' : 's'}</small>` : `<small>${main} · no games this week</small>`}</p>` : ''}
+      ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${form.map((x) => `<span class="pf-res r-${x}">${x}</span>`).join('')}</p>
+        <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}, newest first · last played ${day(latest.createdAt)}</p>` : ''}
+      ${latest ? `<a class="pf-latest" href="game.html?u=${encodeURIComponent(name)}&id=${latest.id}">Latest game: <b>${{ W: 'won', L: 'lost', D: 'drew' }[res(latest)]}</b> against ${esc(latest.players[sideOf(latest) === 'white' ? 'black' : 'white'].user?.id || 'anonymous')}. Review it</a>` : ''}
+    </div>
+    <div class="pf-leak${leak ? '' : ' none'}"><h2>${leak ? (me ? 'Your biggest leak' : 'Biggest leak') : 'No clear leak'}</h2>
+      ${leak ? `<p class="pf-leak-title">${esc(leak.title)} <small>${leak.v}</small></p><p>${esc(say(leak.why))} ${esc(leak.train)}</p>${me ? `<a class="cta" href="${leak.href || 'practice.html'}">Train it</a>` : ''}`
+        : `<p>${me ? 'You match or beat your' : 'They match or beat their'} opponents in every area: no skill is clearly below them.</p>${me ? '<a class="ghost" href="practice.html">See your training plan</a>' : ''}`}
+    </div>
   </section>`;
 }
 // The page ends on what to do next, not on the fine print.
@@ -752,6 +788,10 @@ async function ratingChart(name, p) {
   if (!el.isConnected) return;
   if (!speeds.length) { el.innerHTML = '<h2>Rating</h2><p class="info">No rating history yet. Press Refresh to read the games again.</p>'; return; }
   if (!speeds.includes(chartState.speed)) chartState.speed = speeds.includes(p.speeds[0]?.speed) ? p.speeds[0].speed : speeds[0];
+  if (!chartState.picked) { // the first look: the shortest period from a month up with at least two games in it
+    const pts = h[chartState.speed];
+    chartState.range = (RANGES.find(([, d]) => d >= 30 && pts.filter(([t]) => t >= Date.now() - d * DAY).length >= 2) || RANGES.at(-1))[0];
+  }
   const draw = () => {
     const all = h[chartState.speed], days = RANGES.find(([k]) => k === chartState.range)[1];
     const end = Date.now(), from = days === Infinity ? all[0][0] : end - days * DAY;
@@ -766,7 +806,7 @@ async function ratingChart(name, p) {
       ${pts.length < 2 ? '<p class="info">No rated games in this period.</p>' : lineChart(pts, from, end)}
       ${covers ? '' : `<p class="info pf-note">The graph starts at ${new Date(first).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}, the oldest of the games read here. Log in with Lichess for the full history.</p>`}`;
     el.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('click', () => { chartState.speed = b.dataset.speed; draw(); }));
-    el.querySelectorAll('[data-range]').forEach((b) => b.addEventListener('click', () => { chartState.range = b.dataset.range; draw(); }));
+    el.querySelectorAll('[data-range]').forEach((b) => b.addEventListener('click', () => { chartState.range = b.dataset.range; chartState.picked = true; draw(); }));
     hover(el);
   };
   draw();
@@ -774,7 +814,7 @@ async function ratingChart(name, p) {
 const fmtDay = (t) => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 // One line, one axis: rating against time, with the change over the period in the corner.
 function lineChart(pts, from, end) {
-  const W = 760, H = 240, L = 44, R = 12, T = 14, B = 26;
+  const W = 760, H = 240, L = 66, R = 12, T = 14, B = 26;
   const lo = Math.min(...pts.map((x) => x[1])), hi = Math.max(...pts.map((x) => x[1]));
   const pad = Math.max(10, (hi - lo) * 0.12), y0 = Math.floor((lo - pad) / 10) * 10, y1 = Math.ceil((hi + pad) / 10) * 10;
   const x = (t) => L + ((t - from) / Math.max(1, end - from)) * (W - L - R), y = (r) => T + (1 - (r - y0) / (y1 - y0)) * (H - T - B);
@@ -825,7 +865,9 @@ function ask() {
 let runs = 0; // a newer look-up wins over one still reading games
 async function run(name) {
   const mine = ++runs;
-  $('#profile').innerHTML = '';
+  // A skeleton of the page while the games are read, so it is never blank.
+  $('#profile').innerHTML = `<section class="pf-hero pf-skeleton" aria-hidden="true"><div class="pf-card-col"><div class="pf-pcard"><b class="pf-ovr">–</b><p class="pf-pcard-name">${esc(name)}</p></div></div>
+    <div class="pf-hero-text"><span class="pf-sk-line w60"></span><span class="pf-sk-line"></span><span class="pf-sk-line"></span><span class="pf-sk-line w80"></span></div></section>`;
   $('#profile-msg').textContent = `Looking up ${name} on Lichess…`;
   // Lichess can be slow to start sending games; say so instead of leaving the page blank.
   const slow = setTimeout(() => { if (mine === runs && /Looking up|Fetching/.test($('#profile-msg').textContent)) $('#profile-msg').textContent += ' Lichess is slow right now; still waiting.'; }, 12000);
@@ -936,17 +978,19 @@ function renderCompare(A, B, speed = 'all', avail = []) {
   const sa = skillsOf(A.p), sb = skillsOf(B.p);
   const num = (v, f = (x) => x) => (v === null || v === undefined ? '–' : f(v));
   const main = (p) => p.speeds[0];
+  // [label, A shown, B shown, A value, B value, 1 = higher is better / -1 = lower is better / 0 = neither]
   const rows = [
-    ['Rating', num(main(A.p)?.rating) + (main(A.p) ? ` <small>${main(A.p).speed}</small>` : ''), num(main(B.p)?.rating) + (main(B.p) ? ` <small>${main(B.p).speed}</small>` : '')],
-    ['Win rate', pct(A.p.winRate), pct(B.p.winRate)],
-    ['Wins as White', num(A.p.winW, pct), num(B.p.winW, pct)],
-    ['Wins as Black', num(A.p.winB, pct), num(B.p.winB, pct)],
-    ['Accuracy', num(A.p.acc, (x) => `${x}%`), num(B.p.acc, (x) => `${x}%`)],
-    ['Blunders / game', num(A.p.blunders, (x) => x.toFixed(1)), num(B.p.blunders, (x) => x.toFixed(1))],
-    ['Draws', pct(A.p.draws), pct(B.p.draws)],
-    ['Moves a game', A.p.moves, B.p.moves],
-    ['Opening taste', tasteShort(A.p.styleMix), tasteShort(B.p.styleMix)],
+    ['Rating', num(main(A.p)?.rating) + (main(A.p) ? ` <small>${main(A.p).speed}</small>` : ''), num(main(B.p)?.rating) + (main(B.p) ? ` <small>${main(B.p).speed}</small>` : ''), main(A.p)?.rating, main(B.p)?.rating, 1],
+    ['Win rate', pct(A.p.winRate), pct(B.p.winRate), A.p.winRate, B.p.winRate, 1],
+    ['Wins as White', num(A.p.winW, pct), num(B.p.winW, pct), A.p.winW, B.p.winW, 1],
+    ['Wins as Black', num(A.p.winB, pct), num(B.p.winB, pct), A.p.winB, B.p.winB, 1],
+    ['Accuracy', num(A.p.acc, (x) => `${x}%`), num(B.p.acc, (x) => `${x}%`), A.p.acc, B.p.acc, 1],
+    ['Blunders / game', num(A.p.blunders, (x) => x.toFixed(1)), num(B.p.blunders, (x) => x.toFixed(1)), A.p.blunders, B.p.blunders, -1],
+    ['Draws', pct(A.p.draws), pct(B.p.draws), 0, 0, 0],
+    ['Moves a game', A.p.moves, B.p.moves, 0, 0, 0],
+    ['Opening taste', tasteShort(A.p.styleMix), tasteShort(B.p.styleMix), 0, 0, 0],
   ];
+  const lead = (x, y, dir) => (dir && x != null && y != null && x !== y ? ((x > y) === (dir > 0) ? 'a' : 'b') : '');
   $('#profile').innerHTML = `
     <div class="pf-players"><a class="ghost" href="${profileLink(A.name)}">← ${esc(A.name)}</a><a class="ghost" href="${profileLink(B.name)}">${esc(B.name)} →</a></div>
     <header class="cmp-head"><h1 class="pf-h1"><a href="${profileLink(A.name)}">${esc(A.name)}</a> <span>vs</span> <a href="${profileLink(B.name)}">${esc(B.name)}</a></h1>
@@ -972,9 +1016,10 @@ function renderCompare(A, B, speed = 'all', avail = []) {
     <section class="pf-card">
       <h2>Numbers</h2>
       <table class="cmp-table"><thead><tr><th></th><th>${esc(A.name)}</th><th>${esc(B.name)}</th></tr></thead>
-        <tbody>${rows.map(([k, x, y]) => `<tr><th scope="row">${k}</th><td>${x}</td><td>${y}</td></tr>`).join('')}</tbody></table>
+        <tbody>${rows.map(([k, x, y, va, vb, dir]) => { const l = lead(va, vb, dir); return `<tr><th scope="row">${k}</th><td class="${l === 'a' ? 'lead' : ''}">${x}</td><td class="${l === 'b' ? 'lead' : ''}">${y}</td></tr>`; }).join('')}</tbody></table>
     </section>
-    <p class="info">Both read from each player's last ${MAX} rated Lichess games${speed === 'all' ? '' : `, ${speed} only`}. Skills are rules of thumb; ones that need analysed games are only as good as the number analysed.</p>`;  document.querySelectorAll('.cmp-speeds [data-speed]').forEach((btn) => btn.addEventListener('click', () => {
+    <p class="info">Both read from each player's last ${MAX} rated Lichess games${speed === 'all' ? '' : `, ${speed} only`} (${A.p.analysed} and ${B.p.analysed} of them analysed). Each player's skills compare them with their own opponents, so the cards say how well each plays at their own level.</p>
+    ${compareNext(A, B, sa, sb)}`;  document.querySelectorAll('.cmp-speeds [data-speed]').forEach((btn) => btn.addEventListener('click', () => {
     const q = new URLSearchParams(location.search);
     q.set('speed', btn.dataset.speed);
     history.replaceState(null, '', `?${q}`);
@@ -983,30 +1028,42 @@ function renderCompare(A, B, speed = 'all', avail = []) {
 
 }
 const article = (w) => (/^[aeiou]/i.test(w) ? 'an' : 'a');
+// Compare ends on something to do: your biggest gap against the other player, and how to train it.
+function compareNext(A, B, sa, sb) {
+  if (!isMe(A.name)) return '';
+  const gap = sa.map((x, i) => ({ x, d: x.v !== null && sb[i].v !== null ? x.v - sb[i].v : 0 })).sort((p, q) => p.d - q.d)[0];
+  return `<section class="pf-next"><h2>What next</h2><div>${gap && gap.d <= -5
+    ? `<a class="cta" href="${gap.x.href || 'practice.html'}">Close your ${gap.x.label.toLowerCase()} gap (−${-gap.d})</a>`
+    : '<a class="cta" href="practice.html">Open your training plan</a>'}<a class="ghost" href="${profileLink(B.name)}">${esc(B.name)}'s profile</a></div></section>`;
+}
 // The comparison in words: who is stronger overall and by how much, where each one is better, how
 // they play, and how they score.
 function compareStory(A, B, sa, sb) {
-  const a = esc(A.name), b = esc(B.name);
+  // "You" when one of the two is the logged-in player; v picks the verb form for that player
+  const nm = (P) => (isMe(P.name) ? 'You' : esc(P.name)), a = nm(A), b = nm(B);
+  const v = (who, s3, s2) => (who === 'You' ? s2 : s3), their = (who) => (who === 'You' ? 'your' : 'their');
   const ovr = (sk) => { const k = sk.filter((x) => x.v !== null); return k.length ? Math.round(sum(k, (x) => x.v) / k.length) : null; };
   const oa = ovr(sa), ob = ovr(sb), out = [];
+  const ra = A.p.speeds[0]?.rating, rb = B.p.speeds[0]?.rating, dr = (ra ?? 0) - (rb ?? 0);
+  if (ra && rb) out.push(Math.abs(dr) < 25 ? `<b>Same level on Lichess</b>: ${ra} and ${rb}.` : `<b>${dr > 0 ? a : b} ${v(dr > 0 ? a : b, 'is', 'are')} rated ${Math.abs(dr)} points higher</b> (${Math.max(ra, rb)} against ${Math.min(ra, rb)}).`);
   if (oa !== null && ob !== null) {
     const d = oa - ob;
-    out.push(Math.abs(d) <= 3 ? `<b>Very even overall</b> (${oa} against ${ob}): the difference is in the details.`
-      : `<b>${d > 0 ? a : b} is the stronger player overall</b> (${Math.max(oa, ob)} against ${Math.min(oa, ob)})${Math.abs(d) >= 15 ? ', a clear gap' : ''}.`);
+    out.push(Math.abs(d) <= 3 ? `Against their own opponents they do about equally well (${oa} and ${ob}).`
+      : `${d > 0 ? a : b} ${v(d > 0 ? a : b, 'outplays', 'outplay')} ${their(d > 0 ? a : b)} own opponents more (${Math.max(oa, ob)} against ${Math.min(oa, ob)}).`);
   }
   const gaps = sa.map((x, i) => ({ label: x.label.toLowerCase(), d: x.v !== null && sb[i].v !== null ? x.v - sb[i].v : null })).filter((x) => x.d !== null);
   const forA = gaps.filter((x) => x.d >= 5).sort((x, y) => y.d - x.d), forB = gaps.filter((x) => x.d <= -5).sort((x, y) => x.d - y.d);
   const list = (xs) => xs.slice(0, 2).map((x) => `${x.label} (+${Math.abs(x.d)})`).join(' and ');
-  if (forA.length || forB.length) out.push([forA.length && `${a} is better at ${list(forA)}`, forB.length && `${b} at ${list(forB)}`].filter(Boolean).join(', while ') + '.');
+  if (forA.length || forB.length) out.push([forA.length && `${a} ${v(a, 'is', 'are')} better at ${list(forA)}`, forB.length && `${b} at ${list(forB)}`].filter(Boolean).join(', while ') + '.');
   const ta = A.p.type[0].name, tb = B.p.type[0].name;
   out.push(ta === tb ? `Both play as ${article(ta)} ${ta.toLowerCase()}${tasteShort(A.p.styleMix) === tasteShort(B.p.styleMix) ? ', with the same taste in openings' : ''}.`
-    : `${a} plays as ${article(ta)} ${ta.toLowerCase()} (${tasteShort(A.p.styleMix)}), ${b} as ${article(tb)} ${tb.toLowerCase()} (${tasteShort(B.p.styleMix)}).`);
+    : `${a} ${v(a, 'plays', 'play')} as ${article(ta)} ${ta.toLowerCase()} (${tasteShort(A.p.styleMix)}), ${b} as ${article(tb)} ${tb.toLowerCase()} (${tasteShort(B.p.styleMix)}).`);
   const ds = Math.round((A.p.winRate - B.p.winRate) * 100);
   out.push(Math.abs(ds) < 3 ? `They win about as often against their own opponents (${pct(A.p.winRate)} and ${pct(B.p.winRate)} of games).`
-    : `${ds > 0 ? a : b} wins more often against their own opponents (${pct(Math.max(A.p.winRate, B.p.winRate))} of games against ${pct(Math.min(A.p.winRate, B.p.winRate))}).`);
+    : `${ds > 0 ? a : b} ${v(ds > 0 ? a : b, 'wins', 'win')} more often against ${their(ds > 0 ? a : b)} own opponents (${pct(Math.max(A.p.winRate, B.p.winRate))} of games against ${pct(Math.min(A.p.winRate, B.p.winRate))}).`);
   if (A.p.blunders !== null && B.p.blunders !== null && A.p.analysed >= ENOUGH && B.p.analysed >= ENOUGH && Math.abs(A.p.blunders - B.p.blunders) >= 0.3) {
     const fewer = A.p.blunders < B.p.blunders ? a : b;
-    out.push(`${fewer} blunders less (${Math.min(A.p.blunders, B.p.blunders).toFixed(1)} a game against ${Math.max(A.p.blunders, B.p.blunders).toFixed(1)}).`);
+    out.push(`${fewer} ${v(fewer, 'blunders', 'blunder')} less (${Math.min(A.p.blunders, B.p.blunders).toFixed(1)} a game against ${Math.max(A.p.blunders, B.p.blunders).toFixed(1)}).`);
   }
   return out;
 }
