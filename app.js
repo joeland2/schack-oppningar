@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028130921';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028130921';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028130921';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028130921';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028133006';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028133006';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028133006';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028133006';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -144,6 +144,14 @@ function explore(moves, groups) {
 // Your move: what strong players play most here, preferring moves from this opening's book.
 // The strongest players with enough games here: 2200+ in blitz (2000+ in classical), stepping down
 // one rating group at a time where they are too few, but never below your own level.
+// Real games at a position: your level first; where too few of them reach it, players higher up as
+// well (there are many more games at the top, and they are better ones).
+function gamesAt(moves) {
+  const mine = ratingsAround(rating);
+  const x = explore(moves, mine);
+  return x.total >= MIN_GAMES ? x : explore(moves, BUCKETS.map((_, i) => i).filter((i) => i >= mine[0]));
+}
+
 function strongGroups(moves) {
   let groups = STRONG[speed];
   for (;;) {
@@ -183,7 +191,7 @@ function buildLines(op) {
       if (!san) { done.push(l); continue; }
       moves = [...moves, san];
     }
-    const x = explore(moves, mine);
+    const x = gamesAt(moves);
     const name = nameOf(moves, l.name);
     const replies = x.total < MIN_GAMES ? [] : x.moves.filter((m) => m.n >= MIN_GAMES && m.n / x.total >= MIN_SHARE);
     if (!replies.length) { done.push({ moves, share: l.share, name }); continue; }
@@ -195,7 +203,7 @@ function buildLines(op) {
   const seen = new Set();
   return done.map((l) => {
     if ((l.moves.length % 2 === 1) !== (op.side === 'w')) return l;
-    const reply = explore(l.moves, mine).moves[0];
+    const reply = gamesAt(l.moves).moves[0];
     return { ...l, moves: reply ? [...l.moves, reply.san] : l.moves.slice(0, -1) };
   }).filter((l) => l.moves.length && !seen.has(lineKey(l.moves)) && seen.add(lineKey(l.moves)))
     .sort((a, b) => b.share - a.share);
@@ -639,7 +647,7 @@ function renderMoves() {
   let html = '';
   for (let i = 0; i < Math.max(line.length, hist.length); i += 2) {
     const cell = (j) => j < hist.length
-      ? `<span class="mv ${j === hist.length - 1 ? 'now' : ''}">${hist[j]}${notes[j] && notes[j] !== 'book' ? `<sup class="nag k-${notes[j]}">${GLYPH[notes[j]]}</sup>` : ''}</span>`
+      ? `<button type="button" class="mv ${j === hist.length - 1 ? 'now' : ''}" data-n="${j + 1}">${hist[j]}${notes[j] && notes[j] !== 'book' ? `<sup class="nag k-${notes[j]}">${GLYPH[notes[j]]}</sup>` : ''}</button>`
       : `<span class="mv todo">${j < line.length ? '…' : ''}</span>`;
     html += `<li><span class="num">${i / 2 + 1}.</span>${cell(i)}${cell(i + 1)}</li>`;
   }
@@ -746,7 +754,7 @@ $('#line-done').addEventListener('mouseout', (e) => {
   hintSq = tipHint; tipHint = null;
   renderBoard();
 });
-let lineDone = '', goOn = ''; // the summary shown at the end of the line, and the current tips
+let lineDone = ''; // the summary shown at the end of the line, and the current tips
 function renderWhy() {
   const el = $('#why');
   if (!cur || !line.length || mode === 'explore') { $('#line-done').hidden = true; return (el.innerHTML = ''); } // Explore explains in the message
@@ -776,12 +784,12 @@ function renderWhy() {
   if (ply >= line.length && hist.length === line.length) {
     lineDone = `<p class="done-head">Line done</p><p><b>What this line gave you</b> ${lineSummary()}</p>${lineFacts()}`;
   }
-  // "How to go on" follows the game: worked out afresh on each of your turns, kept while they think.
-  if (ply >= line.length && userTurn()) {
+  // "How to go on" is for the moment you start playing on: shown at the line's end, gone once you move.
+  let tips = '';
+  if (ply >= line.length && hist.length === line.length && userTurn()) {
     const t = lineTips();
-    goOn = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x) => `<li><button type="button" class="tip" data-from="${x.move.from}" data-to="${x.move.to}">${x.html}</button></li>`).join('')}</ul>` : '';
+    tips = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x) => `<li><button type="button" class="tip" data-from="${x.move.from}" data-to="${x.move.to}">${x.html}</button></li>`).join('')}</ul>` : '';
   }
-  const tips = ply >= line.length ? goOn : '';
   el.innerHTML = parts.join('');
   $('#line-done').innerHTML = ply >= line.length && lineDone ? `<div class="summary">${lineDone}${tips}</div>` : '';
   $('#line-done').hidden = !$('#line-done').innerHTML;
@@ -847,7 +855,7 @@ function lineSummary() {
 function lineTips() {
   const at = game.fen(), me = cur.side;
   const say = (m) => { const idea = ideaAt(new Chess(at), m.san); return `${moveWords(m)}${idea ? `. ${idea}` : '.'}`; };
-  const played = explore(game.history().map(clean), ratingsAround(rating)).moves; // most played first
+  const played = gamesAt(game.history().map(clean)).moves; // most played first
   const solid = played.filter((m) => m.n >= MIN_GAMES).sort((a, b) => scoreFor(b, me) - scoreFor(a, me));
   const games = [...solid, ...played.filter((m) => m.n < MIN_GAMES)].slice(0, 2);
   const engine = topMoves(at).map((m) => new Chess(at).move(m));
@@ -855,7 +863,7 @@ function lineTips() {
     const move = new Chess(at).move(m.san);
     const agrees = move.san === engine[0]?.san ? ' Stockfish agrees.' : '';
     const label = m.n < MIN_GAMES ? 'Also played' : i ? 'Next best in games' : 'Best results in games';
-    const how = m.n < MIN_GAMES ? `Played in ${plural(m.n, 'game')} at your level.` : `You score ${pct(scoreFor(m, me))} after it at your level.`;
+    const how = m.n < MIN_GAMES ? `Played in ${plural(m.n, 'game')}.` : `You score ${pct(scoreFor(m, me))} after it in ${plural(m.n, 'game')}.`;
     return { move, html: `<b>${label}:</b> ${say(move)} ${how}${agrees}` };
   });
   const RANK = ["Stockfish's choice", "Stockfish's second choice", "Stockfish's third choice"];
@@ -898,7 +906,7 @@ function play(i) {
   misses = 0; missesHere = 0; busy = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
   playing = false;
-  premove = null; notes = []; betters = []; lineDone = ''; goOn = '';
+  premove = null; notes = []; betters = []; lineDone = '';
   clearShapes(boardEl);
   redo = [];
   $('#restart').textContent = 'Restart';
@@ -947,7 +955,7 @@ function exploreMove(from, to, promotion = 'q', keepRedo = false, prefix = '') {
   notes.length = betters.length = hist.length;
   rate(hist.length, m.before, m);
   render();
-  if (game.isCheckmate()) { say(`${prefix}${m.san} is checkmate. ${sideName(m.color)} wins.`, 'good'); return true; }
+  if (game.isCheckmate()) { say(`${prefix}${m.san} is checkmate. ${sideName(m.color)} wins.`, 'good'); if (m.color === cur.side) celebrate(); return true; }
   if (game.isGameOver()) { say(`${prefix}${m.san}: the game is drawn.`); return true; }
   // Why the move: what it does on the board.
   const idea = ideaAt(new Chess(m.before), m.san);
@@ -1127,7 +1135,7 @@ let engineSaid = false; // the switch to Stockfish is mentioned once per game
 async function opponentPlays() {
   busy = true;
   const gen = gameGen, at = game.fen();
-  const real = explore(game.history().map(clean), ratingsAround(rating)).moves.find((m) => m.n >= MIN_GAMES);
+  const real = gamesAt(game.history().map(clean)).moves.find((m) => m.n >= MIN_GAMES);
   const m = real ? { san: real.san } : await bestMove(at, { elo: opponentElo() });
   await new Promise((x) => setTimeout(x, 450));
   if (gen !== gameGen || game.fen() !== at || !m) { if (gen === gameGen) busy = false; return; }
@@ -1145,8 +1153,27 @@ function ended() {
   if (!game.isGameOver()) return false;
   if (!game.isCheckmate()) say('Draw. Press Next line to go on.');
   else if (game.turn() === cur.side) say('Checkmate: you lost this one. Press Restart to play the line again.', 'bad');
-  else say('Checkmate! You won.', 'good');
+  else { say('Checkmate! You won.', 'good'); celebrate(); }
   return true;
+}
+
+// Checkmate by you: a banner over the board and a short burst of confetti (no confetti with reduced motion).
+function celebrate() {
+  const frame = $('.board-frame');
+  frame.querySelector('.mate-banner')?.remove();
+  frame.insertAdjacentHTML('beforeend', '<div class="mate-banner" role="status">Checkmate!</div>');
+  setTimeout(() => frame.querySelector('.mate-banner')?.remove(), 3500);
+  if (REDUCE_MOTION) return;
+  const box = frame.getBoundingClientRect();
+  const colours = ['#2e7d32', '#1d5fbf', '#e0b23a', '#c4242a', '#f0d9b5', '#b58863'];
+  for (let i = 0; i < 90; i++) {
+    const c = document.createElement('i');
+    c.className = 'confetti';
+    c.style.cssText = `left:${box.left + Math.random() * box.width}px;top:${box.top - 10}px;background:${colours[i % colours.length]};`
+      + `--dx:${(Math.random() - 0.5) * 240}px;--rot:${Math.random() * 720}deg;animation-delay:${Math.random() * 0.4}s;animation-duration:${1.6 + Math.random()}s`;
+    document.body.append(c);
+    setTimeout(() => c.remove(), 3200);
+  }
 }
 
 
@@ -1350,6 +1377,7 @@ function finish() {
   }
   // From here the game simply goes on: any move you make plays it out.
   playing = true; engineSaid = false;
+  renderWhy(); // How to go on needs playing set
   if (game.turn() !== cur.side) return opponentPlays();
   const at = game.fen();
   goodMove().then((m) => { if (m && playing && game.fen() === at) { hintSq = [m.from, m.to]; renderBoard(); } });
@@ -1427,6 +1455,28 @@ function takeBack() {
   if (game.turn() !== cur.side) return opponentPlays(); // back at the line's end on their move
   say('Move taken back. Your move.');
 }
+
+// Clicking a move in the list goes back to the position after it: a take-back while you play on,
+// otherwise Explore from there (as stepping back does), with Forward replaying the moves.
+function goTo(n) {
+  if (!cur || n >= game.history().length || (mode === 'explore' && busy)) return;
+  gameGen++; // a reply still on its way no longer applies
+  premove = null; busy = false; sel = null; hintSq = [];
+  if (mode !== 'explore' && playing && n >= line.length) {
+    while (game.history().length > n) game.undo();
+    ply = n; notes.length = betters.length = n;
+    lastMove = game.history({ verbose: true }).at(-1) || null;
+    render();
+    return game.turn() !== cur.side ? opponentPlays() : say('Back to that move. Your move.');
+  }
+  if (mode !== 'explore') setMode('explore', false, false);
+  while (game.history().length > n) redo.push(game.undo());
+  ply = n;
+  lastMove = game.history({ verbose: true }).at(-1) || null;
+  render();
+  exploreSay('Back to that move. Move any piece, for either side. ');
+}
+movesEl.addEventListener('click', (e) => { const b = e.target.closest('.mv[data-n]'); if (b) goTo(Number(b.dataset.n)); });
 
 function stepBack() {
   if (!cur || !lines.length || !game.history().length) return;

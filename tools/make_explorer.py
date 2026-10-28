@@ -16,7 +16,7 @@ URL = 'https://database.lichess.org/standard/lichess_db_standard_rated_2026-09.p
 BUCKETS = [0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]  # same groups as the Lichess explorer
 MAX_PLY = 20
 KEEP = 20            # drop sequences seen in fewer games than this
-PRUNE_EVERY = 100_000
+PRUNE_EVERY = 250_000  # games per lossy-counting bucket: a kept sequence is undercounted by at most one per bucket
 COMMENT = re.compile(r'\{[^}]*\}')
 NUMBER = re.compile(r'^\d+\.+$')
 
@@ -39,6 +39,7 @@ def main():
     want = int(sys.argv[2]) if len(sys.argv) > 2 else 2_000_000
     event = {'blitz': 'Blitz', 'classical': 'Classical'}[speed]
     counts = {}  # 'e4 c5 Nf3' -> [games, white wins, draws] x rating groups, flattened
+    born = {}    # key -> the bucket it was (re)created in, minus one: how much it may have missed (lossy counting)
     nb = len(BUCKETS)
     stream = subprocess.Popen(f'curl -s {URL} | zstd -dc', shell=True, stdout=subprocess.PIPE, text=True)
     games = 0
@@ -62,6 +63,7 @@ def main():
                 c = counts.get(key)
                 if c is None:
                     c = counts[key] = [0] * (3 * nb)
+                    born[key] = games // PRUNE_EVERY
                 c[b] += 1
                 if result:
                     c[result * nb + b] += 1
@@ -71,9 +73,12 @@ def main():
                 r[result * nb + b] += 1
             games += 1
             if games % PRUNE_EVERY == 0:
-                # lossy counting: forget one-off deep sequences so memory stays bounded
-                for k in [k for k, c in counts.items() if sum(c[:nb]) < 2 and k.count(' ') > 3]:
-                    del counts[k]
+                # Lossy counting (Manku & Motwani): drop a deep sequence only when even the games it may have
+                # missed before it was (re)created could not lift it above one per bucket. Sequences played
+                # steadily, however rarely, are kept; memory stays bounded by the rare one-offs dropped.
+                bucket = games // PRUNE_EVERY
+                for k in [k for k, c in counts.items() if k.count(' ') > 3 and sum(c[:nb]) + born[k] <= bucket]:
+                    del counts[k], born[k]
                 print(f'{games:,} games, {len(counts):,} sequences', file=sys.stderr)
             if games >= want:
                 break

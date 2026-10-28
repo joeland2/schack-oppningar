@@ -576,3 +576,26 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
 /* Light / dark toggle in the header */
 .theme { display: inline-grid; place-items: center; min-width: 40px; height: 38px; padding: 0 10px; }
 .top-in .crumb { margin-left: auto; }
+
+/* Moves so far: each move is a button that goes back to it */
+.moves button.mv { border: 0; background: none; color: inherit; font: inherit; padding: 0 4px; margin: 0 -4px; border-radius: 4px; text-align: left; cursor: pointer; }
+.moves button.mv:hover, .moves button.mv:focus-visible { background: var(--raised); }
+
+/* Legend for the move symbols */
+.legend { padding-block: 8px 4px; }
+.legend h2 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+.legend ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 20px; }
+.legend li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.legend li b { color: var(--ink); font-weight: 500; margin-right: 2px; }
+.legend .legend-badge { position: static; flex: none; width: 22px; height: 22px; font-size: 11px; animation: none; }
+.legend .info { font-size: 12px; margin: 8px 0 0; }
+
+/* Checkmate: a banner over the board, and confetti */
+.board-frame { position: relative; container-type: inline-size; }
+.mate-banner { position: absolute; inset: 0; display: grid; place-items: center; z-index: 20; pointer-events: none;
+  font: 700 clamp(20px, 11cqi, 64px) var(--font-body); color: #fff; text-shadow: 0 2px 12px rgb(0 0 0 / .6);
+  background: rgb(46 125 50 / .35); border-radius: var(--radius); animation: mate-in .4s ease-out; }
+@keyframes mate-in { from { opacity: 0; transform: scale(.9); } }
+.confetti { position: fixed; z-index: 60; width: 8px; height: 12px; border-radius: 2px; pointer-events: none; animation: confetti-fall linear forwards; }
+@keyframes confetti-fall { to { transform: translate(var(--dx), 80vh) rotate(var(--rot)); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .mate-banner { animation: none; } }
