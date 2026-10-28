@@ -695,9 +695,6 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .tree-end.learned { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); }
 .tree-end.cleared { border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--surface)); }
 .tree-end.now { outline: 2px solid var(--ink); outline-offset: 1px; }
-.streak { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.streak b { color: var(--ink); }
-.streak b.up { color: var(--good); }
 @media (max-width: 560px) { .streak { display: none; } }
 .trap-tag.soft { background: color-mix(in srgb, #e07b00 85%, black); }
 .moment-quiz { --tone: var(--ink); }
@@ -1069,12 +1066,10 @@ a { text-underline-offset: .18em; }
 
 /* Header account: rating, streak and today as small stats (label over number), split by hairlines */
 .account { gap: 10px; align-items: center; }
-.acct-streak { display: contents; }
 .acct-stat { display: grid; gap: 1px; padding: 0 12px; border-left: 1px solid var(--line); line-height: 1; white-space: nowrap; }
 .account > .acct-stat:first-child { border-left: 0; padding-left: 0; }
 .acct-k { font: 600 10px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .acct-stat b { font: 400 19px/1.1 var(--font-poster); color: var(--ink); letter-spacing: .01em; }
-.acct-stat b.up { color: var(--good); }
 .account .acct-stat input { width: 3.4em; padding: 0; border: 0; border-bottom: 1px dashed var(--line); border-radius: 0; background: transparent; color: var(--ink); font: 400 19px/1.1 var(--font-poster); -moz-appearance: textfield; appearance: textfield; }
 .account .acct-stat input::-webkit-outer-spin-button, .account .acct-stat input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .account .acct-stat input:hover { border-bottom-color: var(--muted); }

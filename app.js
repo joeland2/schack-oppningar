@@ -2132,24 +2132,6 @@ function tryMove(from, to) {
   return true;
 }
 
-// Your streak and daily goal: lines finished per day (Learn or Practice), { 'YYYY-MM-DD': n }. The
-// streak is the days in a row with at least one line, up to today (or yesterday, before today's first).
-const DAYS_KEY = STORE + '-days', GOAL = 5;
-const dayOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-function streakOf(days, today = new Date()) {
-  const d = new Date(today);
-  if (!days[dayOf(d)]) d.setDate(d.getDate() - 1);
-  let n = 0;
-  while (days[dayOf(d)]) { n++; d.setDate(d.getDate() - 1); }
-  return n;
-}
-console.assert(streakOf({ '2026-10-27': 2, '2026-10-26': 1, '2026-10-24': 3 }, new Date(2026, 9, 28)) === 2, 'streak from yesterday');
-console.assert(streakOf({ '2026-10-28': 1 }, new Date(2026, 9, 28)) === 1 && streakOf({}, new Date(2026, 9, 28)) === 0, 'streak');
-function countDay() {
-  const days = load(DAYS_KEY, {}), today = dayOf(new Date());
-  days[today] = (days[today] || 0) + 1;
-  store(DAYS_KEY, days);
-  renderStreak();
   if (days[today] === GOAL) setTimeout(() => flash('Daily goal reached!'), 1900); // after the line's own banner
 }
 function renderStreak() {
@@ -2242,7 +2224,6 @@ function finish() {
     return guide();
   }
   endLen = game.history().length;
-  countDay();
   const s = stats[statKey(cur.id)];
   const k = lineKey(lines[lineIdx].moves);
   if (!s.played.includes(k)) s.played.push(k);
