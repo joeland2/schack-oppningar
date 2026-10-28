@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028115511';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028115511';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028115511';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028115511';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028120250';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028120250';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028120250';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028120250';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -478,76 +478,58 @@ function analyse(games, name) {
   return {
     counted,
     slips: [...slips.values()].sort((a, b) => b.games - a.games || a.points - b.points).slice(0, 6),
-    openings: [...openings.values()].filter((o) => o.games >= 2).sort((a, b) => b.games - a.games).slice(0, 8),
+    openings: [...openings.values()].filter((o) => o.games >= 2).sort((a, b) => b.games - a.games),
   };
 }
 console.assert(analyse([], 'x').counted === 0, 'analyse');
 
 
+// Your Lichess games in one compact box: what you play most as White and as Black (with how you score
+// against players at your level), and what to train: the opening moves you keep getting wrong, then the
+// mistakes you repeat in whole games.
 function renderMine({ counted, slips, openings }, name) {
-  const out = $('#mine-out');
-  if (!counted) {
-    out.innerHTML = '';
-    return ($('#mine-msg').textContent = `No rated ${speed} games found for ${name}.`);
-  }
-  $('#mine-msg').textContent = `Checked your last ${counted} rated ${speed} games against what players rated ${speed === 'blitz' ? '2200' : '2000'}+ play.`;
-  out.innerHTML = `
-    <h3 class="mine-h">Where you go off track</h3>
-    ${slips.length ? '' : '<p class="info">No repeated slips: in every position we could judge, you played a move strong players also choose.</p>'}
-    <div class="slips">${slips.map((s, n) => {
-      const moves = numbered(lineKey([...s.before, s.played])).split(' ');
-      const bestMoves = numbered(lineKey([...s.before, s.best])).split(' ');
-      return `<article class="slip">
-        <div class="board mini" data-slip="${n}" inert></div>
-        <div class="slip-body">
-          <p class="slip-count">${s.games} game${s.games === 1 ? '' : 's'} · you scored ${pct(s.points / s.games)}</p>
-          <p class="omoves">${moves.slice(0, -1).join(' ')} <b class="bad">${moves.at(-1)}</b></p>
-          <p>Players rated ${speed === 'blitz' ? '2200' : '2000'}+ play <b>${bestMoves.at(-1)}</b> here (${pct(s.bestShare)} of their games) and ${s.played} in ${s.playedShare ? pct(s.playedShare) : 'none'}.</p>
-          ${OPENINGS.some((o) => o.family === s.family && o.side === s.side) ? `<button type="button" class="cta" data-practise="${n}">Practise ${shortName(s.family)}</button>` : ''}
-        </div>
-      </article>`;
-    }).join('')}</div>`;
-  renderMyOpenings(openings, counted, name);
-  slips.forEach((s, n) => {
-    const g = new Chess();
-    s.before.forEach((m) => g.move(m));
-    const best = new Chess(g.fen()).move(s.best);
-    drawBoard(out.querySelector(`[data-slip="${n}"]`), g, { side: s.side, last: g.history({ verbose: true }).at(-1), arrow: [best.from, best.to] });
-  });
-  out.querySelectorAll('[data-practise]').forEach((b) => b.addEventListener('click', () => {
+  $('#mine-out').innerHTML = '';
+  const el = $('#my-openings');
+  el.hidden = !counted;
+  if (!counted) return ($('#mine-msg').textContent = `No rated ${speed} games found for ${name}.`);
+  $('#mine-msg').textContent = `Checked ${name}'s last ${counted} rated ${speed} games.`;
+  // The opening to practise: the listed one when there is one, otherwise one made from the game's moves.
+  const find = (o) => OPENINGS.find((x) => x.family === o.family && x.side === o.side && isVs(x) === o.vs) ?? practiceOpening(o);
+  const row = (o) => {
+    const op = find(o), you = o.points / o.games;
+    const avg = op.share ? (o.side === 'w' ? op.score : 1 - op.score) : null;
+    const mark = avg === null ? '' : you - avg >= 0.05 ? 'up' : avg - you >= 0.05 ? 'down' : '';
+    return `<li><button type="button" class="ml-row" data-my="${openings.indexOf(o)}">
+      <span class="ml-name">${o.vs ? `${o.side === 'w' ? `1.${o.root[0]} ` : ''}vs ` : ''}${shortName(o.family)}</span>
+      <span class="ml-meta">${plural(o.games, 'game')} · <b class="${mark}">${pct(you)}</b>${avg === null ? '' : ` <small>vs ${pct(avg)} at your level</small>`}</span>
+    </button></li>`;
+  };
+  const side = (c) => openings.filter((o) => o.side === c).slice(0, 3);
+  // A slip's opening, as you met it: "vs" when the name belongs to your opponent's colour.
+  const slipOpening = (s) => ({ family: s.family, side: s.side, vs: BLACKS.test(s.family || '') !== (s.side === 'b'), root: s.before });
+  const slipName = (s) => `${slipOpening(s).vs ? 'vs ' : ''}${shortName(s.family || 'Opening')}, move ${Math.floor(s.before.length / 2) + 1}`;
+  el.innerHTML = `<div class="ml-col">
+      <h2>What you play most</h2>
+      ${['w', 'b'].map((c) => `<h3>As ${sideName(c)}</h3><ul class="ml-list">${side(c).map(row).join('') || '<li class="info">Too few games.</li>'}</ul>`).join('')}
+    </div>
+    <div class="ml-col">
+      <h2>What to train</h2>
+      <h3>Opening moves you get wrong</h3>
+      <ul class="ml-list">${slips.slice(0, 3).map((s, n) => `<li><button type="button" class="ml-row" data-practise="${n}">
+        <span class="ml-name">${slipName(s)}</span>
+        <span class="ml-meta">you play <b class="down">${s.played}</b>, strong players <b>${s.best}</b> · ${plural(s.games, 'game')}</span>
+      </button></li>`).join('') || '<li class="info">No repeated slips in the openings.</li>'}</ul>
+      <h3>Mistakes in whole games</h3>
+      <div id="my-mistakes"></div>
+    </div>`;
+  el.querySelectorAll('[data-my]').forEach((b) => b.addEventListener('click', () => start(find(openings[Number(b.dataset.my)]))));
+  el.querySelectorAll('[data-practise]').forEach((b) => b.addEventListener('click', () => {
     const s = slips[Number(b.dataset.practise)];
-    start(OPENINGS.find((o) => o.family === s.family && o.side === s.side));
+    start(s.family ? find(slipOpening(s)) : practiceOpening(slipOpening(s)));
     const want = lineKey([...s.before, s.best]);
     const i = lines.findIndex((l) => lineKey(l.moves).startsWith(want));
     if (i >= 0) play(i);
   }));
-}
-
-// Your most played openings in your recent games, how you score with each, and how that compares with
-// players at your level in the same opening. Shown above the opening list, with a way to practise each.
-function renderMyOpenings(openings, counted, name) {
-  const el = $('#my-openings');
-  el.hidden = !openings.length;
-  if (!openings.length) return;
-  // The opening to practise: the listed one when there is one, otherwise one made from the game's moves.
-  const find = (o) => OPENINGS.find((x) => x.family === o.family && x.side === o.side && isVs(x) === o.vs) ?? practiceOpening(o);
-  el.innerHTML = `<div class="my-head"><h2>Your openings on Lichess</h2><p class="info">${name}'s last ${counted} rated ${speed} games, most played first.</p></div>
-    <div class="my-list">${openings.map((o, n) => {
-      const op = find(o);
-      const you = o.points / o.games, lost = o.games - o.won - o.drawn;
-      const avg = op.share ? (o.side === 'w' ? op.score : 1 - op.score) : null;
-      const vs = avg === null ? '' : you - avg >= 0.05 ? 'better than' : avg - you >= 0.05 ? 'worse than' : 'about the same as';
-      return `<div class="my-row">
-        <div class="my-name"><b>${o.vs ? `${o.side === 'w' ? `1.${o.root[0]} ` : ''}vs ` : ''}${shortName(o.family)}</b><small>as ${sideName(o.side)} · ${plural(o.games, 'game')}</small></div>
-        <div class="my-score">
-          <div class="wdl" role="img" aria-label="Won ${o.won}, drawn ${o.drawn}, lost ${lost}"><span class="w" style="width:${o.won / o.games * 100}%"></span><span class="d" style="width:${o.drawn / o.games * 100}%"></span><span class="l" style="width:${lost / o.games * 100}%"></span></div>
-          <small>${o.won} won · ${o.drawn} drawn · ${lost} lost</small>
-        </div>
-        <p class="my-verdict">You score <b>${pct(you)}</b>${vs ? `, ${vs} players at your level (${pct(avg)})` : ''}.</p>
-        <button type="button" class="ghost" data-my="${n}">Practise</button>
-      </div>`;
-    }).join('')}</div>`;
-  el.querySelectorAll('[data-my]').forEach((b) => b.addEventListener('click', () => start(find(openings[Number(b.dataset.my)]))));
 }
 
 // An opening made from your own games' moves, for ones the list does not hold (a defence you face as
@@ -570,28 +552,18 @@ const MISTAKES_KEY = STORE + '-mistakes';
 
 function renderMistakes(state = 'ready', found = [], checked = 0, total = 0) {
   const el = $('#my-mistakes');
-  el.hidden = !lastGames;
-  if (!lastGames) return;
-  const analysed = lastGames.games.filter((g) => g.analysis).length;
-  const head = `<div class="my-head"><h2>Mistakes you repeat</h2><p class="info">${state === 'ready'
-    ? `Checks every move you played in whole games, not just the opening: ${analysed} games already analysed on Lichess are read at once; up to 15 more are checked here with Stockfish, which takes a couple of minutes.`
-    : state === 'running' ? `Checking game ${checked} of ${total}…` : `Checked ${checked} games: ${found.length} mistakes (moves that cost 10% or more of your winning chances).`}</p></div>`;
+  if (!el || !lastGames) return;
   if (state === 'ready') {
-    el.innerHTML = `${head}<button type="button" class="cta" id="find-mistakes">Find my mistakes</button>`;
+    el.innerHTML = `<p class="info">Every move of your recent games, not just the opening. Takes a couple of minutes.</p>
+      <button type="button" class="ghost" id="find-mistakes">Find my mistakes</button>`;
     return $('#find-mistakes').addEventListener('click', runMistakes);
   }
-  const groups = byTheme(found);
-  el.innerHTML = `${head}<div class="mk-list">${groups.map(([theme, list]) => `<div class="mk-row">
-      <div class="board mini" data-mk="${theme}" inert></div>
-      <div class="mk-body"><b>${THEMES[theme].title}</b> <span class="og-n">${list.length}</span>
-        <p>${THEMES[theme].tip}</p>
-        <p class="mk-ex">For example: you played <b>${list[0].played}</b>, better was <b>${list[0].best}</b>.</p></div>
-    </div>`).join('')}</div>
-    ${found.length ? `<a class="cta" href="mistakes.html">Train these ${found.length} positions</a>` : ''}`;
-  for (const [theme, list] of groups) {
-    const g = new Chess(list[0].fen), best = new Chess(list[0].fen).move(list[0].best);
-    drawBoard(el.querySelector(`[data-mk="${theme}"]`), g, { side: list[0].side, arrow: [best.from, best.to] });
-  }
+  if (state === 'running') return (el.innerHTML = `<p class="info">Checking game ${checked} of ${total}…</p>`);
+  const groups = byTheme(found).slice(0, 4);
+  el.innerHTML = `<ul class="ml-list">${groups.map(([theme, list]) => `<li class="ml-row ml-static">
+      <span class="ml-name">${THEMES[theme].title}</span><span class="ml-meta"><b>${list.length}</b> in ${plural(checked, 'game')}</span></li>`).join('')
+    || '<li class="info">No clear mistakes found.</li>'}</ul>
+    ${found.length ? `<a class="cta" href="mistakes.html">Train these ${Math.min(found.length, 80)} positions</a>` : ''}`;
 }
 
 async function runMistakes() {
@@ -1389,8 +1361,24 @@ boardEl.addEventListener('click', (e) => {
 // opponent's other moves and see how to answer them. Forward replays the moves you stepped back over.
 let redo = [];
 
+// While you play on after a line, back is a take-back, as on Lichess: your last move (and the reply to
+// it) is undone and you play on against the same opponent. It never goes back into the line itself.
+function takeBack() {
+  gameGen++; // a reply still on its way no longer applies
+  game.undo();
+  while (game.turn() !== cur.side && game.history().length > line.length) game.undo();
+  ply = game.history().length;
+  notes.length = betters.length = ply;
+  lastMove = game.history({ verbose: true }).at(-1) || null;
+  premove = null; busy = false; sel = null; hintSq = [];
+  render();
+  if (game.turn() !== cur.side) return opponentPlays(); // back at the line's end on their move
+  say('Move taken back. Your move.');
+}
+
 function stepBack() {
   if (!cur || !lines.length || !game.history().length) return;
+  if (mode !== 'explore' && playing && game.history().length > line.length) return takeBack();
   if (mode !== 'explore') { setMode('explore', false, false); gameGen++; } // the line's pending reply no longer applies
   else if (busy) return;
   redo.push(game.undo());

@@ -245,17 +245,6 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .mine summary { cursor: pointer; font-weight: 700; }
 .mine form { margin-top: 12px; }
 .mine .info { margin-top: 8px; }
-.mine-h { margin: 18px 0 10px; font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-.slips { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); }
-.slip { display: grid; grid-template-columns: minmax(110px, 160px) 1fr; gap: 14px; align-items: start; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
-.slip-body { display: grid; gap: 6px; align-content: start; }
-.slip-body p { margin: 0; }
-.slip-count { font-weight: 700; }
-.slip .bad { color: var(--bad); }
-.slip .cta { justify-self: start; margin-top: 4px; }
-.mine-ops { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; max-width: 520px; }
-.mine-ops li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
-.mine-ops small { color: var(--muted); }
 .og-about { margin: -6px 0 12px; color: var(--muted); font-size: .9rem; }
 .played { margin: 0; font-size: .8rem; color: var(--muted); }
 .played b { color: var(--ink); }
@@ -509,22 +498,6 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .side-seg button[aria-pressed="true"] .og-n { background: var(--surface); }
 .ostats .wdl-key { display: none; }
 
-/* Your openings on Lichess: one row each, name, result bar, how you compare, practise */
-.my-openings { display: grid; gap: 10px; margin: 14px 0 6px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
-.my-head h2 { margin: 0; font-size: 16px; font-weight: 600; }
-.my-head .info { margin: 2px 0 0; font-size: 13px; }
-.my-list { display: grid; }
-.my-row { display: grid; grid-template-columns: 220px 170px minmax(0, 1fr) 96px; gap: 16px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
-.my-name { display: grid; }
-.my-name small, .my-score small { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.my-score { display: grid; gap: 4px; }
-.my-verdict { margin: 0; font-size: 14px; color: var(--muted); }
-.my-verdict b { color: var(--ink); font-weight: 500; }
-@media (max-width: 640px) {
-  .my-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; }
-  .my-score, .my-verdict { grid-column: 1; }
-  .my-row > button { grid-column: 2; grid-row: 1 / span 3; }
-}
 .tag { background: var(--raised); color: var(--ink); }
 
 /* Each card in its side's colour: White's openings on white, Black's on black, in both themes */
@@ -548,11 +521,22 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .olist { grid-auto-rows: 1fr; }
 @media (max-width: 560px) { .ocard-tags .tag { display: none; } .odesc { min-height: 0; } }
 
-/* Mistakes you repeat: one row per kind of slip */
-.mk-list { display: grid; }
-.mk-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 16px; align-items: start; padding: 12px 0; border-top: 1px solid var(--line); }
-.mk-row .board.mini { width: 96px; border-radius: 4px; overflow: hidden; }
-.mk-body p { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
-.mk-body .mk-ex b { color: var(--ink); font-family: var(--font-mono); font-weight: 500; }
-.mk-body a { color: var(--ink); }
-#my-mistakes .cta { justify-self: start; text-decoration: none; }
+
+/* Your Lichess games: what you play most, and what to train, side by side */
+.my-lichess { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 12px 32px; margin: 14px 0 6px; padding: 16px 20px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.ml-col h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+.ml-col h3 { margin: 12px 0 4px; font-size: 12px; font-weight: 500; color: var(--muted); }
+.ml-col .info { margin: 2px 0 6px; font-size: 13px; }
+.ml-list { margin: 0; padding: 0; list-style: none; display: grid; }
+.ml-row { width: calc(100% + 16px); display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 7px 8px; margin: 0 -8px;
+  border: 0; border-radius: 6px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; font-size: 14px; }
+button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
+.ml-static { cursor: default; }
+.ml-name { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ml-meta { flex: none; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.ml-meta b { color: var(--ink); font-weight: 500; }
+.ml-meta b.up { color: var(--good); } .ml-meta b.down { color: var(--bad); }
+.ml-meta small { font-size: 12px; }
+#my-mistakes .cta { display: inline-block; margin-top: 8px; text-decoration: none; }
+@media (max-width: 560px) { .ml-row { flex-direction: column; gap: 0; } }
