@@ -1,17 +1,18 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028140957';
-import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028140957';
-import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028140957';
-import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028140957';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261028141655';
+import { findMistakes, byTheme, THEMES } from './mistakes.js?v=20261028141655';
+import { ideaAt, asMover, CENTRE, hanging } from './ideas.js?v=20261028141655';
+import { STYLES, STYLE_OF, ABOUT } from './styles.js?v=20261028141655';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
 const MAX_LINES = 20;
+const MIN_LINE = 0.01;   // a side line needs 1% of the opening's games to become a line of its own
 const MIN_GAMES = 20;     // below this, real-game data is too thin to trust
 const MAX_PLY = 20;       // data/explorer-*.json goes this deep
 const DATA = '2026-10-28-k8'; // version of data/explorer-*.json
 const BUCKETS = [0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]; // Lichess explorer rating groups
-// Rating groups whose moves count as yours: 2200+ in blitz; 2000+ in classical, where 2200+ games are scarce.
+// The strong players your own Lichess games are judged against: 2200+ in blitz; 2000+ in classical, where 2200+ games are scarce.
 const STRONG = { blitz: [7, 8], classical: [6, 7, 8] };
 const WANT = { w: 30 };   // White openings listed; Black's list is the same openings from the other side
 const POOL = 80;          // White openings collected, so a style filter still has enough to show
@@ -143,9 +144,6 @@ function explore(moves, groups) {
   return { total: sum(node[0]), moves: replies.filter((m) => m.n > 0).sort((a, b) => b.n - a.n) };
 }
 
-// Your move: what strong players play most here, preferring moves from this opening's book.
-// The strongest players with enough games here: 2200+ in blitz (2000+ in classical), stepping down
-// one rating group at a time where they are too few, but never below your own level.
 // Real games at a position: your level first; where too few of them reach it, players higher up as
 // well (there are many more games at the top, and they are better ones).
 function gamesAt(moves) {
@@ -154,8 +152,13 @@ function gamesAt(moves) {
   return x.total >= MIN_GAMES ? x : explore(moves, BUCKETS.map((_, i) => i).filter((i) => i >= mine[0]));
 }
 
+// Whose moves you learn: players a step above you, 200 to 1000 points higher (at 1200: 1400–2200).
+// Good moves that still make sense at your level, and far more games than at the very top. Where too
+// few of them reach a position, one rating group lower at a time, but never below your own level.
+const ABOVE = { from: 200, to: 1000 };
 function strongGroups(moves) {
-  let groups = STRONG[speed];
+  let groups = BUCKETS.map((_, i) => i).filter((i) => BUCKETS[i] >= rating + ABOVE.from && BUCKETS[i] <= rating + ABOVE.to);
+  if (!groups.length) groups = [BUCKETS.length - 1]; // above 2300: the top group
   for (;;) {
     const x = explore(moves, groups);
     const next = groups[0] - 1;
@@ -211,7 +214,9 @@ function buildLines(op) {
     const replies = x.total < MIN_GAMES ? [] : x.moves.filter((m) => m.n >= MIN_GAMES && m.n / x.total >= MIN_SHARE);
     if (!replies.length) { done.push({ moves, share: l.share, name }); continue; }
     const room = Math.max(1, MAX_LINES - done.length - open.length);
-    for (const m of replies.slice(0, room)) open.push({ moves: [...moves, m.san], share: l.share * m.n / x.total, name: nameOf([...moves, m.san], name) });
+    // The most common reply always carries the line on; others branch off only if they come up in at
+    // least MIN_LINE of games in this opening, so the line budget goes to depth, not to rarities.
+    for (const m of replies.filter((m, i) => i === 0 || l.share * m.n / x.total >= MIN_LINE).slice(0, room)) open.push({ moves: [...moves, m.san], share: l.share * m.n / x.total, name: nameOf([...moves, m.san], name) });
   }
   // Every line ends on the opponent's move: you see their answer, then play on from there. A line that
   // ends on your move gets their most common reply, or loses that last move where no game goes further.
@@ -769,6 +774,7 @@ $('#line-done').addEventListener('mouseout', (e) => {
   hintSq = tipHint; tipHint = null;
   renderBoard();
 });
+$('#line-done').addEventListener('click', (e) => { if (e.target.closest('.done-next')) $('#restart').click(); });
 let lineDone = ''; // the summary shown at the end of the line, and the current tips
 function renderWhy() {
   const el = $('#why');
@@ -777,6 +783,11 @@ function renderWhy() {
   const label = (n, san) => `${Math.floor(n / 2) + 1}.${n % 2 ? '..' : ''}${san}`;
   const lower = (t) => t.replace(/^./, (c) => c.toLowerCase());
   const parts = [];
+  // Before the first move, an introduction: what the opening is about and which line this is.
+  if (!hist.length && lines[lineIdx]) {
+    const l = lines[lineIdx], about = ABOUT[cur.family] || ABOUT[shortName(cur.family)] || '';
+    parts.push(`<p class="intro"><b>${isVs(cur) ? 'vs ' : ''}${cur.name}.</b> ${about} This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level (${pctOf(l.share)}). It runs to move ${Math.ceil(l.moves.length / 2)}.</p>`);
+  }
   // First what to play and why (Learn), then a quiet line on the last move, then the other replies
   // folded away: the board and the move to make come first.
   if (mode === 'learn' && userTurn() && ply < line.length) parts.push(`<p class="why-now"><b>Why</b> ${why(line.slice(0, ply), line[ply])}</p>`);
@@ -797,7 +808,7 @@ function renderWhy() {
   // The line-done summary is made at the line's end and stays while you play on from there. The tips
   // are about the move to play at the line's end, so they go once you have played on.
   if (ply >= line.length && hist.length === line.length) {
-    lineDone = `<p class="done-head">Line done</p><p><b>What this line gave you</b> ${lineSummary()}</p>${lineFacts()}`;
+    lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p><p><b>What this line gave you</b> ${lineSummary()}</p>${lineFacts()}`;
   }
   // "How to go on" is for the moment you start playing on: shown at the line's end, gone once you move.
   let tips = '';
@@ -806,7 +817,8 @@ function renderWhy() {
     tips = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x) => `<li><button type="button" class="tip" data-from="${x.move.from}" data-to="${x.move.to}">${x.html}</button></li>`).join('')}</ul>` : '';
   }
   el.innerHTML = parts.join('');
-  $('#line-done').innerHTML = ply >= line.length && lineDone ? `<div class="summary">${lineDone}${tips}</div>` : '';
+  $('#line-done').innerHTML = ply >= line.length && lineDone
+    ? `<div class="summary">${lineDone}${tips}<button type="button" class="cta done-next">${$('#restart').textContent}</button></div>` : '';
   $('#line-done').hidden = !$('#line-done').innerHTML;
 }
 
@@ -1172,6 +1184,14 @@ function ended() {
   return true;
 }
 
+// A short banner over the board, for the end of a line.
+function flash(text) {
+  const frame = $('.board-frame');
+  frame.querySelector('.mate-banner')?.remove();
+  frame.insertAdjacentHTML('beforeend', `<div class="mate-banner line-banner" role="status">${text}</div>`);
+  setTimeout(() => frame.querySelector('.line-banner')?.remove(), 1800);
+}
+
 // Checkmate by you: a banner over the board and a short burst of confetti (no confetti with reduced motion).
 function celebrate() {
   const frame = $('.board-frame');
@@ -1390,6 +1410,7 @@ function finish() {
     const back = `It comes back for review in ${plural(INTERVALS[r.box], 'day')}.`;
     say(`${cleared() === lines.length ? 'Line cleared. Every common line at your level is cleared.' : `Line cleared, ${cleared()} of ${lines.length}.`} ${back} ${on}`, 'good');
   }
+  flash(mode === 'try' && misses ? 'Line done' : mode === 'try' ? 'Line cleared' : 'Line learned');
   // From here the game simply goes on: any move you make plays it out.
   playing = true; engineSaid = false;
   renderWhy(); // How to go on needs playing set

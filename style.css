@@ -599,3 +599,12 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
 .confetti { position: fixed; z-index: 60; width: 8px; height: 12px; border-radius: 2px; pointer-events: none; animation: confetti-fall linear forwards; }
 @keyframes confetti-fall { to { transform: translate(var(--dx), 80vh) rotate(var(--rot)); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .mate-banner { animation: none; } }
+
+/* The start of a line: what the opening is about and which line this is */
+.coach .why .intro { color: var(--ink); font-size: .95rem; }
+.coach .why .intro b { font-family: var(--font-body); }
+/* The end of a line: a clear head, and Next line right there */
+.line-done .done-head { display: flex; align-items: center; gap: 6px; font-size: 1.05rem; }
+.line-done .done-head .ico { stroke: var(--good); stroke-width: 3; }
+.line-done .done-next { justify-self: start; margin-top: 4px; }
+.line-banner { background: rgb(46 125 50 / .25); font-size: clamp(18px, 8cqi, 44px); }
