@@ -3,13 +3,15 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029090531';
-import { STYLE_OF } from './styles.js?v=20261029090531';
+import { account, login, finishLogin } from './lichess.js?v=20261029091459';
+import { STYLE_OF } from './styles.js?v=20261029091459';
 
 const MAX = 500;
 const PV = 19;
-const ENOUGH = 50; // analysed games before the skills that need analysis are shown
-const FULL = 250; // analysed games before they count as reliable; until then they are marked provisional
+const ENOUGH = 100; // analysed games before the skills that need analysis are shown
+// How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
+const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
+const MIN_GAMES = 50; // rated games before a player gets any skills at all
 const WHY_ANALYSE = 'Lichess only analyses games you ask it to. Analysed games give your blunders, accuracy and four of the skills, and become puzzles in My practice. Stockfish runs in your browser; no game is done twice.'; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
 const $ = (s) => document.querySelector(s);
@@ -289,7 +291,7 @@ function levelOf(rating) {
 // than their opponents they are overall) at half size. level is where "as good as them" (raw 50) lands.
 const SHAPE = 2;
 function skillsOf(p) {
-  const base = levelOf(p.speeds?.[0]?.rating), raw = rawSkills(p), known = raw.filter((x) => x.v !== null);
+  const base = levelOf(p.speeds?.[0]?.rating), raw = rawSkills(p).map((x) => (p.n < MIN_GAMES ? { ...x, v: null } : x)), known = raw.filter((x) => x.v !== null);
   const mean = known.length ? sum(known, (x) => x.v) / known.length : 50;
   const card = (r) => base + 0.5 * (mean - 50 + SHAPE * (r - mean));
   return raw.map((x) => ({ ...x, raw: x.v, level: clamp(card(50)), v: x.v === null ? null : Math.min(99, clamp(card(x.v))) }));
@@ -542,22 +544,29 @@ async function analyse(name, n) {
 }
 // A slim bar at the top: how many games are analysed, and analysing the newest 100, 250 or 500
 // in all. New games are fetched first; games already analysed are always skipped.
+// Stat accuracy: how many games are analysed, as three steps (Fair, Good, Best), with the button that
+// reaches the next step first. A player with fewer games than a step reaches it by analysing them all.
 function analysePanel(name, p) {
   if (analysing) return `<div id="pf-analyse" class="pf-analyse running"><span class="pf-an-progress">Analysing…</span><div class="pf-an-bar"><i></i></div><button type="button" class="link" data-stop>Stop</button></div>`;
-  if (!p.todo) return '';
-  const opts = [100, 250, 500].filter((n) => n <= Math.max(100, p.n)).map((n) => ({ n, ...costOf(p, n) }));
-  const few = p.analysed < ENOUGH, partial = !few && p.analysed < FULL;
-  // short of FULL, the main button is the one that gets there (the newest 250)
-  const todo = opts.filter((o) => o.games), main = (partial && todo.find((o) => o.n === FULL)) || todo[0], rest = todo.filter((o) => o !== main);
-  if (!main) return '';
+  if (!p.todo || p.n < MIN_GAMES) return '';
+  const tiers = TIERS.map(([n, label]) => [Math.min(n, p.n), label]).filter(([n], i, a) => i === a.findIndex(([m]) => m === n));
+  const reached = tiers.filter(([n]) => p.analysed >= n).pop(), next = tiers.find(([n]) => p.analysed < n);
+  const opts = tiers.map(([n]) => ({ n, ...costOf(p, n) })).filter((o) => o.games);
+  const main = (next && opts.find((o) => o.n === next[0])) || opts[0], rest = opts.filter((o) => o !== main);
   const btn = (o, cls) => `<button type="button" class="${cls}" data-analyse="${o.n}" title="${games(o.games)} without analysis among your newest ${o.n}, ${minutes(o.sec)}, with Stockfish in your browser">Analyse ${o.games} more <small>~${minutes(o.sec).replace('about ', '')}</small></button>`;
-  return `<div id="pf-analyse" class="pf-analyse${few || partial ? ' few' : ''}">
-    <div class="pf-an-row"><span><b>${p.analysed}/${p.n}</b> games analysed${p.ours ? ` (${p.ours} here)` : ''}
-      <details class="pf-help"><summary title="${WHY_ANALYSE}" aria-label="Why analyse?">?</summary><p>${WHY_ANALYSE}</p></details></span>
-    ${btn(main, 'cta pf-an-go')}
-    ${rest.length ? `<details class="pf-an-menu"><summary>More</summary><div>${rest.map((o) => btn(o, 'pf-an-opt')).join('')}</div></details>` : ''}</div>
-    ${few ? `<p class="pf-an-few">Analyse at least ${ENOUGH} games to unlock Defense, Early game, Accuracy and all of Attack, and the accuracy and blunder numbers.</p>`
-      : partial ? `<p class="pf-an-few">The skills are provisional: they rest on ${p.analysed} analysed games, and a few games can move them several points. Analyse ${FULL} for numbers you can trust.</p>` : ''}
+  let prev = 0;
+  const steps = tiers.map(([n, label]) => { const fill = Math.max(0, Math.min(1, (p.analysed - prev) / (n - prev))); prev = n;
+    return `<li class="${p.analysed >= n ? 'done' : fill > 0 ? 'now' : ''}"><span class="pf-acc-bar"><i style="width:${fill * 100}%"></i></span><span class="pf-acc-label"><b>${label}</b> ${n}</span></li>`; }).join('');
+  const say = !reached ? `Analyse ${next[0]} games to unlock Defense, Early game, Accuracy and all of Attack. Until then they show –.`
+    : next ? `${reached[1]}: the skills can still move a few points as more games are analysed. ${next[1]} comes at ${next[0]} analysed games.`
+    : 'Best: every skill rests on all the games there are.';
+  return `<div id="pf-analyse" class="pf-analyse pf-acc${reached ? '' : ' few'}">
+    <div class="pf-acc-head"><span class="pf-acc-k">Stat accuracy</span><b class="pf-acc-v">${reached ? reached[1] : 'Locked'}</b>
+      <span class="pf-acc-n">${p.analysed} of ${p.n} games analysed${p.ours ? `, ${p.ours} here` : ''}</span>
+      <details class="pf-help"><summary title="${WHY_ANALYSE}" aria-label="Why analyse?">?</summary><p>${WHY_ANALYSE}</p></details></div>
+    <ol class="pf-acc-steps" aria-label="Stat accuracy: ${reached ? reached[1] : 'locked'}">${steps}</ol>
+    <p class="pf-acc-say">${say}</p>
+    ${main ? `<div class="pf-an-row">${btn(main, 'cta pf-an-go')}${rest.length ? `<details class="pf-an-menu"><summary>More</summary><div>${rest.map((o) => btn(o, 'pf-an-opt')).join('')}</div></details>` : ''}</div>` : ''}
   </div>`;
 }
 function bindAnalyse(name) {
@@ -656,7 +665,7 @@ function playerCard(name, p, t, skills) {
         ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
     <p class="pf-pcard-name">${esc(name)}</p>
     <div class="pf-pcard-stats">${skills.map((x) => `<span><b>${x.v ?? '–'}</b>${ABBR[x.label]}</span>`).join('')}</div>
-    <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES${p.analysed < FULL ? ' · PROVISIONAL' : ''}</p>
+    <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
   </div>`;
 }
 // Where a rating ranks among all Lichess players of that time control this week: "Top 27%".
@@ -700,7 +709,7 @@ function drawCard(ctx, x, y, name, p, t, skills, piece) {
     ctx.fillStyle = CARD.muted; ctx.font = '400 34px Anton'; ctx.fillText(ABBR[k.label], cx + ctx.measureText('00').width * 72 / 34 + 18, cy);
   });
   ctx.fillStyle = CARD.muted; ctx.textAlign = 'center'; ctx.font = '600 20px Geist'; ctx.letterSpacing = '4px';
-  ctx.fillText(`${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} GAMES${p.analysed < FULL ? ' · PROVISIONAL' : ''}`, 300, 742);
+  ctx.fillText(`${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} GAMES`, 300, 742);
   ctx.restore();
 }
 async function cardPng(name, p, t, skills, detail, btn) {
@@ -771,6 +780,7 @@ function render(name, at, p) {
     ${leadStory(name, p, skills, me)}
     ${analysePanel(name, p)}
     <section class="pf-card pf-skills-card${showSkillText ? ' open' : ''}">
+      ${p.n < MIN_GAMES ? `<p class="pf-an-few">Only ${p.n} rated games: skills need at least ${MIN_GAMES}.</p>` : ''}
       <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
         <button type="button" class="link" data-skill-text aria-expanded="${showSkillText}">${showSkillText ? 'Hide explanations' : 'What each one means'}</button></div>
       ${skillBars(skills, say, me)}
