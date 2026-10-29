@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029211439';
-import { STYLE_OF } from './styles.js?v=20261029211439';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029213625';
+import { STYLE_OF } from './styles.js?v=20261029213625';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -866,6 +866,16 @@ const BAND = ['#3f7a5c', '#2c6b9e', '#e2561c', '#c4283f', '#7a4ad6'];
 // The six skills as bars, so a player's shape reads before the numbers; [label, value] pairs.
 const cardBars = (xs, on = null) => `<div class="pf-pcard-bars">${xs.map(([k, v]) => `<div${k === on ? ' class="on"' : ''}><span>${k}</span><i style="--v:${v ?? 0}%"></i><b>${v ?? '–'}</b></div>`).join('')}</div>`;
 const ABBR = { Attack: 'ATK', Defense: 'DEF', 'Early game': 'EARLY', 'Late game': 'LATE', Accuracy: 'ACC', Speed: 'SPD' };
+// The card in a few characters, so the admin page can draw it from a download event (80 characters at
+// most): overall/style/strength/the six skills/rating and time control/piece, the types by their place in
+// these lists. Only add to the ends of the lists: older events point into them.
+const TYPE_CODES = ['Striker', 'Guardian', 'Solid builder', 'Endgame artist', 'Time scrambler', 'Trickster', 'Specialist', 'Explorer', 'Marathoner', 'Houdini',
+  'Killer instinct', 'Well prepared', 'Grinder', 'Sure hand', 'Speed demon', 'Clutch player', 'Giant killer', 'White specialist', 'Black specialist', 'Fighter', 'Finisher'];
+function cardCode(p, t, skills) {
+  const known = skills.filter((x) => x.v !== null), main = p.speeds[0];
+  const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '-';
+  return [ovr, TYPE_CODES.indexOf(t[0]?.name), t[1] ? TYPE_CODES.indexOf(t[1].name) : '', skills.map((x) => x.v ?? '-').join('.'), main ? `${main.rating}${main.speed.slice(0, 2)}` : '', p.piece || 'n'].join('/');
+}
 function playerCard(name, p, t, skills) {
   const known = skills.filter((x) => x.v !== null);
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
@@ -939,7 +949,7 @@ function drawCard(ctx, x, y, name, p, t, skills, piece) {
 async function cardPng(name, p, t, skills, detail, btn) {
   const label = btn.textContent; btn.disabled = true; btn.textContent = 'Making the image…';
   CARD = CARDS[cardLook()];
-  window.track?.('card', `${name} · ${detail ? 'card + style' : 'card'} · ${cardLook()}`);
+  window.track?.('card', `${name} · ${detail ? 'style' : 'card'} · ${cardLook()} #${cardCode(p, t, skills)}`);
   try {
     await Promise.all(['400 40px Anton', '400 20px Geist', '600 20px Geist'].map((f) => document.fonts.load(f)));
     const piece = await new Promise((ok) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = `pieces/${CARD.piece}${(p.piece || 'n').toUpperCase()}.svg`; });
@@ -1206,7 +1216,9 @@ function starCounts() {
 function nextActions(name, me) {
   const friend = favs()[0];
   return `<section class="pf-next"><h2>What next</h2><div>
-    ${me ? '<a class="cta" href="practice.html">Open your training plan</a>' : `<a class="cta" href="${compareLink(myName() || name, name)}">Compare with me</a>`}
+    ${me ? '<a class="cta" href="practice.html">Open your training plan</a>' : myName() && myName().toLowerCase() !== name.toLowerCase() ? `<a class="cta" href="${compareLink(myName(), name)}">Compare with me</a>`
+      // Your name not known here (not logged in): ask for it, so the comparison is never the player against themselves
+      : `<form class="pf-cmp-ask" action="profile.html"><input type="hidden" name="vs" value="${esc(name)}"><input name="u" required maxlength="30" pattern="[A-Za-z0-9_\\-]{2,30}" placeholder="Your Lichess name" aria-label="Your Lichess name" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="cta">Compare with me</button></form>`}
     ${me && friend ? `<a class="ghost" href="${compareLink(name, friend)}">Compare with ${esc(friend)}</a>` : me ? '<span class="info">Look up a friend with Find a player and star them to compare.</span>' : ''}
   </div></section>`;
 }
@@ -1567,7 +1579,7 @@ function show(name, push) {
 }
 function start() {
   const q = new URLSearchParams(location.search), name = q.get('u') || myName();
-  if (name && q.get('vs')) return compare(name, q.get('vs'));
+  if (name && q.get('vs') && q.get('vs').toLowerCase() !== name.toLowerCase()) return compare(name, q.get('vs')); // the same name twice: just the profile
   if (name) show(name, false); else ask();
 }
 if ($('#profile')) addEventListener('popstate', () => start());

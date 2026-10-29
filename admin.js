@@ -1,11 +1,40 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029211439';
+import { account, login, finishLogin } from './lichess.js?v=20261029213625';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const day = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+// A downloaded card, drawn from the code its event carries (profile.js cardCode), or from the
+// leaderboard for older events; shown when the row is hovered or tapped.
+const TYPE_CODES = ['Striker', 'Guardian', 'Solid builder', 'Endgame artist', 'Time scrambler', 'Trickster', 'Specialist', 'Explorer', 'Marathoner', 'Houdini',
+  'Killer instinct', 'Well prepared', 'Grinder', 'Sure hand', 'Speed demon', 'Clutch player', 'Giant killer', 'White specialist', 'Black specialist', 'Fighter', 'Finisher'];
+const SPEED_OF = { bu: 'bullet', bl: 'blitz', ra: 'rapid', cl: 'classical', co: 'correspondence' };
+const SKILL_KEYS = ['ATK', 'DEF', 'EARLY', 'LATE', 'ACC', 'SPD'];
+const bandOf = (r) => (!r ? 2 : r < 1000 ? 0 : r < 1400 ? 1 : r < 1800 ? 2 : r < 2200 ? 3 : 4); // as profile.js
+function cardOf(target, board) {
+  const [head, code] = (target || '').split(' #'), name = head.split(/ · |: /)[0];
+  if (code) {
+    const [ovr, st, sg, sk, rs, piece] = code.split('/'), m = rs.match(/^(\d+)(\w+)$/);
+    return { name, overall: ovr, style: TYPE_CODES[st], strength: TYPE_CODES[sg], skills: sk.split('.').map((v) => (v === '-' ? null : Number(v))), rating: m && Number(m[1]), speed: m && SPEED_OF[m[2]], piece };
+  }
+  const r = board.find((x) => x.name.toLowerCase() === name.toLowerCase());
+  return r && { name: r.name, overall: r.overall, style: r.style, strength: r.strength, skills: ['Attack', 'Defense', 'Early game', 'Late game', 'Accuracy', 'Speed'].map((k) => r.skills?.[k] ?? null), rating: r.rating, speed: r.speed, piece: r.piece };
+}
+const cardHtml = (c) => `<div class="pf-pcard" data-band="${bandOf(c.rating)}"><div class="pf-pcard-top"><div><b class="pf-ovr">${esc(c.overall ?? '–')}</b><span class="pf-pos">${esc(c.style || '')}</span>${c.strength ? `<span class="pf-str">+ ${esc(c.strength)}</span>` : ''}</div>
+  <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(c.piece || 'n').toUpperCase()}.svg" alt=""><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(c.piece || 'n').toUpperCase()}.svg" alt="">${c.rating ? `<span class="pf-pcard-rating">${c.rating} <small>${esc(c.speed || '')}</small></span>` : ''}</div></div>
+  <p class="pf-pcard-name">${esc(c.name)}</p><div class="pf-pcard-bars">${SKILL_KEYS.map((k, i) => `<div><span>${k}</span><i style="--v:${c.skills[i] ?? 0}%"></i><b>${c.skills[i] ?? '–'}</b></div>`).join('')}</div></div>`;
+let BOARD = [];
+// An event's target with the player names as links to their profiles (looked up, card, analysis, comparison).
+const plink = (n) => `<a href="profile.html?u=${encodeURIComponent(n)}">${esc(n)}</a>`;
+function targetHtml(kind, target) {
+  const t = (target || '').split(' #')[0];
+  if (kind === 'compare') return t.split(' vs ').map(plink).join(' vs ');
+  if (!['profile', 'card', 'analyse'].includes(kind) || !t) return esc(t);
+  const name = t.split(/ · |: /)[0];
+  return plink(name) + esc(t.slice(name.length));
+} // the leaderboard, for cards downloaded before their events carried the card
 // Today: the time only; otherwise the day too.
 const short = (iso) => (new Date(iso).toDateString() === new Date().toDateString() ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : when(iso));
 const when = (iso) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -97,11 +126,12 @@ function render(s) {
           <span>${esc(v.device || '–')}</span>
           <span class="num">${v.views} views · since ${day(v.first)}</span>
           <span class="num">${when(v.last)}</span></summary>
-          <ol class="ad-events">${v.events.map((e) => `<li><span class="num">${when(e.at)}</span><span>${e.kind === 'view' ? `Opened ${esc(pageName(e.page))}` : `${esc(KIND[e.kind] || e.kind)}${e.target ? `: <b>${esc(e.target)}</b>` : ''}`}</span></li>`).join('')}</ol></details>`).join('')}</div>
+          <ol class="ad-events">${v.events.map((e) => `<li><span class="num">${when(e.at)}</span><span>${e.kind === 'view' ? `Opened ${esc(pageName(e.page))}` : `${esc(KIND[e.kind] || e.kind)}${e.target ? `: <b>${targetHtml(e.kind, e.target)}</b>` : ''}`}</span></li>`).join('')}</ol></details>`).join('')}</div>
       ${s.visitors.length > 10 ? `<button type="button" class="ghost ad-more" data-more aria-expanded="false">Show all ${s.visitors.length}</button>` : ''}`
       : '<p class="info">Nobody yet.</p>'}</section>
     <section class="pf-card"><div class="ad-head"><h2>Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
-      ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${s.recentActions.slice(0, 15).map((r) => `<li><span><b>${r.kind === 'card' ? 'Card' : 'Analysis'}</b> ${esc((r.target || '').replace(/ · $/, ''))}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
+      ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${s.recentActions.slice(0, 15).map((r) => { const c = r.kind === 'card' && cardOf(r.target, BOARD);
+        return `<li${c ? ' class="ad-has-card" tabindex="0"' : ''}><span><b>${r.kind === 'card' ? 'Card' : 'Analysis'}</b> ${targetHtml(r.kind, (r.target || '').replace(/ · $/, ''))}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small>${c ? `<div class="ad-card-pop">${cardHtml(c)}</div>` : ''}</li>`; }).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
     <section class="pf-card"><div class="ad-head"><h2>Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
       ${(s.recentProfiles || []).length ? `<ul class="pf-rows ad-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: r.target })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
     <div class="pf-two">
@@ -127,7 +157,7 @@ function render(s) {
         ? `<ul class="pf-rows ad-rows">${s.users.map((u) => `<li><span>${link(u)}</span><small>${u.n} actions · last ${when(u.last)}</small></li>`).join('')}</ul>` : '<p class="info">Nobody yet.</p>'}</section>
     </div>
     <div class="pf-two">
-      <section class="pf-card"><h2>Comparisons</h2>${rows(s.compares)}</section>
+      <section class="pf-card"><h2>Comparisons</h2>${rows(s.compares, (x) => targetHtml('compare', x.name))}</section>
       <section class="pf-card"><h2>Openings practised</h2>${rows(s.practised)}</section>
     </div>
 `;
@@ -203,6 +233,7 @@ async function start() {
   }
   $('#profile-msg').textContent = 'Loading the numbers…';
   try {
+    BOARD = await fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard').then((r) => (r.ok ? r.json() : [])).catch(() => []);
     const res = await fetch(FN, { headers: { 'x-lichess-token': a.token } });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || `The stats service answered ${res.status}.`);
