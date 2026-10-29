@@ -38,9 +38,14 @@
     }
     // Logged out, the Profile section reads Log in: the profile page logs in and comes back to your profile.
     const prof = document.querySelector('.top-nav a[href="profile.html"]');
-    if (!user() && prof) { prof.textContent = 'Log in'; prof.href = 'profile.html?login'; prof.title = 'Log in with Lichess to see your profile'; }
+    // Logged out, Log in sits in the top row (Openings has its own button there) instead of the sections.
+    if (!user() && prof) {
+      if (!document.querySelector('#lichess-login')) document.querySelector('.top-players')?.insertAdjacentHTML('beforebegin', '<a class="top-login" href="profile.html?login" title="Log in with Lichess to see your profile">Log in</a>');
+      prof.remove();
+    }
     if (!user()) document.querySelector('.top-nav a[href="practice.html"]:not([aria-current])')?.remove(); // your practice plan needs your games
-    prof?.insertAdjacentHTML('beforebegin', `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a>`);
+    const board = `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a>`;
+    if (prof?.isConnected) prof.insertAdjacentHTML('beforebegin', board); else document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', board);
     if (ADMINS.includes(user()?.toLowerCase())) document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', `<a href="admin.html"${page === 'admin.html' ? ' aria-current="page"' : ''}>Admin</a>`);
   });
 })();

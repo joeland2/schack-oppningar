@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261029172336">
-  <script src="header.js?v=20261029172336" defer></script>
-  <script src="theme.js?v=20261029172336"></script>
+  <link rel="stylesheet" href="style.css?v=20261029172845">
+  <script src="header.js?v=20261029172845" defer></script>
+  <script src="theme.js?v=20261029172845"></script>
 </head>
 <body>
   <header class="top">
@@ -21,7 +21,7 @@
       <details class="top-players"><summary title="Your starred players" aria-label="Your starred players"><svg class="ico ico-solid" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></summary><div class="top-players-menu"></div></details>
       <div class="account">
         <label class="acct-stat"><span class="acct-k"><span class="speed-name">blitz</span> rating</span><input id="rating" type="number" min="400" max="3200" step="50" inputmode="numeric" placeholder="–" title="Your Lichess rating: change it to see the openings of another level">
-          <span id="rating-hint" class="rating-hint" role="note" hidden><span class="hint-long">Type your rating, or <button type="button" class="link" data-hint-login>log in with Lichess</button>, to get openings and tactics picked for you and your level.</span><span class="hint-short">Your rating here: openings for your level</span> <button type="button" class="rating-hint-x" data-hint-close aria-label="Close">×</button></span></label>
+          <span id="rating-hint" class="rating-hint" role="note" hidden><span class="hint-long">Type your rating, or <button type="button" class="link" data-hint-login>log in with Lichess</button>, to get openings and tactics picked for you and your level.</span><span class="hint-short">Your rating sets your openings</span> <button type="button" class="rating-hint-x" data-hint-close aria-label="Close">×</button></span></label>
         <button id="lichess-login" class="ghost" type="button"></button>
         <button id="theme" class="ghost theme" type="button" aria-label="Switch theme"></button>
       </div>
@@ -216,7 +216,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261029172336"></script>
+  <script type="module" src="app.js?v=20261029172845"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>

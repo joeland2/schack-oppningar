@@ -1098,7 +1098,7 @@ a { text-underline-offset: .18em; }
 .hint-short { display: none; }
 /* Phones: a short line in the header's free space, left of the search, pointing at the rating */
 @media (max-width: 560px) {
-  .rating-hint { top: 0; bottom: 0; right: calc(100% + 41px); width: min(150px, calc(100vw - 260px)); padding: 0 8px 0 0; display: flex; align-items: center; justify-content: flex-end;
+  .rating-hint { top: 0; bottom: 0; right: calc(100% + 41px); width: max(70px, calc(100vw - 300px)); padding: 0 8px 0 0; display: flex; align-items: center; justify-content: flex-end;
     border: 0; background: none; box-shadow: none; color: var(--muted); font-size: 11.5px; line-height: 1.25; text-align: right; }
   .rating-hint::before, .rating-hint .hint-long, .rating-hint-x { display: none; }
   .rating-hint .hint-short { display: block; }
@@ -1333,6 +1333,10 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .account .acct-stat input::placeholder { color: var(--bg); opacity: .5; }
 .account #lichess-login { border: 0; border-left: 1px solid var(--line); border-radius: 0; background: none; padding: 0 16px; font-weight: 600; }
 .account #lichess-login:hover { background: var(--surface); }
+/* Logged out: Log in in the top row, on every page */
+.top-login { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line); font-weight: 700; color: var(--hot); text-decoration: none; white-space: nowrap; }
+.top-login:hover { background: var(--surface); }
+.account #lichess-login.acct-login { color: var(--hot); font-weight: 700; }
 @media (max-width: 1100px) { .top-search input { width: 52px; padding: 0; background-position: center; } .top-search input::placeholder { color: transparent; }
   .top-search input:focus { position: absolute; inset: 0 0 0 auto; width: min(320px, 100%); z-index: 2; padding: 0 16px 0 40px; background-position: 16px 50%; background-color: var(--surface); }
   .top-search input:focus::placeholder { color: var(--muted); } }

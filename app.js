@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029172336';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029172336';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029172336';
-import { GUIDE } from './guide.js?v=20261029172336';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029172336';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029172336';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029172336';
-import { storedGames, gamesReady } from './profile.js?v=20261029172336';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029172845';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029172845';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029172845';
+import { GUIDE } from './guide.js?v=20261029172845';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029172845';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029172845';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029172845';
+import { storedGames, gamesReady } from './profile.js?v=20261029172845';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2527,8 +2527,6 @@ function tryMove(from, to) {
     const best = EVALS.get(evalKey(m.before))?.move;
     if (punish > 0 && best?.from === m.from && best?.to === m.to) punished(m);
     if (punish > 0) punish--;
-    // Playing on from the line's end is practice: the mode says so (without starting the line again).
-    if (mode === 'learn' && endLen && ply === endLen) setMode('try', false, false);
     lastMove = m; ply++; sel = null; hintSq = [];
     rate(ply - 1, game.history({ verbose: true }).at(-1).before, m);
     render();
@@ -3187,7 +3185,7 @@ function renderLogin() {
   lockRating();
   const a = account(), b = $('#lichess-login');
   b.textContent = a ? a.name : 'Log in';
-  b.hidden = !a; // logged out, the section bar's Log in is the one way in
+  b.classList.toggle('acct-login', !a); // logged out: Log in, always in the top row
   b.title = a ? `Logged in to Lichess as ${a.name}: your profile (log out there)`
     : 'Log in with Lichess: play-outs then follow real games from all of Lichess, and your rating and games are filled in.';
   b.setAttribute('aria-pressed', String(!!a));
