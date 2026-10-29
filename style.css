@@ -1393,3 +1393,10 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 /* Moves so far: at most about 15 rows, scrolling inside; the move on the board is marked */
 .moves-box .moves { max-height: calc(15 * 1.95rem); overflow-y: auto; overscroll-behavior: contain; }
 .moves button.mv.now { background: var(--data); color: #141414; font-weight: 700; }
+
+/* Under the opening's name: its results at a rating, and a slider to try others */
+.op-odds { display: grid; gap: 6px; margin-top: 6px; max-width: 420px; }
+.op-odds .wdl-key { margin: 4px 0 0; }
+.op-odds-r { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.op-odds-r output { font: 400 18px var(--font-poster); color: var(--ink); min-width: 2.6em; }
+.op-odds-r input { flex: 1; accent-color: var(--data); }

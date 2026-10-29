@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029121943';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029121943';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029121943';
-import { GUIDE } from './guide.js?v=20261029121943';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029121943';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029121943';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029121943';
-import { storedGames } from './profile.js?v=20261029121943';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029122020';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029122020';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029122020';
+import { GUIDE } from './guide.js?v=20261029122020';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029122020';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029122020';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029122020';
+import { storedGames } from './profile.js?v=20261029122020';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1007,6 +1007,19 @@ function renderWhy() {
 }
 
 // Your side's wins, draws and losses (as shares) in games at your level that reached a position, or null.
+// White's results in an opening at one rating: the games of its own rating group (the groups around
+// it when that has too few), or null.
+function oddsAt(op, r) {
+  let node = TREE;
+  for (const m of op.root.split(' ')) node = node?.[3]?.[m];
+  if (!node) return null;
+  const own = BUCKETS.findLastIndex((b) => b <= r);
+  for (const groups of [[own], ratingsAround(r)]) {
+    const sum = (c) => groups.reduce((t, i) => t + c[i], 0), n = sum(node[0]);
+    if (n >= MIN_GAMES) return { win: sum(node[1]) / n, draw: sum(node[2]) / n, n };
+  }
+  return null;
+}
 function resultsAt(moves) {
   let node = TREE;
   for (const m of moves) node = node?.[3]?.[m];
@@ -1165,7 +1178,14 @@ function start(op, keepTraps = false) {
   misses = 0; missesHere = 0; busy = true;
   $('#op-title').textContent = (isVs(op) ? 'vs ' : '') + op.name;
   $('#op-eco').textContent = op.eco;
-  $('#op-info').textContent = `Starts ${numbered(op.root)}. ${popularity(op)} in ${speed} at your level; ${sideName(op.side)} wins ${pct(op.side === 'w' ? op.win : 1 - op.win - op.draw)}.`;
+  // How the opening goes at a rating, as a win/draw/loss bar, with a slider to try other ratings.
+  $('#op-info').innerHTML = `<div class="op-odds"><div id="op-odds-bar"></div>
+    <label class="op-odds-r">At rating <output id="op-odds-out">${rating || 1500}</output>
+      <input id="op-odds-in" type="range" min="600" max="2600" step="50" value="${rating || 1500}" aria-label="Rating to show the results for"></label></div>`;
+  const showOdds = () => { const r = Number($('#op-odds-in').value), x = oddsAt(op, r); $('#op-odds-out').textContent = r;
+    $('#op-odds-bar').innerHTML = x ? wdl(x, op.side) : '<p class="info">Too few games at this rating.</p>'; };
+  $('#op-odds-in').addEventListener('input', showOdds);
+  showOdds();
   // Under the board: what the opening is about, your plan, and its idea and variations; the panel beside
   // the board is for the moves you play now.
   { const about = aboutOf(op), plan = planOf(op);
