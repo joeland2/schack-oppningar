@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029223756';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029223756';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029223756';
-import { GUIDE } from './guide.js?v=20261029223756';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029223756';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029223756';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029223756';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029223756';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029223905';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029223905';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029223905';
+import { GUIDE } from './guide.js?v=20261029223905';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029223905';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029223905';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029223905';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029223905';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -695,15 +695,34 @@ async function candidatesFor(o, positions, token, step = () => {}) {
 }
 // The search's panel at the top: what it looks for, its three steps, a big bar and what it is doing now.
 const LF_STEPS = ['Read your last 100 games', 'Find players above you in your main opening', 'Read their games and match them to you'];
+// The panel is built once and then updated in place, so the bar slides; between updates it keeps
+// creeping a little (never past a quarter of what is left), so a slow player read still shows movement.
+let lfShown = 0, lfTarget = 0, lfTimer = 0;
 function lfPanel(step, frac, now) {
   const el = $('#learn-from');
   $('#picker .pick-h')?.after(el);
   el.hidden = false;
-  el.innerHTML = `<h2>Finding a player to learn from</h2>
+  if (!el.querySelector('.lf-bar')) {
+    lfShown = 0;
+    el.innerHTML = `<h2>Finding a player to learn from</h2>
     <p class="lf-what">Someone with your style who plays your openings, and has climbed higher with them: the games of a player like you, a few hundred points further on.</p>
-    <ol class="lf-steps">${LF_STEPS.map((t, i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}">${t}</li>`).join('')}</ol>
-    <div class="lf-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(frac * 100)}"><i style="width:${Math.max(3, Math.round(frac * 100))}%"></i></div>
-    <p class="lf-now" aria-live="polite">${now}</p>`;
+    <ol class="lf-steps"></ol>
+    <div class="lf-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+    <p class="lf-now" aria-live="polite"></p>`;
+  }
+  el.querySelector('.lf-steps').innerHTML = LF_STEPS.map((t, i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}">${t}</li>`).join('');
+  el.querySelector('.lf-now').innerHTML = now;
+  lfTarget = Math.max(lfTarget * (lfShown > 0), frac);
+  clearInterval(lfTimer);
+  const tick = () => {
+    const bar = el.querySelector('.lf-bar');
+    if (!bar) return clearInterval(lfTimer); // the results replaced the panel
+    const cap = lfTarget + (1 - lfTarget) * 0.25;
+    lfShown = lfShown < lfTarget ? lfTarget : Math.min(cap, lfShown + 0.002);
+    bar.setAttribute('aria-valuenow', Math.round(lfShown * 100));
+    bar.firstElementChild.style.width = `${Math.max(3, lfShown * 100)}%`;
+  };
+  tick(); lfTimer = setInterval(tick, 250);
 }
 // How alike two players are, 0–100: the same style counts most, then the shape of the six skills (each
 // against the player's own average, so a stronger player can still be alike), then the openings shared,

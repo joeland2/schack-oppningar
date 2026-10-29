@@ -1894,7 +1894,7 @@ p, li, dd, small { text-wrap: pretty; }
 .cmp-dl .pf-dl-menu { right: auto; left: 50%; transform: translateX(-50%); }
 /* A player to learn from: the search's progress */
 .lf-bar { height: 6px; margin-top: 10px; border-radius: 3px; background: var(--track, var(--line)); overflow: hidden; }
-.lf-bar i { display: block; height: 100%; background: var(--hot); transition: width .4s ease-out; }
+.lf-bar i { display: block; width: 3%; height: 100%; background: var(--hot); transition: width .6s ease-out; }
 @media (prefers-reduced-motion: reduce) { .lf-bar i { transition: none; } }
 /* A lesson on the game page: the note where the autoplay stops */
 .gm-lesson { margin: 10px 0 0; padding: 12px 14px; border-left: 0; border-top: 3px solid var(--hot); background: var(--surface); border-radius: 0 0 var(--radius) var(--radius); }
