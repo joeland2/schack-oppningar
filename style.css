@@ -1684,6 +1684,7 @@ p, li, dd, small { text-wrap: pretty; }
 .gm-moves-card b { font: 400 22px var(--font-poster); margin-right: 4px; }
 .gm-moves-card .up b { color: var(--good); }
 .gm-moves-card .down b { color: var(--bad); }
+.gm-moves-card .same b { color: var(--muted); }
 .gm-moves-card small { color: var(--muted); margin-left: 4px; }
 .gm-impact:empty { display: none; }
 
