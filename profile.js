@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029162520';
-import { STYLE_OF } from './styles.js?v=20261029162520';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029162653';
+import { STYLE_OF } from './styles.js?v=20261029162653';
 
 const MAX = 500;
-const EARLY = 120; // games before a first look-up draws the profile, while the rest still come in
+const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
 const PV = 34;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
@@ -498,15 +498,18 @@ async function build(name) {
   msg.textContent = have.length ? `Fetching ${name}'s new games from Lichess…` : `Fetching ${name}'s last ${MAX} rated games from Lichess…`;
   // Lichess sends about 20-30 games a second, so a first look-up takes a while: the profile is drawn
   // from the first EARLY games as soon as they are in, then drawn again from all of them.
-  const mine = runs;
+  const mine = runs, bar = $('#pf-load');
   let early = false;
+  if (bar && !quiet && !have.length) { bar.hidden = false; bar.firstElementChild.style.width = '0%'; }
   const fresh = await fetchGames(name, (k, gs) => {
-    msg.textContent = `Fetching ${name}'s games from Lichess… ${k}${early ? ` of ${MAX}: the profile fills in as they come` : ''}`;
-    if (!have.length && k === EARLY && !early && !quiet) {
+    msg.textContent = early ? '' : `Fetching ${name}'s games from Lichess… ${k}`;
+    if (bar && !bar.hidden) { bar.firstElementChild.style.width = `${(k / MAX) * 100}%`; bar.title = `${k} of ${MAX} games`; }
+    if (!have.length && !quiet && (k === EARLY || (early && k % REDRAW === 0))) {
       early = true;
-      loadScores().then(() => { if (mine === runs) render(name, Date.now(), profileOf(gs.slice().map((g) => readGame(g, name.toLowerCase())))); }).catch(() => {});
+      loadScores().then(() => { if (mine === runs) { const y = scrollY; render(name, Date.now(), profileOf(gs.slice().map((g) => readGame(g, name.toLowerCase())))); scrollTo(0, y); } }).catch(() => {});
     }
   }, have.length ? have[0].createdAt + 1 : null);
+  if (bar) bar.hidden = true;
   const ids = new Set(fresh.map((g) => g.id));
   const raw = [...fresh, ...have.filter((g) => !ids.has(g.id))].slice(0, MAX);
   if (!raw.length) throw new Error(`${name} has no rated games on Lichess yet.`);
@@ -1045,11 +1048,12 @@ function leadStory(name, p, skills, me) {
   const change = recent.length ? after(recent[0]) - (before ? after(before) : recent.at(-1).players[sideOf(recent.at(-1))].rating) : null;
   const last = (mine.length ? mine : games).slice(0, 10), form = last.map(res), wins = form.filter((x) => x === 'W').length, latest = last[0];
   return `<section class="pf-lead solo">
-    <div class="pf-news"><div class="pf-news-head"><h2>Latest</h2>
-      <button type="button" class="ghost pf-fetch" data-fetch title="Fetch the games played on Lichess since this profile was read"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg> New games</button>
-      ${shown?.[1] ? `<small class="pf-fetched" id="pf-fetched">Updated ${ago(shown[1])}</small>` : ''}</div>
+    <div class="pf-news"><h2>Latest</h2>
       ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${last.map((g, i) => `<a class="pf-res r-${form[i]}" href="game.html?u=${encodeURIComponent(name)}&id=${g.id}" title="${{ W: 'Won', L: 'Lost', D: 'Drew' }[form[i]]} against ${esc(g.players[sideOf(g) === 'white' ? 'black' : 'white'].user?.id || 'anonymous')}, ${day(g.createdAt)}: open the game">${form[i]}</a>`).join('')}</p>
         <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}${main ? ` ${main}` : ''} games, newest first · last played ${day(latest.createdAt)}${change !== null ? ` · <b class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</b> this week in ${recent.length} game${recent.length === 1 ? '' : 's'}` : ''}</p>` : ''}
+      <div class="pf-fetch-row">
+      <button type="button" class="ghost pf-fetch" data-fetch title="Fetch the games played on Lichess since this profile was read"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg> New games</button>
+      ${shown?.[1] ? `<small class="pf-fetched" id="pf-fetched">Updated ${ago(shown[1])}</small>` : ''}</div>
       ${last.length ? `<dl class="pf-facts">${recentFacts(last.map((g) => readGame(g, name.toLowerCase())), p).map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''}
     </div>
   </section>`;

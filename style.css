@@ -1701,3 +1701,9 @@ p, li, dd, small { text-wrap: pretty; }
 .pf-news-head .pf-fetch { padding: 6px 12px; font-size: 13px; }
 .lb-later { padding: 18px 0 6px; font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
 .lb-row.unranked { opacity: .55; }
+/* Fetching a player's games: a thin bar at the top of the page, filling as they come */
+.pf-load { position: sticky; top: 0; z-index: 30; height: 3px; margin: 0 0 8px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.pf-load i { display: block; height: 100%; width: 0; background: var(--hot); transition: width .3s ease-out; }
+@media (prefers-reduced-motion: reduce) { .pf-load i { transition: none; } }
+.pf-fetch-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0 4px; }
+.pf-fetch-row .pf-fetch { padding: 6px 12px; font-size: 13px; }
