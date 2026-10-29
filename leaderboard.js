@@ -1,13 +1,11 @@
 // The leaderboard: everyone logged in here with Lichess who has opened their profile (see the profile), ranked within a time control
-// and a rating band, by the card's overall number, one skill, or how they score with their own gambits.
+// and a rating band, by the card's overall number or one of its skills.
 const BOARD = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const ABBR = { Attack: 'ATK', Defense: 'DEF', 'Early game': 'EARLY', 'Late game': 'LATE', Accuracy: 'ACC', Speed: 'SPD' };
 const BANDS = [['All', 0, 9999], ['Under 1000', 0, 999], ['1000–1399', 1000, 1399], ['1400–1799', 1400, 1799], ['1800–2199', 1800, 2199], ['2200+', 2200, 9999]];
-const GAMBIT_MIN = 10; // gambit games before a gambit score counts
-const BY = [['overall', 'Overall', (r) => r.overall], ...['Attack', 'Defense', 'Early game', 'Late game', 'Accuracy', 'Speed'].map((k) => [k, k, (r) => r.skills?.[k] ?? null]),
-  ['gambits', 'Gambits', (r) => (r.gambit_games >= GAMBIT_MIN ? Math.round(r.gambit_score * 100) : null)]];
+const BY = [['overall', 'Overall', (r) => r.overall], ...['Attack', 'Defense', 'Early game', 'Late game', 'Accuracy', 'Speed'].map((k) => [k, k, (r) => r.skills?.[k] ?? null])];
 // One row: the place, a small player card as on the profile (overall, style, piece, rating, name and the
 // six skills, the ranked one marked), and beside it the name, style + strength and the openings played most.
 const practise = (side, fam) => `./?practise=${side}~${encodeURIComponent(fam.replace(/^vs /, ''))}`;
@@ -23,7 +21,7 @@ function row(r, i, value) {
     <div class="lb-info"><a class="lbd-name" href="${href}">${esc(r.name)}</a>
       <p class="lb-type">${esc(r.style || '')}${r.strength ? ` <span>+ ${esc(r.strength)}</span>` : ''}</p>
       <p class="lb-ops">${w ? `<span><small>Most played as White</small> <a class="lb-op" href="${practise('w', w.fam)}">${esc(w.fam)}</a></span>` : ''}${bl ? `<span><small>Most played as Black</small> <a class="lb-op" href="${practise('b', bl.fam)}">${esc(bl.fam)}</a></span>` : ''}</p>
-      <p class="lb-value">${state.by === 'gambits' ? `Gambits: <b>${value}%</b> in ${r.gambit_games} games` : `${BY.find(([k]) => k === state.by)[1]}: <b>${value}</b>`} <small>· ${r.rating} ${esc(r.speed)} · ${r.games} games</small></p></div></li>`;
+      <p class="lb-value">${BY.find(([k]) => k === state.by)[1]}: <b>${value}</b> <small>· ${r.rating} ${esc(r.speed)} · ${r.games} games</small></p></div></li>`;
 }
 const state = { speed: 'blitz', band: 'All', by: 'overall' };
 let rows = [];
@@ -42,7 +40,7 @@ function render() {
   const list = rows.filter((r) => r.speed === state.speed && r.rating >= lo && r.rating <= hi && value(r) !== null)
     .sort((a, b) => value(b) - value(a) || b.rating - a.rating);
 
-  $('#lb-msg').textContent = list.length ? (state.by === 'gambits' ? `Score with their own gambits, from at least ${GAMBIT_MIN} games.` : '')
+  $('#lb-msg').textContent = list.length ? ''
     : rows.length ? 'Nobody here yet for this choice.' : 'Nobody is here yet. Log in with Lichess and open your profile to be the first.';
   $('#lb-rows').innerHTML = list.map((r, i) => row(r, i, value(r))).join('');
 }
