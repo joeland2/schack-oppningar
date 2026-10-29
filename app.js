@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029131902';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029131902';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029131902';
-import { GUIDE } from './guide.js?v=20261029131902';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029131902';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029131902';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029131902';
-import { storedGames } from './profile.js?v=20261029131902';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029132009';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029132009';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029132009';
+import { GUIDE } from './guide.js?v=20261029132009';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029132009';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029132009';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029132009';
+import { storedGames } from './profile.js?v=20261029132009';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -944,13 +944,32 @@ $('#line-done').addEventListener('pointerout', (e) => {
 $('#line-done').addEventListener('click', (e) => {
   if (e.target.closest('.done-next')) return $('#restart').click();
   const go = e.target.closest('[data-go]')?.dataset.go;
-  if (!go) return;
+  if (go) goOn(go);
+});
+// The same choice over the board, the moment a line is done; Play on keeps the position to play out.
+let goAsked = false;
+$('#go-ask').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-go]');
+  if (!b) return;
+  $('#go-ask').hidden = true;
+  if (b.dataset.go !== 'on') goOn(b.dataset.go);
+});
+function askGo() {
+  goAsked = true;
+  const opt = (m, label, about) => `<button type="button" class="depth-opt${m === mode ? ' now' : ''}" data-go="${m}"><b>${label}</b><span>${about}</span></button>`;
+  $('#go-ask').innerHTML = `<div class="depth-card"><p class="depth-k">Line done</p><p class="depth-q">${lineName(lines[lineIdx])}. How do you want to go on?</p>
+    ${opt('learn', 'Learn the next line', 'The arrows show you every move')}
+    ${opt('try', mode === 'learn' ? 'Practise this line' : 'Practise on', 'Play it from memory, without arrows')}
+    <button type="button" class="link go-on" data-go="on">Play on from here</button></div>`;
+  $('#go-ask').hidden = false;
+}
+function goOn(go) {
   const was = mode;
   setMode(go, false);
   // Practice straight after Learn tests the line you just learned, and a line with a slip comes again;
   // otherwise each mode picks its next line.
   play(go === 'try' && (was === 'learn' || misses) ? lineIdx : nextLine());
-});
+}
 // How to go on once a line is done: Learn the next line or Practice, the mode you are in first.
 function doneNext() {
   if (trapRun || (mode !== 'learn' && mode !== 'try')) return `<button type="button" class="cta done-next">${$('#restart').textContent}</button>`;
@@ -1060,6 +1079,7 @@ function renderWhy() {
   $('#line-done').innerHTML = ply >= line.length && lineDone && !momentOpen // the trap's card first
     ? `<div class="summary">${lineDone}${tips}${lineMore}${doneNext()}</div>` : '';
   $('#line-done').hidden = !$('#line-done').innerHTML;
+  if (lineDone && !goAsked && !momentOpen && !trapRun && (mode === 'learn' || mode === 'try') && hist.length === endLen) askGo();
 }
 
 // Your side's wins, draws and losses (as shares) in games at your level that reached a position, or null.
@@ -1231,6 +1251,7 @@ function start(op, keepTraps = false) {
   window.track?.('practise', `${op.side === 'b' ? 'Black' : 'White'}: ${(isVs(op) ? 'vs ' : '') + op.name}`);
   line = []; lines = []; game = new Chess();
   $('#depth-ask').hidden = true;
+  $('#go-ask').hidden = true;
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   misses = 0; missesHere = 0; busy = true;
   $('#op-title').textContent = (isVs(op) ? 'vs ' : '') + op.name;
@@ -1302,6 +1323,7 @@ function play(i, again = false) {
   gameGen++; // ignore an opponent reply still on its way from the previous game
   playing = false; opponent = saidOpponent = null;
   premove = null; notes = []; betters = []; lineDone = ''; view = null;
+  goAsked = false; $('#go-ask').hidden = true;
   clearShapes(boardEl);
   redo = [];
   $('#restart').textContent = 'Restart';
