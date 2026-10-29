@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029140838';
-import { STYLE_OF } from './styles.js?v=20261029140838';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029141511';
+import { STYLE_OF } from './styles.js?v=20261029141511';
 
 const MAX = 500;
-const PV = 31;
+const PV = 32;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -275,6 +275,11 @@ const STRENGTH = { Attack: 'Killer instinct', 'Early game': 'Well prepared', 'La
 // A strength on the same theme as the style says the same thing twice; then the next best skill is named.
 const SAME = { 'Endgame artist': 'Late game', Houdini: 'Defense', 'Time scrambler': 'Speed', Trickster: 'Attack', Guardian: 'Defense', Marathoner: 'Late game' };
 // Every style with its weight (1 = clearly holds), most first, and every strength with its value (62 = clearly holds).
+// Where each style's weight lies for an ordinary player: the median and the top tenth among 42 players
+// checked (their main time control). A style counts by how far above the median a player is, against
+// that spread, so a style the player is below the usual on (29 moves where 36 is usual) never wins.
+const PAR = { Striker: [0.74, 1.3], 'Solid builder': [0.66, 1.4], 'Endgame artist': [0.76, 0.92], Houdini: [0.41, 1.13], 'Time scrambler': [0.63, 1.07],
+  Trickster: [0.53, 1.15], Specialist: [0.69, 0.98], Explorer: [0.25, 0.39], Marathoner: [0.75, 0.87], Guardian: [0.11, 1.33] };
 function traitsOf(p) {
   const q = p.peer || {}, rating = p.speeds?.[0]?.rating, raw = rawSkills(p), def = raw.find((x) => x.label === 'Defense');
   const styles = [
@@ -296,7 +301,7 @@ function traitsOf(p) {
     // The counterpart of Striker: a player whose Defense (solid openings, holding against attacks, saving
     // bad positions, rarely letting opponents get ahead) is clearly above their own opponents'.
     { name: 'Guardian', w: def.v !== null ? (def.v - 50) / 9 : 0, why: `You defend clearly better than your opponents at your level. ${def.why}` },
-  ].sort((x, y) => y.w - x.w);
+  ].map((x) => ({ ...x, lean: (x.w - PAR[x.name][0]) / (PAR[x.name][1] - PAR[x.name][0]) })).sort((x, y) => y.lean - x.lean);
   // Giant killer needs a clear surplus: upsets are common in fast games. Speed counts winning on time half,
   // since much of it is the opponent's doing.
   const extra = [
@@ -319,7 +324,7 @@ function typeOf(p) {
   // The strength: the one furthest above the player's own opponents (64 or more where 50 is even).
   // Defense has no strength of its own: being best at it is the Guardian style.
   const best = strengths.filter((x) => x.label !== 'Defense' && x.v !== null && x.v >= 64 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v)[0];
-  const second = best ? { name: STRENGTH[best.label] || best.label, why: STRENGTH[best.label] ? `${best.label} is where you beat your level most: ${best.why}` : best.why } : styles[1].w >= 0.8 && style === styles[0] ? styles[1] : null;
+  const second = best ? { name: STRENGTH[best.label] || best.label, why: STRENGTH[best.label] ? `${best.label} is where you beat your level most: ${best.why}` : best.why } : styles[1].lean >= 1 ? styles[1] : null; // a second style only when it is top-tenth
   return second ? [style, second] : [style];
 }
 
@@ -364,7 +369,7 @@ function skillsOf(p) {
   console.assert(Math.abs(o - (60 + (m - 50) / 2)) < 1 && Math.abs((s[5].v - s[3].v) - (s[5].raw - s[3].raw)) <= 1, 'skillsOf shape'); // SHAPE 2 at half size: a gap of 10 between two skills stays 10
 }
 console.assert(typeOf({ attacking: 0.54, solid: 0.2, queensOff: 0.1, draws: 0.05, moves: 30, lowTime: 0.16, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, score: 0.5, downs: 30, ups: 30, saved: 0.47, oppSaved: 0.2, myLow: 0.05, oppLow: 0.25, timeWins: 0.15, timeLosses: 0.04 } }).map((t) => t.name).join() === 'Striker,Speed demon', 'typeOf');
-console.assert(typeOf({ attacking: 0.27, solid: 0.56, queensOff: 0.23, draws: 0.03, moves: 29, lowTime: 0.15, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, analysed: 120, after12: 96, n12: 120 } }).map((t) => t.name).join() === 'Striker,Well prepared', 'typeOf: the leaning style, and a strength');
+console.assert(typeOf({ attacking: 0.27, solid: 0.56, queensOff: 0.23, draws: 0.03, moves: 29, lowTime: 0.15, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, analysed: 120, after12: 96, n12: 120 } }).map((t) => t.name).join() === 'Solid builder,Well prepared', 'typeOf: the leaning style, and a strength');
 console.assert(levelOf(1200) === 60 && levelOf(2400) === 82 && levelOf(5000) === 92 && levelOf(100) === 35, 'levelOf');
 function rawSkills(p) {
   const q = p.peer || {}, an = (q.analysed ?? 0) >= ENOUGH, pawns = (cp) => { const r = Math.round(cp / 10) / 10; return r === 0 ? '0.0' : `${r > 0 ? '+' : '−'}${Math.abs(r).toFixed(1)}`; };
