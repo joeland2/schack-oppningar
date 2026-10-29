@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029231722';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029231722';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029231722';
-import { GUIDE } from './guide.js?v=20261029231722';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029231722';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029231722';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029231722';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029231722';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029232820';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029232820';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029232820';
+import { GUIDE } from './guide.js?v=20261029232820';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029232820';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029232820';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029232820';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029232820';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2472,7 +2472,7 @@ function renderLineBox() {
     ${trapRun ? `<p class="lb-choice">Trap training: ${trapRun.done} of ${trapRun.total}</p>` : ''}
     ${hardDue().length && !drill ? `<p class="lb-choice">${plural(hardDue().length, 'hard move')} to drill <button type="button" class="link" data-drill>Drill them</button></p>` : ''}
     ${mode === 'try' && practiceSet().length ? `<p class="lb-note">Practising lines ${practiceSet().map((i) => i + 1).join(', ')}.</p>` : ''}
-    <p class="lb-note">${nextReview ? nextReview + ' ' : ''}Progress is saved in this browser.</p>`;
+    <p class="lb-note">${nextReview ? nextReview + ' ' : ''}${savedWhere()}</p>`;
 }
 
 $('#line-box').addEventListener('click', (e) => { const b = e.target.closest('[data-unchoose]'); if (b) unchoose(b.dataset.unchoose); });
@@ -3272,6 +3272,9 @@ $('#mode-explore').addEventListener('click', () => setMode('explore'));
 $('#mode-time').addEventListener('click', () => setMode('time'));
 // ---------- Progress to a file and back ----------
 // Everything the site keeps in this browser except the engine cache (it rebuilds itself), as JSON.
+// Where progress lives: on the Lichess account when logged in (header.js syncs it), else in this browser.
+const savedWhere = () => (account() ? 'Progress is saved on your Lichess account.' : 'Progress is saved in this browser.');
+if ($('#saved-where')) $('#saved-where').textContent = savedWhere();
 const KEEP_KEY = (k) => (k.startsWith(STORE) && k !== STORE + '-sf' && k !== STORE + '-games') || k.endsWith('-solved-v1') || k === 'chess-theme';
 $('#export').addEventListener('click', () => {
   const data = {};

@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261029231722">
-  <script src="header.js?v=20261029231722" defer></script>
-  <script src="theme.js?v=20261029231722"></script>
+  <link rel="stylesheet" href="style.css?v=20261029232820">
+  <script src="header.js?v=20261029232820" defer></script>
+  <script src="theme.js?v=20261029232820"></script>
 </head>
 <body>
   <header class="top">
@@ -217,15 +217,15 @@
   <footer class="wrap foot-mini">
     <ul class="legend-mini" aria-label="Move symbols"><li title="A move of the line you are learning"><span class="mark k-book legend-badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c3-1.5 5.5-1.5 8 0 2.5-1.5 5-1.5 8 0v12c-3-1.5-5.5-1.5-8 0-2.5-1.5-5-1.5-8 0zM12 6v12"/></svg></span>Book</li><li title="The best move, and it gives up a piece to get there"><span class="mark k-brilliant legend-badge">!!</span>Brilliant</li><li title="Stockfish's top choice"><span class="mark k-best legend-badge">★</span>Best</li><li title="Loses almost nothing"><span class="mark k-good legend-badge">✓</span>Good</li><li title="Gives away 5–10% of your winning chances"><span class="mark k-inaccuracy legend-badge">?!</span>Inaccuracy</li><li title="Gives away 10–15%"><span class="mark k-mistake legend-badge">?</span>Mistake</li><li title="Gives away 15% or more"><span class="mark k-blunder legend-badge">??</span>Blunder</li></ul>
     <div class="foot-row">
-      <span>Progress is saved in this browser.</span>
+      <span id="saved-where">Progress is saved in this browser.</span>
       <button type="button" class="link" id="export">Save to a file</button>
       <label class="link file-btn">Load from a file<input type="file" id="import" accept="application/json,.json" hidden></label>
       <span id="backup-msg" aria-live="polite"></span>
-      <details class="privacy"><summary>Privacy</summary><p>The site counts visits and what is used (pages, profiles looked up, openings practised) to see how it is used, with a random id for this browser, your country, your IP address with its last part removed (so it points to no one) and, when you are logged in, your Lichess name. Once you have logged in, your player card (rating, skills, style, openings) is shown on the leaderboard. Nothing else about you is stored.</p></details>
+      <details class="privacy"><summary>Privacy</summary><p>The site counts visits and what is used (pages, profiles looked up, openings practised) to see how it is used, with a random id for this browser, your country, your IP address with its last part removed (so it points to no one) and, when you are logged in, your Lichess name. Once you have logged in, your player card (rating, skills, style, openings) is shown on the leaderboard. When you are logged in, your progress in the trainer (stars, lines, favourites, starred players and settings) is kept with your Lichess name, so it follows you to every device. Nothing else about you is stored.</p></details>
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261029231722"></script>
+  <script type="module" src="app.js?v=20261029232820"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>

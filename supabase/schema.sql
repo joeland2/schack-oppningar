@@ -67,3 +67,13 @@ create table if not exists public.analyses (
 );
 alter table public.analyses enable row level security;
 -- No policies: only the Edge Function (service role) reads and writes it.
+
+-- What a logged-in player keeps on the site, per Lichess id: stars and progress, favourites, starred
+-- players and settings, so every device shows the same (the userdata function).
+create table if not exists public.user_data (
+  id          text primary key check (char_length(id) <= 30),
+  data        jsonb not null default '{}',
+  updated_at  timestamptz not null default now()
+);
+alter table public.user_data enable row level security;
+-- No policies: only the Edge Function (service role) reads and writes it.

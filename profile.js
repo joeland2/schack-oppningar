@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029231722';
-import { STYLE_OF } from './styles.js?v=20261029231722';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029232820';
+import { STYLE_OF } from './styles.js?v=20261029232820';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1149,7 +1149,6 @@ function render(name, at, full) {
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
     ${nameRow(name)}
-    <div class="pf-under-name">${playerBar(name, at)}</div>
     <section class="pf-hero">
       <div class="pf-card-col">${playerCard(name, p, t, skills)}${speedBar(name, full, sp, avail)}${me ? starsStrip() : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
         <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
@@ -1272,7 +1271,8 @@ function leadStory(name, p, skills, me) {
   </section>`;
 }
 // The page ends on what to do next, not on the fine print.
-// Your stars from the Openings trainer, across every opening and time control (kept in this browser):
+// Your stars from the Openings trainer, across every opening and time control (on your Lichess account
+// when logged in, header.js syncs them; else in this browser):
 // green for a line played through in Learn, gold for one cleared in Practice, diamond for one played
 // without a slip in the time trial; and the openings with the most, each linking to its lines.
 const STAR_PATH = 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z';
@@ -1286,7 +1286,7 @@ function starsCard() {
     <div class="pf-star-totals">${[['green', 'learned'], ['gold', 'cleared'], ['diamond', 'perfect in Time']].map(([k, w]) => `<div>${starIcon(k)}<b>${sum(k)}</b><span>${w}</span></div>`).join('')}</div>
     <ul class="pf-star-ops">${ops.slice(0, 6).map((o) => `<li><a class="pf-op-link" href="${practiseLink(sideOf(o.id), nameOf(o.id))}">${esc(nameOf(o.id))}</a>
       <span>${['green', 'gold', 'diamond'].filter((k) => o[k].size).map((k) => `${starIcon(k)}${o[k].size}`).join(' ')}</span></li>`).join('')}</ul>
-    <p class="info">Saved in this browser. A line counts once, in every time control.</p></section>`;
+    <p class="info">${account() ? 'Saved on your Lichess account' : 'Saved in this browser'}. A line counts once, in every time control.</p></section>`;
 }
 // The same stars in one row under the card; it leads to the full list further down.
 function starsStrip() {
@@ -1512,13 +1512,6 @@ function nameRow(name) {
     <button type="button" class="ghost pf-act pf-star" data-fav aria-pressed="${fav}" aria-label="${fav ? 'Starred: unstar' : 'Star this player'}" title="${fav ? 'Starred (press to unstar)' : 'Star this player: one tap to them from the ★ menu'}">${icon(STAR_PATH, fav)}</button>
     ${mine && mine.toLowerCase() !== name.toLowerCase() ? `<a class="ghost pf-act" href="${compareLink(mine, name)}" aria-label="Compare with me" title="Compare ${esc(name)} with you">${icon('M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4')}</a>` : ''}
     <a class="ghost pf-act" href="https://lichess.org/@/${encodeURIComponent(name)}" target="_blank" rel="noopener" aria-label="${esc(name)} on Lichess" title="${esc(name)} on Lichess">${icon('M14 4h6v6M20 4l-9 9M18 14v6H4V6h6')}</a></div>`}</div>`;
-}
-// Your starred players to jump to.
-function playerBar(name, at) {
-  const me = isMe(name), list = favs().filter((x) => x.toLowerCase() !== name.toLowerCase());
-  return `<div class="pf-players">
-    ${list.length ? `<span class="pf-players-list"><small>${me ? 'Your players' : 'Starred'}</small>${list.map((x) => `<a class="pf-chip" href="${profileLink(x)}">${esc(x)}</a>${me ? `<a class="pf-chip pf-vs" href="${compareLink(name, x)}" title="Compare ${esc(name)} with ${esc(x)}">vs</a>` : ''}`).join('')}</span>` : ''}
-  </div>`;
 }
 function bindPlayerBar(name) {
   // New games: only the games played since the last read are fetched, then the whole profile is read again.

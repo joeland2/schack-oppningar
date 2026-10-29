@@ -1871,7 +1871,6 @@ p, li, dd, small { text-wrap: pretty; }
   #profile .pf-hero .pf-type-row > div:first-child { padding-right: 46px; }
   .pf-card-col .pf-speeds button { white-space: nowrap; }
   .pf-card-col .pf-speeds { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
-  #profile > .pf-under-name { padding-right: 46px; margin-top: -14px; } /* clear of the icons down the right edge */
   #profile .pf-hero .pf-h1 { overflow-wrap: normal; } /* a style is never split mid-word ("Marathone-r") */
   #profile > .pf-hero ~ :not(.pf-players) { order: 2; }
 }
@@ -1989,11 +1988,6 @@ main.profile:has(#admin) { max-width: 1320px; }
 .go-sum .done-why { padding-left: 18px; display: grid; gap: 4px; }
 .go-sum .facts { margin: 2px 0; }
 .go-ask-q { margin: 6px 0 0; font-weight: 700; }
-.pf-under-name { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; } /* time control left, starred players right, one row under the name */
-.pf-under-name:empty { display: none; }
-.pf-under-name > :only-child:not(.pf-speeds) { margin-left: auto; }
-#profile > .pf-under-name { margin-top: -26px; } /* close under the name, and the card close under it */
-#profile > .pf-under-name + .pf-hero { margin-top: -20px; }
 /* Admin's latest downloads and analyses: an icon for the kind, what was made and its look */
 .ad-act { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ad-act > .ico { flex: none; width: 18px; height: 18px; color: var(--hot); }

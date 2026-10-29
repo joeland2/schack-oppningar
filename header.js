@@ -70,3 +70,72 @@ addEventListener('DOMContentLoaded', () => {
   addEventListener('click', (e) => { if (menu.open && !menu.contains(e.target)) menu.open = false; });
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && menu.open) { menu.open = false; menu.querySelector('summary').focus(); } });
 });
+
+// Sync (supabase/functions/userdata): when logged in with Lichess, what the site keeps for you (stars and
+// progress in every opening, favourites, starred players, settings) lives on your account, so every
+// device shows the same. The browser keeps a working copy: each key's last change time is noted, the
+// newer of two copies wins, and the first time a device meets the account its progress is added to the
+// account's rather than replaced. Caches that rebuild themselves (engine, games, profiles) stay local.
+(() => {
+  const API = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/userdata', META = 'chess-trainer-sync';
+  const CACHE = ['-sf', '-games', '-profiles', '-mistakes'];
+  const synced = (k) => (k.startsWith('opening-book-v2') && !CACHE.some((c) => k.endsWith(c))) || k.endsWith('-solved-v1') || k === 'chess-theme' || k === 'chess-trainer-card-look';
+  // Lists and progress are added together on a device's first sync; everything else simply takes the newer.
+  const MERGE = (k) => k === 'opening-book-v2' || k === 'opening-book-v2-rep' || k === 'opening-book-v2-players' || k.endsWith('-solved-v1');
+  const ls = window.localStorage, set = Storage.prototype.setItem, del = Storage.prototype.removeItem;
+  const token = () => { try { return JSON.parse(ls.getItem('chess-trainer-lichess-login'))?.token || null; } catch { return null; } };
+  const readMeta = () => { try { return JSON.parse(ls.getItem(META)) || {}; } catch { return {}; } };
+  let meta = readMeta(); meta.t ??= {}; meta.dirty ??= {};
+  const saveMeta = () => { try { set.call(ls, META, JSON.stringify(meta)); } catch {} };
+  let applying = false, timer = 0;
+  // Every change to a synced key is noted, and sent a moment later.
+  const note = (k) => { if (applying || !synced(k)) return; meta.t[k] = Date.now(); meta.dirty[k] = 1; saveMeta(); clearTimeout(timer); timer = setTimeout(push, 1500); };
+  Storage.prototype.setItem = function (k, v) { set.call(this, k, v); if (this === ls) note(k); };
+  Storage.prototype.removeItem = function (k) { del.call(this, k); if (this === ls) note(k); };
+  const union = (a, b) => {
+    if (Array.isArray(a) && Array.isArray(b)) { const seen = new Set(a.map((x) => JSON.stringify(x))); return [...a, ...b.filter((x) => !seen.has(JSON.stringify(x)))]; }
+    if (a && b && typeof a === 'object' && typeof b === 'object') { const o = { ...a }; for (const k of Object.keys(b)) o[k] = k in a ? union(a[k], b[k]) : b[k]; return o; }
+    if (typeof a === 'number' && typeof b === 'number') return Math.max(a, b);
+    return b ?? a;
+  };
+  console.assert(JSON.stringify(union({ x: { done: ['a'], total: 3 } }, { x: { done: ['b', 'a'], total: 4 }, y: 1 })) === '{"x":{"done":["a","b"],"total":4},"y":1}', 'sync union');
+  async function push(keepalive = false) {
+    const tk = token(), keys = Object.keys(meta.dirty);
+    if (!tk || !keys.length) return;
+    const data = Object.fromEntries(keys.map((k) => [k, { v: ls.getItem(k), t: meta.t[k] || Date.now() }]));
+    try {
+      const r = await fetch(API, { method: 'POST', keepalive, headers: { 'content-type': 'application/json', 'x-lichess-token': tk }, body: JSON.stringify({ data }) });
+      if (r.ok) { meta = readMeta(); meta.t ??= {}; meta.dirty ??= {}; for (const k of keys) if (meta.t[k] === data[k].t) delete meta.dirty[k]; saveMeta(); }
+    } catch {}
+  }
+  addEventListener('pagehide', () => { if (Object.keys(meta.dirty).length) push(true); });
+  async function pull() {
+    const tk = token();
+    if (!tk) return;
+    let server = {};
+    try { const r = await fetch(API, { headers: { 'x-lichess-token': tk } }); if (!r.ok) return; server = (await r.json()).data || {}; } catch { return; }
+    const first = meta.user !== tk.slice(-12); // this device's first sync with this login
+    let changed = false;
+    applying = true;
+    const keys = new Set([...Object.keys(server), ...Object.keys(ls).filter(synced)]);
+    for (const k of keys) {
+      const s = server[k], local = ls.getItem(k), lt = meta.t[k] || 0;
+      if (!s) { if (local !== null) { meta.t[k] ||= Date.now(); meta.dirty[k] = 1; } continue; }
+      if (first && local !== null && s.v !== null && MERGE(k) && local !== s.v) {
+        try { const v = JSON.stringify(union(JSON.parse(s.v), JSON.parse(local))); set.call(ls, k, v); meta.t[k] = Date.now(); meta.dirty[k] = 1; changed = v !== local; continue; } catch {}
+      }
+      if (s.t > lt || (first && lt === 0)) {
+        if (s.v !== local) { if (s.v === null) del.call(ls, k); else set.call(ls, k, s.v); changed = true; }
+        meta.t[k] = s.t; delete meta.dirty[k];
+      } else if (lt > s.t) meta.dirty[k] = 1;
+    }
+    applying = false;
+    meta.user = tk.slice(-12);
+    saveMeta();
+    push();
+    // The page was drawn from the old copy: draw it again from the account's, once.
+    if (changed && !sessionStorage.getItem('chess-trainer-synced')) { sessionStorage.setItem('chess-trainer-synced', '1'); location.reload(); }
+    else sessionStorage.removeItem('chess-trainer-synced');
+  }
+  pull();
+})();
