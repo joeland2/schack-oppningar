@@ -778,7 +778,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .pf-skill-val { font: 400 26px/1 var(--font-poster); }
 .pf-meter { grid-column: 1 / -1; position: relative; height: 6px; border-radius: 3px; background: var(--track); }
 .pf-meter i { display: block; height: 100%; border-radius: 3px; background: var(--data); }
-.pf-meter::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--muted); opacity: .5; } /* the so-so mark */
+.pf-meter::after { content: ""; position: absolute; left: var(--even, 50%); top: -3px; bottom: -3px; width: 1px; background: var(--muted); opacity: .5; } /* the mark: as good as the player's opponents (the level the rating sets) */
 .pf-means { grid-column: 1 / -1; margin: 2px 0 0; font-size: 13.5px; }
 .pf-skills small { grid-column: 1 / -1; color: var(--muted); font-size: 12.5px; }
 .pf-train { grid-column: 1 / -1; margin: 4px 0 0; padding: 8px 10px; font-size: 13px; background: var(--raised); border-radius: 2px; }

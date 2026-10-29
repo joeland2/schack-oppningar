@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029073253';
-import { STYLE_OF } from './styles.js?v=20261029073253';
+import { account, login, finishLogin } from './lichess.js?v=20261029075239';
+import { STYLE_OF } from './styles.js?v=20261029075239';
 
 const MAX = 500;
 const PV = 15;
@@ -247,11 +247,11 @@ const spread = (d) => 0.4 * d * (1 + Math.abs(d) / 50);
 console.assert(spread(10) === 4.8 && spread(-25) === -15, 'spread');
 function skillsOf(p) {
   const base = levelOf(p.speeds?.[0]?.rating);
-  return rawSkills(p).map((x) => ({ ...x, raw: x.v, v: x.v === null ? null : Math.min(99, clamp(base + spread(x.v - 50))) }));
+  return rawSkills(p).map((x) => ({ ...x, raw: x.v, level: Math.round(base), v: x.v === null ? null : Math.min(99, clamp(base + spread(x.v - 50))) }));
 }
 console.assert(levelOf(1200) === 60 && levelOf(2400) === 82 && levelOf(5000) === 92 && levelOf(100) === 35, 'levelOf');
 function rawSkills(p) {
-  const q = p.peer || {}, an = (q.analysed ?? 0) >= ENOUGH, pawns = (cp) => `${cp >= 0 ? '+' : '−'}${(Math.abs(cp) / 100).toFixed(1)}`;
+  const q = p.peer || {}, an = (q.analysed ?? 0) >= ENOUGH, pawns = (cp) => { const r = Math.round(cp / 10) / 10; return r === 0 ? '0.0' : `${r > 0 ? '+' : '−'}${Math.abs(r).toFixed(1)}`; };
   return [
     { label: 'Openings', needs: true, v: an && q.after12 !== null ? clamp(50 + q.after12 / 4) : null,
       means: 'How you come out of the first 12 moves, against your opponents at your level.',
@@ -535,7 +535,7 @@ let showSkillText = false;
 function skillBars(skills, say, me) {
   return `<ul class="pf-skills">${skills.map((x) => `<li${x.v === null ? ' class="pf-skill-none"' : ''}>
       <span class="pf-skill-name">${x.label}</span><span class="pf-skill-val">${x.v ?? '–'}</span>
-      <div class="pf-meter" role="img" aria-label="${x.label}: ${x.v === null ? 'not enough games' : `${x.v} of 100`}"><i style="width:${x.v ?? 0}%"></i></div>
+      <div class="pf-meter" style="--even:${x.level ?? 50}%" title="The mark: ${x.level ?? 50}, as good as ${me ? 'your' : 'their'} opponents" role="img" aria-label="${x.label}: ${x.v === null ? 'not enough games' : `${x.v} of 100, ${x.level ?? 50} is as good as the opponents`}"><i style="width:${x.v ?? 0}%"></i></div>
       ${x.v === null && x.needs ? '<small class="pf-skill-lock">Needs more analysed games</small>' : ''}
       <div class="pf-skill-more"><p class="pf-means">${esc(x.means)}</p>
       <small>${x.v === null ? 'Not enough games to say.' : esc(say(x.why))}</small>
@@ -712,7 +712,7 @@ function render(name, at, p) {
       <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
         <button type="button" class="link" data-skill-text aria-expanded="${showSkillText}">${showSkillText ? 'Hide explanations' : 'What each one means'}</button></div>
       ${skillBars(skills, say, me)}
-      <p class="pf-skill-more pf-skill-scale">The level comes from the rating (about 60 at 1200, 76 at 2000, 88 at 2800). Each skill sits above or below it, the further the clearer the difference, by how ${me ? 'you do' : 'the player does'} against ${me ? 'your' : 'their'} own opponents rated within ${PEER} points, in the same games.</p>
+      <p class="pf-skill-more pf-skill-scale">The level comes from the rating (about 60 at 1200, 76 at 2000, 88 at 2800). Each skill sits above or below it, the further the clearer the difference, by how ${me ? 'you do' : 'the player does'} against ${me ? 'your' : 'their'} own opponents rated within ${PEER} points, in the same games. The mark on each bar, ${skills[0]?.level ?? 50}, is as good as them.</p>
     </section>
     <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From all ${p.n} games</span></div>
       <div class="pf-two pf-more-body">
