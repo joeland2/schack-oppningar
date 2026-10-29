@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029213625';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029213625';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029213625';
-import { GUIDE } from './guide.js?v=20261029213625';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029213625';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029213625';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029213625';
-import { storedGames, gamesReady } from './profile.js?v=20261029213625';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029213838';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029213838';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029213838';
+import { GUIDE } from './guide.js?v=20261029213838';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029213838';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029213838';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029213838';
+import { storedGames, gamesReady } from './profile.js?v=20261029213838';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1078,6 +1078,7 @@ function showGo(on) {
 }
 function askGo() {
   goAsked = true;
+  trackDone();
   // Every way on is here, Next line first, so nothing outside the card is needed.
   const done = mode === 'try' && !misses && !assisted ? 'Line cleared' : mode === 'try' ? 'Line done' : 'Line learned';
   $('#go-ask').innerHTML = `<div class="depth-card" role="dialog" aria-labelledby="go-title"><p class="depth-k">${done}</p><p class="depth-q" id="go-title">${lineName(lines[lineIdx])}. How do you want to go on?</p>
@@ -2677,8 +2678,12 @@ function guide() {
   // A card beside the board (Punished!, a trap's story) does not stop the arrow; only a card that draws its own arrows does.
   goodMove().then((m) => { if (m && game.fen() === at && userTurn() && !momentArrows) { hintSq = [m.from, m.to]; renderBoard(); } });
 }
+// A line played through, for the admin page: which openings people finish, and in which mode
+// (the opening was counted when it was opened, as 'practise' with its name alone).
+const trackDone = () => cur && window.track?.('practise', `done ${mode} · ${cur.side === 'b' ? 'Black' : 'White'}: ${(isVs(cur) ? 'vs ' : '') + cur.name}`);
 function finish() {
   if (mode === 'time') {
+    trackDone();
     trial.done++;
     // A line played without a slip against the clock earns its diamond star in the lines list.
     const st = stats[statKey(cur.id)], k = lineKey(line);

@@ -1,6 +1,6 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029213625';
+import { account, login, finishLogin } from './lichess.js?v=20261029213838';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -158,7 +158,8 @@ function render(s) {
     </div>
     <div class="pf-two">
       <section class="pf-card"><h2>Comparisons</h2>${rows(s.compares, (x) => targetHtml('compare', x.name))}</section>
-      <section class="pf-card"><h2>Openings practised</h2>${rows(s.practised)}</section>
+      <section class="pf-card"><h2>Openings <small>opened, and lines played through</small></h2>
+        ${(s.openings || []).length ? `<ul class="pf-rows ad-recent">${s.openings.map((o) => `<li><span>${esc(o.name)}</span><small>opened ${o.opened} · ${o.people} ${o.people === 1 ? 'person' : 'people'} · done <b title="Learn">${o.learn}</b> L · <b title="Practice">${o.try}</b> P · <b title="Time challenge">${o.time}</b> T</small></li>`).join('')}</ul>` : rows(s.practised)}</section>
     </div>
 `;
 }

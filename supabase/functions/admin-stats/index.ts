@@ -123,7 +123,17 @@ Deno.serve(async (req) => {
     registered: registered.sort((a, b) => a.localeCompare(b)),
     compares: count(recent.filter((r) => r.kind === 'compare').map((r) => r.target)),
     usage: count(recent.filter((r) => r.kind !== 'view' && r.kind !== 'profile').map((r) => r.kind)),
-    practised: count(recent.filter((r) => r.kind === 'practise').map((r) => r.target)),
+    practised: count(recent.filter((r) => r.kind === 'practise' && !r.target?.startsWith('done ')).map((r) => r.target)),
+    // Per opening: how many opened it, and how many lines were played through in each mode (learn, try, time).
+    openings: (() => {
+      const o: Record<string, { name: string; opened: number; people: Set<string>; learn: number; try: number; time: number }> = {};
+      for (const r of recent.filter((x) => x.kind === 'practise' && x.target)) {
+        const m = r.target!.match(/^done (\w+) · (.+)$/), name = m ? m[2] : r.target!;
+        const x = (o[name] ??= { name, opened: 0, people: new Set(), learn: 0, try: 0, time: 0 });
+        if (m) { if (m[1] in x) (x as any)[m[1]]++; } else { x.opened++; x.people.add(r.visitor); }
+      }
+      return Object.values(o).sort((a, b) => b.opened - a.opened).slice(0, 20).map(({ people, ...x }) => ({ ...x, people: people.size }));
+    })(),
     visitors: visitors.sort((a, b) => b.last.localeCompare(a.last)).slice(0, 300).map((w) => ({ ...w, events: w.events.slice(-150).reverse() })),
     users: Object.entries(logins).sort((a, b) => b[1].last.localeCompare(a[1].last)).map(([name, x]) => ({ name, n: x.n, last: x.last })),
   });
