@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029145732';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029145732';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029145732';
-import { GUIDE } from './guide.js?v=20261029145732';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029145732';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029145732';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029145732';
-import { storedGames } from './profile.js?v=20261029145732';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029145916';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029145916';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029145916';
+import { GUIDE } from './guide.js?v=20261029145916';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029145916';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029145916';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029145916';
+import { storedGames } from './profile.js?v=20261029145916';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1409,6 +1409,7 @@ $('#depth').addEventListener('click', () => askDepth(allLines.length));
 function play(i, again = false) {
   if (drill && lineFor(drill.now ?? '') !== i) drill = null; // another line chosen: the drill ends
   lineIdx = i;
+  if (mode === 'time') pauseTrial();
   const l = lines[i];
   line = l.moves;
   game = new Chess();
@@ -2416,15 +2417,19 @@ function backToTrap() {
 // ---------- Time trial ----------
 // The lines from memory against the clock: a right move adds time, a wrong one takes some and the
 // right move is played for you; a finished line goes straight on to another. The best score is kept.
-const TRIAL_S = 60, TRIAL_RIGHT = 2, TRIAL_WRONG = 5;
+const TRIAL_S = 60, TRIAL_RIGHT = 2;
 let trial = null; // { end, score, done, timer }
 function startTrial() {
   stopTrial();
-  trial = { end: Date.now() + TRIAL_S * 1000, score: 0, done: 0, timer: setInterval(tickTrial, 100) };
+  // The clock waits (end null, left kept) until your first move, and again between lines.
+  trial = { end: null, left: TRIAL_S * 1000, score: 0, done: 0, timer: setInterval(tickTrial, 100) };
   $('#restart').textContent = 'Restart';
   play(Math.floor(Math.random() * lines.length));
-  say('Go! Play the lines from memory.');
+  say('Play the first move from memory: the clock starts then.');
 }
+const trialLeft = () => (trial.end ? trial.end - Date.now() : trial.left);
+function pauseTrial() { if (trial?.end) { trial.left = trial.end - Date.now(); trial.end = null; } }
+function runTrial() { if (trial && !trial.end && trial.timer) trial.end = Date.now() + trial.left; }
 function stopTrial() { if (trial) clearInterval(trial.timer); trial = trial && { ...trial, timer: null }; if (mode !== 'time') $('#trial-clock').hidden = true; }
 // The seconds a move won or cost, flashed beside the clock.
 function trialFlash(text, good) {
@@ -2433,12 +2438,13 @@ function trialFlash(text, good) {
   void el.offsetWidth; el.classList.add('show');
 }
 function tickTrial() {
-  const left = trial.end - Date.now(), sec = Math.max(0, Math.ceil(left / 1000));
+  const left = trialLeft(), sec = Math.max(0, Math.ceil(left / 1000));
   $('#progress').textContent = '';
   // The clock above the board: big minutes and seconds, red in the last ten seconds, and the score.
   $('#trial-clock').hidden = false;
   $('#tc-time').textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
   $('#trial-clock').classList.toggle('low', sec <= 10);
+  $('#trial-clock').classList.toggle('waiting', !trial.end && left > 0); // paused until your first move
   $('#tc-score').textContent = trial.score;
   $('#tc-best').textContent = stats[statKey(cur.id)]?.timeBest ? ` · best ${stats[statKey(cur.id)].timeBest}` : '';
   $('#bar').style.width = `${Math.max(0, Math.min(1, left / (TRIAL_S * 1000))) * 100}%`;
@@ -2469,18 +2475,19 @@ function tryMove(from, to) {
     return true;
   }
   if (mode === 'time' && clean(m.san) !== line[ply]) {
+    // A wrong move ends the run: the score so far counts for your best, then everything starts again
+    // and the clock waits for your first move.
     game.undo();
-    trial.end -= TRIAL_WRONG * 1000; misses++; // a slip costs the line its diamond
-    trialFlash(`−${TRIAL_WRONG} s`, false);
-    wrongSq = to; sel = null; shake(boardEl);
-    setTimeout(() => { wrongSq = null; renderBoard(); }, 500);
-    lastMove = game.move(line[ply]); ply++;
-    say(`Not ${m.san}: it was ${lastMove.san}. −${TRIAL_WRONG} s`, 'bad');
-    render();
-    if (ply >= line.length) finish(); else reply();
+    const want = new Chess(game.fen()).move(line[ply]).san, st = stats[statKey(cur.id)], record = trial.score > (st.timeBest || 0);
+    st.timeBest = Math.max(st.timeBest || 0, trial.score); store(STORE, stats);
+    trialFlash('Wrong', false);
+    wrongSq = to; sel = null; shake(boardEl); renderBoard();
+    gameGen++; busy = true;
+    say(`Not ${m.san}: it was ${want}. ${plural(trial.score, 'move')} right${record ? ', a new best' : ''}. Starting again…`, 'bad');
+    setTimeout(() => { wrongSq = null; if (mode === 'time') startTrial(); }, 1600);
     return true;
   }
-  if (mode === 'time') { trial.end += TRIAL_RIGHT * 1000; trial.score++; trialFlash(`+${TRIAL_RIGHT} s`, true); }
+  if (mode === 'time') { runTrial(); trial.end += TRIAL_RIGHT * 1000; trial.score++; trialFlash(`+${TRIAL_RIGHT} s`, true); }
   const moved = clean(m.san) !== line[ply] && transpose(); // another move order to a line's position counts as that line's move
   if (clean(m.san) !== line[ply] && !moved) {
     game.undo();
@@ -2595,7 +2602,7 @@ function finish() {
     // A line played without a slip against the clock earns its diamond star in the lines list.
     const st = stats[statKey(cur.id)], k = lineKey(line);
     if (!misses && st && !(st.timed ??= []).includes(k)) { st.timed.push(k); store(STORE, stats); }
-    return setTimeout(() => { if (mode === 'time' && trial.end > Date.now()) play((lineIdx + 1 + Math.floor(Math.random() * (lines.length - 1))) % lines.length); }, 300); }
+    return setTimeout(() => { if (mode === 'time' && trialLeft() > 0) play((lineIdx + 1 + Math.floor(Math.random() * (lines.length - 1))) % lines.length); }, 300); }
   // A mate in 10 or less for you at the line's end is played out too, before the line is done. That
   // needs Stockfish's verdict, so wait for it (the board waits with you).
   const key = evalKey(game.fen());
@@ -2952,7 +2959,7 @@ function setMode(m, restart = true, remember = true) {
   $('#mode-about').textContent = {
     learn: 'Every move is shown, with the replies you can expect at your level. Nothing is scored.',
     try: `Practice: play lines from memory, ${COHORT} at a time in course order; a new line joins when you clear one. A cleared line comes back for review after 1, 3, 7, 14 and 30 days.`,
-    time: `Time trial: ${TRIAL_S} seconds to play as many moves of this opening's lines as you can from memory. Right +${TRIAL_RIGHT} s, wrong −${TRIAL_WRONG} s.`,
+    time: `Time trial: ${TRIAL_S} seconds to play as many moves of this opening's lines as you can from memory, each right move +${TRIAL_RIGHT} s. One wrong move and it starts again. The clock starts on your first move.`,
     explore: 'Play any move: the opponent answers as players at your level most often do, and you see how often each move is played and how it scores. To try another answer, step back and move their piece.',
   }[m];
   if (!lines.length) return;
