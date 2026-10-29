@@ -1400,3 +1400,5 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .op-odds-r { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
 .op-odds-r output { font: 400 18px var(--font-poster); color: var(--ink); min-width: 2.6em; }
 .op-odds-r input { flex: 1; accent-color: var(--data); }
+#op-about .op-lines { margin: 0 0 10px; padding-left: 1.1em; display: grid; gap: 4px; line-height: 1.5; font-size: 15px; }
+#op-about .op-guide-k { margin: 6px 0 2px; font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }

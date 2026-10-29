@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029122226';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029122226';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029122226';
-import { GUIDE } from './guide.js?v=20261029122226';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029122226';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029122226';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029122226';
-import { storedGames } from './profile.js?v=20261029122226';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029122529';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029122529';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029122529';
+import { GUIDE } from './guide.js?v=20261029122529';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029122529';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029122529';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029122529';
+import { storedGames } from './profile.js?v=20261029122529';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1188,8 +1188,10 @@ function start(op, keepTraps = false) {
   showOdds();
   // Under the board: what the opening is about, your plan, and its idea and variations; the panel beside
   // the board is for the moves you play now.
-  { const about = aboutOf(op), plan = planOf(op);
-    $('#op-about').innerHTML = `${about ? `<p>${about}</p>` : ''}${plan ? `<p><b>Your plan:</b> ${plan}</p>` : ''}${guideOf(op).replace('<details class="op-guide">', '<details class="op-guide" open>')}`; }
+  // The guide's idea replaces the short description where there is one, so nothing is said twice.
+  { const gd = GUIDE[op.family] || GUIDE[shortName(op.family)], plan = planOf(op), about = gd ? gd.idea : aboutOf(op);
+    $('#op-about').innerHTML = `${about ? `<p>${about}</p>` : ''}${plan ? `<p><b>Your plan:</b> ${plan}</p>` : ''}${gd ? `<p class="op-guide-k">Main variations</p>
+      <ul class="op-lines">${gd.lines.map(([n, t]) => `<li><b>${n}:</b> ${t}</li>`).join('')}</ul><p><b>Watch out:</b> ${gd.watch}</p>` : ''}`; }
   $('#op-side').textContent = op.side === 'w' ? 'You play White' : 'You play Black';
   $('#restart').textContent = 'Restart';
   $('#picker').hidden = true;
