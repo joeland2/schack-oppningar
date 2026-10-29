@@ -1,11 +1,11 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029114828';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029114828';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029114828';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029114828';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029114828';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029114828';
-import { storedGames } from './profile.js?v=20261029114828';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029114855';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029114855';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029114855';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029114855';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029114855';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029114855';
+import { storedGames } from './profile.js?v=20261029114855';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1357,6 +1357,7 @@ function renderEval() {
 // a move that drops the mover's winning chances by 5, 10 or 15 points (of 100) is an inaccuracy, a mistake
 // or a blunder. A brilliant move is the engine's best that leaves a piece hanging.
 let notes = [], betters = [];
+let chance = null; // after their blunder: { ply of your answer, Stockfish's best answer }
 // Why the move at ply n was a slip: what goes wrong on the board (a mate or a piece left hanging),
 // or else the opponent's best answer to it and what that answer does; then the better move and its point.
 function slipWhy(n, arrows = true) {
@@ -1403,6 +1404,14 @@ async function rate(i, before, m) {
     : isBest ? (leavesPieceHanging(g, m) && winPct(-toCp(a)) >= 45 ? 'brilliant' : 'best') : 'good';
   if (loss >= 5 && b.move) betters[i] = new Chess(before).move(b.move);
   renderNotes(gen);
+  // Your answer to their blunder: say whether you took the chance.
+  if (chance && i === chance.ply && !momentOpen) {
+    const c = chance, idea = ideaAt(new Chess(before), m.san), lower = (x) => x.replace(/^./, (y) => y.toLowerCase());
+    chance = null;
+    if (notes[i] === 'best' || notes[i] === 'brilliant' || (m.from === c.best.from && m.to === c.best.to)) moment('good', 'You found it!', `<b>${moveLabel(i, m.san)}</b> punishes the blunder${idea ? `: ${lower(idea)}` : '.'}`, [{ label: 'Play on', run: () => {} }], null, null, null);
+    else if (notes[i] === 'good') moment('good', 'Good move', `<b>${moveLabel(i, m.san)}</b> keeps the edge${idea ? `: ${lower(idea)}` : '.'} The strongest was ${moveWords(c.best)}.`, [{ label: 'Play on', run: () => {} }], null, null, null);
+    else moment('chance', 'Chance missed', `The strong move was ${moveWords(c.best)}${(() => { const x = ideaAt(new Chess(before), c.best.san); return x ? `: ${lower(x)}` : '.'; })()}`, [{ label: 'Play on', run: () => {} }], null, [[c.best.from, c.best.to, GREEN]], null);
+  }
   if (notes[i] === 'blunder' && playing && mode !== 'explore' && view === null && !momentOpen) bigMoment(i, a);
 }
 // A blunder while you play on stops the game: yours can be taken back, theirs is a chance to find.
@@ -1416,6 +1425,7 @@ function bigMoment(i, after) {
   }
   if (i !== game.history().length - 1) return; // you have moved on already
   const best = after?.move && new Chess(game.fen()).move(after.move);
+  chance = best ? { ply: i + 1, best } : null;
   moment('chance', 'Chance!', `${sideName(m.color)}'s <b>${label}</b> (red arrow) was a blunder. There is a strong move for you now: look at checks, captures and threats.`,
     [{ label: 'Find it', run: () => {} }, ...(best ? [{ label: 'Show me', run: () => { hintSq = [best.from, best.to]; renderBoard(); say(`${moveWords(best)}.`, 'good'); } }] : [])], null, [[m.from, m.to, RED]], null);
 }
