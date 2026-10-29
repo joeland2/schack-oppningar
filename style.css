@@ -1854,7 +1854,8 @@ p, li, dd, small { text-wrap: pretty; }
   #profile > .pf-players { order: 1; }
   .pf-name { text-align: center; }
   .pf-name-row { flex-direction: column-reverse; align-items: stretch; gap: 0; }
-  .pf-acts { justify-content: flex-end; margin-bottom: 10px; }
+  .pf-acts { justify-content: flex-end; margin-bottom: 14px; }
+  .pf-name-row .pf-name { line-height: 1.05; } /* the poster face rises above a tighter line box, into the icons */
   .pf-act { width: 44px; height: 44px; }
   #profile > .pf-hero ~ :not(.pf-players) { order: 2; }
 }
