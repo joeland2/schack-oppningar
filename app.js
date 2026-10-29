@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029120522';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029120522';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029120522';
-import { GUIDE } from './guide.js?v=20261029120522';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029120522';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029120522';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029120522';
-import { storedGames } from './profile.js?v=20261029120522';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029120746';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029120746';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029120746';
+import { GUIDE } from './guide.js?v=20261029120746';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029120746';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029120746';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029120746';
+import { storedGames } from './profile.js?v=20261029120746';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -948,9 +948,8 @@ function renderWhy() {
   const parts = [];
   // Before the first move, an introduction: what the opening is about and which line this is.
   if (!hist.length && lines[lineIdx]) {
-    const l = lines[lineIdx], about = aboutOf(cur);
-    const plan = planOf(cur);
-    parts.push(`<p class="intro"><b>${isVs(cur) ? 'vs ' : ''}${cur.name}.</b> ${about} This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level${bigShare(l.share) ? ` (${bigShare(l.share)})` : ''}. It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap ? ` <b>${l.trap.kind === 'mistake' ? 'A common mistake' : 'A trap'}.</b> ${trapStory(l)}` : ''}</p>${plan ? `<p class="intro plan"><b>Your plan:</b> ${plan}</p>` : ''}${guideOf(cur)}`);
+    const l = lines[lineIdx];
+    parts.push(`<p class="intro">This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level${bigShare(l.share) ? ` (${bigShare(l.share)})` : ''}. It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap ? ` <b>${l.trap.kind === 'mistake' ? 'A common mistake' : 'A trap'}.</b> ${trapStory(l)}` : ''}</p>`);
   }
   // First what to play and why (Learn), then a quiet line on the last move, then the other replies
   // folded away: the board and the move to make come first.
@@ -1165,6 +1164,10 @@ function start(op, keepTraps = false) {
   $('#op-title').textContent = (isVs(op) ? 'vs ' : '') + op.name;
   $('#op-eco').textContent = op.eco;
   $('#op-info').textContent = `Starts ${numbered(op.root)}. ${popularity(op)} in ${speed} at your level; ${sideName(op.side)} wins ${pct(op.side === 'w' ? op.win : 1 - op.win - op.draw)}.`;
+  // Under the board: what the opening is about, your plan, and its idea and variations; the panel beside
+  // the board is for the moves you play now.
+  { const about = aboutOf(op), plan = planOf(op);
+    $('#op-about').innerHTML = `${about ? `<p>${about}</p>` : ''}${plan ? `<p><b>Your plan:</b> ${plan}</p>` : ''}${guideOf(op).replace('<details class="op-guide">', '<details class="op-guide" open>')}`; }
   $('#op-side').textContent = op.side === 'w' ? 'You play White' : 'You play Black';
   $('#restart').textContent = 'Restart';
   $('#picker').hidden = true;

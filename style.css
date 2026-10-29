@@ -1381,3 +1381,11 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .trap-tag.theory { background: var(--raised); color: var(--ink); }
 .mate-banner.draw { background: rgb(120 110 95 / .45); font-size: clamp(18px, 8cqi, 48px); }
 .mate-banner.lost { background: rgb(180 35 24 / .35); }
+
+/* Under the board: the opening's name, what it is about, your plan and its idea (the panel beside the
+   board is for the moves you play now) */
+.op-about { margin-top: 28px; padding-top: 18px; border-top: 3px solid var(--rule); display: grid; gap: 8px; max-width: 70ch; }
+.op-about .op-head h1 { margin: 2px 0 4px; font-size: clamp(2rem, 5vw, 2.8rem); }
+.op-about .op-head .meta { margin: 0; }
+#op-about p { margin: 0 0 8px; line-height: 1.55; font-size: 15px; }
+#op-about .op-guide { margin-top: 4px; }
