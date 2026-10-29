@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029170912';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029170912';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029170912';
-import { GUIDE } from './guide.js?v=20261029170912';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029170912';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029170912';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029170912';
-import { storedGames, gamesReady } from './profile.js?v=20261029170912';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029171615';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029171615';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029171615';
+import { GUIDE } from './guide.js?v=20261029171615';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029171615';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029171615';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029171615';
+import { storedGames, gamesReady } from './profile.js?v=20261029171615';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3156,11 +3156,19 @@ async function deepLink() {
   }
 }
 
-// The landing's three example players: their style and strength from the leaderboard.
-fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard').then((r) => (r.ok ? r.json() : [])).then((rows) => {
+// The landing, for visitors not logged in: look up anyone, or open one of three example players,
+// shown as their player cards (from the leaderboard; their names alone until it answers).
+const ABBR = { Attack: 'ATK', Defense: 'DEF', 'Early game': 'EARLY', 'Late game': 'LATE', Accuracy: 'ACC', Speed: 'SPD' };
+const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+const pcard = (r) => `<div class="pf-pcard"><div class="pf-pcard-top"><div><b class="pf-ovr">${r.overall ?? '–'}</b><span class="pf-pos">${esc(r.style)}</span></div>
+    <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(r.piece || 'n').toUpperCase()}.svg" alt=""><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(r.piece || 'n').toUpperCase()}.svg" alt=""><span class="pf-pcard-rating">${r.rating} <small>${esc(r.speed)}</small></span></div></div>
+    <p class="pf-pcard-name">${esc(r.name)}</p>
+    <div class="pf-pcard-stats">${Object.entries(ABBR).map(([k, a]) => `<span><b>${r.skills?.[k] ?? '–'}</b>${a}</span>`).join('')}</div></div>`;
+$('.hero').hidden = !!account();
+if (!account()) fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard').then((r) => (r.ok ? r.json() : [])).then((rows) => {
   document.querySelectorAll('.hero-p[data-p]').forEach((a) => {
     const r = rows.find((x) => x.name.toLowerCase() === a.dataset.p);
-    if (r) a.querySelector('small').textContent = [r.style, r.strength, r.overall && `overall ${r.overall}`].filter(Boolean).join(' · ');
+    if (r) a.innerHTML = `${pcard(r)}<span class="hero-r">${esc(a.dataset.lvl)} · ${esc(r.strength || '')}</span>`;
   });
 }).catch(() => {});
 

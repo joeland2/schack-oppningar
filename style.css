@@ -197,18 +197,19 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .hero-search input { flex: 1; min-width: 0; font: inherit; font-size: 18px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
 .hero-search input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .hero-search .cta { padding-inline: 20px; font-size: 16px; white-space: nowrap; }
-.hero-ex { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-top: 26px; max-width: 900px; border-top: 1px solid var(--line); }
-.hero-p { display: grid; gap: 2px; padding: 14px 16px 12px 0; color: var(--ink); text-decoration: none; border-right: 1px solid var(--line); }
-.hero-p + .hero-p { padding-left: 16px; }
-.hero-p:last-child { border-right: 0; }
-.hero-p b { font: 400 clamp(20px, 2.4vw, 28px)/1.05 var(--font-poster); text-transform: uppercase; letter-spacing: .01em; overflow-wrap: anywhere; }
-.hero-p:hover b, .hero-p:focus-visible b { color: var(--hot); }
-.hero-r { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.hero-p small { font-size: 13px; color: var(--ink); min-height: 1.4em; }
+.hero[hidden] { display: none; }
+.hero-ex { display: flex; gap: 22px; margin-top: 28px; }
+.hero-p { display: grid; justify-items: start; gap: 8px; color: var(--ink); text-decoration: none; }
+.hero-p > b { font: 400 22px/1.05 var(--font-poster); text-transform: uppercase; } /* before the cards arrive */
+.hero-p .pf-pcard { zoom: .7; box-shadow: none; transition: transform .2s cubic-bezier(.2, .8, .2, 1); }
+.hero-p:hover .pf-pcard, .hero-p:focus-visible .pf-pcard { transform: translateY(-4px); }
+.hero-r { font-size: 13px; color: var(--muted); }
 @media (max-width: 560px) {
   .hero-search { flex-direction: column; } .hero-search .cta { padding-block: 12px; }
-  .hero-ex { grid-template-columns: 1fr; } .hero-p, .hero-p + .hero-p { padding: 12px 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .hero-ex { overflow-x: auto; scroll-snap-type: x mandatory; margin-inline: -16px; padding: 4px 16px 8px; scrollbar-width: none; }
+  .hero-p { scroll-snap-align: start; flex: none; } .hero-p .pf-pcard { zoom: .56; }
 }
+
 .picker .info { max-width: 60ch; }
 .back { justify-self: start; }
 [hidden] { display: none !important; }
@@ -1345,7 +1346,16 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
   .brand { font-size: 17px; padding: 0 20px 0 12px; }
   .account .acct-stat { padding: 0 10px; } .account .acct-stat input, .account .acct-stat input:hover { width: 2.1em; } .account #lichess-login { padding: 0 8px; } .brand::before { margin-right: 8px; }
   .top-players summary, .top-in > .theme, .account .theme, .top-search input { width: 40px; }
-  .top-in:has(.account) .top-players { display: none; } /* Openings: rating, log in and theme need the room */ }
+  .top-in:has(.account) .top-players { display: none; } /* Openings: rating, log in and theme need the room */
+  /* One top row on phones: the brand shrinks to its knight so your rating, name and buttons sit beside it */
+  .brand { font-size: 0; padding: 0 22px 0 14px; } .brand::before { margin-right: 0; width: 24px; height: 24px; }
+  .top-in { flex-wrap: wrap; } .top-in > .top-search { margin-left: auto; }
+  .account { flex: 0 1 auto; min-width: 0; }
+  .account #lichess-login { min-width: 0; max-width: 34vw; overflow: hidden; text-overflow: ellipsis; }
+  /* The sections in larger poster type, scrolling sideways when they do not fit */
+  .top-nav { overflow-x: auto; scrollbar-width: none; justify-content: flex-start; }
+  .top-nav::-webkit-scrollbar { display: none; }
+  .top-nav a { flex: 1 0 auto; padding: 14px 12px 13px; font-size: 19px; } }
 
 /* Stat accuracy: three steps (Fair 100, Good 250, Best 500 analysed games) under a heavy rule, the
    step reached in poster type, and the button to the next step */
