@@ -410,12 +410,13 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 }
 
 /* Phones: a compact picker and board view. Desktop is unchanged. */
-/* The filters fold into one summary line everywhere: what is picked shows, the choices open on a click */
+/* The filters are always open, so nobody misses them; on a phone the summary line can fold them away */
 .filters { margin-top: 14px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
 .filters > summary { display: flex; justify-content: space-between; gap: 12px; cursor: pointer; font-weight: 700; list-style: none; }
 .filters > summary::-webkit-details-marker { display: none; }
 .filters > summary span { color: var(--muted); font-weight: 500; }
 .filters[open] .choices { margin: 12px 0 4px; }
+@media (min-width: 561px) { .filters > summary { display: none; } .filters[open] .choices { margin-top: 0; } }
 @media (max-width: 560px) {
   .top-in { padding-block: 10px; }
   .picker { display: flex; flex-direction: column; }

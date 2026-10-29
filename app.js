@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029144721';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029144721';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029144721';
-import { GUIDE } from './guide.js?v=20261029144721';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029144721';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029144721';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029144721';
-import { storedGames } from './profile.js?v=20261029144721';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029145326';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029145326';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029145326';
+import { GUIDE } from './guide.js?v=20261029145326';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029145326';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029145326';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029145326';
+import { storedGames } from './profile.js?v=20261029145326';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2914,6 +2914,7 @@ document.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('clic
   if (OPENINGS.length) renderList();
 }));
 $('#back').addEventListener('click', showPicker);
+PHONE.addEventListener('change', (e) => { if (!e.matches) $('#filters').open = true; }); // on a computer the filters never fold
 $('#m-back').addEventListener('click', showPicker);
 // Typing a move: the keyboard's way to play, as if the piece and then its square were clicked.
 $('#move-form').addEventListener('submit', (e) => {
