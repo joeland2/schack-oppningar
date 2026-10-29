@@ -206,8 +206,9 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .hero-r { font-size: 13px; color: var(--muted); }
 @media (max-width: 560px) {
   .hero-search { flex-direction: column; } .hero-search .cta { padding-block: 12px; }
-  .hero-ex { overflow-x: auto; scroll-snap-type: x mandatory; margin-inline: -16px; padding: 4px 16px 8px; scrollbar-width: none; }
-  .hero-p { scroll-snap-align: start; flex: none; } .hero-p .pf-pcard { zoom: .56; }
+  /* Three whole cards across the phone */
+  .hero-ex { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .hero-p { min-width: 0; gap: 4px; } .hero-p .pf-pcard { zoom: .35; } .hero-r { font-size: 11px; line-height: 1.3; }
 }
 
 .picker .info { max-width: 60ch; }
@@ -1094,7 +1095,15 @@ a { text-underline-offset: .18em; }
 .account { gap: 10px; align-items: center; }
 .rating-hint { position: absolute; top: calc(100% + 10px); right: 0; z-index: 30; width: 270px; padding: 12px 30px 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); color: var(--ink); font: 400 13px/1.45 var(--font-body, inherit); letter-spacing: 0; text-transform: none; white-space: normal; box-shadow: 0 8px 24px rgb(0 0 0 / .25); }
 .rating-hint[hidden], body:has(#picker[hidden]) .rating-hint { display: none; } /* only over the openings list, never over a trainer */
-@media (max-width: 560px) { .rating-hint { position: fixed; top: 64px; left: 16px; right: 16px; width: auto; } .rating-hint::before { display: none; } }
+.hint-short { display: none; }
+/* Phones: a short line in the header's free space, left of the search, pointing at the rating */
+@media (max-width: 560px) {
+  .rating-hint { top: 0; bottom: 0; right: calc(100% + 41px); width: min(150px, calc(100vw - 260px)); padding: 0 8px 0 0; display: flex; align-items: center; justify-content: flex-end;
+    border: 0; background: none; box-shadow: none; color: var(--muted); font-size: 11.5px; line-height: 1.25; text-align: right; }
+  .rating-hint::before, .rating-hint .hint-long, .rating-hint-x { display: none; }
+  .rating-hint .hint-short { display: block; }
+  .rating-hint .hint-short::after { content: " →"; color: var(--hot); }
+}
 .rating-hint::before { content: ""; position: absolute; top: -6px; right: 40px; width: 10px; height: 10px; background: var(--raised); border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg); }
 .rating-hint .link { font: inherit; padding: 0; }
 .rating-hint-x { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }

@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029171615';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029171615';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029171615';
-import { GUIDE } from './guide.js?v=20261029171615';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029171615';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029171615';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029171615';
-import { storedGames, gamesReady } from './profile.js?v=20261029171615';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029172018';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029172018';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029172018';
+import { GUIDE } from './guide.js?v=20261029172018';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029172018';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029172018';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029172018';
+import { storedGames, gamesReady } from './profile.js?v=20261029172018';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1395,6 +1395,7 @@ function start(op, keepTraps = false) {
   $('#restart').textContent = 'Restart';
   $('#picker').hidden = true;
   $('#trainer').hidden = false;
+  if (!location.hash) { history.replaceState(null, '', `${location.pathname}${location.search}#openings`); landing(); } // back from here: the openings, not the landing
   render();
   if (!rating) return say(`Enter your Lichess ${speed} rating at the top.`);
   const all = buildLines(op), depths = load(STORE + '-depth', {});
@@ -3164,7 +3165,10 @@ const pcard = (r) => `<div class="pf-pcard"><div class="pf-pcard-top"><div><b cl
     <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(r.piece || 'n').toUpperCase()}.svg" alt=""><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(r.piece || 'n').toUpperCase()}.svg" alt=""><span class="pf-pcard-rating">${r.rating} <small>${esc(r.speed)}</small></span></div></div>
     <p class="pf-pcard-name">${esc(r.name)}</p>
     <div class="pf-pcard-stats">${Object.entries(ABBR).map(([k, a]) => `<span><b>${r.skills?.[k] ?? '–'}</b>${a}</span>`).join('')}</div></div>`;
-$('.hero').hidden = !!account();
+// The brand opens the landing; the Openings section (./#openings) goes straight to the openings.
+function landing() { $('.hero').hidden = !!account() || location.hash === '#openings'; } // a declaration: a link straight to a trainer calls it early
+landing();
+addEventListener('hashchange', landing);
 if (!account()) fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard').then((r) => (r.ok ? r.json() : [])).then((rows) => {
   document.querySelectorAll('.hero-p[data-p]').forEach((a) => {
     const r = rows.find((x) => x.name.toLowerCase() === a.dataset.p);
