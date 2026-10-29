@@ -17,13 +17,15 @@ function anonymise(ip: string | null) {
 }
 console.assert(anonymise('83.250.12.147') === '83.250.12.0' && anonymise('2a02:aa1:1234:5678::1') === '2a02:aa1:1234::', 'anonymise');
 
+// Automated browsers run in the big clouds (link previews, crawlers): a visit from one is not a person.
+const CLOUD = /amazon|aws|google|microsoft|azure|digitalocean|ovh|hetzner|linode|akamai|oracle|alibaba|tencent|scaleway|vultr/i;
 async function placeOf(ip: string | null) {
-  if (!ip) return { country: null, city: null };
+  if (!ip) return { country: null, city: null, cloud: false };
   try {
     const r = await fetch(`https://ipapi.co/${ip}/json/`, { signal: AbortSignal.timeout(1500) });
     const x = await r.json();
-    return { country: /^[A-Z]{2}$/.test(x.country_code) ? x.country_code : null, city: cut(x.city, 60) };
-  } catch { return { country: null, city: null }; }
+    return { country: /^[A-Z]{2}$/.test(x.country_code) ? x.country_code : null, city: cut(x.city, 60), cloud: CLOUD.test(`${x.org || ''} ${x.asn || ''}`) };
+  } catch { return { country: null, city: null, cloud: false }; }
 }
 
 // "iPhone · Safari": the system, then the browser, from the user agent.
@@ -40,9 +42,11 @@ Deno.serve(async (req) => {
   try { e = JSON.parse(await req.text()); } catch { return new Response('bad', { status: 400, headers: cors }); }
   if (!KINDS.includes(e.kind as string) || typeof e.visitor !== 'string') return new Response('bad', { status: 400, headers: cors });
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || null;
+  const { cloud, ...place } = await placeOf(ip);
+  if (cloud) return new Response('skipped', { status: 202, headers: cors });
   const { error } = await db.from('events').insert({
     kind: e.kind, page: cut(e.page, 40), target: cut(e.target, 80), visitor: cut(e.visitor, 40), user_name: cut(e.user_name, 30),
-    ip: anonymise(ip), ...(await placeOf(ip)), device: deviceOf(req.headers.get('user-agent') || ''), source: cut(e.source, 80),
+    ip: anonymise(ip), ...place, device: deviceOf(req.headers.get('user-agent') || ''), source: cut(e.source, 80),
   });
   return new Response(error ? 'error' : 'ok', { status: error ? 500 : 201, headers: cors });
 });

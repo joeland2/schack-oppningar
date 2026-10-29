@@ -18,7 +18,8 @@
   } catch { return null; } })();
   // The admin's own visits are not counted: on any device where they are logged in, or where they have
   // opened the admin page once (it marks the browser, so it stays out even when logged out).
-  const own = () => { try { return user()?.toLowerCase() === 'joelandersson' || localStorage.getItem('chess-trainer-no-track') === '1'; } catch { return false; } };
+  const ADMINS = ['joelandersson', 'sicko88'];
+  const own = () => { try { return ADMINS.includes(user()?.toLowerCase()) || localStorage.getItem('chess-trainer-no-track') === '1'; } catch { return false; } };
   window.track = (kind, target = null) => {
     if (local || own()) return;
     fetch(API, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'text/plain' }, // plain text: no preflight, so it still goes as the page closes
@@ -40,7 +41,7 @@
     if (!user() && prof) { prof.textContent = 'Log in'; prof.href = 'profile.html?login'; prof.title = 'Log in with Lichess to see your profile'; }
     if (!user()) document.querySelector('.top-nav a[href="practice.html"]:not([aria-current])')?.remove(); // your practice plan needs your games
     prof?.insertAdjacentHTML('beforebegin', `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a>`);
-    if (user()?.toLowerCase() === 'joelandersson') document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', `<a href="admin.html"${page === 'admin.html' ? ' aria-current="page"' : ''}>Admin</a>`);
+    if (ADMINS.includes(user()?.toLowerCase())) document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', `<a href="admin.html"${page === 'admin.html' ? ' aria-current="page"' : ''}>Admin</a>`);
   });
 })();
 

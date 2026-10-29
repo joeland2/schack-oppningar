@@ -1519,3 +1519,21 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .pf-op-link:hover, .lb-op:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* The opening's name beside the board: the poster face, a little larger and more open so it reads */
 #trainer .p-head .op-head h1 { font-size: clamp(1.6rem, 2.6vw, 2.1rem); letter-spacing: .03em; line-height: 1.05; }
+/* Admin: the visitors line and the visitors list */
+.ad-line { width: 100%; height: auto; overflow: visible; }
+.ad-line polyline { fill: none; stroke: var(--hot); stroke-width: 2; stroke-linejoin: round; }
+.ad-line .ad-area { fill: color-mix(in srgb, var(--hot) 14%, transparent); stroke: none; }
+.ad-line .ad-axis { stroke: var(--line); }
+.ad-line circle { fill: var(--hot); }
+.ad-line text { font: 11px var(--font-body); fill: var(--muted); }
+.ad-line .hit { fill: transparent; }
+.ad-line g:hover .hit { fill: color-mix(in srgb, var(--ink) 6%, transparent); }
+.ad-visitors { display: grid; }
+.ad-visitor { border-top: 1px solid var(--line); }
+.ad-visitor summary { display: grid; grid-template-columns: minmax(10em, 1.4fr) 8em minmax(7em, 1fr) minmax(8em, 1fr) 11em 9em; gap: 10px; align-items: baseline; padding: 9px 0; cursor: pointer; font-size: 13px; list-style: none; }
+.ad-visitor summary::-webkit-details-marker { display: none; }
+.ad-visitor summary:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.ad-visitor .num { font-variant-numeric: tabular-nums; color: var(--muted); }
+.ad-events { margin: 0 0 12px; padding: 0 0 0 12px; list-style: none; display: grid; gap: 3px; font-size: 13px; border-left: 2px solid var(--hot); }
+.ad-events li { display: grid; grid-template-columns: 9em 1fr; gap: 10px; }
+@media (max-width: 760px) { .ad-visitor summary { grid-template-columns: 1fr 1fr; } }
