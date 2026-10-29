@@ -1,11 +1,11 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029114514';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029114514';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261029114514';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029114514';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029114514';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029114514';
-import { storedGames } from './profile.js?v=20261029114514';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029114828';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029114828';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029114828';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029114828';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029114828';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029114828';
+import { storedGames } from './profile.js?v=20261029114828';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -979,7 +979,7 @@ function renderWhy() {
     const t = lineTips();
     const arrows = t.slice(0, 1).map((x) => [x.move.from, x.move.to, x.engine ? '#1d5fbf' : '#15781b']); // the best only; pointing at a tip shows its own
     if (JSON.stringify(arrows) !== JSON.stringify(tipArrows)) { tipArrows = arrows; renderBoard(); }
-    tips = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x, i) => `<li><button type="button" class="tip" data-from="${x.move.from}" data-to="${x.move.to}"><span class="tip-n">${i + 1}</span><span>${x.html}</span></button></li>`).join('')}</ul>` : '';
+    tips = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x, i) => `<li><button type="button" class="tip" data-from="${x.move.from}" data-to="${x.move.to}"><span class="tip-n">${i + 1}</span><span>${x.tag ? `<span class="tip-tag">${x.tag}</span> ` : ''}${x.html}</span></button></li>`).join('')}</ul>` : '';
   }
   el.innerHTML = parts.join('');
   $('#line-done').innerHTML = ply >= line.length && lineDone && !momentOpen // the trap's card first
@@ -1110,7 +1110,7 @@ function lineTips() {
     const how = m.n < MIN_GAMES
       ? `Played in ${plural(m.n, 'game')}, mostly by players rated ${whoPlayed(game.history().map(clean), m.san)}; they scored ${pct(scoreFor(m, me))}.`
       : `You score ${pct(scoreFor(m, me))} after it in ${plural(m.n, 'game')}.`;
-    return { move, html: `<b>${label}:</b> ${say(move)} ${how}${agrees}` };
+    return { move, n: m.n, html: `<b>${label}:</b> ${say(move)} ${how}${agrees}` };
   });
   const RANK = ["Stockfish's choice", "Stockfish's second choice", "Stockfish's third choice"];
   engine.forEach((move, i) => {
@@ -1118,7 +1118,21 @@ function lineTips() {
   });
   // Ranked best first: by Stockfish's order where it has looked, the moves it did not list after them.
   const rank = (t) => { const k = engine.findIndex((m) => m.san === t.move.san); return k < 0 ? 3 + tips.indexOf(t) : k; };
-  return [...tips].sort((a, b) => rank(a) - rank(b));
+  const out = [...tips].sort((a, b) => rank(a) - rank(b));
+  // A tag on each that says how it differs: Stockfish's top, the most played, the most forcing
+  // (checks, captures, pieces attacked) and the safest (castles, or leaves the opponent the fewest
+  // checks and captures). Each tag goes once, each tip gets at most one.
+  const after = (t) => { const g = new Chess(at); g.move(t.move.san); return g; };
+  const force = (t) => { const g = after(t), h = asMover(g, me); const hits = h ? h.moves({ verbose: true }).filter((x) => x.captured && x.captured !== 'p').length : 0;
+    return (g.inCheck() ? 3 : 0) + (t.move.captured ? 2 : 0) + hits; };
+  const risk = (t) => (t.move.flags.includes('k') || t.move.flags.includes('q') ? -1 : after(t).moves({ verbose: true }).filter((x) => x.captured || x.san.includes('+')).length);
+  const free = () => out.filter((t) => !t.tag);
+  const give = (tag, pick) => { const c = free(); const t = c.length > 1 || out.length === 1 ? pick(c) : null; if (t) t.tag = tag; };
+  give('Best evaluation', (c) => c.find((t) => engine[0]?.san === t.move.san));
+  give('Most played', (c) => c.filter((t) => t.n >= MIN_GAMES).sort((a, b) => b.n - a.n)[0]);
+  give('Most aggressive', (c) => c.filter((t) => force(t) >= 2).sort((a, b) => force(b) - force(a))[0]);
+  give('Safest', (c) => [...c].sort((a, b) => risk(a) - risk(b))[0]);
+  return out;
 }
 
 // ---------- Game ----------
