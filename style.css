@@ -844,7 +844,7 @@ h1, .picker h1 { font-family: var(--font-poster); font-weight: 400; text-transfo
 .seg { border-radius: var(--radius); }
 .seg button { border-radius: 2px; }
 .ghost, .controls button { color: var(--ink); }
-main a:not(.cta):not(.ocard):not(.card):not(.pf-res), button.link { color: var(--hot); }
+main a:not(.cta):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op), button.link { color: var(--hot); }
 .cta { border-radius: var(--radius); }
 a.cta { color: var(--accent-ink); }
 @media (max-width: 560px) { /* five sections on a phone: one row that scrolls sideways if it must */
@@ -1515,6 +1515,5 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .lb-value { font-size: 14px; }
 @media (max-width: 560px) { .lb-row { grid-template-columns: 1.4em auto minmax(0, 1fr); gap: 10px; } .lb-card .pf-pcard { zoom: .34; } .lb-name { font-size: 20px; } .lb-rank { font-size: 22px; } }
 @media (prefers-reduced-motion: reduce) { .lb-card .pf-pcard { transition: none; } }
-.pf-op-link { color: inherit; text-decoration: none; }
-.pf-op-link:hover { text-decoration: underline; text-underline-offset: 2px; }
-.lb-ops a { color: inherit; }
+.pf-op-link, .lb-op { color: var(--ink); font-weight: 600; text-decoration: none; }
+.pf-op-link:hover, .lb-op:hover { text-decoration: underline; text-underline-offset: 2px; }
