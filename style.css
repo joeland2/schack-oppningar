@@ -1890,3 +1890,5 @@ p, li, dd, small { text-wrap: pretty; }
 .ad-cv-style { display: grid; gap: 4px; padding-top: 8px; max-width: 180px; }
 .ad-cv-style b { font: 400 34px/1 var(--font-poster); text-transform: uppercase; }
 .ad-cv-style span { font: 400 18px/1.1 var(--font-poster); opacity: .75; }
+/* Compare: the download icon under the heading, its menu opening to the right */
+.cmp-dl { display: inline-block; margin: 10px 0 0; } .cmp-dl .pf-dl-menu { right: auto; left: 0; }

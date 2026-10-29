@@ -1,6 +1,6 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029214610';
+import { account, login, finishLogin } from './lichess.js?v=20261029214753';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -33,7 +33,7 @@ function targetHtml(kind, target) {
   if (kind === 'compare') return t.split(' vs ').map(plink).join(' vs ');
   if (!['profile', 'card', 'analyse'].includes(kind) || !t) return esc(t);
   const name = t.split(/ · |: /)[0];
-  return plink(name) + esc(t.slice(name.length));
+  return (name.includes(' vs ') ? name.split(' vs ').map(plink).join(' vs ') : plink(name)) + esc(t.slice(name.length)); // a comparison image names both
 } // the leaderboard, for cards downloaded before their events carried the card
 // Today: the time only; otherwise the day too.
 const short = (iso) => (new Date(iso).toDateString() === new Date().toDateString() ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : when(iso));

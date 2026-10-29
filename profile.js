@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029214610';
-import { STYLE_OF } from './styles.js?v=20261029214610';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029214753';
+import { STYLE_OF } from './styles.js?v=20261029214753';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -946,6 +946,31 @@ function drawCard(ctx, x, y, name, p, t, skills, piece) {
   ctx.fillText(`${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} GAMES`, 300, 752);
   ctx.restore();
 }
+// A comparison as one compact image: the two cards side by side with VS between them, in the look
+// picked in the menu (dark or light), and the site's name under them.
+async function comparePng(A, B, sa, sb, btn) {
+  const label = btn.textContent; btn.disabled = true; btn.textContent = 'Making the image…';
+  CARD = CARDS[cardLook()];
+  window.track?.('card', `${A.name} vs ${B.name}`.slice(0, 60) + ` · compare · ${cardLook()}`);
+  try {
+    await Promise.all(['400 40px Anton', '400 20px Geist', '600 20px Geist'].map((f) => document.fonts.load(f)));
+    const img = (p) => new Promise((ok) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = `pieces/${CARD.piece}${(p.piece || 'n').toUpperCase()}.svg`; });
+    const [pa, pb] = await Promise.all([img(A.p), img(B.p)]);
+    const S = 2, W = 1160, H = 760, k = 0.78;
+    const canvas = Object.assign(document.createElement('canvas'), { width: W * S, height: H * S }), ctx = canvas.getContext('2d');
+    ctx.scale(S, S);
+    ctx.fillStyle = CARD.paper; ctx.fillRect(0, 0, W, H);
+    for (const [X, sk, pc, x] of [[A, sa, pa, 40], [B, sb, pb, W - 40 - 600 * k]]) { ctx.save(); ctx.translate(x, 36); ctx.scale(k, k); drawCard(ctx, 0, 0, X.name, X.p, X.p.type, sk, pc); ctx.restore(); }
+    ctx.fillStyle = CARD.hot; ctx.font = '400 72px Anton'; ctx.textAlign = 'center'; ctx.fillText('VS', W / 2, 36 + 780 * k / 2 + 26);
+    ctx.fillStyle = CARD.hot; ctx.fillRect(40, H - 70, W - 80, 3);
+    ctx.fillStyle = CARD.paperInk; ctx.font = '400 26px Anton'; ctx.textAlign = 'left'; ctx.fillText('CHESS TRAINER', 40, H - 30);
+    ctx.fillStyle = CARD.paperMuted; ctx.font = '400 18px Geist'; ctx.textAlign = 'right'; ctx.fillText(`${A.name} vs ${B.name}, from their last ${MAX} rated Lichess games`, W - 40, H - 32); ctx.textAlign = 'left';
+    const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${A.name}-vs-${B.name}-${cardLook()}.png`, { type: 'image/png' });
+    if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) await navigator.share({ files: [file], title: `${A.name} vs ${B.name}` }).catch(() => {});
+    else { const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: file.name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+  } catch (err) { $('#profile-msg').textContent = `The image could not be made: ${err.message}`; }
+  btn.disabled = false; btn.textContent = label;
+}
 async function cardPng(name, p, t, skills, detail, btn) {
   const label = btn.textContent; btn.disabled = true; btn.textContent = 'Making the image…';
   CARD = CARDS[cardLook()];
@@ -1497,6 +1522,8 @@ function renderCompare(A, B, speed = 'all', avail = []) {
     <div class="pf-players"><a class="ghost" href="${profileLink(A.name)}">← ${esc(A.name)}</a><a class="ghost" href="${profileLink(B.name)}">${esc(B.name)} →</a></div>
     <header class="cmp-head"><h1 class="pf-h1"><a href="${profileLink(A.name)}">${esc(A.name)}</a> <span>vs</span> <a href="${profileLink(B.name)}">${esc(B.name)}</a></h1>
       <div class="pf-seg cmp-speeds" role="group" aria-label="Time control">${['all', ...SPEEDS].map((sp) => `<button type="button" data-speed="${sp}" aria-pressed="${sp === speed}" ${sp === 'all' || avail.includes(sp) ? '' : `disabled title="Fewer than ${MIN_SPEED} ${sp} games for one of you"`}>${sp === 'all' ? 'All games' : sp[0].toUpperCase() + sp.slice(1)}</button>`).join('')}</div>
+      <details class="pf-dl cmp-dl"><summary title="Download the comparison" aria-label="Download the comparison"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
+        <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-cmp-png>Image</button></div></details>
       <p class="info cmp-scope">${speed === 'all' ? 'Every number below is from all rated games.' : `Every number below is from ${speed} games only, so it can differ a little from the profiles, which use all games.`}</p></header>
     <section class="cmp-cards">
       <div><a class="cmp-card" href="${profileLink(A.name)}" title="Open ${esc(A.name)}'s profile">${playerCard(A.name, A.p, A.p.type, sa)}</a><p class="cmp-type"><b>${A.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
@@ -1527,6 +1554,12 @@ function renderCompare(A, B, speed = 'all', avail = []) {
     history.replaceState(null, '', `?${q}`);
     compare(A.name, B.name, btn.dataset.speed);
   }));
+  // Download the comparison as an image, dark or light (the same remembered choice as the card's).
+  document.querySelectorAll('.cmp-dl [data-card-look]').forEach((btn) => btn.addEventListener('click', () => {
+    try { localStorage.setItem('chess-trainer-card-look', btn.dataset.cardLook); } catch {}
+    document.querySelectorAll('.cmp-dl [data-card-look]').forEach((x) => x.setAttribute('aria-pressed', x === btn));
+  }));
+  $('[data-cmp-png]')?.addEventListener('click', (e) => { e.currentTarget.closest('details').open = false; comparePng(A, B, sa, sb, e.currentTarget); });
 
 }
 const article = (w) => (/^[aeiou]/i.test(w) ? 'an' : 'a');
