@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029112607';
-import { STYLE_OF } from './styles.js?v=20261029112607';
+import { account, login, finishLogin } from './lichess.js?v=20261029113024';
+import { STYLE_OF } from './styles.js?v=20261029113024';
 
 const MAX = 500;
-const PV = 26;
+const PV = 27;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -191,7 +191,6 @@ const TYPE_ABOUT = {
   'Time scrambler': 'Spends a lot of time early and plays the end on the clock. Strong in scrambles, but some games are lost on time.',
   'All-rounder': 'No style stands out: plays a bit of everything and adapts to the position.',
   Finisher: 'Gets attacks going and finishes them: quick wins, clear advantages, and few slips once ahead.',
-  Guardian: 'Hard to finish off: saves lost positions and makes few mistakes while behind.',
   Defender: 'Hard to break down: solid openings, holds against attacks, saves bad positions and rarely lets the opponent get ahead.',
   'Fast starter': 'Comes out of the opening better than players at the same level: knows the lines and the plans behind them.',
   Grinder: 'Scores more in endgames than players at the same level: the long games are theirs.',
@@ -270,7 +269,7 @@ const odds = (x) => (x == null ? 1 : Math.min(9, Math.max(1 / 9, x / (1 - x))));
 const usualDraws = (rating) => 0.02 + (rating || 1500) / 40000;
 // Games get longer with the level: about 36 moves at 1200 and 44 at 2800.
 const usualMoves = (rating) => Math.round(30 + (rating || 1500) / 200);
-const STRENGTH = { Attack: 'Finisher', Defense: 'Guardian', 'Early game': 'Fast starter', 'Late game': 'Grinder', Accuracy: 'Sure hand', Speed: 'Speed demon' };
+const STRENGTH = { Attack: 'Finisher', 'Early game': 'Fast starter', 'Late game': 'Grinder', Accuracy: 'Sure hand', Speed: 'Speed demon' };
 // A strength on the same theme as the style says the same thing twice; then the next best skill is named.
 const SAME = { 'Endgame player': 'Late game', 'Comeback player': 'Defense', 'Time scrambler': 'Speed', Trickster: 'Attack', Defender: 'Defense', Marathoner: 'Late game' };
 // Every style with its weight (1 = clearly holds), most first, and every strength with its value (62 = clearly holds).
@@ -313,7 +312,8 @@ function typeOf(p) {
   const { styles, strengths } = traitsOf(p);
   const style = styles[0].w >= 0.8 ? styles[0] : { name: 'All-rounder', why: 'No style stands out: you play a bit of everything.' };
   // The strength: the one furthest above the player's own opponents (64 or more where 50 is even).
-  const best = strengths.filter((x) => x.v !== null && x.v >= 64 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v)[0];
+  // Defense has no strength of its own: being best at it is the Defender style.
+  const best = strengths.filter((x) => x.label !== 'Defense' && x.v !== null && x.v >= 64 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v)[0];
   const second = best ? { name: STRENGTH[best.label] || best.label, why: STRENGTH[best.label] ? `${best.label} is where you beat your level most: ${best.why}` : best.why } : styles[1].w >= 0.8 && style === styles[0] ? styles[1] : null;
   return second ? [style, second] : [style];
 }
