@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029144200';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029144200';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029144200';
-import { GUIDE } from './guide.js?v=20261029144200';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029144200';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029144200';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029144200';
-import { storedGames } from './profile.js?v=20261029144200';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029144252';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029144252';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029144252';
+import { GUIDE } from './guide.js?v=20261029144252';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029144252';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029144252';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029144252';
+import { storedGames } from './profile.js?v=20261029144252';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -925,6 +925,10 @@ function renderMoves() {
   $('#m-name').textContent = $('#op-title').textContent;
   $('#m-line').textContent = lines[lineIdx] && mode !== 'explore' ? `Line ${lineIdx + 1} of ${lines.length} · ${lineName(lines[lineIdx])}` : mode === 'explore' ? 'Exploring' : '';
   $('#m-mode').value = mode;
+  // The path: how many lines wait for review under Practice, and what a step means until a line is learned.
+  const st = cur && stats[statKey(cur.id)], due = dueCount(st);
+  $('#path-due').textContent = due ? `${due} due for review` : 'from memory';
+  $('#mode-about').hidden = (mode === 'learn' || mode === 'try') && (st?.played?.length ?? 0) > 0;
   $('#depth').textContent = `${depthName(load(STORE + '-depth', {})[cur?.id] || MAX_LINES)} ▾`;
   $('#depth').hidden = allLines.length <= DEPTHS[0][1] || !!trapRun || mode === 'explore';
 }
@@ -1368,6 +1372,12 @@ function start(op, keepTraps = false) {
   const s = stats[statKey(op.id)] = { done: [], played: [], ...stats[statKey(op.id)], total: lines.length };
   s.played ??= [];
   store(STORE, stats);
+  // The step to open in: Practice when lines are due for review, Learn while some are unlearned.
+  if (!trapRun && (mode === 'learn' || mode === 'try')) {
+    const due = dueCount(s), unlearned = lines.some((l) => !s.played.includes(lineKey(l.moves)));
+    const want = due ? 'try' : unlearned ? 'learn' : 'try';
+    if (want !== mode) setMode(want, false, false);
+  }
   if (mode === 'time') startTrial(); else play(nextLine());
 }
 
@@ -2904,7 +2914,7 @@ function setMode(m, restart = true, remember = true) {
   if (m !== 'time') stopTrial();
   if (remember && m !== 'explore' && m !== 'time') store(STORE + '-mode', m);
   for (const k of ['learn', 'try', 'explore', 'time']) $(`#mode-${k}`).setAttribute('aria-pressed', m === k);
-  $('#mode-about').closest('.choice').querySelector('.seg').title = $('#mode-about').textContent = {
+  $('#mode-about').textContent = {
     learn: 'Every move is shown, with the replies you can expect at your level. Nothing is scored.',
     try: `Practice: play lines from memory, ${COHORT} at a time in course order; a new line joins when you clear one. A cleared line comes back for review after 1, 3, 7, 14 and 30 days.`,
     time: `Time trial: ${TRIAL_S} seconds to play as many moves of this opening's lines as you can from memory. Right +${TRIAL_RIGHT} s, wrong −${TRIAL_WRONG} s.`,

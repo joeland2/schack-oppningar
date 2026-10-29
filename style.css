@@ -1416,7 +1416,7 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 #line-at { color: var(--ink); white-space: nowrap; }
 .depth-btn { font: inherit; color: var(--muted); white-space: nowrap; }
 .depth-btn:hover { color: var(--ink); }
-#trainer .p-head .choice-label, #trainer #mode-about { display: none; }
+#trainer .p-head .choice-label { display: none; }
 .depth-ask { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px;
   background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(2px); }
 .depth-card { width: min(380px, 100%); display: grid; gap: 8px; padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
@@ -1561,3 +1561,18 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
   #trainer .p-head, #trainer #line-at { display: none; }
 }
 @media (max-width: 560px) { .ostats { flex-wrap: wrap; white-space: normal; } }
+
+/* The path beside the board: 1 Learn, then 2 Practice; explore and the time trial are side roads */
+.path { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; margin-top: 4px; }
+.path-step { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: none; color: var(--muted); text-align: left; cursor: pointer; }
+.path-step b { display: block; font-size: 15px; font-weight: 600; color: var(--ink); }
+.path-step small { display: block; font-size: 12px; }
+.path-n { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line); font: 600 12px var(--font-body); color: var(--muted); }
+.path-step:hover { border-color: var(--muted); }
+.path-step[aria-pressed="true"] { border-color: var(--hot); background: color-mix(in srgb, var(--hot) 8%, transparent); }
+.path-step[aria-pressed="true"] .path-n { background: var(--hot); border-color: var(--hot); color: #fff; }
+.path-arrow { width: 18px; height: 18px; color: var(--muted); }
+.path-extra { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.path-extra .link { font-size: 13px; color: var(--muted); }
+.path-extra .link[aria-pressed="true"] { color: var(--hot); }
+#trainer #mode-about { margin: 6px 0 0; font-size: 13px; }

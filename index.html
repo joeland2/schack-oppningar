@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261029144200">
-  <script src="header.js?v=20261029144200" defer></script>
-  <script src="theme.js?v=20261029144200"></script>
+  <link rel="stylesheet" href="style.css?v=20261029144252">
+  <script src="header.js?v=20261029144252" defer></script>
+  <script src="theme.js?v=20261029144252"></script>
 </head>
 <body>
   <header class="top">
@@ -104,7 +104,7 @@
         <button id="m-back" class="m-back" type="button" aria-label="All openings"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
         <div class="m-title"><b id="m-name"></b><small id="m-line"></small></div>
         <label class="m-mode"><span class="visually-hidden">Mode</span><select id="m-mode">
-          <option value="learn">Learn</option><option value="try">Practice</option><option value="explore">Explore</option><option value="time">Time</option>
+          <option value="learn">1 · Learn</option><option value="try">2 · Practice</option><option value="explore">Explore</option><option value="time">Time trial</option>
         </select></label>
       </div>
       <div class="progress">
@@ -143,16 +143,13 @@
           <h1 id="op-title"></h1>
           <p id="op-line" class="op-line"></p>
         </div>
-        <div class="choice">
-          <span class="choice-label">Mode</span>
-          <div class="seg" role="group" aria-label="Mode">
-            <button id="mode-learn" type="button" aria-pressed="true">Learn</button>
-            <button id="mode-try" type="button" aria-pressed="false">Practice</button>
-            <button id="mode-explore" type="button" aria-pressed="false">Explore</button>
-            <button id="mode-time" type="button" aria-pressed="false">Time</button>
-          </div>
-          <p id="mode-about" class="choice-about"></p>
-        </div>
+        <nav class="path" aria-label="How to learn this opening">
+          <button id="mode-learn" class="path-step" type="button" aria-pressed="true"><span class="path-n">1</span><span><b>Learn</b><small>every move shown</small></span></button>
+          <svg class="path-arrow ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <button id="mode-try" class="path-step" type="button" aria-pressed="false"><span class="path-n">2</span><span><b>Practice</b><small id="path-due">from memory</small></span></button>
+        </nav>
+        <p class="path-extra">Or <button id="mode-explore" class="link" type="button" aria-pressed="false">explore freely</button> · <button id="mode-time" class="link" type="button" aria-pressed="false">a time trial</button></p>
+        <p id="mode-about" class="choice-about" hidden></p>
       </div>
       <div id="line-done" class="line-done" hidden></div>
       <div class="coach">
@@ -198,7 +195,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261029144200"></script>
+  <script type="module" src="app.js?v=20261029144252"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>
