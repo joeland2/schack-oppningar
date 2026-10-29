@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261029225125">
-  <script src="header.js?v=20261029225125" defer></script>
-  <script src="theme.js?v=20261029225125"></script>
+  <link rel="stylesheet" href="style.css?v=20261029225159">
+  <script src="header.js?v=20261029225159" defer></script>
+  <script src="theme.js?v=20261029225159"></script>
 </head>
 <body>
   <header class="top">
@@ -115,7 +115,7 @@
       <div class="choice choice-search">
         <label class="visually-hidden" for="search">Find an opening</label>
         <input id="search" class="search" type="search" placeholder="Find an opening: Sicilian, London…" autocomplete="off">
-        <button id="pin-favs" type="button" class="ghost pin-favs" aria-pressed="true" title="Starred openings first. Click to sort them in with the rest">★ first</button>
+        <div class="seg pin-seg"><button id="pin-favs" type="button" aria-pressed="true" title="Starred openings first. Click to sort them in with the rest">★ first</button></div>
       </div>
     </div>
     <nav id="openings" class="picks" aria-label="Openings"></nav>
@@ -225,7 +225,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261029225125"></script>
+  <script type="module" src="app.js?v=20261029225159"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>

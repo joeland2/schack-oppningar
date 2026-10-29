@@ -1964,8 +1964,7 @@ main.profile:has(#admin) { max-width: 1320px; }
 .range2-me { position: absolute; top: -6px; bottom: -6px; width: 2px; margin-left: -1px; background: var(--ink); border-radius: 1px; }
 .range2-me::after { content: 'You'; position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%); font: 700 10px/1 var(--font-mono); color: var(--ink); }
 .choice-search { display: flex; align-items: center; gap: 8px; }
-.pin-favs { flex: none; padding: 4px 9px; font-size: 12px; font-weight: 600; white-space: nowrap; color: var(--muted); }
-.pin-favs[aria-pressed="true"] { color: var(--ink); border-color: var(--hot); }
+.pin-seg { flex: none; white-space: nowrap; } /* a one-button switch, the same as the side tabs beside it */
 /* The scroll bar inside admin cards: orange, and in a lane of its own right of the numbers. */
 #admin .pf-two > .pf-card > :last-child, #admin .ad-three > .pf-card > :last-child { padding-right: 14px; margin-right: -14px; scrollbar-width: thin; scrollbar-color: var(--data) transparent; }
 #admin .pf-card > :last-child::-webkit-scrollbar { width: 6px; }
