@@ -984,7 +984,8 @@ a.cta { color: var(--accent-ink); }
 .gm-graph .mid { stroke: var(--muted); stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; opacity: .6; }
 .gm-graph .now { stroke: var(--ink); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .gm-graph circle.Blunder { fill: var(--bad); }
-.gm-graph circle.Mistake { fill: var(--hint); }
+.gm-graph circle.Mistake { fill: var(--hot); }
+.gm-graph circle.Inaccuracy { fill: var(--hint); }
 .gm-graph .hit { fill: transparent; }
 .gm-graph figcaption { margin-top: 6px; font-size: 12px; color: var(--muted); }
 .gm-moments ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
