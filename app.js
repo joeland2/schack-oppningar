@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029132745';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029132745';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029132745';
-import { GUIDE } from './guide.js?v=20261029132745';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029132745';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029132745';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029132745';
-import { storedGames } from './profile.js?v=20261029132745';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029132850';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029132850';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029132850';
+import { GUIDE } from './guide.js?v=20261029132850';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029132850';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029132850';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029132850';
+import { storedGames } from './profile.js?v=20261029132850';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2173,11 +2173,16 @@ function renderLines() {
   $('#lines-sum').textContent = `All ${all.length} lines`; // the line box above already counts the cleared ones
   // Green once you have played a line through (Learn), stronger with a tick once cleared (Practice).
   const state = (l) => (done.includes(lineKey(l.moves)) ? ' cleared' : learned.includes(lineKey(l.moves)) ? ' learned' : '');
+  // One star per line, its best: green when played through in Learn, gold when cleared in Practice,
+  // diamond when played without a slip in Time.
+  const timed = s.timed || [];
+  const star = (l) => { const k = lineKey(l.moves), t = timed.includes(k) ? ['diamond', 'Played without a slip in Time'] : done.includes(k) ? ['gold', 'Cleared in Practice'] : learned.includes(k) ? ['green', 'Played through in Learn'] : null;
+    return t ? `<svg class="line-star ${t[0]}" viewBox="0 0 24 24" role="img" aria-label="${t[1]}"><title>${t[1]}</title><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>` : ''; };
   // Every line, in course order, under the depth it belongs to; those past your depth are paler.
   const group = (i) => (all.length > DEPTHS[0][1] ? DEPTHS.find(([, d], k) => i === (k ? DEPTHS[k - 1][1] : 0)) : null);
   $('#lines-list').innerHTML = all.map((l, i) => `${group(i) ? `<li class="line-group">${group(i)[0]}</li>` : ''}<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}${i >= lines.length ? ' beyond' : ''}" data-i="${i}">
       <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? `<span class="trap-tag${l.trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(l.trap)}</span> ` : l.theory ? '<span class="trap-tag theory">Theory</span> ' : ''}${lineName(l)}<small>${lineTag(l)}</small></span>
-      <span class="line-share">${bigShare(l.share)}</span><span class="line-ok">${state(l) ? `<span class="done-tag"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${state(l) === ' cleared' ? 'Cleared' : 'Learned'}</span>` : ''}</span>
+      <span class="line-share">${bigShare(l.share)}</span><span class="line-ok">${star(l)}</span>
     </button></li>`).join('');
   if (linesView === 'tree') renderTree();
 }
@@ -2350,7 +2355,7 @@ function tryMove(from, to) {
   }
   if (mode === 'time' && clean(m.san) !== line[ply]) {
     game.undo();
-    trial.end -= TRIAL_WRONG * 1000;
+    trial.end -= TRIAL_WRONG * 1000; misses++; // a slip costs the line its diamond
     wrongSq = to; sel = null; shake(boardEl);
     setTimeout(() => { wrongSq = null; renderBoard(); }, 500);
     lastMove = game.move(line[ply]); ply++;
@@ -2469,7 +2474,12 @@ function guide() {
   goodMove().then((m) => { if (m && game.fen() === at && userTurn() && !momentOpen) { hintSq = [m.from, m.to]; renderBoard(); } });
 }
 function finish() {
-  if (mode === 'time') { trial.done++; return setTimeout(() => { if (mode === 'time' && trial.end > Date.now()) play((lineIdx + 1 + Math.floor(Math.random() * (lines.length - 1))) % lines.length); }, 300); }
+  if (mode === 'time') {
+    trial.done++;
+    // A line played without a slip against the clock earns its diamond star in the lines list.
+    const st = stats[statKey(cur.id)], k = lineKey(line);
+    if (!misses && st && !(st.timed ??= []).includes(k)) { st.timed.push(k); store(STORE, stats); }
+    return setTimeout(() => { if (mode === 'time' && trial.end > Date.now()) play((lineIdx + 1 + Math.floor(Math.random() * (lines.length - 1))) % lines.length); }, 300); }
   // A mate in 10 or less for you at the line's end is played out too, before the line is done. That
   // needs Stockfish's verdict, so wait for it (the board waits with you).
   const key = evalKey(game.fen());

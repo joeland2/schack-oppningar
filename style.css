@@ -1479,3 +1479,8 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .op-head .op-line { margin: 4px 0 0; font-size: 15px; color: var(--ink); }
 .op-head .op-line:empty { display: none; }
 #go-ask .go-on { justify-self: center; margin-top: 4px; font-size: 13px; color: var(--muted); }
+/* A line's star in the list: green (Learn), gold (Practice), diamond (Time) */
+.line-star { width: 18px; height: 18px; vertical-align: middle; stroke-width: 1.2; stroke-linejoin: round; }
+.line-star.green { fill: var(--good); stroke: var(--good); }
+.line-star.gold { fill: #e0b23a; stroke: #b88a12; }
+.line-star.diamond { fill: #bdf0ff; stroke: #4fb8e0; filter: drop-shadow(0 0 3px rgb(120 220 255 / .7)); }
