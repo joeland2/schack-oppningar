@@ -1,11 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029115323';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029115323';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029115323';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029115323';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029115323';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029115323';
-import { storedGames } from './profile.js?v=20261029115323';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029115836';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029115836';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029115836';
+import { GUIDE } from './guide.js?v=20261029115836';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029115836';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029115836';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029115836';
+import { storedGames } from './profile.js?v=20261029115836';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -212,6 +213,15 @@ function userMove(moves, book) {
 // Grow lines from the root, most common first. Each opponent reply played in ≥ MIN_SHARE of games
 // at your rating becomes its own branch, until MAX_LINES lines exist; after that each line goes on
 // with the most common reply only, so every line runs until real games run out (or MAX_PLY).
+// A line is known theory when every opponent move in it is a main reply of strong players (THEORY of
+// their games at 2000+).
+function isTheory(moves, side) {
+  for (let i = side === 'w' ? 1 : 0; i < moves.length; i += 2) {
+    const strong = explore(moves.slice(0, i), THEORY_GROUPS), m = strong.moves.find((x) => x.san === moves[i]);
+    if (!m || m.n / strong.total < THEORY) return false;
+  }
+  return true;
+}
 function buildLines(op) {
   const book = familyBook(op);
   const mine = ratingsAround(rating);
@@ -264,9 +274,10 @@ function buildLines(op) {
     const reply = gamesAt(l.moves).moves[0];
     return { ...l, moves: reply ? [...l.moves, reply.san] : l.moves.slice(0, -1) };
   }).filter((l) => l.moves.length && !seen.has(lineKey(l.moves)) && seen.add(lineKey(l.moves)))
-    // As a course does it: the main line first, then the traps to punish, then the lines that leave the
-    // main line, the most common first.
-    .sort((a, b) => (b.branch === 1) - (a.branch === 1) || !!b.trap - !!a.trap || b.branch - a.branch || b.share - a.share);
+    .map((l) => ({ ...l, theory: isTheory(l.moves, op.side) }))
+    // As a course does it: the main line first, then the known theory (every reply one strong players
+    // make), then the traps to punish, then the other lines, the most common first.
+    .sort((a, b) => (b.branch === 1) - (a.branch === 1) || b.theory - a.theory || !!b.trap - !!a.trap || b.branch - a.branch || b.share - a.share);
 }
 
 // The most played White openings at your level, found by walking real games from the start position,
@@ -1147,6 +1158,12 @@ function start(op, keepTraps = false) {
   $('#op-title').textContent = (isVs(op) ? 'vs ' : '') + op.name;
   $('#op-eco').textContent = op.eco;
   $('#op-info').textContent = `Starts ${numbered(op.root)}. ${popularity(op)} in ${speed} at your level; ${sideName(op.side)} wins ${pct(op.side === 'w' ? op.win : 1 - op.win - op.draw)}.`;
+  // The idea of the whole opening, its main variations and the trap to know (guide.js), open on first visit.
+  const gd = GUIDE[op.family] || GUIDE[shortName(op.family)];
+  $('#op-guide').hidden = !gd;
+  if (gd) $('#op-guide').innerHTML = `<summary>The idea of the ${op.family}</summary><p>${gd.idea}</p>
+    <p class="op-guide-k">Main variations</p><ul>${gd.lines.map(([n, t]) => `<li><b>${n}:</b> ${t}</li>`).join('')}</ul>
+    <p><b>Watch out:</b> ${gd.watch}</p>`;
   $('#op-side').textContent = op.side === 'w' ? 'You play White' : 'You play Black';
   $('#restart').textContent = 'Restart';
   $('#picker').hidden = true;
@@ -1996,7 +2013,7 @@ function renderLines() {
   // Green once you have played a line through (Learn), stronger with a tick once cleared (Practice).
   const state = (l) => (done.includes(lineKey(l.moves)) ? ' cleared' : learned.includes(lineKey(l.moves)) ? ' learned' : '');
   $('#lines-list').innerHTML = lines.map((l, i) => `<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}" data-i="${i}">
-      <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? `<span class="trap-tag${l.trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(l.trap)}</span> ` : ''}${lineName(l)}<small>${lineTag(l)}</small></span>
+      <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? `<span class="trap-tag${l.trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(l.trap)}</span> ` : l.theory ? '<span class="trap-tag theory">Theory</span> ' : ''}${lineName(l)}<small>${lineTag(l)}</small></span>
       <span class="line-share">${bigShare(l.share)}</span><span class="line-ok">${state(l) ? `<span class="done-tag"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${state(l) === ' cleared' ? 'Cleared' : 'Learned'}</span>` : ''}</span>
     </button></li>`).join('');
   if (linesView === 'tree') renderTree();

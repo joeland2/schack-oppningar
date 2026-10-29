@@ -1371,3 +1371,11 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .line-done .tip-n { font: 400 22px/1 var(--font-poster); color: var(--muted); min-width: .8em; }
 .line-done li:first-child .tip-n { color: var(--hot); }
 .line-done .tip-tag { display: inline-block; margin: 0 4px 2px 0; padding: 1px 7px; border-radius: 99px; background: var(--raised); color: var(--ink); font: 600 10.5px/1.5 var(--font-body); letter-spacing: .08em; text-transform: uppercase; vertical-align: 1px; }
+
+/* The opening's idea, under its name */
+.op-guide { margin-top: 10px; max-width: 70ch; font-size: 14px; color: var(--ink); }
+.op-guide summary { cursor: pointer; font-weight: 600; color: var(--hot); }
+.op-guide p { margin: 8px 0 0; line-height: 1.5; }
+.op-guide ul { margin: 6px 0 0; padding-left: 1.1em; display: grid; gap: 4px; line-height: 1.45; }
+.op-guide-k { font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.trap-tag.theory { background: var(--raised); color: var(--ink); }
