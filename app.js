@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029165953';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029165953';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029165953';
-import { GUIDE } from './guide.js?v=20261029165953';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029165953';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029165953';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029165953';
-import { storedGames, gamesReady } from './profile.js?v=20261029165953';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029170321';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029170321';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029170321';
+import { GUIDE } from './guide.js?v=20261029170321';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029170321';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029170321';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029170321';
+import { storedGames, gamesReady } from './profile.js?v=20261029170321';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3168,7 +3168,12 @@ function renderLogin() {
   b.title = a ? `Logged in to Lichess as ${a.name}: your profile (log out there)`
     : 'Log in with Lichess: play-outs then follow real games from all of Lichess, and your rating and games are filled in.';
   b.setAttribute('aria-pressed', String(!!a));
+  // Logged out: a note under the rating on what filling it in gives, until closed.
+  $('#rating-hint').hidden = !!a || load(STORE + '-hint-closed', false);
 }
+$('[data-hint-login]').addEventListener('click', (e) => { e.preventDefault(); login(); });
+$('[data-hint-close]').addEventListener('click', (e) => { e.preventDefault(); store(STORE + '-hint-closed', true); $('#rating-hint').hidden = true; });
+$('#rating').addEventListener('change', () => { $('#rating-hint').hidden = true; }); // typed in: done
 $('#lichess-login').addEventListener('click', () => {
   const a = account();
   if (!a) return login();

@@ -1070,7 +1070,12 @@ a { text-underline-offset: .18em; }
 
 /* Header account: the rating as a small stat (label over number) */
 .account { gap: 10px; align-items: center; }
-.acct-stat { display: grid; gap: 1px; padding: 0 12px; border-left: 1px solid var(--line); line-height: 1; white-space: nowrap; }
+.rating-hint { position: absolute; top: calc(100% + 10px); right: 0; z-index: 30; width: 270px; padding: 12px 30px 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); color: var(--ink); font: 400 13px/1.45 var(--font-body, inherit); letter-spacing: 0; text-transform: none; white-space: normal; box-shadow: 0 8px 24px rgb(0 0 0 / .25); }
+.rating-hint[hidden] { display: none; }
+.rating-hint::before { content: ""; position: absolute; top: -6px; right: 40px; width: 10px; height: 10px; background: var(--raised); border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg); }
+.rating-hint .link { font: inherit; padding: 0; }
+.rating-hint-x { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
+.acct-stat { position: relative; display: grid; gap: 1px; padding: 0 12px; border-left: 1px solid var(--line); line-height: 1; white-space: nowrap; }
 .account > .acct-stat:first-child { border-left: 0; padding-left: 0; }
 .acct-k { font: 600 10px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .acct-stat b { font: 400 19px/1.1 var(--font-poster); color: var(--ink); letter-spacing: .01em; }
