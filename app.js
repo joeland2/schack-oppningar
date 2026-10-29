@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029145916';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029145916';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029145916';
-import { GUIDE } from './guide.js?v=20261029145916';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029145916';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029145916';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029145916';
-import { storedGames } from './profile.js?v=20261029145916';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029150007';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029150007';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029150007';
+import { GUIDE } from './guide.js?v=20261029150007';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029150007';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029150007';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029150007';
+import { storedGames } from './profile.js?v=20261029150007';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1038,6 +1038,13 @@ $('#line-done').addEventListener('click', (e) => {
 // The same choice over the board, the moment a line is done.
 let goAsked = false;
 $('#go-ask').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-trial]')?.dataset.trial;
+  if (t) { // the time trial's end
+    showGo(false);
+    if (t === 'again') return startTrial();
+    if (t === 'pick') return showPicker();
+    return setMode(t); // Practice or Learn, from the next line
+  }
   const b = e.target.closest('[data-go]');
   if (!b) return;
   showGo(false);
@@ -2455,7 +2462,16 @@ function tickTrial() {
   const best = Math.max(s.timeBest || 0, trial.score);
   const record = trial.score > (s.timeBest || 0);
   s.timeBest = best; store(STORE, stats);
-  say(`Time! ${plural(trial.score, 'move')} right, ${plural(trial.done, 'line')} finished. ${record ? 'A new best!' : `Your best: ${best}.`} Press Restart to go again.`, 'good');
+  say(`Time! ${plural(trial.score, 'move')} right, ${plural(trial.done, 'line')} finished. ${record ? 'A new best!' : `Your best: ${best}.`}`, record ? 'good' : '');
+  // Time's up: the board waits for a choice, as at the end of a line: again, practise or learn the lines, or another opening.
+  const opt = (k, label, about) => `<button type="button" class="depth-opt" data-trial="${k}"><b>${label}</b><span>${about}</span></button>`;
+  $('#go-ask').innerHTML = `<div class="depth-card"><p class="depth-k">${record ? 'Time · a new best' : 'Time is up'}</p>
+    <p class="depth-q">${plural(trial.score, 'move')} right${record ? '' : ` · your best ${best}`}. What next?</p>
+    ${opt('again', 'Try again', `${TRIAL_S} seconds, the clock starts on your first move`)}
+    ${opt('try', 'Practise these lines', 'From memory, without the clock')}
+    ${opt('learn', 'Learn the lines', 'Every move shown, with arrows')}
+    ${opt('pick', 'Another opening', 'Back to the list')}</div>`;
+  showGo(true);
 }
 
 function tryMove(from, to) {
