@@ -1,11 +1,13 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029210825';
+import { account, login, finishLogin } from './lichess.js?v=20261029211439';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const day = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+// Today: the time only; otherwise the day too.
+const short = (iso) => (new Date(iso).toDateString() === new Date().toDateString() ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : when(iso));
 const when = (iso) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 // A country code as a name: SE is Sweden; – for an unknown country.
 const NAMES = new Intl.DisplayNames(['en'], { type: 'region' });
@@ -99,9 +101,9 @@ function render(s) {
       ${s.visitors.length > 10 ? `<button type="button" class="ghost ad-more" data-more aria-expanded="false">Show all ${s.visitors.length}</button>` : ''}`
       : '<p class="info">Nobody yet.</p>'}</section>
     <section class="pf-card"><div class="ad-head"><h2>Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
-      ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${s.recentActions.slice(0, 15).map((r) => `<li><span><b>${esc(KIND[r.kind] || r.kind)}</b> · ${esc(r.target || '')}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${esc(r.device || '')} · ${when(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
+      ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${s.recentActions.slice(0, 15).map((r) => `<li><span><b>${r.kind === 'card' ? 'Card' : 'Analysis'}</b> ${esc((r.target || '').replace(/ · $/, ''))}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
     <section class="pf-card"><div class="ad-head"><h2>Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
-      ${(s.recentProfiles || []).length ? `<ul class="pf-rows ad-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: r.target })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${esc(r.device || '')} · ${when(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
+      ${(s.recentProfiles || []).length ? `<ul class="pf-rows ad-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: r.target })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
     <div class="pf-two">
       <section class="pf-card"><h2>Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="ad-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
       <section class="pf-card"><h2>Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>

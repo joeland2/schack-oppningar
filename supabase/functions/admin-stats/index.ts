@@ -108,7 +108,18 @@ Deno.serve(async (req) => {
     // The latest profiles looked up, newest first, with where the visitor was.
     recentProfiles: rows.filter((r) => r.kind === 'profile').slice(-40).reverse().map((r) => ({ at: r.at, target: r.target, name: r.user_name, country: r.country, city: r.city, device: r.device })),
     // The latest cards downloaded and analyses started (a profile's games, or one game), newest first.
-    recentActions: rows.filter((r) => ['card', 'analyse'].includes(r.kind)).slice(-40).reverse().map((r) => ({ at: r.at, kind: r.kind, target: r.target, name: r.user_name, country: r.country, city: r.city, device: r.device })),
+    // Older events carry no player name: the profile that visitor looked up last before it stands in.
+    recentActions: (() => {
+      const last: Record<string, string> = {}, out = [];
+      for (const r of rows) {
+        if (r.kind === 'profile' && r.target) last[r.visitor] = r.target;
+        else if (r.kind === 'card' || r.kind === 'analyse') {
+          const named = /[:·]/.test(r.target ?? '');
+          out.push({ at: r.at, kind: r.kind, target: named ? r.target : `${last[r.visitor] ?? 'unknown profile'} · ${r.target ?? ''}`, name: r.user_name, country: r.country, city: r.city, device: r.device });
+        }
+      }
+      return out.slice(-40).reverse();
+    })(),
     registered: registered.sort((a, b) => a.localeCompare(b)),
     compares: count(recent.filter((r) => r.kind === 'compare').map((r) => r.target)),
     usage: count(recent.filter((r) => r.kind !== 'view' && r.kind !== 'profile').map((r) => r.kind)),
