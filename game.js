@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261029161313';
-import { account } from './lichess.js?v=20261029161313';
-import { storedGames, keepGame, engineEval, applyEvals, winPct } from './profile.js?v=20261029161313';
+import { drawBoard } from './board.js?v=20261029161444';
+import { account } from './lichess.js?v=20261029161444';
+import { storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf } from './profile.js?v=20261029161444';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -176,6 +176,7 @@ function render() {
         ${s.bad.length ? `<h2 class="pf-bad">What went badly</h2><ul>${s.bad.map((x) => `<li>${x}</li>`).join('')}</ul>` : ''}`
       : `<p class="gm-noan">This game has no computer analysis yet, so there is no read on what went well or badly. <button type="button" class="cta" data-analyse>Analyse it now</button> <small>About ${Math.max(2, Math.round(moves.length * 0.035))} seconds, with Stockfish in your browser.</small></p>`}
     </section>
+    <section class="gm-impact" id="gm-impact"></section>
     ${graph()}
     ${list.length ? `<section class="gm-moments"><h2>The moves that decided it</h2><ul>${list.map((x) => `<li><button type="button" class="gm-moment ${x.mine ? 'mine' : 'theirs'}" data-moment="${x.i}">
       <span class="gm-j j-${x.j}">${GLYPHS[x.j]}</span><span><b>${moveNo(x.i)} ${x.m.san}</b> ${x.mine ? 'by you' : 'by your opponent'}${x.best ? `: <b>${x.best.san}</b> was better` : ''}<br><small>${x.mine ? `cost you ${x.swing}% of your winning chances` : `gave you ${x.swing}%`}</small></span></button></li>`).join('')}</ul></section>` : ''}
@@ -189,6 +190,27 @@ function render() {
   const svg = $('#game').querySelector('.gm-graph svg');
   svg?.addEventListener('click', (e) => { const r = svg.getBoundingClientRect(); go(Math.round(((e.clientX - r.left) / r.width) * moves.length)); });
   drawPosition();
+  impact();
+}
+// How this game moved your card: the card read from your games in this time control with and
+// without it, skill by skill (only what changed), and the style if it changed.
+async function impact() {
+  const el = $('#gm-impact'), all = (storedGames(name) || []).filter((x) => x.speed === g.speed);
+  if (!el || !all.some((x) => x.id === g.id) || all.length < 50) return;
+  el.innerHTML = '<p class="info">Working out how this game moved your card…</p>';
+  const [withIt, without] = await Promise.all([profileFromRaw(name, all), profileFromRaw(name, all.filter((x) => x.id !== g.id))]);
+  const a = skillsOf(withIt), b = skillsOf(without);
+  const known = (xs) => xs.filter((x) => x.v !== null), ovr = (xs) => (known(xs).length ? Math.round(known(xs).reduce((t, x) => t + x.v, 0) / known(xs).length) : null);
+  // A skill's own reading (raw), so a change elsewhere does not pull it along on the card's scale.
+  const moved = a.map((x, i) => ({ label: x.label, now: x.v, d: x.raw !== null && b[i].raw !== null ? Math.round(x.raw - b[i].raw) : null })).filter((x) => x.d);
+  const dOvr = ovr(a) !== null && ovr(b) !== null ? ovr(a) - ovr(b) : 0, style = withIt.type?.[0]?.name, was = without.type?.[0]?.name;
+  const sign = (d) => (d > 0 ? `+${d}` : `${d}`);
+  el.innerHTML = `<h2>How this game moved your card</h2>
+    ${moved.length || dOvr ? `<ul class="gm-moves-card">${dOvr ? `<li class="${dOvr > 0 ? 'up' : 'down'}"><b>${sign(dOvr)}</b> overall <small>now ${ovr(a)}</small></li>` : ''}
+      ${moved.map((x) => `<li class="${x.d > 0 ? 'up' : 'down'}"><b>${sign(x.d)}</b> ${x.label} <small>now ${x.now}</small></li>`).join('')}</ul>`
+      : `<p class="info">One game in ${all.length} moves no number on your card by a whole point.</p>`}
+    ${style && was && style !== was ? `<p>It changed your style: <b>${esc(was)}</b> → <b>${esc(style)}</b>.</p>` : ''}
+    <p class="info">Your ${g.speed} card read from ${all.length} games with this one, against ${all.length - 1} without it.</p>`;
 }
 function go(n) { focus = null; idx = Math.max(0, Math.min(moves.length, n)); drawPosition(); }
 
