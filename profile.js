@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029163330';
-import { STYLE_OF } from './styles.js?v=20261029163330';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029163633';
+import { STYLE_OF } from './styles.js?v=20261029163633';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -495,9 +495,51 @@ const gamesReady = (async () => {
   for (const [k, v] of Object.entries(old)) if (!MEM.has(k) || MEM.get(k).at < v.at) { MEM.set(k, v); persist(k, v); }
   try { localStorage.removeItem(GAMES); } catch {}
 })();
+// The engine work done here (a full analysis, the move-12 look) also goes to the analyses function, per
+// player, so it is there on every device, logged in or not. Pulled when a player's games are fetched.
+const SYNC = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/analyses';
+const SENT = new Map(), PULLS = new Map(); // `${player}|${id}` → what the server has; player → its pull
+const sig = (g) => `${g.ours ? 1 : 0}|${g.at12 ?? ''}`;
+const extra = (g) => { const t = pack(g); return { ours: g.ours || undefined, at12: g.at12 ?? undefined, an: g.ours ? t.an : undefined, pa: g.ours ? [g.players.white.analysis, g.players.black.analysis] : undefined }; };
+function pull(name) {
+  const me = name.toLowerCase();
+  if (!PULLS.has(me)) PULLS.set(me, fetch(`${SYNC}?u=${encodeURIComponent(me)}`).then((r) => (r.ok ? r.json() : [])).catch(() => []).then((rows) => {
+    const m = new Map(rows.map((r) => [r.id, r.data]));
+    for (const [id, d] of m) SENT.set(`${me}|${id}`, sig(d));
+    return m;
+  }));
+  return PULLS.get(me);
+}
+// Puts what other devices did into these games (in place); true when something was added.
+async function mergeRemote(name, games) {
+  const m = await pull(name);
+  let added = false;
+  for (const g of games) {
+    const d = m.get(g.id);
+    if (!d) continue;
+    if (d.at12 != null && g.at12 == null) { g.at12 = d.at12; added = true; }
+    if (d.ours && !g.ours && d.an) {
+      g.analysis = unpack({ an: d.an }).analysis; g.ours = d.ours; added = true;
+      if (d.pa) { g.players.white.analysis = d.pa[0]; g.players.black.analysis = d.pa[1]; }
+    }
+  }
+  return added;
+}
+async function push(name, games) {
+  const me = name.toLowerCase();
+  await pull(name);
+  const rows = games.filter((g) => (g.ours || g.at12 != null) && SENT.get(`${me}|${g.id}`) !== sig(g)).map((g) => ({ id: g.id, data: extra(g) }));
+  for (let i = 0; i < rows.length; i += 200) { // shortcut: no retry; what fails goes again with the next save
+    const part = rows.slice(i, i + 200);
+    const ok = await fetch(SYNC, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ player: me, rows: part }) }).then((r) => r.ok).catch(() => false);
+    if (ok) part.forEach((r) => SENT.set(`${me}|${r.id}`, sig(r.data)));
+  }
+}
+let pushing = null;
 function saveGames(name, games) {
   const me = name.toLowerCase(), value = { at: Date.now(), games: games.map(pack) };
   MEM.set(me, value); persist(me, value);
+  clearTimeout(pushing); pushing = setTimeout(() => push(name, games), 3000); // a run saves often
   const own = (myName() || '').toLowerCase(), precious = (k, v) => k === own || v.games.some((g) => g.ours);
   [...MEM].filter(([k, v]) => k !== me && !precious(k, v)).sort((a, b) => b[1].at - a[1].at).slice(KEEP).forEach(([k]) => { MEM.delete(k); persist(k, null); });
 }
@@ -541,6 +583,7 @@ async function build(name) {
   const ids = new Set(fresh.map((g) => g.id));
   const raw = [...fresh, ...have.filter((g) => !ids.has(g.id))].slice(0, MAX);
   if (!raw.length) throw new Error(`${name} has no rated games on Lichess yet.`);
+  await mergeRemote(name, raw);
   saveGames(name, raw);
   RAW = raw; RAW_NAME = name;
   return readAll(name, raw);

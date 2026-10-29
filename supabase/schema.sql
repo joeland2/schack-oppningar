@@ -56,3 +56,14 @@ alter table public.players enable row level security;
 -- No policies: the public key can neither read nor write it; the Edge Function uses the service role.
 alter table public.players add column if not exists piece text check (piece in ('n', 'b', 'r', 'q')); -- the card's most important piece
 alter table public.players add column if not exists stars jsonb not null default '{}'; -- the trainer's stars: green, gold, diamond
+
+-- The engine work done here on a player's games, so every device sees it (the analyses function).
+create table if not exists public.analyses (
+  player  text not null check (char_length(player) <= 30),
+  id      text not null check (char_length(id) <= 12),
+  data    jsonb not null,
+  at      timestamptz not null default now(),
+  primary key (player, id)
+);
+alter table public.analyses enable row level security;
+-- No policies: only the Edge Function (service role) reads and writes it.
