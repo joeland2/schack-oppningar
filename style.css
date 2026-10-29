@@ -1333,3 +1333,4 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .pf-acc-steps li.done .pf-acc-label b, .pf-acc-steps li.now .pf-acc-label b { color: var(--ink); }
 .pf-acc-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; }
 .pf-acc-say { margin: 0; font-size: 14px; color: var(--ink); text-wrap: pretty; }
+.pf-acc-src { margin: -4px 0 0; font-size: 13px; color: var(--muted); text-wrap: pretty; }

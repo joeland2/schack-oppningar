@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029091714';
-import { STYLE_OF } from './styles.js?v=20261029091714';
+import { account, login, finishLogin } from './lichess.js?v=20261029091845';
+import { STYLE_OF } from './styles.js?v=20261029091845';
 
 const MAX = 500;
 const PV = 19;
@@ -552,8 +552,9 @@ function analysePanel(name, p) {
   const tiers = TIERS.map(([n, label]) => [Math.min(n, p.n), label]).filter(([n], i, a) => i === a.findIndex(([m]) => m === n));
   const reached = tiers.filter(([n]) => p.analysed >= n).pop(), next = tiers.find(([n]) => p.analysed < n);
   const opts = tiers.map(([n]) => ({ n, ...costOf(p, n) })).filter((o) => o.games);
-  const main = (next && opts.find((o) => o.n === next[0])) || opts[0], rest = opts.filter((o) => o !== main);
-  const btn = (o, cls) => `<button type="button" class="${cls}" data-analyse="${o.n}" title="${games(o.games)} without analysis among your newest ${o.n}, ${minutes(o.sec)}, with Stockfish in your browser">Analyse ${o.games} more <small>~${minutes(o.sec).replace('about ', '')}</small></button>`;
+  // the steps not reached yet, nearest first; at Best, the newest games played since
+  const ahead = opts.filter((o) => !next || o.n >= next[0]), main = ahead[0] || opts[0], rest = ahead.slice(1);
+  const btn = (o, cls) => `<button type="button" class="${cls}" data-analyse="${o.n}" title="${games(o.games)} without analysis among your newest ${o.n}, ${minutes(o.sec)}, with Stockfish in your browser">Analyse ${o.games} more <small>${next ? `for ${tiers.find(([n]) => n === o.n)?.[1] || ''} · ` : ''}~${minutes(o.sec).replace('about ', '')}</small></button>`;
   let prev = 0;
   const steps = tiers.map(([n, label]) => { const fill = Math.max(0, Math.min(1, (p.analysed - prev) / (n - prev))); prev = n;
     return `<li class="${p.analysed >= n ? 'done' : fill > 0 ? 'now' : ''}"><span class="pf-acc-bar"><i style="width:${fill * 100}%"></i></span><span class="pf-acc-label"><b>${label}</b> ${n}</span></li>`; }).join('');
@@ -562,11 +563,12 @@ function analysePanel(name, p) {
     : 'Every skill rests on all the games there are.';
   return `<div id="pf-analyse" class="pf-analyse pf-acc${reached ? '' : ' few'}">
     <div class="pf-acc-head"><span class="pf-acc-k">Stat accuracy</span><b class="pf-acc-v">${reached ? reached[1] : 'Locked'}</b>
-      <span class="pf-acc-n">${p.analysed} of ${p.n} games analysed${p.ours ? `, ${p.ours} here` : ''}</span>
+      <span class="pf-acc-n">${p.analysed} of ${p.n} games analysed</span>
       <details class="pf-help"><summary title="${WHY_ANALYSE}" aria-label="Why analyse?">?</summary><p>${WHY_ANALYSE}</p></details></div>
     <ol class="pf-acc-steps" aria-label="Stat accuracy: ${reached ? reached[1] : 'locked'}">${steps}</ol>
+    <p class="pf-acc-src">Counts the games analysed on lichess.org (${p.analysed - (p.ours || 0)}) and here (${p.ours || 0}). The buttons analyse more of the Lichess games with Stockfish in your browser; each game is done once and kept.</p>
     <div class="pf-acc-foot"><p class="pf-acc-say">${say}</p>
-    ${main ? `<div class="pf-an-row">${btn(main, 'cta pf-an-go')}${rest.length ? `<details class="pf-an-menu"><summary>More</summary><div>${rest.map((o) => btn(o, 'pf-an-opt')).join('')}</div></details>` : ''}</div>` : ''}</div>
+    ${main ? `<div class="pf-an-row">${btn(main, 'cta pf-an-go')}${rest.map((o) => btn(o, 'pf-an-opt')).join('')}</div>` : ''}</div>
   </div>`;
 }
 function bindAnalyse(name) {
