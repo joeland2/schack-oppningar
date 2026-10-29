@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029155253';
-import { STYLE_OF } from './styles.js?v=20261029155253';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029155454';
+import { STYLE_OF } from './styles.js?v=20261029155454';
 
 const MAX = 500;
 const PV = 32;
@@ -972,6 +972,7 @@ function render(name, at, full) {
         ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'}${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. ${p.todo ? 'Analyse more with the Analyse button above Skills.' : ''}</p>
       <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Win rate counts wins out of all games; an endgame score counts a draw as half.</p>
     </section>
+    ${me ? starsCard() : ''}
     ${nextActions(name, me)}`;
   $('#refresh').addEventListener('click', () => run(name));
   if (me) {
@@ -1031,6 +1032,33 @@ function leadStory(name, p, skills, me) {
   </section>`;
 }
 // The page ends on what to do next, not on the fine print.
+// Your stars from the Openings trainer, across every opening and time control (kept in this browser):
+// green for a line played through in Learn, gold for one cleared in Practice, diamond for one played
+// without a slip in the time trial; and the openings with the most, each linking to its lines.
+const STAR_PATH = 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z';
+const starIcon = (kind) => `<svg class="line-star ${kind}" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_PATH}"/></svg>`;
+function starsCard() {
+  let all = {};
+  try { all = JSON.parse(localStorage.getItem('opening-book-v2')) || {}; } catch {}
+  const per = new Map();
+  for (const [key, st] of Object.entries(all)) {
+    if (!st || typeof st !== 'object') continue;
+    const id = key.slice(key.indexOf(':') + 1), lines = new Set([...(st.played || []), ...(st.done || [])]);
+    const o = per.get(id) || { id, green: new Set(), gold: new Set(), diamond: new Set() };
+    lines.forEach((l) => o.green.add(l)); (st.done || []).forEach((l) => o.gold.add(l)); (st.timed || []).forEach((l) => o.diamond.add(l));
+    per.set(id, o);
+  }
+  const ops = [...per.values()].map((o) => ({ ...o, n: o.green.size + o.gold.size + o.diamond.size })).filter((o) => o.n).sort((a, b) => b.n - a.n);
+  const sum = (k) => ops.reduce((t, o) => t + o[k].size, 0);
+  if (!ops.length) return `<section class="pf-card pf-stars"><h2>Your stars</h2><p class="info">Learn a line in the <a href="./">Openings trainer</a> for your first green star; clear it in Practice for gold, and play it without a slip in the time trial for a diamond.</p></section>`;
+  const nameOf = (id) => id.replace(/^b:/, '').replace(/^vs:/, 'vs ');
+  const sideOf = (id) => (/^(b|vs):/.test(id) ? 'b' : 'w');
+  return `<section class="pf-card pf-stars"><h2>Your stars</h2>
+    <div class="pf-star-totals">${[['green', 'learned'], ['gold', 'cleared'], ['diamond', 'perfect in Time']].map(([k, w]) => `<div>${starIcon(k)}<b>${sum(k)}</b><span>${w}</span></div>`).join('')}</div>
+    <ul class="pf-star-ops">${ops.slice(0, 6).map((o) => `<li><a class="pf-op-link" href="${practiseLink(sideOf(o.id), nameOf(o.id))}">${esc(nameOf(o.id))}</a>
+      <span>${['green', 'gold', 'diamond'].filter((k) => o[k].size).map((k) => `${starIcon(k)}${o[k].size}`).join(' ')}</span></li>`).join('')}</ul>
+    <p class="info">Saved in this browser. A line counts once, in every time control.</p></section>`;
+}
 function nextActions(name, me) {
   const friend = favs()[0];
   return `<section class="pf-next"><h2>What next</h2><div>

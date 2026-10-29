@@ -1639,3 +1639,15 @@ p, li, dd, small { text-wrap: pretty; }
 #trainer:has(#line-done:not([hidden])) #restart { visibility: hidden; }
 .line-ok { display: inline-flex; gap: 2px; }
 .line-ok .line-star { width: 15px; height: 15px; }
+/* Your stars on the profile */
+.pf-stars h2 { margin: 0 0 12px; }
+.pf-star-totals { display: flex; flex-wrap: wrap; gap: 12px 28px; margin-bottom: 14px; }
+.pf-star-totals div { display: flex; align-items: center; gap: 8px; }
+.pf-star-totals .line-star { width: 24px; height: 24px; }
+.pf-star-totals b { font: 400 30px var(--font-poster); }
+.pf-star-totals span { font-size: 13px; color: var(--muted); }
+.pf-star-ops { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.pf-star-ops li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); }
+.pf-star-ops span { display: inline-flex; align-items: center; gap: 3px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pf-star-ops .line-star { width: 14px; height: 14px; margin-left: 6px; }
+.pf-stars .info { margin: 10px 0 0; font-size: 12px; }
