@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029144633';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029144633';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029144633';
-import { GUIDE } from './guide.js?v=20261029144633';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029144633';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029144633';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029144633';
-import { storedGames } from './profile.js?v=20261029144633';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029144721';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029144721';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029144721';
+import { GUIDE } from './guide.js?v=20261029144721';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029144721';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029144721';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029144721';
+import { storedGames } from './profile.js?v=20261029144721';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1916,7 +1916,8 @@ function explainWrong(san) {
   if (mode === 'learn') parts.push(`The line plays ${moveWords(want)}.`);
   else if (missesHere >= 2) parts.push('The piece to move is highlighted.');
   else parts.push('Try again.');
-  say(`${san} is not the move here. ${parts.join(' ')}`, 'bad');
+  // A playable move is not a mistake, so it is said calmly; a move strong players avoid is said in red.
+  say(`${san} is not the move here. ${parts.join(' ')}`, share(clean(san)) >= RARE ? '' : 'bad');
   // A sound move with games behind it can become your own move here.
   const rootLen = Math.max(...(cur.roots || [{ moves: cur.root.split(' ') }]).map((r) => r.moves.length)); // the opening's own moves stay
   if (mode === 'learn' && ply >= rootLen && share(clean(san)) >= RARE && score(clean(san)) !== null) {
