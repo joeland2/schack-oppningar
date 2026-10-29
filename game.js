@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261029162653';
-import { account } from './lichess.js?v=20261029162653';
-import { storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf } from './profile.js?v=20261029162653';
+import { drawBoard } from './board.js?v=20261029163219';
+import { account } from './lichess.js?v=20261029163219';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf } from './profile.js?v=20261029163219';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -17,6 +17,7 @@ const HOW = { mate: 'by mate', resign: 'by resignation', outoftime: 'on time', t
 let g = null, moves = [], fens = [], side = 'white', idx = 0, flip = false, focus = null;
 
 async function load() {
+  await gamesReady;
   g = (storedGames(name) || []).find((x) => x.id === id);
   if (!g) {
     $('#profile-msg').textContent = 'Fetching the game from Lichess…';
@@ -202,22 +203,25 @@ function render() {
 // How this game affected your stats: the card read from your games in this time control with and
 // without it, skill by skill (only what changed), and the style if it changed.
 async function impact() {
+  await gamesReady;
   const el = $('#gm-impact'), all = (storedGames(name) || []).filter((x) => x.speed === g.speed);
   if (!el || !all.some((x) => x.id === g.id) || all.length < 50) return;
   el.innerHTML = '<p class="info">Working out how this game affected your stats…</p>';
   const [withIt, without] = await Promise.all([profileFromRaw(name, all), profileFromRaw(name, all.filter((x) => x.id !== g.id))]);
   const a = skillsOf(withIt), b = skillsOf(without);
-  const known = (xs) => xs.filter((x) => x.v !== null), ovr = (xs) => (known(xs).length ? Math.round(known(xs).reduce((t, x) => t + x.v, 0) / known(xs).length) : null);
-  // A skill's own reading (raw), so a change elsewhere does not pull it along on the card's scale.
-  const moved = a.map((x, i) => ({ label: x.label, now: x.v, d: x.raw !== null && b[i].raw !== null ? Math.round(x.raw - b[i].raw) : null })).filter((x) => x.d);
-  const dOvr = ovr(a) !== null && ovr(b) !== null ? ovr(a) - ovr(b) : 0, style = withIt.type?.[0]?.name, was = without.type?.[0]?.name;
-  const sign = (d) => (d > 0 ? `+${d}` : `${d}`);
+  const known = (xs) => xs.filter((x) => x.v !== null), ovr = (xs) => (known(xs).length ? known(xs).reduce((t, x) => t + x.v, 0) / known(xs).length : null);
+  // One game moves a skill by a fraction of a point, so to one decimal. A skill's own reading (raw),
+  // so a change elsewhere does not pull it along on the card's scale.
+  const tenth = (d) => Math.round(d * 10) / 10;
+  const moved = a.map((x, i) => ({ label: x.label, now: x.v, d: x.raw !== null && b[i].raw !== null ? tenth(x.raw - b[i].raw) : 0 })).filter((x) => x.d);
+  const dOvr = ovr(a) !== null && ovr(b) !== null ? tenth(ovr(a) - ovr(b)) : 0, style = withIt.type?.[0]?.name, was = without.type?.[0]?.name;
+  const sign = (d) => (d > 0 ? `+${d}` : `${d}`.replace('-', '−'));
   el.innerHTML = `<h2>How this game affected your stats</h2>
-    ${moved.length || dOvr ? `<ul class="gm-moves-card">${dOvr ? `<li class="${dOvr > 0 ? 'up' : 'down'}"><b>${sign(dOvr)}</b> overall <small>now ${ovr(a)}</small></li>` : ''}
+    ${moved.length || dOvr ? `<ul class="gm-moves-card">${dOvr ? `<li class="${dOvr > 0 ? 'up' : 'down'}"><b>${sign(dOvr)}</b> overall <small>now ${Math.round(ovr(a))}</small></li>` : ''}
       ${moved.map((x) => `<li class="${x.d > 0 ? 'up' : 'down'}"><b>${sign(x.d)}</b> ${x.label} <small>now ${x.now}</small></li>`).join('')}</ul>`
-      : `<p class="info">One game in ${all.length} moves none of your stats by a whole point.</p>`}
+      : `<p class="info">This game hardly moved your stats: under a tenth of a point each.</p>`}
     ${style && was && style !== was ? `<p>It changed your style: <b>${esc(was)}</b> → <b>${esc(style)}</b>.</p>` : ''}
-    <p class="info">Your ${g.speed} stats from ${all.length} games with this one, against ${all.length - 1} without it.</p>`;
+    <p class="info">Your ${g.speed} card read with this game and without it (from your ${all.length} kept ${g.speed} games).</p>`;
 }
 function go(n) { focus = null; idx = Math.max(0, Math.min(moves.length, n)); drawPosition(); }
 

@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029162653';
-import { STYLE_OF } from './styles.js?v=20261029162653';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029163219';
+import { STYLE_OF } from './styles.js?v=20261029163219';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -467,11 +467,37 @@ function unpack(t) {
 }
 console.assert(((g) => unpack(pack(g)).analysis[1].judgment.name === 'Blunder' && unpack(pack(g)).end[1] === 50)({ id: 'x', players: { white: {}, black: {} }, clocks: [100, 90, 80, 50, 70],
   analysis: [{ eval: 20 }, { eval: 400, judgment: { name: 'Blunder' }, best: 'e7e5' }] }), 'pack');
-function gamesStore() { try { return JSON.parse(localStorage.getItem(GAMES)) || {}; } catch { return {}; } }
+// The games are kept in IndexedDB (localStorage held only about three players and dropped the rest,
+// with the games analysed here). In memory once loaded, so reading stays synchronous: every page that
+// reads games waits for gamesReady first. Kept: your own games and every player with games analysed
+// here, always; the KEEP most recently read other players besides.
+const KEEP = 20;
+let MEM = new Map();
+const openGames = () => new Promise((res, rej) => {
+  const q = indexedDB.open('chess-trainer-games', 1);
+  q.onupgradeneeded = () => q.result.createObjectStore('players');
+  q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
+});
+function persist(key, value) {
+  openGames().then((db) => { const st = db.transaction('players', 'readwrite').objectStore('players'); if (value) st.put(value, key); else st.delete(key); }).catch(() => {});
+}
+const gamesReady = (async () => {
+  try {
+    const db = await openGames();
+    MEM = await new Promise((res) => { const out = new Map(), q = db.transaction('players').objectStore('players').openCursor();
+      q.onsuccess = () => { const c = q.result; if (c) { out.set(c.key, c.value); c.continue(); } else res(out); }; q.onerror = () => res(out); });
+  } catch {}
+  // Games kept the old way move over once.
+  let old = {};
+  try { old = JSON.parse(localStorage.getItem(GAMES)) || {}; } catch {}
+  for (const [k, v] of Object.entries(old)) if (!MEM.has(k) || MEM.get(k).at < v.at) { MEM.set(k, v); persist(k, v); }
+  try { localStorage.removeItem(GAMES); } catch {}
+})();
 function saveGames(name, games) {
-  const all = gamesStore(), me = name.toLowerCase();
-  const keep = Object.entries(all).filter(([k]) => k !== me).sort((a, b) => b[1].at - a[1].at).slice(0, 2);
-  try { localStorage.setItem(GAMES, JSON.stringify(Object.fromEntries([[me, { at: Date.now(), games: games.map(pack) }], ...keep]))); } catch {}
+  const me = name.toLowerCase(), value = { at: Date.now(), games: games.map(pack) };
+  MEM.set(me, value); persist(me, value);
+  const own = (myName() || '').toLowerCase(), precious = (k, v) => k === own || v.games.some((g) => g.ours);
+  [...MEM].filter(([k, v]) => k !== me && !precious(k, v)).sort((a, b) => b[1].at - a[1].at).slice(KEEP).forEach(([k]) => { MEM.delete(k); persist(k, null); });
 }
 // One game changed here (analysed on its own page) goes back into the kept games.
 function keepGame(name, g) {
@@ -486,7 +512,7 @@ function forget(name) {
 }
 // A player's games as kept here, in Lichess's shape, or null.
 function storedGames(name) {
-  const t = gamesStore()[name.toLowerCase()];
+  const t = MEM.get(name.toLowerCase());
   return t ? t.games.map(unpack) : null;
 }
 
@@ -521,6 +547,7 @@ async function build(name) {
 // so the profile, compare and the practice plan always agree and follow new games and analyses.
 const FRESH = 5 * 60e3;
 async function current(name) {
+  await gamesReady;
   const c = cache()[name.toLowerCase()];
   return c && c.v === PV && Date.now() - c.at < FRESH && storedGames(name) ? c.p : build(name);
 }
@@ -1214,6 +1241,7 @@ function ask() {
 
 let runs = 0; // a newer look-up wins over one still reading games
 async function run(name) {
+  await gamesReady;
   const mine = ++runs, c = cache()[name.toLowerCase()];
   await loadScores(); // a saved profile is drawn without reading the games, but its time controls are read again
   if (shown && shown[0].toLowerCase() !== name.toLowerCase()) pfSpeed = null; // another player starts on their own main time control
@@ -1252,7 +1280,7 @@ function failed(name, err) {
 
 // A profile from games already fetched (Lichess's shape), without fetching: for checking the types on many players.
 const profileFromRaw = async (name, raw) => (await loadScores(), profileOf(raw.map((g) => readGame(g, name.toLowerCase()))));
-export { build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
+export { gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
 // ---------- The games themselves ----------
 // The newest games as a list; each opens on game.html with the board, how it went and the key moves.
 const STATUS = { mate: 'mate', resign: 'resignation', outoftime: 'time', timeout: 'time', draw: 'agreement', stalemate: 'stalemate', aborted: 'abort' };

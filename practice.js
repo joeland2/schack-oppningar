@@ -2,9 +2,9 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261029162653';
-import { findMistakes, pickPuzzles } from './mistakes.js?v=20261029162653';
-import { current, cache, myName, skillsOf, storedGames } from './profile.js?v=20261029162653';
+import { login } from './lichess.js?v=20261029163219';
+import { findMistakes, pickPuzzles } from './mistakes.js?v=20261029163219';
+import { current, cache, myName, skillsOf, storedGames, gamesReady } from './profile.js?v=20261029163219';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -15,6 +15,7 @@ const puzzles = () => { try { return JSON.parse(localStorage.getItem(PUZZLES)) |
 // blunder of yours with the better move, added to the ones Find my mistakes has found. No engine
 // needed, so they are there at once.
 async function puzzlesFromGames(name) {
+  await gamesReady;
   const games = (storedGames(name) || []).filter((g) => g.analysis);
   if (!games.length) return;
   const found = await findMistakes(games, name, { evaluate: async () => null });
