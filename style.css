@@ -1869,8 +1869,8 @@ p, li, dd, small { text-wrap: pretty; }
   .pf-acts { position: absolute; top: 0; right: 0; z-index: 2; flex-direction: column; gap: 4px; }
   .pf-act { width: 40px; height: 40px; background: var(--bg); }
   #profile .pf-hero .pf-type-row > div:first-child { padding-right: 46px; }
-  .pf-under-name .pf-speeds button { white-space: nowrap; }
-  .pf-under-name .pf-speeds { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  .pf-card-col .pf-speeds button { white-space: nowrap; }
+  .pf-card-col .pf-speeds { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
   #profile > .pf-under-name { padding-right: 46px; margin-top: -14px; } /* clear of the icons down the right edge */
   #profile .pf-hero .pf-h1 { overflow-wrap: normal; } /* a style is never split mid-word ("Marathone-r") */
   #profile > .pf-hero ~ :not(.pf-players) { order: 2; }
@@ -2001,3 +2001,5 @@ main.profile:has(#admin) { max-width: 1320px; }
 .ad-look { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 700; vertical-align: 1px; border: 1px solid var(--line); }
 .ad-look.dark { background: #141414; color: #f4efe6; }
 .ad-look.light { background: #f4efe6; color: #141414; }
+
+.pf-card-col .pf-speeds { justify-self: center; } /* the time control right under the card it switches */
