@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029221517';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029221517';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029221517';
-import { GUIDE } from './guide.js?v=20261029221517';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029221517';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029221517';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029221517';
-import { storedGames, gamesReady } from './profile.js?v=20261029221517';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029221601';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029221601';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029221601';
+import { GUIDE } from './guide.js?v=20261029221601';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029221601';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029221601';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029221601';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029221601';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -694,7 +694,7 @@ async function findTeachers(name) {
   const read = [];
   for (const [i, [cand, r]] of cands.entries()) {
     msg(`Reading ${cand}'s games, player ${i + 1} of ${cands.length}…`, 0.4 + 0.6 * (i / cands.length));
-    try { read.push({ name: cand, rating: r, ...inOpening(await fetchGames(cand), cand, o, mySlips) }); } catch (err) { if (/busy/.test(err.message)) break; }
+    try { const gs = await fetchGames(cand); read.push({ name: cand, rating: r, gs, ...inOpening(gs, cand, o, mySlips) }); } catch (err) { if (/busy/.test(err.message)) break; }
   }
   const rate = (x) => x.slips / x.games, score = (x) => x.points / Math.max(1, x.games);
   // No slips of yours in the opening: nothing to learn there, so the players to learn from are the ones
@@ -704,12 +704,15 @@ async function findTeachers(name) {
     .sort((a, b) => (clean ? score(b) - score(a) : rate(a) - rate(b) || score(b) - score(a))).slice(0, 3);
   if (!best.length) return msg(clean ? `You make no opening slips in the ${what} and score ${pct(score(mine))}: none of the players found scores more with it. Nothing to learn here right now.` : `The players found play the ${what} too rarely to compare. Try again later.`);
   const theirs = (x, k) => [...x.at[k]].sort((a, b) => b[1] - a[1])[0]?.[0];
+  // Each player's card, read from the same 100 games (a quick card: the profile reads 500).
+  const cardOf = async (x) => { try { const p = await profileFromRaw(x.name, x.gs); return playerCard(x.name, p, p.type, skillsOf(p)); } catch { return ''; } };
+  const cards = await Promise.all(best.map(cardOf));
   el.innerHTML = `<h2>Players to learn from: ${what}</h2>
     <p class="info">${clean ? `You make no opening slips in your ${plural(mine.games, 'game')} of it, and score ${pct(score(mine))}. These players above your rating score more with it: see how they go on from where the opening ends.` : `You: a slip in ${pct(rate(mine))} of ${plural(mine.games, 'game')}, scoring ${pct(score(mine))}. Players above your rating who play it, read from their last 100 ${speed} games:`}</p>
-    <ul class="lf-list">${best.map((x) => `<li><a href="https://lichess.org/@/${encodeURIComponent(x.name)}" target="_blank" rel="noopener"><b>${x.name}</b></a> <small>${x.rating}</small>
+    <ul class="lf-list">${best.map((x, i) => `<li>${cards[i] ? `<a class="lf-card" href="profile.html?u=${encodeURIComponent(x.name)}" title="${esc(x.name)}'s profile">${cards[i]}</a>` : ''}<div class="lf-info"><a href="https://lichess.org/@/${encodeURIComponent(x.name)}" target="_blank" rel="noopener"><b>${x.name}</b></a> <small>${x.rating}</small>
       <span class="lf-meta">${clean ? `scores ${pct(score(x))} in ${plural(x.games, 'game')}` : `a slip in ${pct(rate(x))} of ${plural(x.games, 'game')} · scores ${pct(score(x))}`}</span>
       ${mySlips.map((sl, k) => { const t = theirs(x, k); return t && t !== sl.played ? `<span class="lf-meta">Where you play <b class="down">${sl.played}</b> (move ${Math.floor(sl.before.length / 2) + 1}), they play <b>${t}</b></span>` : ''; }).join('')}
-      <a class="lf-link" href="profile.html?u=${encodeURIComponent(x.name)}">See their profile</a></li>`).join('')}</ul>`;
+      <a class="lf-link cta" href="profile.html?u=${encodeURIComponent(x.name)}">See their profile</a></div></li>`).join('')}</ul>`;
 }
 
 

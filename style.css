@@ -1556,10 +1556,14 @@ button.depth-btn:hover { border-color: var(--ink); }
 .line-star.gold { fill: #e0b23a; stroke: #b88a12; }
 .line-star.diamond { fill: #bdf0ff; stroke: #4fb8e0; filter: drop-shadow(0 0 3px rgb(120 220 255 / .7)); }
 /* A player to learn from */
-.learn-from { display: grid; gap: 8px; }
+.learn-from { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; } /* one column: heading, what was found, then the players */
 .learn-from h2 { margin: 0; font-size: 18px; }
-.lf-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
-.lf-list li { display: grid; gap: 2px; padding: 10px 0; border-top: 1px solid var(--line); }
+.lf-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 22px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.lf-list li { display: grid; gap: 10px; align-content: start; padding: 0; border: 0; }
+.lf-card { justify-self: start; text-decoration: none; color: inherit; } .lf-card .pf-pcard { zoom: .62; box-shadow: none; transition: transform .15s; }
+.lf-card:hover .pf-pcard, .lf-card:focus-visible .pf-pcard { transform: translateY(-3px); }
+.lf-info { display: grid; gap: 4px; } .lf-info .lf-link { justify-self: start; margin-top: 6px; padding: 8px 14px; font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { .lf-card .pf-pcard { transition: none; } }
 .lf-list small { color: var(--muted); font-family: var(--font-mono); }
 .lf-meta { font-size: 13px; color: var(--muted); }
 .lf-meta b { color: var(--ink); }
