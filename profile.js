@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029134425';
-import { STYLE_OF } from './styles.js?v=20261029134425';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029134755';
+import { STYLE_OF } from './styles.js?v=20261029134755';
 
 const MAX = 500;
 const PV = 27;
@@ -337,11 +337,21 @@ function levelOf(rating) {
 // their own average is drawn twice as large (SHAPE), and the average itself (how much better or worse
 // than their opponents they are overall) at half size. level is where "as good as them" (raw 50) lands.
 const SHAPE = 2;
+// The skills that need a computer's verdict count only analysed games against opponents near your rating
+// (p.peer.analysed), so more than ENOUGH analysed games are needed in all. unlockAt: the analysis tier
+// (as on the Analyse buttons) that should bring those games to ENOUGH, at the share they make up now.
+function unlockAt(p) {
+  const have = p.peer?.analysed ?? 0, all = p.analysed ?? 0;
+  const need = have >= ENOUGH ? all : Math.ceil(ENOUGH * (all && have ? all / have : 1));
+  return { have, at: (TIERS.find(([n]) => n >= need) || [need])[0] };
+}
+console.assert(unlockAt({ analysed: 100, peer: { analysed: 95 } }).at === 250 && unlockAt({ analysed: 40, peer: { analysed: 30 } }).at === 250, 'unlockAt');
 function skillsOf(p) {
   const base = levelOf(p.speeds?.[0]?.rating), raw = rawSkills(p).map((x) => (p.n < MIN_GAMES ? { ...x, v: null } : x)), known = raw.filter((x) => x.v !== null);
   const mean = known.length ? sum(known, (x) => x.v) / known.length : 50;
   const card = (r) => base + 0.5 * (mean - 50 + SHAPE * (r - mean));
-  return raw.map((x) => ({ ...x, have: p.peer?.analysed ?? 0, raw: x.v, level: clamp(card(50)), v: x.v === null ? null : Math.min(99, clamp(card(x.v))) }));
+  const u = unlockAt(p);
+  return raw.map((x) => ({ ...x, have: u.have, unlockAt: u.at, raw: x.v, level: clamp(card(50)), v: x.v === null ? null : Math.min(99, clamp(card(x.v))) }));
 }
 { // the shape is stretched, the overall (the mean of the card's skills) stays at base + half the mean gap
   const s = skillsOf({ speeds: [{ rating: 1200 }], peer: { analysed: 120, ups: 36, downs: 32, saved: 0.5, quickW: 0.2, quickL: 0.15, after12: 40, myBl: 2.8, oppBl: 3, meUp: 2.7, oppUp: 3.6, meDown: 1.5, oppDown: 1.4, endgames: 300, endScore: 0.57, n: 400, myLow: 0.15, oppLow: 0.22, timeWins: 0.15, timeLosses: 0.04 } });
@@ -610,7 +620,7 @@ function analysePanel(name, p, shown = p) {
   // The skills count only analysed games against opponents near your rating, in the time control shown,
   // so they can stay locked after the panel's total (all games) has reached a tier.
   const locked = rawSkills(shown).filter((x) => x.v === null && x.needs).map((x) => x.label), have = shown.peer?.analysed ?? 0;
-  const lockedNote = reached && locked.length ? ` ${locked.join(' and ')} still need${locked.length > 1 ? '' : 's'} ${ENOUGH} analysed games against opponents within ${PEER} of your rating${shown !== p && shown.speeds?.[0] ? ` in ${shown.speeds[0].speed}` : ''}: ${have} so far.` : '';
+  const lockedNote = reached && locked.length ? ` ${locked.join(' and ')} unlock${locked.length > 1 ? '' : 's'} at ${unlockAt(shown).at} analysed games: ${ENOUGH} of them must be against opponents within ${PEER} of your rating${shown.speeds?.[0] && shown !== p ? ` in ${shown.speeds[0].speed}` : ''}, and ${have} are so far.` : '';
   const say = !reached ? `Analyse ${next[0]} games to unlock ${locked.length ? `${locked.join(' and ')}, and ` : ''}the parts of Attack and Defense that need analysis (mistakes and advantages).`
     : next ? `Skills can still move a few points. ${next[1]} at ${next[0]} analysed games.${lockedNote}`
     : `Every skill rests on all the games there are.${lockedNote}`;
@@ -662,7 +672,7 @@ function skillBars(skills, say, me) {
   return `<ul class="pf-skills">${skills.map((x) => `<li${x.v === null ? ' class="pf-skill-none"' : ''}>
       <span class="pf-skill-name">${x.label}</span><span class="pf-skill-val">${x.v ?? '–'}</span>
       <div class="pf-meter" style="--even:${x.level ?? 50}%" title="The mark: ${x.level ?? 50}, as good as ${me ? 'your' : 'their'} opponents" role="img" aria-label="${x.label}: ${x.v === null ? 'not enough games' : `${x.v} of 100, ${x.level ?? 50} is as good as the opponents`}"><i style="width:${x.v ?? 0}%"></i></div>
-      ${x.v === null && x.needs ? `<small class="pf-skill-lock">Needs ${ENOUGH} analysed games against opponents within ${PEER} of ${me ? 'you' : 'them'}: ${x.have} so far</small>` : ''}
+      ${x.v === null && x.needs ? `<small class="pf-skill-lock">Unlocks at ${x.unlockAt} analysed games</small>` : ''}
       <div class="pf-skill-more"><p class="pf-means">${esc(x.means)}</p>
       <small>${x.v === null ? 'Not enough games to say.' : esc(say(x.why))}</small>
       ${x.raw !== null && x.raw <= 45 ? `<p class="pf-train"><b>How to train:</b> ${esc(x.train)}${me && x.href ? ` <a href="${x.href}">Start</a>` : ''}</p>` : ''}</div></li>`).join('')}</ul>`;
@@ -834,7 +844,7 @@ function boardCard(name, full, sp) {
   const gambits = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))].filter((o) => !/^vs /.test(o.fam) && /Gambit/.test(o.fam) && !/Accepted|Declined/.test(o.fam));
   const gn = gambits.reduce((s, o) => s + o.n, 0);
   return { speed, rating: p.speeds[0].rating, games: p.n, analysed: p.analysed || 0, overall: known.length ? Math.round(sum(known, (x) => x.v) / known.length) : null,
-    style: t[0]?.name, strength: t[1]?.name, skills: Object.fromEntries(skills.map((x) => [x.label, x.v])),
+    style: t[0]?.name, strength: t[1]?.name, piece: p.piece || 'n', skills: Object.fromEntries(skills.map((x) => [x.label, x.v])),
     gambit_games: gn, gambit_score: gn ? gambits.reduce((s, o) => s + o.score * o.n, 0) / gn : null,
     openings: [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))].sort((a, b) => b.n - a.n).slice(0, 12).map((o) => ({ fam: o.fam, side: o.side, n: o.n, score: o.score })) };
 }

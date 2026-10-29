@@ -29,14 +29,14 @@ function rowOf(name: string, c: Record<string, any>) {
     .filter((o: any) => o.fam && o.n !== null && o.score !== null);
   const rating = int(c.rating, 0, 4000), games = int(c.games, 0, 100000);
   if (rating === null || games === null) return null;
-  return { name, speed: c.speed, rating, games, analysed: int(c.analysed, 0, 100000) ?? 0, overall: int(c.overall, 0, 99), style: str(c.style, 30), strength: str(c.strength, 30),
+  return { name, speed: c.speed, rating, games, analysed: int(c.analysed, 0, 100000) ?? 0, overall: int(c.overall, 0, 99), style: str(c.style, 30), strength: str(c.strength, 30), piece: ['n', 'b', 'r', 'q'].includes(c.piece) ? c.piece : null,
     skills, gambit_games: int(c.gambit_games, 0, 100000) ?? 0, gambit_score: num(c.gambit_score, 0, 1), openings, updated: new Date().toISOString() };
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method === 'GET') {
-    const { data, error } = await db.from('players').select('name, speed, rating, games, analysed, overall, style, strength, skills, gambit_games, gambit_score, openings, updated').limit(5000);
+    const { data, error } = await db.from('players').select('name, speed, rating, games, analysed, overall, style, strength, piece, skills, gambit_games, gambit_score, openings, updated').limit(5000);
     return error ? json({ error: 'error' }, 500) : json(data);
   }
   let body: Record<string, any> = {};
