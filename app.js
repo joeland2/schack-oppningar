@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029155454';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029155454';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029155454';
-import { GUIDE } from './guide.js?v=20261029155454';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029155454';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029155454';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029155454';
-import { storedGames } from './profile.js?v=20261029155454';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029155812';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029155812';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029155812';
+import { GUIDE } from './guide.js?v=20261029155812';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029155812';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029155812';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029155812';
+import { storedGames } from './profile.js?v=20261029155812';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -966,7 +966,7 @@ function renderMaterial() {
 function renderControls() {
   if (!cur) return;
   $('#step-back').disabled = !game.history().length || view === 0;
-  $('#step-fwd').disabled = view === null && (mode !== 'explore' || !redo.length);
+  $('#step-fwd').disabled = view === null && !(mode === 'explore' && redo.length) && !(mode === 'learn' && !playing && ply < line.length && userTurn());
   $('#hint').disabled = !userTurn();
   // The filled button is for going on (Next line, Try again, Next trap); Restart in the middle of a line is quiet.
   $('#restart').classList.toggle('primary', $('#restart').textContent !== 'Restart');
@@ -2532,10 +2532,15 @@ function tryMove(from, to) {
     const want = new Chess(game.fen()).move(line[ply]).san, st = stats[statKey(cur.id)], record = (st.timeBest || 0) > 0 && trial.score > st.timeBest;
     st.timeBest = Math.max(st.timeBest || 0, trial.score); store(STORE, stats);
     trialFlash('Wrong', false);
-    wrongSq = to; sel = null; shake(boardEl); renderBoard();
+    const right = new Chess(game.fen()).move(line[ply]);
+    wrongSq = to; sel = null; hintSq = [right.from, right.to]; shake(boardEl); renderBoard(); // the move you should have played, as an arrow
     gameGen++; busy = true;
-    say(`Not ${m.san}: it was ${want}. ${plural(trial.score, 'move')} right${record ? ', a new best' : ''}. Starting again…`, 'bad');
-    setTimeout(() => { wrongSq = null; if (mode === 'time') startTrial(); }, 1600);
+    // The board stays with the right move as an arrow until you choose to go again.
+    clearInterval(trial.timer); trial.end = null; trial.left = 0; $('#trial-clock').classList.remove('waiting');
+    say(`Not ${m.san}: the arrow shows ${want}. ${plural(trial.score, 'move')} right${record ? ', a new best' : ''}.`, 'bad');
+    msgEl.insertAdjacentHTML('beforeend', ' <button type="button" class="cta trial-again">Try again</button>');
+    msgEl.querySelector('.trial-again').addEventListener('click', () => { wrongSq = null; startTrial(); });
+    $('#restart').textContent = 'Try again'; $('#restart').classList.add('primary');
     return true;
   }
   if (mode === 'time') { runTrial(); trial.end += TRIAL_RIGHT * 1000; trial.score++; trialFlash(`+${TRIAL_RIGHT} s`, true); }
@@ -2888,6 +2893,13 @@ function stepBack() {
 
 function stepForward() {
   if (view !== null) return showMove(view + 1);
+  // In Learn the right arrow plays the line's next move for you, as if the arrow on the board were followed.
+  if (mode === 'learn' && !playing && !busy && ply < line.length && userTurn() && $('#go-ask').hidden) {
+    const m = expectedMove();
+    sel = null;
+    for (const sq of [m.from, m.to]) boardEl.querySelector(`[data-sq="${sq}"]`)?.click();
+    return;
+  }
   if (mode !== 'explore' || busy || !redo.length) return;
   const m = redo.pop();
   exploreMove(m.from, m.to, m.promotion, true);

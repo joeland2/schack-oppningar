@@ -1651,3 +1651,4 @@ p, li, dd, small { text-wrap: pretty; }
 .pf-star-ops span { display: inline-flex; align-items: center; gap: 3px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pf-star-ops .line-star { width: 14px; height: 14px; margin-left: 6px; }
 .pf-stars .info { margin: 10px 0 0; font-size: 12px; }
+.message .trial-again { display: block; margin-top: 8px; padding: 8px 16px; font-size: 14px; }
