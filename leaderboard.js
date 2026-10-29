@@ -15,7 +15,7 @@ const PIECE = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
 function row(r, i, value) {
   const top = (side) => (r.openings || []).filter((o) => o.side === side).sort((a, b) => b.n - a.n)[0];
   const w = top('w'), bl = top('b'), href = `profile.html?u=${encodeURIComponent(r.name)}`;
-  return `<li class="lb-row"><span class="lb-rank">${i + 1}</span>
+  return `<li class="lb-row${i === null ? ' unranked' : ''}"><span class="lb-rank">${i === null ? '–' : i + 1}</span>
     <a class="lb-card" href="${href}" aria-label="${esc(r.name)}'s profile"><div class="pf-pcard"><div class="pf-pcard-top"><div><b class="pf-ovr">${r.overall ?? '–'}</b><span class="pf-pos">${esc(r.style || '')}</span></div>
       <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(r.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(r.piece || 'n').toUpperCase()}.svg" alt="" title="Most important piece: the ${PIECE[r.piece || 'n']}"><span class="pf-pcard-rating">${r.rating} <small>${esc(r.speed)}</small></span></div></div>
       <p class="pf-pcard-name">${esc(r.name)}</p>
@@ -23,7 +23,7 @@ function row(r, i, value) {
     <div class="lb-info"><a class="lbd-name" href="${href}">${esc(r.name)}</a>
       <p class="lb-type">${esc(r.style || '')}${r.strength ? ` <span>+ ${esc(r.strength)}</span>` : ''}</p>
       <p class="lb-ops">${w ? `<span><small>Most played as White</small> <a class="lb-op" href="${practise('w', w.fam)}">${esc(w.fam)}</a></span>` : ''}${bl ? `<span><small>Most played as Black</small> <a class="lb-op" href="${practise('b', bl.fam)}">${esc(bl.fam)}</a></span>` : ''}</p>
-      <p class="lb-value">${state.by === 'stars' ? `Stars: <b>${value}</b> <small>(${r.stars.green || 0} learned · ${r.stars.gold || 0} cleared · ${r.stars.diamond || 0} perfect in Time)</small>` : `${BY.find(([k]) => k === state.by)[1]}: <b>${value}</b>`} <small>· ${r.rating} ${esc(r.speed)} · ${r.games} games</small></p></div></li>`;
+      <p class="lb-value">${state.by === 'stars' ? `Stars: <b>${value}</b> <small>(${r.stars.green || 0} learned · ${r.stars.gold || 0} cleared · ${r.stars.diamond || 0} perfect in Time)</small>` : `${BY.find(([k]) => k === state.by)[1]}: <b>${value ?? '–'}</b>`} <small>· ${r.rating} ${esc(r.speed)} · ${r.games} games</small></p></div></li>`;
 }
 const state = { speed: 'blitz', band: 'All', by: 'overall' };
 let rows = [];
@@ -39,12 +39,15 @@ function render() {
   seg($('#lb-band'), BANDS.map(([b]) => [b, b]), 'band');
   seg($('#lb-by'), BY.map(([k, label]) => [k, label]), 'by');
   const [, lo, hi] = BANDS.find(([b]) => b === state.band), [, , value] = BY.find(([k]) => k === state.by);
-  const list = rows.filter((r) => r.speed === state.speed && r.rating >= lo && r.rating <= hi && value(r) !== null)
-    .sort((a, b) => value(b) - value(a) || b.rating - a.rating);
+  const inBand = rows.filter((r) => r.speed === state.speed && r.rating >= lo && r.rating <= hi);
+  const list = inBand.filter((r) => value(r) !== null).sort((a, b) => value(b) - value(a) || b.rating - a.rating);
+  // Players without this number yet (too few analysed games for it) come last, unranked, not hidden.
+  const later = inBand.filter((r) => value(r) === null).sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
 
   $('#lb-msg').textContent = list.length ? ''
     : rows.length ? 'Nobody here yet for this choice.' : 'Nobody is here yet. Log in with Lichess and open your profile to be the first.';
-  $('#lb-rows').innerHTML = list.map((r, i) => row(r, i, value(r))).join('');
+  $('#lb-rows').innerHTML = list.map((r, i) => row(r, i, value(r))).join('')
+    + (later.length && state.by !== 'stars' ? `<li class="lb-later">No ${BY.find(([k]) => k === state.by)[1].toLowerCase()} number yet: not enough analysed games</li>${later.map((r) => row(r, null, null)).join('')}` : '');
 }
 
 fetch(BOARD).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`The leaderboard answered with an error (${r.status}).`))))
