@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029153816';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029153816';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029153816';
-import { GUIDE } from './guide.js?v=20261029153816';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029153816';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029153816';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029153816';
-import { storedGames } from './profile.js?v=20261029153816';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029154307';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029154307';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029154307';
+import { GUIDE } from './guide.js?v=20261029154307';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029154307';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029154307';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029154307';
+import { storedGames } from './profile.js?v=20261029154307';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1896,6 +1896,7 @@ function closeMoment() {
   if (!momentOpen) return;
   momentOpen = false; momentArrows = null;
   if (cur) renderBoard();
+  if (cur && playing && view === null) guide(); // Learn's arrow comes back once the card is gone
 }
 
 // A short banner over the board, for the end of a line.
@@ -2627,7 +2628,8 @@ function punishMoves() {
 function guide() {
   if (mode !== 'learn' || !userTurn()) return;
   const at = game.fen();
-  goodMove().then((m) => { if (m && game.fen() === at && userTurn() && !momentOpen) { hintSq = [m.from, m.to]; renderBoard(); } });
+  // A card beside the board (Punished!, a trap's story) does not stop the arrow; only a card that draws its own arrows does.
+  goodMove().then((m) => { if (m && game.fen() === at && userTurn() && !momentArrows) { hintSq = [m.from, m.to]; renderBoard(); } });
 }
 function finish() {
   if (mode === 'time') {
