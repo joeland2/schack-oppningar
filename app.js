@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029230037';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029230037';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029230037';
-import { GUIDE } from './guide.js?v=20261029230037';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029230037';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029230037';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029230037';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029230037';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029230416';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029230416';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029230416';
+import { GUIDE } from './guide.js?v=20261029230416';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029230416';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029230416';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029230416';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029230416';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1207,7 +1207,14 @@ function askGo() {
   trackDone();
   // Every way on is here, Next line first, so nothing outside the card is needed.
   const done = mode === 'try' && !misses && !assisted ? 'Line cleared' : mode === 'try' ? 'Line done' : 'Line learned';
-  $('#go-ask').innerHTML = `<div class="depth-card" role="dialog" aria-labelledby="go-title"><p class="depth-k">${done}</p><p class="depth-q" id="go-title">${lineName(lines[lineIdx])}. How do you want to go on?</p>
+  // What the line gave you before the choice: what you know now, where you stand at your level, and
+  // where to take the game from here.
+  const seq = game.history().map((san, i) => (i % 2 ? san : `${i / 2 + 1}.${san}`)).join(' ');
+  const sum = `<div class="go-sum">
+      <p class="go-k">What you played</p>${learnedFacts()}<p class="go-line">${seq}</p>
+      <p class="go-k">Where you stand</p>${lineFacts()}${lineWhy()}
+    </div>`;
+  $('#go-ask').innerHTML = `<div class="depth-card go-card" role="dialog" aria-labelledby="go-title"><p class="depth-k">${done}</p><p class="depth-q" id="go-title">${lineName(lines[lineIdx])}</p>${sum}<p class="go-ask-q">How do you want to go on?</p>
     <button type="button" class="cta go-next" data-go="next">${$('#restart').textContent}<small>${mode === 'try' ? 'the next line to practise' : 'learn the next line, with arrows'}</small></button>
     <div class="go-grid" role="group" aria-label="Or go on with this line">
       <span></span><span class="go-col">Learn<small>arrows</small></span><span class="go-col">Practice<small>from memory</small></span>
@@ -1419,7 +1426,7 @@ function lineWhy() {
   const trap = lines[lineIdx]?.trap;
   if (trap) why.push(`${them} ${trap.kind === 'mistake' ? 'made the common mistake' : 'fell for the trap'} ${trapMove(trap)}${trap.win ? `, which loses ${trap.win}` : ''}: players at your level score ${pct(1 - trap.score)} from here.`);
   if (p.out > p.theirOut) why.push(`You are ahead in development: ${p.out} knights and bishops out against ${p.theirOut}, so open the game before ${them} catches up.`);
-  else if (p.out < p.theirOut) why.push(`${them} is ahead in development (${p.theirOut} pieces out against your ${p.out}), so catch up before you start anything.`);
+  else if (p.out < p.theirOut) why.push(`${them} is ahead in development (${plural(p.theirOut, "piece")} out against your ${p.out}), so catch up before you start anything.`);
   if (p.theirKingInCentre && !p.theyCastled) why.push(`${them}'s king is still in the centre: if the centre opens, it is a target.`);
   if (p.lead > 0) why.push(`You are ${p.lead === 1 ? 'a pawn' : `${p.lead} points`} up: trade pieces, not pawns, and the extra material wins the endgame.`);
   if (p.lead < 0) why.push(`You gave ${p.lead === -1 ? 'a pawn' : 'material'} for quick development and open lines. Keep the pace up: in a slow game the material counts.`);
@@ -2336,7 +2343,11 @@ function lineTag(l) {
   if (l.trap) return `if they play ${trapMove(l.trap)}`;
   const main = lines[0]?.moves || [];
   const i = l.moves.findIndex((m, k) => m !== main[k]);
-  return l === lines[0] || i < 0 ? lineEnd(l) : `after ${moveLabel(i, l.moves[i])}`;
+  if (l === lines[0] || i < 0) return lineEnd(l);
+  // Two lines leaving the main line at the same move are told apart by where they part from each other.
+  const same = (o) => { let k = 0; while (k < l.moves.length && o.moves[k] === l.moves[k]) k++; return k; };
+  const j = Math.max(0, ...lines.slice(1, lines.indexOf(l)).map(same));
+  return `after ${moveLabel(i, l.moves[i])}${j > i && j < l.moves.length ? `, ${moveLabel(j, l.moves[j])}` : ''}`;
 }
 // The line's last two moves with their real move numbers, e.g. "5.O-O d6", so same-named lines can be told apart.
 // A line's trap: the opponent's natural-looking slip, how well you do after it, and the move that

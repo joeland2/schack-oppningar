@@ -1978,3 +1978,13 @@ main.profile:has(#admin) { max-width: 1320px; }
 #admin .pf-card > :last-child::-webkit-scrollbar-track { background: transparent; }
 .ad-shot { display: block; width: 300px; height: auto; border-radius: 8px; }
 .ad-shot.style { width: 420px; }
+/* The line's end: what it gave you, then the ways on */
+.depth-card.go-card { width: min(560px, 100%); max-height: calc(100% - 24px); overflow-y: auto; }
+.go-sum { display: grid; gap: 6px; padding: 12px 0 4px; border-top: 1px solid var(--line); font-size: 14.5px; line-height: 1.45; }
+.go-sum p, .go-sum ul { margin: 0; }
+.go-sum .go-k { margin-top: 6px; font: 700 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.go-sum .go-k:first-child { margin-top: 0; }
+.go-line { font: 500 13px/1.5 var(--font-mono); color: var(--muted); }
+.go-sum .done-why { padding-left: 18px; display: grid; gap: 4px; }
+.go-sum .facts { margin: 2px 0; }
+.go-ask-q { margin: 6px 0 0; font-weight: 700; }
