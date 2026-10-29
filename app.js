@@ -1,11 +1,11 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029113024';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029113024';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261029113024';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029113024';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029113024';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029113024';
-import { storedGames } from './profile.js?v=20261029113024';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029113509';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029113509';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261029113509';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029113509';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029113509';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029113509';
+import { storedGames } from './profile.js?v=20261029113509';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -796,8 +796,8 @@ function renderBoard() {
   }
   if (momentArrows && view === null) return drawBoard(boardEl, game, { side: cur.side, last: lastMove, wrong: momentArrows[0]?.[1], arrows: momentArrows }); // the red arrow's square
   const n = game.history().length - 1, note = notes[n];
-  // At the line's end every offered move gets an arrow (green: real games, blue: Stockfish), unless
-  // one is pointed at.
+  // At the line's end the best offered move gets an arrow (green: real games, blue: Stockfish); pointing
+  // at another tip shows its arrow instead.
   const offered = endLen && game.history().length === endLen && userTurn() && !(tipHint !== null) ? tipArrows : []; // only at the line's end
   drawBoard(boardEl, game, { side: cur.side, sel, last: lastMove, hint: hintSq, wrong: wrongSq,
     arrow: hintSq.length === 2 && !offered.length ? hintSq : null, arrows: offered,
@@ -971,9 +971,9 @@ function renderWhy() {
   let tips = '';
   if (endLen && hist.length === endLen && userTurn()) {
     const t = lineTips();
-    const arrows = t.map((x) => [x.move.from, x.move.to, x.engine ? '#1d5fbf' : '#15781b']);
+    const arrows = t.slice(0, 1).map((x) => [x.move.from, x.move.to, x.engine ? '#1d5fbf' : '#15781b']); // the best only; pointing at a tip shows its own
     if (JSON.stringify(arrows) !== JSON.stringify(tipArrows)) { tipArrows = arrows; renderBoard(); }
-    tips = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x) => `<li><button type="button" class="tip" data-from="${x.move.from}" data-to="${x.move.to}">${x.html}</button></li>`).join('')}</ul>` : '';
+    tips = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x, i) => `<li><button type="button" class="tip" data-from="${x.move.from}" data-to="${x.move.to}"><span class="tip-n">${i + 1}</span><span>${x.html}</span></button></li>`).join('')}</ul>` : '';
   }
   el.innerHTML = parts.join('');
   $('#line-done').innerHTML = ply >= line.length && lineDone && !momentOpen // the trap's card first
@@ -1110,7 +1110,9 @@ function lineTips() {
   engine.forEach((move, i) => {
     if (tips.length < 3 && !tips.some((t) => t.move.san === move.san)) tips.push({ move, engine: true, html: `<b>${RANK[i]}:</b> ${say(move)}` });
   });
-  return tips;
+  // Ranked best first: by Stockfish's order where it has looked, the moves it did not list after them.
+  const rank = (t) => { const k = engine.findIndex((m) => m.san === t.move.san); return k < 0 ? 3 + tips.indexOf(t) : k; };
+  return [...tips].sort((a, b) => rank(a) - rank(b));
 }
 
 // ---------- Game ----------

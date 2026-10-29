@@ -1365,3 +1365,8 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 
 /* The card's link to the skills lands below the sticky header */
 #pf-skills { scroll-margin-top: 80px; }
+
+/* How to go on: the tips ranked, the number in poster type beside each */
+.line-done .tip { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; }
+.line-done .tip-n { font: 400 22px/1 var(--font-poster); color: var(--muted); min-width: .8em; }
+.line-done li:first-child .tip-n { color: var(--hot); }
