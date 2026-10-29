@@ -1,11 +1,11 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029114855';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029114855';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029114855';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029114855';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029114855';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029114855';
-import { storedGames } from './profile.js?v=20261029114855';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029115117';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029115117';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029115117';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029115117';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029115117';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029115117';
+import { storedGames } from './profile.js?v=20261029115117';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1497,6 +1497,7 @@ async function opponentPlays() {
   saidOpponent = m.label;
   if (punishDone && !endLen) return punish > 0 ? (say('Your move: keep punishing it.', 'good'), guide()) : finish();
   say(`Your move.${note}`);
+  guide();
 }
 
 function ended() {
@@ -2274,10 +2275,12 @@ function punishMoves() {
   const t = lines[lineIdx]?.trap;
   return t ? Math.max(0, 2 - Math.floor((line.length - 1 - t.ply) / 2)) : 0;
 }
+// Learn shows the best move as an arrow whenever it is your turn off the line (punishing a slip, or
+// playing on after the line).
 function guide() {
-  if (mode !== 'learn') return;
+  if (mode !== 'learn' || !userTurn()) return;
   const at = game.fen();
-  goodMove().then((m) => { if (m && punish > 0 && game.fen() === at) { hintSq = [m.from, m.to]; renderBoard(); } });
+  goodMove().then((m) => { if (m && game.fen() === at && userTurn() && !momentOpen) { hintSq = [m.from, m.to]; renderBoard(); } });
 }
 function finish() {
   if (mode === 'time') { trial.done++; return setTimeout(() => { if (mode === 'time' && trial.end > Date.now()) play((lineIdx + 1 + Math.floor(Math.random() * (lines.length - 1))) % lines.length); }, 300); }
