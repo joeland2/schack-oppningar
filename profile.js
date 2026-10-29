@@ -3,15 +3,16 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029134755';
-import { STYLE_OF } from './styles.js?v=20261029134755';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029135434';
+import { STYLE_OF } from './styles.js?v=20261029135434';
 
 const MAX = 500;
-const PV = 27;
+const PV = 28;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
-const MIN_GAMES = 50; // rated games before a player gets any skills at all
+const MIN_GAMES = 50;
+const EARLY_MIN = 30; // games with a verdict after move 12 before Early game is shown // rated games before a player gets any skills at all
 const KPI_MIN = 20; // analysed games before the plain accuracy and blunder averages are shown
 const WHY_ANALYSE = 'Lichess only analyses games you ask it to. Analysed games give your blunders, accuracy and four of the skills, and become puzzles in My practice. Stockfish runs in your browser; no game is done twice.'; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -75,7 +76,7 @@ function readGame(g, me) {
     expect: expectOf((g.opening?.name || 'Unknown').split(':')[0], side, mine.rating, g.speed), diff: mine.ratingDiff || 0, them: theirs.rating,
     castled, queensOff, endgame: endgameAt !== null, pieces, played,
     analysed: v.length > 0, ours: !!g.ours, acc: mine.analysis?.accuracy ?? null, blunders: mine.analysis?.blunder ?? null, mistakes: mine.analysis?.mistake ?? null,
-    best: v.length ? Math.max(...v) : null, worst: v.length ? Math.min(...v) : null, after12: v.length > 23 ? v[23] : null, slips,
+    best: v.length ? Math.max(...v) : null, worst: v.length ? Math.min(...v) : null, after12: v.length > 23 ? v[23] : g.at12 != null ? g.at12 * pov : null, slips,
     lowTime: left !== null && g.clock ? left < Math.max(10, g.clock.initial * 0.1) : false,
     // The opponent's side of the same game: the players at your level that the skills compare you with.
     oppBlunders: theirs.analysis?.blunder ?? null,
@@ -216,7 +217,9 @@ function peerOf(games) {
   const ups = an.filter((g) => g.best >= 300), downs = an.filter((g) => g.worst <= -300), ends = gs.filter((g) => g.endgame);
   return {
     n: gs.length, analysed: an.length, ups: ups.length, downs: downs.length, endgames: ends.length,
-    after12: mean(an.filter((g) => g.after12 !== null).map((g) => Math.max(-300, Math.min(300, g.after12)))),
+    // Every game with a verdict after move 12: a full analysis, or the quick look at that one position.
+    n12: gs.filter((g) => g.after12 !== null).length,
+    after12: mean(gs.filter((g) => g.after12 !== null).map((g) => Math.max(-300, Math.min(300, g.after12)))),
     myBl: mean(an.filter((g) => g.blunders !== null).map((g) => g.blunders)), oppBl: mean(an.filter((g) => g.oppBlunders !== null).map((g) => g.oppBlunders)),
     // Mistakes per 10 moves while clearly ahead and while clearly behind, for you and your opponents.
     ...Object.fromEntries(['me', 'opp'].flatMap((w) => ['up', 'down'].map((st) => {
@@ -354,12 +357,12 @@ function skillsOf(p) {
   return raw.map((x) => ({ ...x, have: u.have, unlockAt: u.at, raw: x.v, level: clamp(card(50)), v: x.v === null ? null : Math.min(99, clamp(card(x.v))) }));
 }
 { // the shape is stretched, the overall (the mean of the card's skills) stays at base + half the mean gap
-  const s = skillsOf({ speeds: [{ rating: 1200 }], peer: { analysed: 120, ups: 36, downs: 32, saved: 0.5, quickW: 0.2, quickL: 0.15, after12: 40, myBl: 2.8, oppBl: 3, meUp: 2.7, oppUp: 3.6, meDown: 1.5, oppDown: 1.4, endgames: 300, endScore: 0.57, n: 400, myLow: 0.15, oppLow: 0.22, timeWins: 0.15, timeLosses: 0.04 } });
+  const s = skillsOf({ speeds: [{ rating: 1200 }], peer: { analysed: 120, ups: 36, downs: 32, saved: 0.5, quickW: 0.2, quickL: 0.15, after12: 40, n12: 120, myBl: 2.8, oppBl: 3, meUp: 2.7, oppUp: 3.6, meDown: 1.5, oppDown: 1.4, endgames: 300, endScore: 0.57, n: 400, myLow: 0.15, oppLow: 0.22, timeWins: 0.15, timeLosses: 0.04 } });
   const m = sum(s, (x) => x.raw) / 6, o = sum(s, (x) => x.v) / 6;
   console.assert(Math.abs(o - (60 + (m - 50) / 2)) < 1 && Math.abs((s[5].v - s[3].v) - (s[5].raw - s[3].raw)) <= 1, 'skillsOf shape'); // SHAPE 2 at half size: a gap of 10 between two skills stays 10
 }
 console.assert(typeOf({ attacking: 0.54, solid: 0.2, queensOff: 0.1, draws: 0.05, moves: 30, lowTime: 0.16, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, score: 0.5, downs: 30, ups: 30, saved: 0.47, oppSaved: 0.2, myLow: 0.05, oppLow: 0.25, timeWins: 0.15, timeLosses: 0.04 } }).map((t) => t.name).join() === 'Attacker,Speed demon', 'typeOf');
-console.assert(typeOf({ attacking: 0.27, solid: 0.56, queensOff: 0.23, draws: 0.03, moves: 29, lowTime: 0.15, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, analysed: 120, after12: 96 } }).map((t) => t.name).join() === 'Fighter,Fast starter', 'typeOf: same level, other strength');
+console.assert(typeOf({ attacking: 0.27, solid: 0.56, queensOff: 0.23, draws: 0.03, moves: 29, lowTime: 0.15, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, analysed: 120, after12: 96, n12: 120 } }).map((t) => t.name).join() === 'Fighter,Fast starter', 'typeOf: same level, other strength');
 console.assert(levelOf(1200) === 60 && levelOf(2400) === 82 && levelOf(5000) === 92 && levelOf(100) === 35, 'levelOf');
 function rawSkills(p) {
   const q = p.peer || {}, an = (q.analysed ?? 0) >= ENOUGH, pawns = (cp) => { const r = Math.round(cp / 10) / 10; return r === 0 ? '0.0' : `${r > 0 ? '+' : '−'}${Math.abs(r).toFixed(1)}`; };
@@ -379,9 +382,9 @@ function rawSkills(p) {
       means: 'Hard to beat? Solid openings and defending against attacks, against how they usually go at this level, saving lost positions, and how rarely opponents get ahead.',
       why: [q.solidN >= 15 && `Solid openings ${pct(q.solidScore)} (usual ${pct(q.solidExp)})`, q.vsAttN >= 15 && `against attacks ${pct(q.vsAttScore)} (usual ${pct(q.vsAttExp)})`, an && `lost positions saved ${pct(q.saved ?? 0)} (usual 42%)`, an && `opponents clearly ahead in ${pct(down)} of games (the other way ${pct(up)})`].filter(Boolean).join(' · ').replace(/^./, (c) => c.toUpperCase()) + '.',
       train: 'When behind: keep pieces on, make threats, and set traps rather than waiting.' },
-    { label: 'Early game', needs: true, v: an && q.after12 !== null ? clamp(50 + q.after12 / 4) : null,
+    { label: 'Early game', v: (q.n12 ?? 0) >= EARLY_MIN && q.after12 !== null ? clamp(50 + q.after12 / 4) : null,
       means: 'How the position stands after move 12.',
-      why: `${pawns(q.after12 ?? 0)} pawns on average after move 12.`,
+      why: `After move 12 you stand at ${Math.round(50 + 50 * (2 / (1 + Math.exp(-0.00368208 * (q.after12 ?? 0))) - 1))}% winning chances on average (50% is level), in ${q.n12 ?? 0} games.`,
       train: 'Practise the lines of the openings you play, and learn the plan behind them, not just the moves.', href: './' },
     { label: 'Late game', v: q.endgames >= 10 ? clamp(50 + (q.endScore - 0.5) * 110) : null,
       means: 'Results once most pieces are gone (6 or fewer besides kings and pawns).',
@@ -397,7 +400,7 @@ function rawSkills(p) {
       train: 'Play the opening fast (you know it), and save your thinking time for the critical moments.' },
   ];
 }
-console.assert(rawSkills({ peer: { analysed: 120, ups: 36, downs: 12, after12: 100, myBl: 1, oppBl: 1, meUp: 1, oppUp: 3, endgames: 0, n: 10 } }).map((x) => x.v).slice(0, 3).join() === '75,75,75', 'rawSkills');
+console.assert(rawSkills({ peer: { analysed: 120, ups: 36, downs: 12, after12: 100, n12: 120, myBl: 1, oppBl: 1, meUp: 1, oppUp: 3, endgames: 0, n: 10 } }).map((x) => x.v).slice(0, 3).join() === '75,75,75', 'rawSkills');
 {
   const g = (o) => ({ side: 'w', speed: 'blitz', status: 'resign', plies: 60, result: 1, family: 'Italian Game', rating: 1500, diff: 5, castled: 8, queensOff: null, endgame: false, analysed: false, acc: null, blunders: null, best: null, worst: null, after12: null, slips: { opening: 0, middlegame: 0, endgame: 0 }, lowTime: false, ...o });
   const p = profileOf([g({}), g({ result: 0 }), g({ side: 'b', result: 0 }), g({ side: 'b', result: 0.5 })]);
@@ -442,7 +445,7 @@ function pack(g) {
   const an = g.analysis;
   return { id: g.id, variant: 'standard', speed: g.speed, createdAt: g.createdAt, status: g.status, winner: g.winner, moves: g.moves,
     opening: g.opening ? { name: g.opening.name } : undefined, clock: g.clock ? { initial: g.clock.initial } : undefined,
-    end: g.end || endClocks(g.clocks), ours: g.ours || undefined, players: { white: player(g.players.white), black: player(g.players.black) },
+    end: g.end || endClocks(g.clocks), ours: g.ours || undefined, at12: g.at12 ?? undefined, players: { white: player(g.players.white), black: player(g.players.black) },
     an: an && { cp: an.map((x) => cpOf(x) ?? 0), j: an.map((x) => x.judgment?.name?.[0] || '.').join(''),
       best: Object.fromEntries(an.flatMap((x, i) => (x.best ? [[i, x.best]] : []))), v: Object.fromEntries(an.flatMap((x, i) => (x.variation ? [[i, x.variation]] : []))) } };
 }
@@ -543,7 +546,13 @@ console.assert(((g) => (applyEvals(g, [30, 25, -600]), g.players.white.analysis.
 
 let engine = null;
 // Stockfish's verdict on one position: centipawns from White (a mate counts as 1000) and its best move.
+let engineQueue = Promise.resolve();
 function engineEval(fen) {
+  const next = engineQueue.then(() => evalNow(fen));
+  engineQueue = next.catch(() => {});
+  return next;
+}
+function evalNow(fen) {
   engine ??= new Worker(ENGINE_SRC);
   const white = fen.split(' ')[1] === 'w';
   return new Promise((resolve) => {
@@ -569,6 +578,30 @@ function costOf(p, target) {
   return { games: todo.length, sec: sum(todo, (x) => x) * PER_POS };
 }
 let analysing = null; // { stop } while a run is going
+// Early game needs only the position after move 12: Stockfish looks at that one position in every game
+// without a full analysis, in the background, the first time a profile is shown. Kept with the games.
+let quick = null; // the player whose games are being looked at
+async function quickLook(name) {
+  const raw = storedGames(name);
+  if (quick || analysing || !raw) return;
+  const todo = raw.filter((g) => !g.analysis && g.at12 == null && g.moves && g.moves.split(' ').length > 24);
+  if (!todo.length) return;
+  quick = name;
+  const msg = () => $('#pf-early-msg');
+  for (let k = 0; k < todo.length; k++) {
+    if (analysing || shown?.[0] !== name) break; // a full analysis or another player takes over
+    const c = new Chess();
+    try { for (const m of todo[k].moves.split(' ').slice(0, 24)) c.move(m); } catch { continue; }
+    todo[k].at12 = (await engineEval(c.fen())).cp;
+    if (msg()) msg().textContent = `Looking at the position after move 12 in each game… ${k + 1} of ${todo.length}`;
+    if (k % 50 === 49) saveGames(name, raw);
+  }
+  saveGames(name, raw);
+  quick = null;
+  if (shown?.[0] !== name || analysing) return;
+  const p = await readAll(name, raw);
+  render(name, Date.now(), p);
+}
 async function analyse(name, target) {
   const el = $('#pf-analyse');
   await build(name); // the games played since are fetched first, so they are analysed too
@@ -663,8 +696,10 @@ const games = (n) => `${n} game${n === 1 ? '' : 's'}`;
 const bar = (o) => { const w = o.win ?? o.score, d = o.win == null ? 0 : Math.max(0, 2 * (o.score - o.win)), l = Math.max(0, 1 - w - d);
   return `<div class="wdl" role="img" aria-label="${pct(w)} wins, ${pct(d)} draws, ${pct(l)} losses"><span class="w" style="width:${w * 100}%"></span><span class="d" style="width:${d * 100}%"></span><span class="l" style="width:${l * 100}%"></span></div>`; };
 const ago = (t) => { const h = (Date.now() - t) / 3.6e6; return h < 1 ? 'less than an hour ago' : h < 48 ? `${Math.round(h)} hours ago` : `${Math.round(h / 24)} days ago`; };
-function openingRows(list) {
-  return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><span>${esc(o.fam)}</span><small>${games(o.n)} · ${pct(o.win ?? o.score)} wins</small>${bar(o)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
+// Each opening links to its lines in the trainer (?practise=, as on My practice).
+const practiseLink = (side, fam) => `./?practise=${side}~${encodeURIComponent(fam.replace(/^vs /, ''))}`;
+function openingRows(list, side) {
+  return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><a class="pf-op-link" href="${practiseLink(side, o.fam)}" title="Practise the ${esc(o.fam.replace(/^vs /, ''))} lines">${esc(o.fam)}</a><small>${games(o.n)} · ${pct(o.win ?? o.score)} wins</small>${bar(o)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
 }
 // Each bar: what it measures, what the games show, and below 50 how to train it; the words show on request.
 let showSkillText = true; // what each skill measures is open from the start
@@ -673,6 +708,7 @@ function skillBars(skills, say, me) {
       <span class="pf-skill-name">${x.label}</span><span class="pf-skill-val">${x.v ?? '–'}</span>
       <div class="pf-meter" style="--even:${x.level ?? 50}%" title="The mark: ${x.level ?? 50}, as good as ${me ? 'your' : 'their'} opponents" role="img" aria-label="${x.label}: ${x.v === null ? 'not enough games' : `${x.v} of 100, ${x.level ?? 50} is as good as the opponents`}"><i style="width:${x.v ?? 0}%"></i></div>
       ${x.v === null && x.needs ? `<small class="pf-skill-lock">Unlocks at ${x.unlockAt} analysed games</small>` : ''}
+      ${x.v === null && x.label === 'Early game' ? `<small class="pf-skill-lock" id="pf-early-msg">Needs ${EARLY_MIN} games against opponents near ${me ? 'your' : 'their'} rating that reach move 12</small>` : ''}
       <div class="pf-skill-more"><p class="pf-means">${esc(x.means)}</p>
       <small>${x.v === null ? 'Not enough games to say.' : esc(say(x.why))}</small>
       ${x.raw !== null && x.raw <= 45 ? `<p class="pf-train"><b>How to train:</b> ${esc(x.train)}${me && x.href ? ` <a href="${x.href}">Start</a>` : ''}</p>` : ''}</div></li>`).join('')}</ul>`;
@@ -829,12 +865,10 @@ if (account()) {
 }
 
 // ---------- The leaderboard ----------
-// Logged in with Lichess, your card is on the leaderboard unless you untick the box; it is sent again
-// when your profile shows newer numbers. The leaderboard function checks your Lichess login and stores
-// the card under the name Lichess gives back. Unticking removes you.
+// Everyone who has logged in here with Lichess is on the leaderboard: your card is sent whenever your
+// profile shows it. The leaderboard function checks your Lichess login and stores the card under the
+// name Lichess gives back.
 const BOARD = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard';
-const BOARD_KEY = 'chess-trainer-leaderboard';
-const onBoard = () => { try { return localStorage.getItem(BOARD_KEY) !== '0'; } catch { return true; } };
 const sentCards = new Set();
 function boardCard(name, full, sp) {
   const speed = sp === 'all' ? full.speeds[0]?.speed : sp, p = speed && forSpeed(name, full, speed);
@@ -853,13 +887,6 @@ async function sendCard(name, full, sp) {
   if (!card || !token || sentCards.has(card.speed)) return;
   sentCards.add(card.speed);
   await fetch(BOARD, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ token, card }) }).catch(() => sentCards.delete(card.speed));
-}
-async function setOnBoard(on, name, full, sp) {
-  try { localStorage.setItem(BOARD_KEY, on ? '1' : '0'); } catch {}
-  const token = account()?.token;
-  if (on) return sendCard(name, full, sp);
-  sentCards.clear();
-  if (token) await fetch(BOARD, { method: 'DELETE', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ token }) }).catch(() => {});
 }
 
 // One time control at a time: bullet and blitz games say different things about speed, endgames and
@@ -890,7 +917,7 @@ function render(name, at, full) {
     ${playerBar(name)}
     ${speedBar(name, full, sp, avail)}
     <section class="pf-hero">
-      <div class="pf-card-col">${playerCard(name, p, t, skills)}<div class="pf-card-actions"><span>Download</span><button type="button" class="link" data-card-png="card">Card</button><button type="button" class="link" data-card-png="style">Card + style</button></div>${me ? `<label class="pf-board-opt"><input type="checkbox" id="pf-board"${onBoard() ? ' checked' : ''}> Show me on the <a href="leaderboard.html">leaderboard</a></label>` : ''}${cardNote(name, p, me)}</div>
+      <div class="pf-card-col">${playerCard(name, p, t, skills)}<div class="pf-card-actions"><span>Download</span><button type="button" class="link" data-card-png="card">Card</button><button type="button" class="link" data-card-png="style">Card + style</button></div>${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h1 class="pf-h1">${esc(t[0].name)}</h1>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}</div>${tasteLine(p.styleMix, me)}</div>
@@ -924,8 +951,8 @@ function render(name, at, full) {
           <h3>How ${me ? 'your' : 'their'} games end</h3>
           ${endsGrid(p.ends)}
         </section>
-        <section><h3>Openings as White</h3>${openingRows(p.openings.w)}
-          <h3>Openings as Black</h3>${openingRows(p.openings.b)}</section>
+        <section><h3>Openings as White</h3>${openingRows(p.openings.w, 'w')}
+          <h3>Openings as Black</h3>${openingRows(p.openings.b, 'b')}</section>
       </div>
     </section>
     <section class="pf-card" id="pf-games"></section>
@@ -933,19 +960,19 @@ function render(name, at, full) {
       <h2>About these numbers</h2>
       <p class="info">Read from ${me ? 'your' : `${esc(name)}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
       <p class="info">Results, openings, opening style, the clock, endgames and the rating graph use all ${p.n} games.
-        Accuracy, blunders and the Defense, Early game and Accuracy skills (and part of Attack) need a computer's verdict on every move, so they use only the
+        Early game uses Stockfish's verdict on the position after move 12 in every game (looked at here once). Accuracy, blunders and the Defense and Accuracy skills (and part of Attack) need a computer's verdict on every move, so they use only the
         ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'}${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. ${p.todo ? 'Analyse more with the Analyse button above Skills.' : ''}</p>
       <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Win rate counts wins out of all games; an endgame score counts a draw as half.</p>
     </section>
     ${nextActions(name, me)}`;
   $('#refresh').addEventListener('click', () => run(name));
   if (me) {
-    $('#pf-board').addEventListener('change', (e) => setOnBoard(e.target.checked, name, full, sp));
-    if (onBoard()) sendCard(name, full, sp);
+    sendCard(name, full, sp);
   }
   document.querySelectorAll('[data-card-png]').forEach((b) => b.addEventListener('click', () => cardPng(name, p, t, skills, b.dataset.cardPng === 'style', b)));
   bindSearch();
   bindAnalyse(name);
+  quickLook(name);
   $('.pf-card-help a[href="#pf-skills"]')?.addEventListener('click', (e) => { e.preventDefault(); $('#pf-skills').scrollIntoView({ behavior: 'smooth' }); });
   document.querySelectorAll('[data-pf-speed]').forEach((b) => b.addEventListener('click', () => { pfSpeed = b.dataset.pfSpeed; const y = scrollY; render(...shown); scrollTo(0, y); }));
   bindPlayerBar(name);

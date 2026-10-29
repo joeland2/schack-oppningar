@@ -10,6 +10,7 @@ const BY = [['overall', 'Overall', (r) => r.overall], ...['Attack', 'Defense', '
   ['gambits', 'Gambits', (r) => (r.gambit_games >= GAMBIT_MIN ? Math.round(r.gambit_score * 100) : null)]];
 // One row: the place, a small player card as on the profile (overall, style, piece, rating, name and the
 // six skills, the ranked one marked), and beside it the name, style + strength and the openings played most.
+const practise = (side, fam) => `./?practise=${side}~${encodeURIComponent(fam.replace(/^vs /, ''))}`;
 const PIECE = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
 function row(r, i, value) {
   const top = (side) => (r.openings || []).filter((o) => o.side === side).sort((a, b) => b.n - a.n)[0];
@@ -21,7 +22,7 @@ function row(r, i, value) {
       <div class="pf-pcard-stats">${Object.entries(ABBR).map(([k, a]) => `<span${state.by === k ? ' class="lb-by"' : ''}><b>${r.skills?.[k] ?? '–'}</b>${a}</span>`).join('')}</div></div></a>
     <div class="lb-info"><a class="lb-name" href="${href}">${esc(r.name)}</a>
       <p class="lb-type">${esc(r.style || '')}${r.strength ? ` <span>+ ${esc(r.strength)}</span>` : ''}</p>
-      <p class="lb-ops">${w ? `<span><small>As White</small> ${esc(w.fam)}</span>` : ''}${bl ? `<span><small>As Black</small> ${esc(bl.fam)}</span>` : ''}</p>
+      <p class="lb-ops">${w ? `<span><small>As White</small> <a href="${practise('w', w.fam)}">${esc(w.fam)}</a></span>` : ''}${bl ? `<span><small>As Black</small> <a href="${practise('b', bl.fam)}">${esc(bl.fam)}</a></span>` : ''}</p>
       <p class="lb-value">${state.by === 'gambits' ? `Gambits: <b>${value}%</b> in ${r.gambit_games} games` : `${BY.find(([k]) => k === state.by)[1]}: <b>${value}</b>`} <small>· ${r.rating} ${esc(r.speed)} · ${r.games} games</small></p></div></li>`;
 }
 const state = { speed: 'blitz', band: 'All', by: 'overall' };

@@ -1515,3 +1515,6 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .lb-value { font-size: 14px; }
 @media (max-width: 560px) { .lb-row { grid-template-columns: 1.4em auto minmax(0, 1fr); gap: 10px; } .lb-card .pf-pcard { zoom: .34; } .lb-name { font-size: 20px; } .lb-rank { font-size: 22px; } }
 @media (prefers-reduced-motion: reduce) { .lb-card .pf-pcard { transition: none; } }
+.pf-op-link { color: inherit; text-decoration: none; }
+.pf-op-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+.lb-ops a { color: inherit; }
