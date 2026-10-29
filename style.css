@@ -1478,3 +1478,4 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 #line-at { overflow: hidden; text-overflow: ellipsis; max-width: 40ch; }
 .op-head .op-line { margin: 4px 0 0; font-size: 15px; color: var(--ink); }
 .op-head .op-line:empty { display: none; }
+.line-done .done-go { display: flex; flex-wrap: wrap; gap: 8px; }

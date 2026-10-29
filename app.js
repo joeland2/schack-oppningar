@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029131547';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029131547';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029131547';
-import { GUIDE } from './guide.js?v=20261029131547';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029131547';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029131547';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029131547';
-import { storedGames } from './profile.js?v=20261029131547';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029131850';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029131850';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029131850';
+import { GUIDE } from './guide.js?v=20261029131850';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029131850';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029131850';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029131850';
+import { storedGames } from './profile.js?v=20261029131850';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -941,7 +941,23 @@ $('#line-done').addEventListener('pointerout', (e) => {
   hintSq = tipHint; tipHint = null;
   renderBoard();
 });
-$('#line-done').addEventListener('click', (e) => { if (e.target.closest('.done-next')) $('#restart').click(); });
+$('#line-done').addEventListener('click', (e) => {
+  if (e.target.closest('.done-next')) return $('#restart').click();
+  const go = e.target.closest('[data-go]')?.dataset.go;
+  if (!go) return;
+  const was = mode;
+  setMode(go, false);
+  // Practice straight after Learn tests the line you just learned, and a line with a slip comes again;
+  // otherwise each mode picks its next line.
+  play(go === 'try' && (was === 'learn' || misses) ? lineIdx : nextLine());
+});
+// How to go on once a line is done: Learn the next line or Practice, the mode you are in first.
+function doneNext() {
+  if (trapRun || (mode !== 'learn' && mode !== 'try')) return `<button type="button" class="cta done-next">${$('#restart').textContent}</button>`;
+  const btn = (m, label) => `<button type="button" class="${m === mode ? 'cta' : 'ghost'}" data-go="${m}">${label}</button>`;
+  const opts = [btn('learn', 'Learn the next line'), btn('try', mode === 'learn' ? 'Practise this line' : 'Practise on')];
+  return `<p class="done-k">Go on with</p><div class="done-go">${(mode === 'learn' ? opts : opts.reverse()).join('')}</div>`;
+}
 let lineDone = '', lineMore = '', tipArrows = []; // the summary shown at the end of the line, and the current tips
 // The idea of the whole opening, its main variations and the trap to know (guide.js), folded under the plan.
 function guideOf(op) {
@@ -1042,7 +1058,7 @@ function renderWhy() {
   }
   el.innerHTML = parts.join('');
   $('#line-done').innerHTML = ply >= line.length && lineDone && !momentOpen // the trap's card first
-    ? `<div class="summary">${lineDone}${tips}${lineMore}<button type="button" class="cta done-next">${$('#restart').textContent}</button></div>` : '';
+    ? `<div class="summary">${lineDone}${tips}${lineMore}${doneNext()}</div>` : '';
   $('#line-done').hidden = !$('#line-done').innerHTML;
 }
 
