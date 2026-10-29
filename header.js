@@ -16,6 +16,14 @@
   window.track('view');
   // The admin's own menu has an Admin link (the page itself checks the login with Lichess).
   addEventListener('DOMContentLoaded', () => {
+    // The scorebug: your rating on every page (Openings has its own, editable one), to your profile.
+    let speed = 'blitz', rating = null;
+    try { speed = JSON.parse(localStorage.getItem('opening-book-v2-speed')) || speed; rating = JSON.parse(localStorage.getItem(`opening-book-v2-${speed}-rating`)); } catch {}
+    const at = document.querySelector('.top-players');
+    if (rating && at && !document.querySelector('.account')) {
+      const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`), who = user();
+      at.insertAdjacentHTML('beforebegin', `<a class="top-bug" href="${who ? `profile.html?u=${encodeURIComponent(who)}` : './'}" title="Your ${speed} rating"><small>${esc(speed)}<br>${esc(who || 'you')}</small><strong>${esc(rating)}</strong></a>`);
+    }
     if (user()?.toLowerCase() === 'joelandersson') document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', `<a href="admin.html"${page === 'admin.html' ? ' aria-current="page"' : ''}>Admin</a>`);
   });
 })();
