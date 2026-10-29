@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261029164128';
-import { account } from './lichess.js?v=20261029164128';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029164128';
+import { drawBoard } from './board.js?v=20261029164344';
+import { account } from './lichess.js?v=20261029164344';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029164344';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -221,8 +221,7 @@ async function impact() {
     ${moved.length ? `<ul class="gm-moves-card">${ovr(a) !== null ? `<li class="${way(dOvr)}"><b>${sign(dOvr)}</b> overall <small>now ${Math.round(ovr(a))}</small></li>` : ''}
       ${moved.map((x) => `<li class="${way(x.d)}"><b>${sign(x.d)}</b> ${x.label} <small>now ${x.now}</small></li>`).join('')}</ul>`
       : `<p class="info">This game hardly moved your stats: under a tenth of a point each.</p>`}
-    ${style && was && style !== was ? `<p>It changed your style: <b>${esc(was)}</b> → <b>${esc(style)}</b>.</p>` : ''}
-    <p class="info">Your ${g.speed} card read with this game and without it (from your ${all.length} kept ${g.speed} games).</p>`;
+    ${style && was && style !== was ? `<p>It changed your style: <b>${esc(was)}</b> → <b>${esc(style)}</b>.</p>` : ''}`;
 }
 function go(n) { focus = null; idx = Math.max(0, Math.min(moves.length, n)); drawPosition(); }
 
