@@ -1,6 +1,6 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029213838';
+import { account, login, finishLogin } from './lichess.js?v=20261029214027';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -130,8 +130,8 @@ function render(s) {
       ${s.visitors.length > 10 ? `<button type="button" class="ghost ad-more" data-more aria-expanded="false">Show all ${s.visitors.length}</button>` : ''}`
       : '<p class="info">Nobody yet.</p>'}</section>
     <section class="pf-card"><div class="ad-head"><h2>Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
-      ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${s.recentActions.slice(0, 15).map((r) => { const c = r.kind === 'card' && cardOf(r.target, BOARD);
-        return `<li${c ? ' class="ad-has-card" tabindex="0"' : ''}><span><b>${r.kind === 'card' ? 'Card' : 'Analysis'}</b> ${targetHtml(r.kind, (r.target || '').replace(/ · $/, ''))}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small>${c ? `<div class="ad-card-pop">${cardHtml(c)}</div>` : ''}</li>`; }).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
+      ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${s.recentActions.slice(0, 15).map((r) => {
+        return `<li><span><b>${r.kind === 'card' ? 'Card' : 'Analysis'}</b> ${targetHtml(r.kind, (r.target || '').replace(/ · $/, ''))}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`; }).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
     <section class="pf-card"><div class="ad-head"><h2>Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
       ${(s.recentProfiles || []).length ? `<ul class="pf-rows ad-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: r.target })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
     <div class="pf-two">
@@ -165,8 +165,32 @@ function render(s) {
 }
 
 // Draw the numbers (real or demo) and wire the graph's spans and the demo switch.
+// Hovering any player name shows their card beside the mouse; a click opens the profile. The card is the
+// newest one a download event carried, else the leaderboard's; a name with neither shows nothing.
+function cardsOf(body) {
+  const out = new Map(BOARD.map((r) => [r.name.toLowerCase(), cardOf(r.name, BOARD)]));
+  const events = [...(body.visitors || []).flatMap((v) => v.events), ...(body.recentActions || [])].filter((e) => e.kind === 'card' && e.target?.includes(' #'));
+  events.sort((a, b) => a.at.localeCompare(b.at)).forEach((e) => { const c = cardOf(e.target, []); if (c) out.set(c.name.toLowerCase(), c); });
+  return out;
+}
+let tip;
+function bindCards(body) {
+  const cards = cardsOf(body), box = $('#admin');
+  tip ??= document.body.appendChild(Object.assign(document.createElement('div'), { className: 'ad-card-tip', hidden: true }));
+  const place = (e) => { const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = `${Math.min(e.clientX + 16, innerWidth - w - 8)}px`; tip.style.top = `${Math.min(e.clientY + 16, innerHeight - h - 8)}px`; };
+  box.onmouseover = (e) => {
+    const a = e.target.closest?.('a[href*="profile.html?u="]');
+    const c = a && cards.get(new URL(a.href).searchParams.get('u').toLowerCase());
+    if (!c) { tip.hidden = true; return; }
+    tip.innerHTML = cardHtml(c); tip.hidden = false; place(e);
+  };
+  box.onmousemove = (e) => { if (!tip.hidden) place(e); };
+  box.onmouseout = (e) => { if (e.target.closest?.('a[href*="profile.html?u="]')) tip.hidden = true; };
+}
 function show(body) {
   render(body);
+  bindCards(body);
   bindLine(body.perDay);
   $('#ad-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = Number(b.dataset.span);
     $('#ad-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body.perDay); });

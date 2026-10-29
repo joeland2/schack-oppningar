@@ -1875,9 +1875,7 @@ p, li, dd, small { text-wrap: pretty; }
 /* What next, not logged in: your name, then Compare with me */
 .pf-cmp-ask { display: flex; flex-wrap: wrap; gap: 8px; }
 .pf-cmp-ask input { flex: 1 1 180px; min-width: 0; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; }
-/* Admin: a downloaded card pops up over its row on hover or tap */
-.ad-has-card { position: relative; cursor: default; }
-.ad-has-card:hover > span b, .ad-has-card:focus > span b { color: var(--hot); }
-.ad-card-pop { display: none; position: absolute; left: 0; top: calc(100% + 4px); z-index: 30; pointer-events: none; }
-.ad-card-pop .pf-pcard { zoom: .7; }
-.ad-has-card:hover .ad-card-pop, .ad-has-card:focus .ad-card-pop { display: block; }
+/* Admin: hovering a player name shows their card beside the mouse */
+.ad-card-tip { position: fixed; z-index: 60; pointer-events: none; }
+.ad-card-tip[hidden] { display: none; }
+.ad-card-tip .pf-pcard { zoom: .7; box-shadow: 0 18px 40px rgb(0 0 0 / .45); }
