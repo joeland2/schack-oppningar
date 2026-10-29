@@ -1189,10 +1189,9 @@ a { text-underline-offset: .18em; }
   .pf-hero .pf-hero-text > *, .pf-hero .pf-type-row > *:not(:first-child), .pf-hero .pf-card-col > *:not(.pf-pcard) { grid-column: 1 / -1; }
   /* The opening taste beside the card too, under the style, in two compact rows */
   .pf-hero .pf-type-row > .pf-taste-tiles { grid-area: 2 / 2; align-self: end; display: grid; gap: 6px; margin: 0; }
-  .pf-hero .pf-taste-tile { padding: 5px 8px 5px 6px; gap: 6px; border-top-width: 2px; }
+  .pf-hero .pf-taste-tile { padding: 6px 8px 6px 6px; gap: 8px; border-top-width: 2px; }
   .pf-hero .pf-taste-tile img { width: 24px; height: 24px; }
   .pf-hero .pf-taste-tile small { font-size: 10.5px; letter-spacing: .06em; } .pf-hero .pf-taste-tile b { font-size: 18px; }
-  .pf-hero .pf-taste-tile small:last-child { display: none; }
   .pf-hero .pf-portrait { order: 2; margin: 0; } .pf-hero .pf-why-type { order: 3; }
   .pf-hero .pf-star-strip { order: 4; } .pf-hero .pf-dl { order: 5; justify-self: start; } .pf-hero .pf-dl-menu { right: auto; left: 0; } .pf-hero .pf-card-help { order: 6; max-width: none; }
 }
