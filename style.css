@@ -1835,3 +1835,8 @@ p, li, dd, small { text-wrap: pretty; }
   .pf-more .pf-op-link, li > .pf-op-link { display: inline-flex; align-items: center; min-height: 44px; } /* in the opening rows; in running text the line height carries them */
   #refresh, .pf-card-help summary { min-height: 44px; display: inline-flex; align-items: center; }
 }
+/* Phones: the name, then straight the card; Star, Compare, Games and Lichess come after the portrait */
+@media (max-width: 640px) {
+  #profile > .pf-players { order: 1; }
+  #profile > .pf-hero ~ :not(.pf-players) { order: 2; }
+}
