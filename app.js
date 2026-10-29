@@ -1,11 +1,11 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029092601';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029092601';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261029092601';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029092601';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029092601';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029092601';
-import { storedGames } from './profile.js?v=20261029092601';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029092802';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029092802';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261029092802';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029092802';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029092802';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029092802';
+import { storedGames } from './profile.js?v=20261029092802';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position

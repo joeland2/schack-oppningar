@@ -24,6 +24,9 @@
       const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`), who = user();
       at.insertAdjacentHTML('beforebegin', `<a class="top-bug" href="${who ? `profile.html?u=${encodeURIComponent(who)}` : './'}" title="Your ${speed} rating"><small>${esc(speed)}<br>${esc(who || 'you')}</small><strong>${esc(rating)}</strong></a>`);
     }
+    // Logged out, the Profile section reads Log in: the profile page logs in and comes back to your profile.
+    const prof = document.querySelector('.top-nav a[href="profile.html"]');
+    if (!user() && prof) { prof.textContent = 'Log in'; prof.href = 'profile.html?login'; prof.title = 'Log in with Lichess to see your profile'; }
     if (user()?.toLowerCase() === 'joelandersson') document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', `<a href="admin.html"${page === 'admin.html' ? ' aria-current="page"' : ''}>Admin</a>`);
   });
 })();

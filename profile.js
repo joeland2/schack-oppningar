@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029092601';
-import { STYLE_OF } from './styles.js?v=20261029092601';
+import { account, login, finishLogin } from './lichess.js?v=20261029092802';
+import { STYLE_OF } from './styles.js?v=20261029092802';
 
 const MAX = 500;
 const PV = 19;
@@ -1214,6 +1214,10 @@ if ($('#profile')) addEventListener('popstate', () => start());
 
 // Last in the file, so every constant above is defined before the page draws.
 if ($('#profile')) { // the practice page imports this module for the above; only the profile page draws itself
-  try { await finishLogin(); } catch (err) { $('#profile-msg').textContent = err.message; } // back from logging in on this page
-  start();
+  // The header's Log in (on every page) comes here, so the player lands on their own profile after it.
+  if (new URLSearchParams(location.search).has('login') && !account()) await login();
+  else {
+    try { await finishLogin(); } catch (err) { $('#profile-msg').textContent = err.message; } // back from logging in on this page
+    start();
+  }
 }
