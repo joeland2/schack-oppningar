@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029140431';
-import { STYLE_OF } from './styles.js?v=20261029140431';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029140748';
+import { STYLE_OF } from './styles.js?v=20261029140748';
 
 const MAX = 500;
-const PV = 29;
+const PV = 30;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -184,7 +184,7 @@ export function profileOf(games) {
 
 // What each type means, shown above the evidence from the games.
 const TYPE_ABOUT = {
-  Attacker: 'Goes after the king early, wants open lines and the initiative, and takes some risk for it. Dangerous when the attack lands, shaky when it does not.',
+  Striker: 'Goes after the king early, wants open lines and the initiative, and takes some risk for it. Dangerous when the attack lands, shaky when it does not.',
   'Solid builder': 'Builds a safe position first and strikes when the moment is right. Hard to beat quickly, but can let wins slip by being too careful.',
   'Endgame artist': 'Happy to trade pieces and win slowly with technique. Trusts long-term edges more than tactics.',
   Fighter: 'Plays every game for a result and rarely settles for a draw. Wins and losses both come quickly.',
@@ -279,11 +279,9 @@ const SAME = { 'Endgame artist': 'Late game', Houdini: 'Defense', 'Time scramble
 function traitsOf(p) {
   const q = p.peer || {}, rating = p.speeds?.[0]?.rating, raw = rawSkills(p), def = raw.find((x) => x.label === 'Defense');
   const styles = [
-    { name: 'Attacker', w: p.attacking / 0.4, why: `${pct(p.attacking)} of your games are in attacking openings or gambits: you like the initiative early.` },
+    { name: 'Striker', w: p.attacking / 0.4, why: `${pct(p.attacking)} of your games are in attacking openings or gambits: you like the initiative early.` },
     { name: 'Solid builder', w: (p.solid / 0.55) * (p.attacking < 0.25 ? 1 : 0.6), why: `${pct(p.solid)} of your games are in solid or positional openings: you build first and attack later.` },
     { name: 'Endgame artist', w: p.queensOff / 0.4, why: `The queens come off before move 25 in ${pct(p.queensOff)} of your games: you are happy to trade and play it out.` },
-    { name: 'Fighter', w: (usualDraws(rating) / Math.max(p.draws, 0.005)) / 2 * Math.sqrt(35 / Math.max(p.moves, 15)),
-      why: `Only ${pct(p.draws)} draws, where about ${pct(usualDraws(rating))} is usual at your level: your games are decided, one way or the other.` },
     // Saving lost games and ending short of time are common in fast games for everyone, so these two
     // count only when the player does it clearly more than their own opponents at their level.
     { name: 'Houdini', w: q.downs >= 5 && q.ups >= 5 && q.saved != null ? (q.saved / Math.max(q.oppSaved, 0.1)) / Math.sqrt(odds(q.score)) / 2.8 : 0, // about twice your opponents' rate is normal (checked on eight players), so the trait starts near three times
@@ -296,10 +294,9 @@ function traitsOf(p) {
     { name: 'Specialist', w: (p.top2 ?? 0) / 0.9, why: `Your two main openings are ${pct(p.top2 ?? 0)} of the openings you choose: you know your lines deeply.` },
     { name: 'Explorer', w: (p.families ?? 0) / 18 * ((p.top2 ?? 1) < 0.3 ? 1 : 0.5), why: `You play ${p.families ?? 0} different openings at least three times each: you like variety.` },
     { name: 'Marathoner', w: (p.moves / usualMoves(rating)) / 1.2, why: `Your games last ${p.moves} moves on average, where about ${usualMoves(rating)} is usual at your level.` },
-    // The counterpart of Attacker: a player whose Defense (solid openings, holding against attacks, saving
+    // The counterpart of Striker: a player whose Defense (solid openings, holding against attacks, saving
     // bad positions, rarely letting opponents get ahead) is clearly above their own opponents'.
     { name: 'Guardian', w: def.v !== null ? (def.v - 50) / 9 : 0, why: `You defend clearly better than your opponents at your level. ${def.why}` },
-    { name: 'Peacemaker', w: (p.draws / usualDraws(rating)) / 1.8, why: `${pct(p.draws)} of your games are draws, where about ${pct(usualDraws(rating))} is usual at your level.` },
   ].sort((x, y) => y.w - x.w);
   // Giant killer needs a clear surplus: upsets are common in fast games. Speed counts winning on time half,
   // since much of it is the opponent's doing.
@@ -307,6 +304,12 @@ function traitsOf(p) {
     { label: 'Giant killer', v: p.giantN >= 30 ? clamp(50 + p.giantGain * 100) : null, why: `Against players 100 or more above you, you score ${pct(p.giantGain ?? 0)} more per game than the rating gap predicts (${p.giantN} games).` },
     { label: p.winW >= p.winB ? 'White specialist' : 'Black specialist', v: p.nWhite >= 30 && p.n - p.nWhite >= 30 ? clamp(50 + Math.abs(p.winW - p.winB) * 100) : null,
       why: `You win ${pct(p.winW)} as White and ${pct(p.winB)} as Black.` },
+    // Decided games or many draws say how a player's games go, not how they play, so they are
+    // strengths (on the same scale: 64 or more stands out) rather than styles.
+    { label: 'Fighter', v: clamp(50 + ((usualDraws(rating) / Math.max(p.draws, 0.005)) / 2 * Math.sqrt(35 / Math.max(p.moves, 15)) - 0.6) * 35),
+      why: `Only ${pct(p.draws)} draws, where about ${pct(usualDraws(rating))} is usual at your level: your games are decided, one way or the other.` },
+    { label: 'Peacemaker', v: clamp(50 + ((p.draws / usualDraws(rating)) / 1.8 - 0.6) * 35),
+      why: `${pct(p.draws)} of your games are draws, where about ${pct(usualDraws(rating))} is usual at your level: you are hard to beat.` },
     { label: 'Clutch player', v: p.clutchN >= 25 ? clamp(50 + (p.clutchScore - p.score) * 120) : null, why: `You score ${pct(p.clutchScore ?? 0)} in the ${p.clutchN} games where both players were short of time, against ${pct(p.score)} overall.` },
   ];
   return { styles, strengths: [...raw, ...extra] };
@@ -361,8 +364,8 @@ function skillsOf(p) {
   const m = sum(s, (x) => x.raw) / 6, o = sum(s, (x) => x.v) / 6;
   console.assert(Math.abs(o - (60 + (m - 50) / 2)) < 1 && Math.abs((s[5].v - s[3].v) - (s[5].raw - s[3].raw)) <= 1, 'skillsOf shape'); // SHAPE 2 at half size: a gap of 10 between two skills stays 10
 }
-console.assert(typeOf({ attacking: 0.54, solid: 0.2, queensOff: 0.1, draws: 0.05, moves: 30, lowTime: 0.16, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, score: 0.5, downs: 30, ups: 30, saved: 0.47, oppSaved: 0.2, myLow: 0.05, oppLow: 0.25, timeWins: 0.15, timeLosses: 0.04 } }).map((t) => t.name).join() === 'Attacker,Speed demon', 'typeOf');
-console.assert(typeOf({ attacking: 0.27, solid: 0.56, queensOff: 0.23, draws: 0.03, moves: 29, lowTime: 0.15, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, analysed: 120, after12: 96, n12: 120 } }).map((t) => t.name).join() === 'Fighter,Fast starter', 'typeOf: same level, other strength');
+console.assert(typeOf({ attacking: 0.54, solid: 0.2, queensOff: 0.1, draws: 0.05, moves: 30, lowTime: 0.16, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, score: 0.5, downs: 30, ups: 30, saved: 0.47, oppSaved: 0.2, myLow: 0.05, oppLow: 0.25, timeWins: 0.15, timeLosses: 0.04 } }).map((t) => t.name).join() === 'Striker,Speed demon', 'typeOf');
+console.assert(typeOf({ attacking: 0.27, solid: 0.56, queensOff: 0.23, draws: 0.03, moves: 29, lowTime: 0.15, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, analysed: 120, after12: 96, n12: 120 } }).map((t) => t.name).join() === 'All-rounder,Fast starter', 'typeOf: no style stands out, a strength does');
 console.assert(levelOf(1200) === 60 && levelOf(2400) === 82 && levelOf(5000) === 92 && levelOf(100) === 35, 'levelOf');
 function rawSkills(p) {
   const q = p.peer || {}, an = (q.analysed ?? 0) >= ENOUGH, pawns = (cp) => { const r = Math.round(cp / 10) / 10; return r === 0 ? '0.0' : `${r > 0 ? '+' : '−'}${Math.abs(r).toFixed(1)}`; };
@@ -404,7 +407,7 @@ console.assert(rawSkills({ peer: { analysed: 120, ups: 36, downs: 12, after12: 1
 {
   const g = (o) => ({ side: 'w', speed: 'blitz', status: 'resign', plies: 60, result: 1, family: 'Italian Game', rating: 1500, diff: 5, castled: 8, queensOff: null, endgame: false, analysed: false, acc: null, blunders: null, best: null, worst: null, after12: null, slips: { opening: 0, middlegame: 0, endgame: 0 }, lowTime: false, ...o });
   const p = profileOf([g({}), g({ result: 0 }), g({ side: 'b', result: 0 }), g({ side: 'b', result: 0.5 })]);
-  console.assert(p.score === 0.375 && p.white === 0.5 && p.type[0].name === 'Attacker', 'profileOf');
+  console.assert(p.score === 0.375 && p.white === 0.5 && p.type[0].name === 'Striker', 'profileOf');
 }
 
 // ---------- Fetching ----------
