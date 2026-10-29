@@ -1266,7 +1266,7 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 @media (max-width: 560px) {
   /* Ten results always on one row; each square stays a full-height tap target */
   .pf-form-row { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
-  .pf-form-row .pf-res { width: auto; height: 36px; }
+  .pf-form-row .pf-res { width: auto; height: 44px; } /* ten across the width, tall enough for a thumb */
   .pf-facts div { grid-template-columns: 1fr; gap: 2px; }
 }
 .pf-more-body .pf-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 16px; }
@@ -1828,9 +1828,10 @@ p, li, dd, small { text-wrap: pretty; }
 /* Phones: every control in the profile at least 44px tall, for a thumb */
 @media (max-width: 640px) {
   .pf-players .ghost, .pf-players .link-out, .pf-seg button, .pf-an-opt, .pf-an-go, .pf-fetch, .pf-chip { min-height: 44px; display: inline-flex; align-items: center; }
-  .pf-help summary { width: 30px; height: 30px; font-size: 13px; }
+  /* the ? keeps its small circle, inside a 44px tap area */
+  .pf-help summary { position: relative; width: 44px; height: 44px; border: 0; font-size: 13px; }
+  .pf-help summary::before { content: ""; position: absolute; inset: 11px; border: 1px solid currentColor; border-radius: 50%; }
   .pf-dl > summary { width: 44px; height: 44px; }
-  .pf-res { width: 34px; height: 44px; }
-  .pf-more .pf-op-link { display: inline-block; padding-block: 8px; } /* in the opening rows; in running text the line height carries them */
+  .pf-more .pf-op-link, li > .pf-op-link { display: inline-flex; align-items: center; min-height: 44px; } /* in the opening rows; in running text the line height carries them */
   #refresh, .pf-card-help summary { min-height: 44px; display: inline-flex; align-items: center; }
 }

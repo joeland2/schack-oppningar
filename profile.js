@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029181247';
-import { STYLE_OF } from './styles.js?v=20261029181247';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029182227';
+import { STYLE_OF } from './styles.js?v=20261029182227';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -802,7 +802,7 @@ function openingRows(list, side) {
   return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><a class="pf-op-link" href="${practiseLink(side, o.fam)}" title="Practise the ${esc(o.fam.replace(/^vs /, ''))} lines">${esc(o.fam)}</a><small>${games(o.n)} · ${pct(o.win ?? o.score)} wins</small>${bar(o)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
 }
 // Each bar: what it measures, what the games show, and below 50 how to train it; the words show on request.
-let showSkillText = true; // what each skill measures is open from the start
+let showSkillText = !matchMedia('(max-width: 640px)').matches; // what each skill measures: open from the start, folded on phones (a wall of text there)
 function skillBars(skills, say, me) {
   return `<ul class="pf-skills">${skills.map((x) => `<li${x.v === null ? ' class="pf-skill-none"' : ''}>
       <span class="pf-skill-name">${x.label}</span><span class="pf-skill-val">${x.v ?? '–'}</span>
