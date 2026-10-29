@@ -1177,10 +1177,19 @@ a { text-underline-offset: .18em; }
 .pf-card-help .pf-card-note { margin-top: 8px; }
 /* Lead story: latest news and the one leak */
 .pf-latest { font-size: 14px; }
-/* Phones: the headline before the card, and a smaller card */
+/* Phones: as on a computer, the card first with the style and strength beside it (a smaller card),
+   then the opening taste and the portrait across the width; the stars, download and help under them. */
 @media (max-width: 640px) {
-  .pf-hero .pf-hero-text { order: -1; }
-  .pf-hero .pf-pcard { zoom: .82; }
+  .pf-hero { grid-template-columns: auto minmax(0, 1fr); gap: 12px 14px; justify-items: stretch; align-items: start; text-align: left; }
+  .pf-hero .pf-card-col, .pf-hero .pf-hero-text, .pf-hero .pf-type-row { display: contents; }
+  .pf-hero .pf-pcard { zoom: .5; grid-area: 1 / 1; }
+  .pf-hero .pf-type-row > div:first-child { grid-area: 1 / 2; align-self: center; }
+  .pf-hero .pf-h1 { font-size: clamp(2.2rem, 11vw, 3.4rem); overflow-wrap: anywhere; }
+  .pf-hero .pf-sub { font-size: clamp(1.2rem, 5.5vw, 1.6rem); }
+  .pf-hero .pf-hero-text > *, .pf-hero .pf-type-row > *:not(:first-child), .pf-hero .pf-card-col > *:not(.pf-pcard) { grid-column: 1 / -1; }
+  .pf-hero .pf-taste-tiles { order: 1; margin: 0; } .pf-hero .pf-portrait { order: 2; margin: 0; } .pf-hero .pf-why-type { order: 3; }
+  .pf-hero .pf-star-strip { order: 4; } .pf-hero .pf-dl { order: 5; justify-self: start; } .pf-hero .pf-card-help { order: 6; max-width: none; }
+  .pf-hero .pf-taste-tile { flex: 1 1 140px; }
 }
 /* Skeleton while the games are read */
 .pf-skeleton .pf-pcard { min-height: 380px; opacity: .55; }
