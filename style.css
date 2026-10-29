@@ -429,7 +429,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) { .mark { animation: none; } }
 /* The board column holds progress, taken pieces, board and buttons; the board gives way so all fit on screen */
 @media (min-width: 821px) {
-  .board-row { width: min(100%, calc(100vh - 300px)); justify-self: center; }
+  .board-row { width: min(100%, calc(100vh - 230px)); justify-self: center; }
 }
 
 /* Phones: a compact picker and board view. Desktop is unchanged. */
@@ -571,7 +571,8 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
 @media (min-width: 821px) { .layout:has(.side) { grid-template-areas: "play panel" "play side"; } }
 @media (min-width: 1400px) {
-  .layout:has(.side) { grid-template-columns: minmax(240px, 320px) minmax(0, min(calc(100vh - 230px), 860px)) minmax(300px, 460px); grid-template-areas: "side play panel"; }
+  /* The board gets the room first: the lists and the panel keep a set width until the board is full size. */
+  .layout:has(.side) { grid-template-columns: clamp(250px, 18vw, 320px) minmax(0, min(calc(100vh - 190px), 860px)) clamp(340px, 26vw, 460px); grid-template-areas: "side play panel"; gap: clamp(20px, 2vw, 40px); }
   .side { position: sticky; top: 84px; max-height: calc(100vh - 100px); overflow: auto; }
 }
 /* The line-done summary: its own box above the coach, kept while you play on */

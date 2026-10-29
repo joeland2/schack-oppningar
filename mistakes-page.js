@@ -1,6 +1,6 @@
-import { drill } from './drill.js?v=20261029225511';
-import { THEMES } from './mistakes.js?v=20261029225511';
-import { explainMistake, dangerAfter } from './ideas.js?v=20261029225511';
+import { drill } from './drill.js?v=20261029225738';
+import { THEMES } from './mistakes.js?v=20261029225738';
+import { explainMistake, dangerAfter } from './ideas.js?v=20261029225738';
 
 // Positions from your own games where you went wrong, saved by "Find my mistakes" on the openings page.
 // Everything is explained here, on the board: what your move did wrong, nudges while you look for
