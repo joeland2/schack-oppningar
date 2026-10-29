@@ -1,6 +1,6 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029142618';
+import { account, login, finishLogin } from './lichess.js?v=20261029142941';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -85,6 +85,16 @@ function render(s) {
     </dl>
     <section class="pf-card"><div class="ad-head"><h2>Visitors</h2><div class="seg" role="group" aria-label="Time span" id="ad-span">${SPANS.map(([l, n]) => `<button type="button" data-span="${n}" aria-pressed="${n === span}">${l}</button>`).join('')}</div></div>
       <div id="ad-line" class="ad-line-box"></div></section>
+    <section class="pf-card"><div class="ad-head"><h2>Unique visitors · ${s.visitors.length}</h2><small>Every visitor once, newest first. IP addresses without their last part. Click one to see what they did.</small></div>
+      ${s.visitors.length ? `<div class="ad-visitors"><div class="ad-v-head"><span>Location</span><span>IP</span><span>Lichess</span><span>Device</span><span>Visits</span><span>Last seen</span></div>${s.visitors.map((v) => `<details class="ad-visitor"><summary>
+          <span class="ad-v-where">${flag(v.country)}${esc(v.country ? land(v.country).replace(/ \(..\)$/, '') : 'Unknown')}${v.city ? ` · ${esc(v.city)}` : ''}</span>
+          <span class="num">${esc((v.ip || '–').replace(/\.0$/, '.x').replace(/::$/, ':x'))}</span>
+          <span>${v.name ? link({ name: v.name }) : '<small>–</small>'}</span>
+          <span>${esc(v.device || '–')}</span>
+          <span class="num">${v.views} views · since ${day(v.first)}</span>
+          <span class="num">${when(v.last)}</span></summary>
+          <ol class="ad-events">${v.events.map((e) => `<li><span class="num">${when(e.at)}</span><span>${e.kind === 'view' ? `Opened ${esc(pageName(e.page))}` : `${esc(KIND[e.kind] || e.kind)}${e.target ? `: <b>${esc(e.target)}</b>` : ''}`}</span></li>`).join('')}</ol></details>`).join('')}</div>`
+      : '<p class="info">Nobody yet.</p>'}</section>
     <div class="pf-two">
       <section class="pf-card"><h2>Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="ad-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
       <section class="pf-card"><h2>Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>
@@ -102,16 +112,6 @@ function render(s) {
       <section class="pf-card"><h2>Weekday</h2>${cols(s.weekdays, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])}</section>
       <section class="pf-card"><h2>Devices <small>unique visitors</small></h2>${bars(s.devices || [])}</section>
     </div>
-    <section class="pf-card"><div class="ad-head"><h2>Visitors · ${s.visitors.length}</h2><small>Newest first. IP addresses without their last part. Click one to see what they did.</small></div>
-      ${s.visitors.length ? `<div class="ad-visitors">${s.visitors.map((v) => `<details class="ad-visitor"><summary>
-          <span class="ad-v-where">${flag(v.country)}${esc(v.country ? land(v.country).replace(/ \(..\)$/, '') : 'Unknown')}${v.city ? ` · ${esc(v.city)}` : ''}</span>
-          <span class="num">${esc((v.ip || '–').replace(/\.0$/, '.x').replace(/::$/, ':x'))}</span>
-          <span>${v.name ? link({ name: v.name }) : '<small>–</small>'}</span>
-          <span>${esc(v.device || '–')}</span>
-          <span class="num">${v.views} views · since ${day(v.first)}</span>
-          <span class="num">${when(v.last)}</span></summary>
-          <ol class="ad-events">${v.events.map((e) => `<li><span class="num">${when(e.at)}</span><span>${e.kind === 'view' ? `Opened ${esc(pageName(e.page))}` : `${esc(KIND[e.kind] || e.kind)}${e.target ? `: <b>${esc(e.target)}</b>` : ''}`}</span></li>`).join('')}</ol></details>`).join('')}</div>`
-      : '<p class="info">Nobody yet.</p>'}</section>
     <div class="pf-two">
       <section class="pf-card"><h2>What people do</h2>${rows(s.usage, (x) => KIND[x.name] || esc(x.name))}</section>
       <section class="pf-card"><h2>Logged-in players · ${s.days} days</h2>${s.users.length

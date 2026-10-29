@@ -1546,3 +1546,5 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .ad-key .ad-k-area { height: 10px; margin-left: 12px; background: color-mix(in srgb, var(--hot) 25%, transparent); }
 .ad-kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
 .ad-names { margin: 0; line-height: 1.8; }
+.ad-v-head { display: grid; grid-template-columns: minmax(10em, 1.4fr) 8em minmax(7em, 1fr) minmax(8em, 1fr) 11em 9em; gap: 10px; padding: 6px 0; font: 600 11px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+@media (max-width: 760px) { .ad-v-head { display: none; } }
