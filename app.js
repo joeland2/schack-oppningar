@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029221601';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029221601';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029221601';
-import { GUIDE } from './guide.js?v=20261029221601';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029221601';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029221601';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029221601';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029221601';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029222947';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029222947';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029222947';
+import { GUIDE } from './guide.js?v=20261029222947';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029222947';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029222947';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029222947';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029222947';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -641,17 +641,23 @@ console.assert(analyse([], 'x').counted === 0, 'analyse');
 const sideIn = (g, me) => (g.players.white.user?.id === me ? 'w' : g.players.black.user?.id === me ? 'b' : null);
 // One player's games in an opening: how many, the points, the slips, and what they play where you slip.
 function inOpening(games, name, o, mySlips) {
-  const me = name.toLowerCase(), out = { games: 0, points: 0, slips: 0, at: mySlips.map(() => new Map()) };
+  const me = name.toLowerCase(), out = { games: 0, points: 0, slips: 0, at: mySlips.map(() => new Map()), ex: mySlips.map(() => null), wins: [] };
+  const book = familyBook(o), bookEnd = (moves) => { let n = 0; for (let i = 0; i < moves.length && book.has(lineKey(moves.slice(0, i + 1))); i++) n = i + 1; return n || Math.min(12, moves.length); };
   for (const g of games) {
     if (sideIn(g, me) !== o.side || !g.moves) continue;
     const moves = g.moves.split(' ').map(clean).slice(0, MAX_PLY);
     if (openingOf(moves, o.side)?.family !== o.family) continue;
     out.games++;
-    out.points += !g.winner ? 0.5 : g.winner === (o.side === 'w' ? 'white' : 'black') ? 1 : 0;
+    const won = g.winner === (o.side === 'w' ? 'white' : 'black');
+    out.points += !g.winner ? 0.5 : won ? 1 : 0;
+    if (won && g.id) out.wins.push({ id: g.id, at: bookEnd(moves) }); // a win to watch, stopping where the opening's book ends
     if (firstSlip(moves, o.side)) out.slips++;
     mySlips.forEach((sl, k) => {
       const n = sl.before.length;
-      if (moves.length > n && lineKey(moves.slice(0, n)) === lineKey(sl.before)) out.at[k].set(moves[n], (out.at[k].get(moves[n]) || 0) + 1);
+      if (moves.length > n && lineKey(moves.slice(0, n)) === lineKey(sl.before)) {
+        out.at[k].set(moves[n], (out.at[k].get(moves[n]) || 0) + 1);
+        if (!out.ex[k] && moves[n] !== sl.played && g.id) out.ex[k] = { id: g.id, move: moves[n] }; // a game where they play on otherwise
+      }
     });
   }
   return out;
@@ -675,44 +681,76 @@ async function candidatesFor(o, positions, token, step = () => {}) {
   }
   return [...found];
 }
+// The search's panel at the top: what it looks for, its three steps, a big bar and what it is doing now.
+const LF_STEPS = ['Read your last 100 games', 'Find players above you in your main opening', 'Read their games and match them to you'];
+function lfPanel(step, frac, now) {
+  const el = $('#learn-from');
+  $('#picker .pick-h')?.after(el);
+  el.hidden = false;
+  el.innerHTML = `<h2>Finding a player to learn from</h2>
+    <p class="lf-what">Someone with your style who plays your openings, and has climbed higher with them: the games of a player like you, a few hundred points further on.</p>
+    <ol class="lf-steps">${LF_STEPS.map((t, i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}">${t}</li>`).join('')}</ol>
+    <div class="lf-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(frac * 100)}"><i style="width:${Math.max(3, Math.round(frac * 100))}%"></i></div>
+    <p class="lf-now" aria-live="polite">${now}</p>`;
+}
+// How alike two players are, 0–100: the same style counts most, then the shape of the six skills (each
+// against the player's own average, so a stronger player can still be alike), then the openings shared,
+// then the same strength.
+function matchOf(me, them, myOps, theirOps) {
+  const shape = (sk) => { const k = sk.filter((x) => x.v !== null), m = k.reduce((t, x) => t + x.v, 0) / Math.max(1, k.length); return new Map(k.map((x) => [x.label, x.v - m])); };
+  const a = shape(me.skills), b = shape(them.skills), both = [...a.keys()].filter((k) => b.has(k));
+  const shapeSim = both.length ? Math.max(0, 100 - (both.reduce((t, k) => t + Math.abs(a.get(k) - b.get(k)), 0) / both.length) * 6) : 50;
+  const ops = myOps.length ? myOps.filter((f) => theirOps.includes(f)).length / myOps.length * 100 : 0;
+  const same = (i) => (me.type[i]?.name && me.type[i].name === them.type[i]?.name ? 100 : 0);
+  return Math.min(99, Math.round(0.35 * same(0) + 0.3 * shapeSim + 0.25 * ops + 0.1 * same(1)));
+}
 async function findTeachers(name) {
   const el = $('#learn-from');
-  el.hidden = false;
-  // Each step says what it does, with a bar for how far the whole search has come (frac 0–1; none when done).
-  const msg = (t, frac = null) => (el.innerHTML = `<h2>A player to learn from</h2><p class="info">${t}</p>${frac === null ? '' : `<div class="lf-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(frac * 100)}"><i style="width:${Math.round(frac * 100)}%"></i></div>`}`);
+  const done = (html) => { el.hidden = false; el.innerHTML = html; };
+  const stop = (t) => done(`<h2>A player to learn from</h2><p class="lf-now">${t}</p>`);
   const token = account()?.token;
-  if (!token) { msg('Searching needs the Lichess opening explorer, which needs you to log in. <button type="button" class="link" id="lf-login">Log in with Lichess</button>'); return $('#lf-login').addEventListener('click', login); }
-  if (!lastGames) return msg('Check your games first.');
+  if (!token) { stop('Searching needs the Lichess opening explorer, which needs you to log in. <button type="button" class="link" id="lf-login">Log in with Lichess</button>'); return $('#lf-login').addEventListener('click', login); }
+  if (!lastGames) return stop('Check your games first.');
   const me = analyse(lastGames.games, name), o = me.openings.find((x) => x.games >= 5);
-  if (!o) return msg('Play at least 5 games of one opening first.');
+  if (!o) return stop('Play at least 5 games of one opening first.');
   const mySlips = me.slips.filter((x) => x.family === o.family && x.side === o.side).slice(0, 3);
   const mine = inOpening(lastGames.games, name, o, mySlips);
   const what = `${o.vs ? 'vs ' : ''}${shortName(o.family)} as ${sideName(o.side)}`;
-  msg(`Looking for players above ${rating} who play the ${what}…`, 0.2);
-  const cands = (await candidatesFor(o, [o.root, ...mySlips.map((x) => x.before)], token, (i, n) => msg(`Looking for players above ${rating} who play the ${what}: position ${i + 1} of ${n}…`, 0.2 + 0.2 * (i / n)))).filter(([n]) => n.toLowerCase() !== name.toLowerCase()).slice(0, 8);
-  if (!cands.length) return msg(`No players above your rating found in the ${what} right now. Try again later.`);
+  const myP = await profileFromRaw(name, lastGames.games), myCard = { type: myP.type, skills: skillsOf(myP) };
+  const myOps = me.openings.slice(0, 5).map((x) => x.family);
+  lfPanel(1, 0.25, `Looking in the Lichess explorer for players rated ${rating + 100}–${rating + 600} who play the ${what}…`);
+  const cands = (await candidatesFor(o, [o.root, ...mySlips.map((x) => x.before)], token, (i, n) => lfPanel(1, 0.25 + 0.15 * (i / n), `Looking in the Lichess explorer for players rated ${rating + 100}–${rating + 600} who play the ${what}: position ${i + 1} of ${n}…`)))
+    .filter(([n]) => n.toLowerCase() !== name.toLowerCase()).slice(0, 8);
+  if (!cands.length) return stop(`No players above your rating found in the ${what} right now. Try again later.`);
   const read = [];
   for (const [i, [cand, r]] of cands.entries()) {
-    msg(`Reading ${cand}'s games, player ${i + 1} of ${cands.length}…`, 0.4 + 0.6 * (i / cands.length));
-    try { const gs = await fetchGames(cand); read.push({ name: cand, rating: r, gs, ...inOpening(gs, cand, o, mySlips) }); } catch (err) { if (/busy/.test(err.message)) break; }
+    lfPanel(2, 0.4 + 0.6 * (i / cands.length), `Reading <b>${esc(cand)}</b>'s games (${r}) and comparing them with yours: player ${i + 1} of ${cands.length}…`);
+    try {
+      const gs = await fetchGames(cand), p = await profileFromRaw(cand, gs), sk = skillsOf(p), x = inOpening(gs, cand, o, mySlips);
+      read.push({ name: cand, rating: r, gs, p, sk, ...x, match: matchOf(myCard, { type: p.type, skills: sk }, myOps, analyse(gs, cand).openings.slice(0, 8).map((y) => y.family)) });
+    } catch (err) { if (/busy/.test(err.message)) break; }
   }
   const rate = (x) => x.slips / x.games, score = (x) => x.points / Math.max(1, x.games);
-  // No slips of yours in the opening: nothing to learn there, so the players to learn from are the ones
-  // who score more with it than you do.
-  const clean = rate(mine) === 0;
-  const best = read.filter((x) => x.games >= 3 && (!clean || score(x) > score(mine)))
-    .sort((a, b) => (clean ? score(b) - score(a) : rate(a) - rate(b) || score(b) - score(a))).slice(0, 3);
-  if (!best.length) return msg(clean ? `You make no opening slips in the ${what} and score ${pct(score(mine))}: none of the players found scores more with it. Nothing to learn here right now.` : `The players found play the ${what} too rarely to compare. Try again later.`);
-  const theirs = (x, k) => [...x.at[k]].sort((a, b) => b[1] - a[1])[0]?.[0];
-  // Each player's card, read from the same 100 games (a quick card: the profile reads 500).
-  const cardOf = async (x) => { try { const p = await profileFromRaw(x.name, x.gs); return playerCard(x.name, p, p.type, skillsOf(p)); } catch { return ''; } };
-  const cards = await Promise.all(best.map(cardOf));
-  el.innerHTML = `<h2>Players to learn from: ${what}</h2>
-    <p class="info">${clean ? `You make no opening slips in your ${plural(mine.games, 'game')} of it, and score ${pct(score(mine))}. These players above your rating score more with it: see how they go on from where the opening ends.` : `You: a slip in ${pct(rate(mine))} of ${plural(mine.games, 'game')}, scoring ${pct(score(mine))}. Players above your rating who play it, read from their last 100 ${speed} games:`}</p>
-    <ul class="lf-list">${best.map((x, i) => `<li>${cards[i] ? `<a class="lf-card" href="profile.html?u=${encodeURIComponent(x.name)}" title="${esc(x.name)}'s profile">${cards[i]}</a>` : ''}<div class="lf-info"><a href="https://lichess.org/@/${encodeURIComponent(x.name)}" target="_blank" rel="noopener"><b>${x.name}</b></a> <small>${x.rating}</small>
-      <span class="lf-meta">${clean ? `scores ${pct(score(x))} in ${plural(x.games, 'game')}` : `a slip in ${pct(rate(x))} of ${plural(x.games, 'game')} · scores ${pct(score(x))}`}</span>
-      ${mySlips.map((sl, k) => { const t = theirs(x, k); return t && t !== sl.played ? `<span class="lf-meta">Where you play <b class="down">${sl.played}</b> (move ${Math.floor(sl.before.length / 2) + 1}), they play <b>${t}</b></span>` : ''; }).join('')}
-      <a class="lf-link cta" href="profile.html?u=${encodeURIComponent(x.name)}">See their profile</a></div></li>`).join('')}</ul>`;
+  // The most alike first, among those who play the opening at least 3 times and do at least as well with it.
+  const best = read.filter((x) => x.games >= 3 && score(x) >= score(mine) && (!mine.slips || rate(x) <= rate(mine))).sort((a, b) => b.match - a.match || score(b) - score(a)).slice(0, 3);
+  if (!best.length) return stop(`None of the players found does better than you with the ${what} (you score ${pct(score(mine))}${mine.slips ? `, a slip in ${pct(rate(mine))} of games` : ''}). Nothing to learn here right now.`);
+  // Games to watch: where you usually slip and they play on well, else their wins with the opening.
+  const lessons = (x) => {
+    const out = [];
+    mySlips.forEach((sl, k) => { const ex = x.ex[k]; if (ex) out.push({ id: ex.id, at: sl.before.length, mine: sl.played, note: `Here you usually play ${sl.played} (move ${Math.floor(sl.before.length / 2) + 1}). ${x.name} plays ${ex.move}.` }); });
+    for (const w of x.wins) { if (out.length >= 2) break; if (!out.some((l) => l.id === w.id)) out.push({ id: w.id, at: w.at, note: `The ${shortName(o.family)} is over here. Watch how ${x.name} goes on from it, and wins.` }); }
+    return out.slice(0, 2);
+  };
+  const link = (x, l) => `game.html?${new URLSearchParams({ u: x.name, id: l.id, play: 1, at: l.at, note: l.note, ...(l.mine ? { mine: l.mine } : {}) })}`;
+  const why = (x) => [x.p.type[0]?.name === myCard.type[0]?.name && `Also a ${x.p.type[0].name}`, `${x.rating - rating >= 0 ? '+' : ''}${x.rating - rating} rating`, `scores ${pct(score(x))} with it (you ${pct(score(mine))})`].filter(Boolean);
+  done(`<h2>Players to learn from <small>${esc(what)}</small></h2>
+    <p class="lf-what">Players like you, further on: the same kind of game, your opening, a higher rating. Watch a game of theirs and it stops where it matters.</p>
+    <ul class="lf-list">${best.map((x) => `<li>
+      <span class="lf-match"><b>${x.match}%</b> like you</span>
+      <a class="lf-card" href="profile.html?u=${encodeURIComponent(x.name)}" title="${esc(x.name)}'s profile">${playerCard(x.name, x.p, x.p.type, x.sk)}</a>
+      <ul class="lf-why">${why(x).map((t) => `<li>${t}</li>`).join('')}</ul>
+      <div class="lf-games">${lessons(x).map((l, i) => `<a class="ghost lf-watch" href="${link(x, l)}">▶ Watch game ${i + 1}</a>`).join('')}</div>
+      <a class="lf-link" href="profile.html?u=${encodeURIComponent(x.name)}">See ${esc(x.name)}'s profile</a></li>`).join('')}</ul>`);
 }
 
 
@@ -770,7 +808,8 @@ function renderMine({ counted, slips, openings }, name) {
   // A slip's opening, as you met it: "vs" when the name belongs to your opponent's colour.
   const slipOpening = (s) => ({ family: s.family, side: s.side, vs: BLACKS.test(s.family || '') !== (s.side === 'b'), root: s.before });
   const slipName = (s) => `${slipOpening(s).vs ? 'vs ' : ''}${shortName(s.family || 'Opening')}, move ${Math.floor(s.before.length / 2) + 1}`;
-  el.innerHTML = `<div class="ml-col">
+  // Folded behind one line until opened: what you play and what to train, from your last games.
+  el.innerHTML = `<details class="ml-box"${el.querySelector('.ml-box')?.open ? ' open' : ''}><summary><b>Your last ${counted} ${speed} games</b> <span>What you play most, and what to train</span></summary><div class="ml-cols"><div class="ml-col">
       <h2>What you play most</h2>
       ${['w', 'b'].map((c) => `<h3>As ${sideName(c)}</h3><ul class="ml-list">${side(c).map(row).join('') || '<li class="info">Too few games.</li>'}</ul>`).join('')}
     </div>
@@ -789,9 +828,9 @@ function renderMine({ counted, slips, openings }, name) {
       <h3>Mistakes in whole games</h3>
       <div id="my-mistakes"></div>
       <h3>A player to learn from</h3>
-      <p class="info">Someone a bit above you who plays your main opening without your slips. <button type="button" class="link" id="lf-go">Find one</button></p>
-    </div>`;
-  $('#lf-go')?.addEventListener('click', () => findTeachers(name).catch((err) => { $('#learn-from').innerHTML = `<p class="info">${err.message}</p>`; }));
+      <p class="info">Someone like you who has climbed higher with your openings. <button type="button" class="link" id="lf-go">Find one</button></p>
+    </div></div></details>`;
+  $('#lf-go')?.addEventListener('click', () => { lfPanel(0, 0.1, 'Reading your games…'); $('#learn-from').scrollIntoView({ behavior: 'smooth', block: 'start' }); findTeachers(name).catch((err) => { $('#learn-from').innerHTML = `<p class="info">${err.message}</p>`; }); });
   el.querySelectorAll('[data-left]').forEach((b) => b.addEventListener('click', () => {
     const f = left[Number(b.dataset.left)];
     start(f.op);
@@ -3164,6 +3203,7 @@ if (location.search === '?make-popular') {
   document.body.innerHTML = `<pre id="popular">${JSON.stringify(out).replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`)}</pre>`;
   throw new Error('made the opening lists'); // stop here
 }
+if (new URLSearchParams(location.search).get('do') === 'learnfrom' && rating) lfPanel(0, 0.02, 'Starting…'); // at once, before the list loads
 showPicker().then(deepLink);
 
 // Links from My practice: ?practise=<w|b>~<opening> opens that opening's lines (or the list searched
@@ -3186,6 +3226,7 @@ async function deepLink() {
     const name = load(STORE + '-lichess-name', '') || account()?.name;
     if (!name) return;
     await checkMyGames(name);
+    $('#my-openings .ml-box')?.setAttribute('open', '');
     $('#my-openings').scrollIntoView({ behavior: 'smooth' });
     if (lastGames) runMistakes();
   }
@@ -3193,11 +3234,8 @@ async function deepLink() {
     const name = load(STORE + '-lichess-name', '') || account()?.name;
     if (!name) return;
     // The search takes a while: it shows at the top of the page from the first step, with a bar.
-    const el = $('#learn-from');
-    $('#picker .pick-h')?.after(el);
-    el.hidden = false;
-    el.innerHTML = `<h2>A player to learn from</h2><p class="info">Reading your last 100 ${speed} games…</p><div class="lf-bar" role="progressbar" aria-valuenow="5"><i style="width:5%"></i></div>`;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    lfPanel(0, 0.05, `Reading your last 100 ${speed} games: your style, your openings, where you slip…`);
+    $('#learn-from').scrollIntoView({ behavior: 'smooth', block: 'start' });
     await checkMyGames(name);
     findTeachers(name).catch((err) => { $('#learn-from').innerHTML = `<p class="info">${err.message}</p>`; });
   }
@@ -3213,7 +3251,7 @@ const pcard = (r) => `<div class="pf-pcard" data-band="${bandOf(r.rating)}"><div
     <p class="pf-pcard-name">${esc(r.name)}</p>
     <div class="pf-pcard-bars">${Object.entries(ABBR).map(([k, a]) => `<div><span>${a}</span><i style="--v:${r.skills?.[k] ?? 0}%"></i><b>${r.skills?.[k] ?? '–'}</b></div>`).join('')}</div></div>`;
 // The brand opens the landing; the Openings section (./#openings) goes straight to the openings.
-function landing() { $('.hero').hidden = !!account() || location.hash === '#openings'; } // a declaration: a link straight to a trainer calls it early
+function landing() { $('.hero').hidden = !!account() || location.hash === '#openings' || /[?&](do|practise)=/.test(location.search); } // a declaration: a link straight to a trainer calls it early
 landing();
 addEventListener('hashchange', landing);
 if (!account()) fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard').then((r) => (r.ok ? r.json() : [])).then((rows) => {

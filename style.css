@@ -868,7 +868,7 @@ h1, .picker h1 { font-family: var(--font-poster); font-weight: 400; text-transfo
 .seg { border-radius: var(--radius); }
 .seg button { border-radius: 2px; }
 .ghost, .controls button { color: var(--ink); }
-main a:not(.cta):not(.pf-act):not(.hero-p):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op):not(.lbd-name):not(.pf-star-strip):not(.gm-who), button.link { color: var(--hot); }
+main a:not(.cta):not(.pf-act):not(.lf-link):not(.lf-card):not(.lf-watch):not(.hero-p):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op):not(.lbd-name):not(.pf-star-strip):not(.gm-who), button.link { color: var(--hot); }
 .cta { border-radius: var(--radius); }
 a.cta { color: var(--accent-ink); }
 @media (max-width: 560px) { /* five sections on a phone: one row that scrolls sideways if it must */
@@ -1558,12 +1558,6 @@ button.depth-btn:hover { border-color: var(--ink); }
 /* A player to learn from */
 .learn-from { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; } /* one column: heading, what was found, then the players */
 .learn-from h2 { margin: 0; font-size: 18px; }
-.lf-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 22px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
-.lf-list li { display: grid; gap: 10px; align-content: start; padding: 0; border: 0; }
-.lf-card { justify-self: start; text-decoration: none; color: inherit; } .lf-card .pf-pcard { zoom: .62; box-shadow: none; transition: transform .15s; }
-.lf-card:hover .pf-pcard, .lf-card:focus-visible .pf-pcard { transform: translateY(-3px); }
-.lf-info { display: grid; gap: 4px; } .lf-info .lf-link { justify-self: start; margin-top: 6px; padding: 8px 14px; font-size: 14px; }
-@media (prefers-reduced-motion: reduce) { .lf-card .pf-pcard { transition: none; } }
 .lf-list small { color: var(--muted); font-family: var(--font-mono); }
 .lf-meta { font-size: 13px; color: var(--muted); }
 .lf-meta b { color: var(--ink); }
@@ -1902,3 +1896,26 @@ p, li, dd, small { text-wrap: pretty; }
 .lf-bar { height: 6px; margin-top: 10px; border-radius: 3px; background: var(--track, var(--line)); overflow: hidden; }
 .lf-bar i { display: block; height: 100%; background: var(--hot); transition: width .4s ease-out; }
 @media (prefers-reduced-motion: reduce) { .lf-bar i { transition: none; } }
+/* A lesson on the game page: the note where the autoplay stops */
+.gm-lesson { margin: 10px 0 0; padding: 12px 14px; border-left: 0; border-top: 3px solid var(--hot); background: var(--surface); border-radius: 0 0 var(--radius) var(--radius); }
+.gm-lesson p { margin: 0 0 8px; } .gm-lesson p:last-child { margin: 0; } .gm-lesson .cta { padding: 8px 16px; }
+/* A player to learn from: the search panel and the players found */
+.learn-from h2 small { color: var(--muted); font: 600 15px var(--font-body); margin-left: 8px; }
+.lf-what { margin: 0; max-width: 70ch; color: var(--muted); }
+.lf-steps { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 4px 0 0; padding: 0; list-style: none; counter-reset: lf; font-size: 14px; color: var(--muted); }
+.lf-steps li { counter-increment: lf; display: flex; align-items: center; gap: 8px; }
+.lf-steps li::before { content: counter(lf); display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line); font: 700 12px var(--font-body); }
+.lf-steps li.now { color: var(--ink); font-weight: 600; } .lf-steps li.now::before { border-color: var(--hot); color: var(--hot); }
+.lf-steps li.done::before { content: "✓"; background: var(--hot); border-color: var(--hot); color: #141414; }
+.learn-from .lf-bar { height: 12px; border-radius: 6px; margin-top: 6px; }
+.lf-now { margin: 0; font-size: 15px; }
+.lf-list { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 28px 20px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.lf-list > li { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.lf-match { font-size: 13px; color: var(--muted); } .lf-match b { font: 400 30px/1 var(--font-poster); color: var(--hot); margin-right: 4px; }
+.lf-card { text-decoration: none; color: inherit; } .lf-card .pf-pcard { zoom: .62; box-shadow: none; transition: transform .15s; }
+.lf-card:hover .pf-pcard, .lf-card:focus-visible .pf-pcard { transform: translateY(-3px); }
+.lf-why { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; font-size: 14px; color: var(--muted); }
+.lf-why li:first-child { color: var(--ink); font-weight: 600; }
+.lf-games { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; } .lf-games .ghost { padding: 7px 12px; font-size: 14px; text-decoration: none; color: var(--ink); }
+main .learn-from a.lf-link { color: var(--muted); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .lf-card .pf-pcard { transition: none; } }

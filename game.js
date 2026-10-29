@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261029221601';
-import { account } from './lichess.js?v=20261029221601';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029221601';
+import { drawBoard } from './board.js?v=20261029222947';
+import { account } from './lichess.js?v=20261029222947';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029222947';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -134,7 +134,11 @@ function drawPosition() {
   const c = new Chess(fens[idx]);
   const arrows = [];
   let last = idx ? { from: moves[idx - 1].from, to: moves[idx - 1].to } : null;
-  if (focus !== null && idx === focus) { // a key moment: the move played in red, the better one in green
+  if (lesson && idx === lesson.at) { // the lesson's stop: their move in green, the one you usually play in red
+    if (lesson.yours) arrows.push([lesson.yours.from, lesson.yours.to, RED]);
+    if (lesson.theirs) arrows.push([lesson.theirs.from, lesson.theirs.to, GREEN]);
+    last = null;
+  } else if (focus !== null && idx === focus) { // a key moment: the move played in red, the better one in green
     const m = moves[focus], b = bestMove(focus);
     if (!b || b.san !== m.san) arrows.push([m.from, m.to, RED]);
     if (b) arrows.push([b.from, b.to, GREEN]);
@@ -278,5 +282,28 @@ addEventListener('keydown', (e) => {
   else if (e.key === 'End') go(moves.length);
 });
 
+// A lesson from "A player to learn from": ?play=1&at=<ply>&note=…&mine=<your usual move>. The game plays
+// itself a move a second and stops at the ply where you usually go wrong, the player's move in green and
+// yours in red, with the note; Play on goes to the end. Any button press stops it.
+let lesson = null, timer = null;
+const stopPlay = () => { clearInterval(timer); timer = null; };
+function playTo(end, then) {
+  stopPlay();
+  timer = setInterval(() => { if (idx >= end) { stopPlay(); then?.(); } else go(idx + 1); }, 1000);
+}
+function startLesson() {
+  const at = Math.min(Number(q.get('at')) || moves.length, moves.length), mine = q.get('mine');
+  const yours = mine && (() => { try { return new Chess(fens[at]).move(mine); } catch { return null; } })();
+  lesson = { at, theirs: moves[at], yours };
+  go(0);
+  document.querySelector('#here').insertAdjacentHTML('beforebegin', `<div class="gm-lesson" id="gm-lesson"><p><b>Watch:</b> the game plays itself and stops where it matters.</p></div>`);
+  playTo(at, () => {
+    $('#gm-lesson').innerHTML = `<p>${esc(q.get('note') || 'This is the moment to look at.')}</p><button type="button" class="cta" id="gm-on">Play on</button>`;
+    drawPosition();
+    $('#gm-on').addEventListener('click', () => { $('#gm-lesson').remove(); lesson = null; playTo(moves.length); });
+  });
+}
+document.querySelector('.controls')?.addEventListener('click', () => { if (timer) stopPlay(); }, true);
+
 if (!name || !id) $('#profile-msg').innerHTML = 'Open a game from <a href="profile.html">your profile</a>.';
-else load().then(render).catch((err) => { $('#profile-msg').textContent = err.message; });
+else load().then(render).then(() => { if (q.get('play')) startLesson(); }).catch((err) => { $('#profile-msg').textContent = err.message; });
