@@ -1838,5 +1838,6 @@ p, li, dd, small { text-wrap: pretty; }
 /* Phones: the name, then straight the card; Star, Compare, Games and Lichess come after the portrait */
 @media (max-width: 640px) {
   #profile > .pf-players { order: 1; }
+  .pf-name { text-align: center; }
   #profile > .pf-hero ~ :not(.pf-players) { order: 2; }
 }
