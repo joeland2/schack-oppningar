@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029092452';
-import { STYLE_OF } from './styles.js?v=20261029092452';
+import { account, login, finishLogin } from './lichess.js?v=20261029092601';
+import { STYLE_OF } from './styles.js?v=20261029092601';
 
 const MAX = 500;
 const PV = 19;
@@ -958,12 +958,16 @@ function hover(el) {
   const pts = JSON.parse(svg.dataset.pts), g = svg.querySelector('.hov'), tip = el.querySelector('.pf-tip');
   const move = (e) => {
     const b = svg.getBoundingClientRect(), px = ((e.clientX - b.left) / b.width) * 760;
-    const near = pts.reduce((a, q) => (Math.abs(q[0] - px) < Math.abs(a[0] - px) ? q : a));
+    // Anywhere on the line, not only at games: the rating then is the one after the last game before it,
+    // the dot sits on the drawn line, and the date follows the cursor (the x axis is time).
+    const x = Math.max(pts[0][0], Math.min(pts[pts.length - 1][0], px));
+    const i = Math.max(0, pts.findLastIndex((q) => q[0] <= x)), a = pts[i], z = pts[Math.min(i + 1, pts.length - 1)];
+    const f = z[0] > a[0] ? (x - a[0]) / (z[0] - a[0]) : 0;
     g.setAttribute('visibility', 'visible');
-    g.querySelector('line').setAttribute('x1', near[0]); g.querySelector('line').setAttribute('x2', near[0]);
-    g.querySelector('circle').setAttribute('cx', near[0]); g.querySelector('circle').setAttribute('cy', near[1]);
-    tip.textContent = `${near[2]} on ${fmtDay(near[3])}`;
-    tip.style.left = `${b.left - el.getBoundingClientRect().left + (near[0] / 760) * b.width}px`; // an SVG has no offsetLeft
+    g.querySelector('line').setAttribute('x1', x); g.querySelector('line').setAttribute('x2', x);
+    g.querySelector('circle').setAttribute('cx', x); g.querySelector('circle').setAttribute('cy', a[1] + (z[1] - a[1]) * f);
+    tip.textContent = `${f > 0.999 ? z[2] : a[2]} on ${fmtDay(a[3] + (z[3] - a[3]) * f)}`;
+    tip.style.left = `${b.left - el.getBoundingClientRect().left + (x / 760) * b.width}px`; // an SVG has no offsetLeft
   };
   svg.addEventListener('pointermove', move);
   svg.addEventListener('pointerleave', () => { g.setAttribute('visibility', 'hidden'); tip.textContent = ''; });
