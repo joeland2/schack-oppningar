@@ -1593,3 +1593,6 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .start-here b { font-weight: 700; }
 /* The move symbols matter only where moves are judged: the trainer */
 body:has(#trainer[hidden]) .legend-mini { display: none; }
+/* Hint is the helpful button, so it reads clearly; Restart stays quiet until it means going on */
+#trainer .controls #hint:not(:disabled) { color: var(--ink); border-color: var(--line); font-weight: 600; }
+#trainer .controls #restart:not(.primary) { margin-left: auto; }
