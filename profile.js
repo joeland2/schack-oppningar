@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029134126';
-import { STYLE_OF } from './styles.js?v=20261029134126';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029134425';
+import { STYLE_OF } from './styles.js?v=20261029134425';
 
 const MAX = 500;
 const PV = 27;
@@ -819,12 +819,12 @@ if (account()) {
 }
 
 // ---------- The leaderboard ----------
-// Your card goes to the leaderboard only if you ticked the box, and is sent again when your profile
-// shows newer numbers. The leaderboard function checks your Lichess login and stores the card under
-// the name Lichess gives back. Unticking removes you.
+// Logged in with Lichess, your card is on the leaderboard unless you untick the box; it is sent again
+// when your profile shows newer numbers. The leaderboard function checks your Lichess login and stores
+// the card under the name Lichess gives back. Unticking removes you.
 const BOARD = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard';
 const BOARD_KEY = 'chess-trainer-leaderboard';
-const onBoard = () => { try { return localStorage.getItem(BOARD_KEY) === '1'; } catch { return false; } };
+const onBoard = () => { try { return localStorage.getItem(BOARD_KEY) !== '0'; } catch { return true; } };
 const sentCards = new Set();
 function boardCard(name, full, sp) {
   const speed = sp === 'all' ? full.speeds[0]?.speed : sp, p = speed && forSpeed(name, full, speed);
