@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029161444';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029161444';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029161444';
-import { GUIDE } from './guide.js?v=20261029161444';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029161444';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029161444';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029161444';
-import { storedGames } from './profile.js?v=20261029161444';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029161623';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029161623';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029161623';
+import { GUIDE } from './guide.js?v=20261029161623';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029161623';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029161623';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029161623';
+import { storedGames } from './profile.js?v=20261029161623';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1070,6 +1070,7 @@ function askGo() {
       <span class="go-row">From the start</span><button type="button" data-go="learn">Learn again</button><button type="button" data-go="try">Practise it</button>
     </div></div>`;
   showGo(true);
+  confetti(done === 'Line cleared' ? 110 : done === 'Line learned' ? 60 : 0);
   say('Choose how to go on.', 'good');
   $('#go-ask button')?.focus();
 }
@@ -1911,12 +1912,15 @@ function flash(text, kind = 'line') {
 
 // Checkmate by you: a banner over the board and a short burst of confetti (no confetti with reduced motion).
 function celebrate() {
-  const frame = $('.board-frame');
   banner('Checkmate!');
+  confetti(90);
+}
+// A burst of confetti over the board: a mate, a line learned, cleared or played against the clock.
+function confetti(n) {
   if (REDUCE_MOTION) return;
-  const box = frame.getBoundingClientRect();
+  const box = $('.board-frame').getBoundingClientRect();
   const colours = ['#2e7d32', '#1d5fbf', '#e0b23a', '#c4242a', '#f0d9b5', '#b58863'];
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < n; i++) {
     const c = document.createElement('i');
     c.className = 'confetti';
     c.style.cssText = `left:${box.left + Math.random() * box.width}px;top:${box.top - 10}px;background:${colours[i % colours.length]};`
@@ -2670,7 +2674,7 @@ function finish() {
       <button type="button" class="cta go-next" data-trial="continue">Next line in Time<small>the clock starts on your first move, ${Math.ceil(trialLeft() / 1000)} s left</small></button>
       ${opt('learn', 'Learn the next line', 'Every move shown, with arrows')}
       ${opt('try', 'Practise the next line', 'From memory, without the clock')}</div>`;
-    return setTimeout(() => { if (mode === 'time') { showGo(true); $('#go-ask button')?.focus(); } }, 300); }
+    return setTimeout(() => { if (mode === 'time') { showGo(true); confetti(misses ? 50 : 110); $('#go-ask button')?.focus(); } }, 300); }
   // A mate in 10 or less for you at the line's end is played out too, before the line is done. That
   // needs Stockfish's verdict, so wait for it (the board waits with you).
   const key = evalKey(game.fen());
@@ -3035,7 +3039,7 @@ function setMode(m, restart = true, remember = true) {
   $('#mode-about').textContent = {
     learn: 'Every move is shown, with the replies you can expect at your level. Nothing is scored.',
     try: `Practice: play lines from memory, ${COHORT} at a time in course order; a new line joins when you clear one. A cleared line comes back for review after 1, 3, 7, 14 and 30 days.`,
-    time: `Time trial: ${TRIAL_S} seconds to play as many moves of this opening's lines as you can from memory, each right move +${TRIAL_RIGHT} s. One wrong move and it starts again. The clock starts on your first move.`,
+    time: `Time challenge: ${TRIAL_S} seconds to play as many moves of this opening's lines as you can from memory, each right move +${TRIAL_RIGHT} s. One wrong move and it starts again. The clock starts on your first move.`,
     explore: 'Play any move: the opponent answers as players at your level most often do, and you see how often each move is played and how it scores. To try another answer, step back and move their piece.',
   }[m];
   if (!lines.length) return;

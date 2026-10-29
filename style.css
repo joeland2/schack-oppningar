@@ -1562,7 +1562,7 @@ button.depth-btn:hover { border-color: var(--ink); }
 @media (max-width: 560px) { .ostats { flex-wrap: wrap; white-space: normal; } }
 
 /* The path beside the board: 1 Learn, then 2 Practice; explore and the time trial are side roads */
-.path { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; margin-top: 4px; }
+.path { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6px; margin-top: 4px; }
 .path-step { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: none; color: var(--muted); text-align: left; cursor: pointer; }
 .path-step b { display: block; font-size: 15px; font-weight: 600; color: var(--ink); }
 .path-step small { display: block; font-size: 12px; }
@@ -1685,3 +1685,10 @@ p, li, dd, small { text-wrap: pretty; }
 .gm-moves-card .down b { color: var(--bad); }
 .gm-moves-card small { color: var(--muted); margin-left: 4px; }
 .gm-impact:empty { display: none; }
+
+.path-step { padding: 10px; gap: 8px; }
+.path-step b { font-size: 14px; }
+.path-step small { font-size: 11px; }
+/* Three steps side by side: the number above the words, so each step has the width it needs */
+.path-step { flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 12px; }
+.path-step b { white-space: nowrap; }

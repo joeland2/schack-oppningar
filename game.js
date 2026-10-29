@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261029161444';
-import { account } from './lichess.js?v=20261029161444';
-import { storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf } from './profile.js?v=20261029161444';
+import { drawBoard } from './board.js?v=20261029161623';
+import { account } from './lichess.js?v=20261029161623';
+import { storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf } from './profile.js?v=20261029161623';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -169,6 +169,7 @@ function render() {
     <p class="gm-sides"><span><img src="pieces/wK.svg" alt="">White: <b>${esc(g.players.white.user?.id || 'anonymous')}</b> ${g.players.white.rating || ''}</span>
       <span><img src="pieces/bK.svg" alt="">Black: <b>${esc(g.players.black.user?.id || 'anonymous')}</b> ${g.players.black.rating || ''}</span></p>
     <p class="info">You played ${esc(side)} · ${g.speed} · ${new Date(g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · <a href="https://lichess.org/${g.id}${side === 'black' ? '/black' : ''}" target="_blank" rel="noopener">On Lichess</a></p>
+    <section class="gm-impact" id="gm-impact"></section>
     <section class="gm-story">
       <p class="gm-head">${s.head}</p>
       ${s.acc ? `<p class="gm-acc">Accuracy: <b>${s.acc[0]}%</b> you, <b>${s.acc[1] ?? '–'}%</b> your opponent</p>` : ''}
@@ -176,7 +177,6 @@ function render() {
         ${s.bad.length ? `<h2 class="pf-bad">What went badly</h2><ul>${s.bad.map((x) => `<li>${x}</li>`).join('')}</ul>` : ''}`
       : `<p class="gm-noan">This game has no computer analysis yet, so there is no read on what went well or badly. <button type="button" class="cta" data-analyse>Analyse it now</button> <small>About ${Math.max(2, Math.round(moves.length * 0.035))} seconds, with Stockfish in your browser.</small></p>`}
     </section>
-    <section class="gm-impact" id="gm-impact"></section>
     ${graph()}
     ${list.length ? `<section class="gm-moments"><h2>The moves that decided it</h2><ul>${list.map((x) => `<li><button type="button" class="gm-moment ${x.mine ? 'mine' : 'theirs'}" data-moment="${x.i}">
       <span class="gm-j j-${x.j}">${GLYPHS[x.j]}</span><span><b>${moveNo(x.i)} ${x.m.san}</b> ${x.mine ? 'by you' : 'by your opponent'}${x.best ? `: <b>${x.best.san}</b> was better` : ''}<br><small>${x.mine ? `cost you ${x.swing}% of your winning chances` : `gave you ${x.swing}%`}</small></span></button></li>`).join('')}</ul></section>` : ''}

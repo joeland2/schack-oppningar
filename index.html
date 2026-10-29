@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261029161444">
-  <script src="header.js?v=20261029161444" defer></script>
-  <script src="theme.js?v=20261029161444"></script>
+  <link rel="stylesheet" href="style.css?v=20261029161623">
+  <script src="header.js?v=20261029161623" defer></script>
+  <script src="theme.js?v=20261029161623"></script>
 </head>
 <body>
   <header class="top">
@@ -104,7 +104,7 @@
         <button id="m-back" class="m-back" type="button" aria-label="All openings"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
         <div class="m-title"><b id="m-name"></b><small id="m-line"></small></div>
         <label class="m-mode"><span class="visually-hidden">Mode</span><select id="m-mode">
-          <option value="learn">1 · Learn</option><option value="try">2 · Practice</option><option value="explore">Explore</option><option value="time">Time trial</option>
+          <option value="learn">1 · Learn</option><option value="try">2 · Practice</option><option value="time">3 · Time challenge</option><option value="explore">Explore</option>
         </select></label>
       </div>
       <div id="trial-clock" class="trial-clock" hidden aria-live="off">
@@ -152,8 +152,10 @@
           <button id="mode-learn" class="path-step" type="button" aria-pressed="true"><span class="path-n">1</span><span><b>Learn</b><small>every move shown</small></span></button>
           <svg class="path-arrow ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           <button id="mode-try" class="path-step" type="button" aria-pressed="false"><span class="path-n">2</span><span><b>Practice</b><small id="path-due">from memory</small></span></button>
+          <svg class="path-arrow ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <button id="mode-time" class="path-step" type="button" aria-pressed="false"><span class="path-n">3</span><span><b>Time challenge</b><small>against the clock</small></span></button>
         </nav>
-        <p class="path-extra">Or <button id="mode-explore" class="link" type="button" aria-pressed="false">explore freely</button> · <button id="mode-time" class="link" type="button" aria-pressed="false">a time trial</button></p>
+        <p class="path-extra">Or <button id="mode-explore" class="link" type="button" aria-pressed="false">explore freely</button></p>
         <p id="mode-about" class="choice-about" hidden></p>
       </div>
       <div id="line-done" class="line-done" hidden></div>
@@ -200,7 +202,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261029161444"></script>
+  <script type="module" src="app.js?v=20261029161623"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>
