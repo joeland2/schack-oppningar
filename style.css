@@ -1792,6 +1792,9 @@ p, li, dd, small { text-wrap: pretty; }
   .filters .choice { grid-template-columns: 62px minmax(0, 1fr); align-items: center; gap: 8px; }
   .filters .choice-label { font-size: 12px; line-height: 1.2; }
   .filters .choice-about { display: none; } /* the summary line names the style */
+  .filters .choice-band { grid-template-columns: 1fr; gap: 2px; } /* the slider needs the whole width */
+  .filters .choice-band .choice-label { font-size: 13px; }
+  .range2-ticks { font-size: 10px; letter-spacing: -.02em; }
   .filters .seg, .filters .seg:has([data-style]) { display: flex; flex-wrap: nowrap; width: auto; overflow-x: auto; scrollbar-width: none; padding: 2px; }
   .filters .seg::-webkit-scrollbar { display: none; }
   .filters .seg button { flex: none; padding: 6px 10px; font-size: 14px; white-space: nowrap; }
@@ -1924,14 +1927,30 @@ p, li, dd, small { text-wrap: pretty; }
 main .learn-from a.lf-link { font-size: 14px; }
 @media (prefers-reduced-motion: reduce) { .lf-card .pf-pcard { transition: none; } }
 
-/* Two-handle rating range: two range inputs on one track; only the thumbs take the pointer. */
+/* Two-handle rating range: two range inputs on one track; only the thumbs take the pointer. It has a
+   row of its own across the filter box, with a mark at every step. */
+.choice-band { order: 10; flex: 1 1 100%; }
 .choice-band .choice-label b { color: var(--ink); font-weight: 700; }
-.range2 { position: relative; height: 28px; min-width: 200px; }
-.range2-track { position: absolute; left: 10px; right: 10px; top: 12px; height: 4px; border-radius: 2px; background: var(--line); }
-.range2-track i { position: absolute; top: 0; bottom: 0; background: var(--hot); border-radius: 2px; }
-.range2 input { position: absolute; inset: 0; width: 100%; margin: 0; background: none; pointer-events: none; -webkit-appearance: none; appearance: none; }
+.range2 { position: relative; height: 32px; }
+.range2-track { position: absolute; left: 12px; right: 12px; top: 13px; height: 6px; border-radius: 3px; background: var(--line); }
+.range2-track i { position: absolute; top: 0; bottom: 0; background: var(--hot); border-radius: 3px; }
+.range2 input { position: absolute; inset: 0; width: 100%; height: 32px; margin: 0; background: none; pointer-events: none; -webkit-appearance: none; appearance: none; }
 .range2 input::-webkit-slider-runnable-track { background: none; }
-.range2 input::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); border: 2px solid var(--hot); cursor: grab; }
-.range2 input::-moz-range-thumb { pointer-events: auto; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); border: 2px solid var(--hot); cursor: grab; }
+.range2 input::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; width: 24px; height: 24px; border-radius: 50%; background: var(--surface); border: 3px solid var(--hot); cursor: grab; }
+.range2 input::-moz-range-thumb { pointer-events: auto; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 3px solid var(--hot); cursor: grab; }
 .range2 input::-moz-range-track { background: none; }
+.range2-ticks { position: relative; height: 18px; margin: 0 12px; font: 500 12px/1 var(--font-mono); color: var(--muted); }
+.range2-ticks span { position: absolute; top: 2px; transform: translateX(-50%); white-space: nowrap; }
+.range2-ticks span.in { color: var(--ink); font-weight: 700; }
 .range2 input:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--hot); outline-offset: 2px; }
+
+/* The lesson's first box: what to look for before the game plays itself. */
+.gm-intro { max-width: 460px; width: calc(100% - 32px); padding: 22px 24px; border: 0; border-top: 4px solid var(--hot); border-radius: var(--radius); background: var(--surface); color: var(--ink); }
+.gm-intro::backdrop { background: rgb(0 0 0 / .55); }
+.gm-intro h2 { margin: 0 0 10px; font-size: 20px; }
+.gm-intro p { margin: 0 0 10px; line-height: 1.45; }
+.gm-intro form { margin: 16px 0 0; }
+.gm-verdict { color: var(--muted); }
+.gm-vs { display: grid; gap: 4px; margin-bottom: 6px; color: var(--ink); }
+.gm-vs .bad { border-left: 3px solid var(--bad); padding-left: 8px; }
+.gm-vs .good { border-left: 3px solid var(--good); padding-left: 8px; }

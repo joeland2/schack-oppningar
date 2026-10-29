@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029224059';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029224059';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029224059';
-import { GUIDE } from './guide.js?v=20261029224059';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029224059';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029224059';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029224059';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029224059';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029224533';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029224533';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029224533';
+import { GUIDE } from './guide.js?v=20261029224533';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029224533';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029224533';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029224533';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029224533';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -769,11 +769,16 @@ async function findTeachers(name) {
   // Games to watch: where you usually slip and they play on well, else their wins with the opening.
   const lessons = (x) => {
     const out = [];
-    mySlips.forEach((sl, k) => { const ex = x.ex[k]; if (ex) out.push({ id: ex.id, at: sl.before.length, mine: sl.played, note: `Here you usually play ${sl.played} (move ${Math.floor(sl.before.length / 2) + 1}). ${x.name} plays ${ex.move}.` }); });
-    for (const w of x.wins) { if (out.length >= 2) break; if (!out.some((l) => l.id === w.id)) out.push({ id: w.id, at: w.at, note: `The ${shortName(o.family)} is over here. Watch how ${x.name} goes on from it, and wins.` }); }
+    mySlips.forEach((sl, k) => {
+      const ex = x.ex[k], no = Math.floor(sl.before.length / 2) + 1;
+      if (ex) out.push({ id: ex.id, at: sl.before.length, mine: sl.played, me: name, note: `Here you usually play ${sl.played} (move ${no}). ${x.name} plays ${ex.move}.`,
+        intro: `In your ${shortName(o.family)} games you reach this position often. At move ${no} you played ${sl.played} in ${sl.games} game${sl.games > 1 ? 's' : ''} and scored ${pct(sl.points / sl.games)}. Strong players mostly play ${sl.best} here.\n${x.name} (${x.rating}) plays ${ex.move} in the same spot, and scores ${pct(score(x))} with the opening against your ${pct(score(mine))}.\nThe game plays itself and stops at move ${no}. Stockfish then checks your usual move against theirs.` });
+    });
+    for (const w of x.wins) { if (out.length >= 2) break; if (!out.some((l) => l.id === w.id)) out.push({ id: w.id, at: w.at, me: name, note: `The ${shortName(o.family)} is over here. Watch how ${x.name} goes on from it, and wins.`,
+      intro: `A win of ${x.name}'s (${x.rating}) with the ${shortName(o.family)}. They score ${pct(score(x))} with it, you ${pct(score(mine))}.\nThe game plays itself and stops where the opening ends: look at how the pieces stand, then play on to see how they use it.` }); }
     return out.slice(0, 2);
   };
-  const link = (x, l) => `game.html?${new URLSearchParams({ u: x.name, id: l.id, play: 1, at: l.at, note: l.note, ...(l.mine ? { mine: l.mine } : {}) })}`;
+  const link = (x, l) => `game.html?${new URLSearchParams({ u: x.name, id: l.id, play: 1, at: l.at, note: l.note, intro: l.intro, me: l.me || '', ...(l.mine ? { mine: l.mine } : {}) })}`;
   // Under each card: why they match, then what they do with the opening, each against you.
   const why = (x) => [
     x.p.type[0]?.name === myCard.type[0]?.name ? `Also a ${x.p.type[0].name}${x.p.type[1] ? ` + ${x.p.type[1].name}` : ''}` : `A ${x.p.type[0]?.name || 'player'}, you are a ${myCard.type[0]?.name}`,
@@ -3104,6 +3109,8 @@ function renderBand(lo = bandNow()[0], hi = bandNow()[1]) {
   const fill = $('#band .range2-track i'), max = EDGES.length - 1;
   $('#band-lo').value = lo; $('#band-hi').value = hi;
   fill.style.left = `${(lo / max) * 100}%`; fill.style.right = `${100 - (hi / max) * 100}%`;
+  // A mark at every step: the steps are the explorer's own rating groups, there are no finer ones.
+  $('#band-ticks').innerHTML = EDGES.map((e, i) => `<span class="${i >= lo && i <= hi ? 'in' : ''}" style="left:${(i / max) * 100}%">${i === max ? 'Top' : e}</span>`).join('');
   const saved = band; band = [lo, hi]; // label the handles' spot without saving it
   $('#band-text').textContent = levelText();
   band = saved;

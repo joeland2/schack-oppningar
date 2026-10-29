@@ -1,6 +1,6 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029224059';
+import { account, login, finishLogin } from './lichess.js?v=20261029224533';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -129,11 +129,13 @@ function render(s) {
           <ol class="ad-events">${v.events.map((e) => `<li><span class="num">${when(e.at)}</span><span>${e.kind === 'view' ? `Opened ${esc(pageName(e.page))}` : `${esc(KIND[e.kind] || e.kind)}${e.target ? `: <b>${targetHtml(e.kind, e.target)}</b>` : ''}`}</span></li>`).join('')}</ol></details>`).join('')}</div>
       ${s.visitors.length > 10 ? `<button type="button" class="ghost ad-more" data-more aria-expanded="false">Show all ${s.visitors.length}</button>` : ''}`
       : '<p class="info">Nobody yet.</p>'}</section>
+    <div class="pf-two">
     <section class="pf-card"><div class="ad-head"><h2>Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
       ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${s.recentActions.slice(0, 15).map((r) => {
         return `<li><span><b>${r.kind === 'card' ? 'Card' : 'Analysis'}</b> ${targetHtml(r.kind, (r.target || '').replace(/ · $/, '')).replace('<a ', r.kind === 'card' ? `<a data-card="${esc(r.target || '')}" ` : '<a ')}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`; }).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
     <section class="pf-card"><div class="ad-head"><h2>Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
       ${(s.recentProfiles || []).length ? `<ul class="pf-rows ad-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: (r.target || '').split(' #')[0] })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
+    </div>
     <div class="pf-two">
       <section class="pf-card"><h2>Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="ad-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
       <section class="pf-card"><h2>Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>

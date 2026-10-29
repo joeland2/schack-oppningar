@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261029224059';
-import { account } from './lichess.js?v=20261029224059';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029224059';
+import { drawBoard } from './board.js?v=20261029224533';
+import { account } from './lichess.js?v=20261029224533';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029224533';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -125,7 +125,7 @@ function kindOf(i) {
 function players(bottom) {
   const strip = (c) => {
     const pl = g.players[c === 'w' ? 'white' : 'black'], you = (c === 'w') === (side === 'white');
-    return `<img src="pieces/${c}K.svg" alt=""><b>${esc(pl.user?.id || 'anonymous')}</b> <span>${pl.rating || ''}</span> <small>${c === 'w' ? 'White' : 'Black'}${you && name ? ' · you' : ''}</small>`;
+    return `<img src="pieces/${c}K.svg" alt=""><b>${esc(pl.user?.id || 'anonymous')}</b> <span>${pl.rating || ''}</span> <small>${c === 'w' ? 'White' : 'Black'}${you && name && !q.get('play') ? ' · you' : ''}</small>`;
   };
   $('#top-player').innerHTML = strip(bottom === 'w' ? 'b' : 'w');
   $('#bottom-player').innerHTML = strip(bottom);
@@ -145,7 +145,7 @@ function drawPosition() {
     last = null;
   } else if (showBest && idx < moves.length && bestMove(idx)) { const b = bestMove(idx); arrows.push([b.from, b.to, GREEN]); }
   const bottom = (side === 'white') !== flip ? 'w' : 'b';
-  drawBoard($('#board'), c, { side: bottom, last, arrows, mark: focus === null && idx ? { sq: moves[idx - 1].to, kind: kindOf(idx - 1) } : null });
+  drawBoard($('#board'), c, { side: bottom, last, arrows, mark: focus === null && idx && kindOf(idx - 1) ? { sq: moves[idx - 1].to, kind: kindOf(idx - 1) } : null });
   players(bottom);
   const i = idx - 1, j = g.analysis?.[i]?.judgment?.name;
   const fb = focus !== null && idx === focus ? bestMove(focus) : null;
@@ -296,12 +296,49 @@ function startLesson() {
   const yours = mine && (() => { try { return new Chess(fens[at]).move(mine); } catch { return null; } })();
   lesson = { at, theirs: moves[at], yours };
   go(0);
-  document.querySelector('#here').insertAdjacentHTML('beforebegin', `<div class="gm-lesson" id="gm-lesson"><p><b>Watch:</b> the game plays itself and stops where it matters.</p></div>`);
-  playTo(at, () => {
-    $('#gm-lesson').innerHTML = `<p>${esc(q.get('note') || 'This is the moment to look at.')}</p><button type="button" class="cta" id="gm-on">Play on</button>`;
+  // Stockfish reads the game while it plays, so the stop can say which move holds up and the slips show.
+  const analysed = g.analysis || !$('[data-analyse]') ? Promise.resolve() : analyse();
+  const intro = (q.get('intro') || '').split('\n').filter(Boolean);
+  document.querySelector('#here').insertAdjacentHTML('beforebegin', `<div class="gm-lesson" id="gm-lesson">${intro.length ? intro.map((t) => `<p>${esc(t)}</p>`).join('') : '<p><b>Watch:</b> the game plays itself and stops where it matters.</p>'}</div>`);
+  const run = () => playTo(at, async () => {
+    const el = $('#gm-lesson');
+    el.innerHTML = `<p>${esc(q.get('note') || 'This is the moment to look at.')}</p><p class="gm-verdict">Stockfish is checking the moves…</p><button type="button" class="cta" id="gm-on">Play on</button>`;
     drawPosition();
-    $('#gm-on').addEventListener('click', () => { $('#gm-lesson').remove(); lesson = null; playTo(moves.length); });
+    $('#gm-on').addEventListener('click', () => { el.remove(); lesson = null; playTo(moves.length); });
+    await analysed;
+    const v = await verdict(at, yours, moves[at]).catch(() => null);
+    const out = el.querySelector('.gm-verdict');
+    if (out) out.innerHTML = v || '';
   });
+  if (!intro.length) return run();
+  // First what to look for, in a box over the page; the game starts when it is closed.
+  const d = document.createElement('dialog');
+  d.className = 'gm-intro';
+  d.innerHTML = `<h2>What to watch</h2>${intro.map((t) => `<p>${esc(t)}</p>`).join('')}<form method="dialog"><button class="cta">Start watching</button></form>`;
+  document.body.append(d);
+  d.addEventListener('close', () => { d.remove(); run(); });
+  d.showModal();
+}
+// Your usual move against theirs at the lesson's stop, as winning chances for the side to move, and
+// the answer that punishes yours: what makes one move better than the other.
+async function verdict(at, yours, theirs) {
+  const white = new Chess(fens[at]).turn() === 'w';
+  const check = async (m) => {
+    const c = new Chess(fens[at]); c.move(m.san);
+    const r = await engineEval(c.fen());
+    let reply = null;
+    try { reply = r.best && c.move({ from: r.best.slice(0, 2), to: r.best.slice(2, 4), promotion: r.best[4] }).san; } catch {}
+    return { pct: Math.round(winPct(white ? r.cp : -r.cp)), reply };
+  };
+  const b = await check(theirs);
+  const who = esc(name);
+  if (!yours || yours.san === theirs.san) return `Stockfish: after ${who}'s <b>${theirs.san}</b> the side to move here has <b>${b.pct}%</b> winning chances.`;
+  const a = await check(yours), d = b.pct - a.pct;
+  return `<span class="gm-vs"><span class="bad">Your usual <b>${yours.san}</b>: ${a.pct}% winning chances${a.reply ? `; the best answer to it is <b>${a.reply}</b>` : ''}.</span>
+    <span class="good">${who}'s <b>${theirs.san}</b>: ${b.pct}%.</span></span>
+    ${d >= 8 ? `That is the difference between you here: ${theirs.san} keeps ${d} percent more of the game. Next time you reach this, play ${theirs.san}.`
+      : d <= -8 ? `Here your move is actually the stronger one. The difference is in what comes after: play on and watch how ${who} goes on.`
+      : 'Both moves are about as good. The difference is in the plan that follows: play on and watch the next few moves.'}`;
 }
 document.querySelector('.controls')?.addEventListener('click', () => { if (timer) stopPlay(); }, true);
 
