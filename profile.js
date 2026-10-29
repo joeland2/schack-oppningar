@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029065250';
-import { STYLE_OF } from './styles.js?v=20261029065250';
+import { account, login, finishLogin } from './lichess.js?v=20261029071724';
+import { STYLE_OF } from './styles.js?v=20261029071724';
 
 const MAX = 500;
 const PV = 14;
@@ -220,10 +220,22 @@ console.assert(typeOf({ attacking: 0.54, solid: 0.2, queensOff: 0.1, draws: 0.05
 // Skill bars, 0-100, each read from one thing in the games; null when there are too few games to say.
 // The raw scales are rules of thumb (50 is a so-so result for the player); skillsOf puts them on the card's scale.
 const clamp = (x) => Math.round(Math.max(0, Math.min(100, x)));
-// Each skill compares the player with their own opponents in the same games: 50 = as good as them.
-function skillsOf(p) {
-  return rawSkills(p).map((x) => ({ ...x, raw: x.v }));
+// The card's scale is set by the rating, so stronger players have higher cards (about 60 at 1200, 76 at
+// 2000, 88 at 2800). Each skill then moves up to 10 above or below that by how the player does against
+// their own opponents at their level (raw: 50 = as good as them), so strengths and leaks still show.
+const LEVEL = [[400, 35], [1200, 60], [2000, 76], [2800, 88], [3300, 92]]; // the top stays below 99, so the best still have peaks
+function levelOf(rating) {
+  if (!rating) return 50;
+  const i = LEVEL.findIndex(([r]) => r >= rating);
+  if (i <= 0) return LEVEL[i < 0 ? LEVEL.length - 1 : 0][1];
+  const [[r0, v0], [r1, v1]] = [LEVEL[i - 1], LEVEL[i]];
+  return v0 + ((rating - r0) / (r1 - r0)) * (v1 - v0);
 }
+function skillsOf(p) {
+  const base = levelOf(p.speeds?.[0]?.rating);
+  return rawSkills(p).map((x) => ({ ...x, raw: x.v, v: x.v === null ? null : Math.min(99, clamp(base + Math.max(-10, Math.min(10, (x.v - 50) / 2.5)))) })); // raw 25–75 spans the full ±10
+}
+console.assert(levelOf(1200) === 60 && levelOf(2400) === 82 && levelOf(5000) === 92 && levelOf(100) === 35, 'levelOf');
 function rawSkills(p) {
   const q = p.peer || {}, an = (q.analysed ?? 0) >= ENOUGH, pawns = (cp) => `${cp >= 0 ? '+' : '−'}${(Math.abs(cp) / 100).toFixed(1)}`;
   return [
@@ -658,7 +670,7 @@ async function cardPng(name, p, t, skills, detail, btn) {
 function cardNote(name, p, me) {
   const main = p.speeds[0];
   if (!main) return '';
-  return `<details class="pf-card-help"><summary>How the card works</summary><p class="pf-card-note">The six skills compare ${me ? 'you' : esc(name)} with ${me ? 'your' : 'their'} own opponents rated ${main.rating - PEER}–${main.rating + PEER}, in the same games: <b>50 means as good as them</b>, higher is better. The big number is the average of the six.</p></details>`;
+  return `<details class="pf-card-help"><summary>How the card works</summary><p class="pf-card-note"><b>The level comes from the ${main.speed} rating</b>: about 60 at 1200, 76 at 2000, 88 at 2800. Each skill sits up to 10 above or below it, by how ${me ? 'you do' : `${esc(name)} does`} against ${me ? 'your' : 'their'} own opponents rated ${main.rating - PEER}–${main.rating + PEER} in the same games. The big number is the average of the six.</p></details>`;
 }
 function render(name, at, p) {
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
@@ -686,7 +698,7 @@ function render(name, at, p) {
       <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
         <button type="button" class="link" data-skill-text aria-expanded="${showSkillText}">${showSkillText ? 'Hide explanations' : 'What each one means'}</button></div>
       ${skillBars(skills, say, me)}
-      <p class="pf-skill-more pf-skill-scale">Each skill compares ${me ? 'you' : 'the player'} with ${me ? 'your' : 'their'} own opponents rated within ${PEER} points, from the same games: 50 means as good as them, higher is better.</p>
+      <p class="pf-skill-more pf-skill-scale">The level comes from the rating (about 60 at 1200, 76 at 2000, 88 at 2800). Each skill sits up to 10 above or below it, by how ${me ? 'you do' : 'the player does'} against ${me ? 'your' : 'their'} own opponents rated within ${PEER} points, in the same games.</p>
     </section>
     <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From all ${p.n} games</span></div>
       <div class="pf-two pf-more-body">
@@ -1036,7 +1048,7 @@ function renderCompare(A, B, speed = 'all', avail = []) {
       <table class="cmp-table"><thead><tr><th></th><th>${esc(A.name)}</th><th>${esc(B.name)}</th></tr></thead>
         <tbody>${rows.map(([k, x, y, va, vb, dir]) => { const l = lead(va, vb, dir); return `<tr><th scope="row">${k}</th><td class="${l === 'a' ? 'lead' : ''}">${x}</td><td class="${l === 'b' ? 'lead' : ''}">${y}</td></tr>`; }).join('')}</tbody></table>
     </section>
-    <p class="info">Both read from each player's last ${MAX} rated Lichess games${speed === 'all' ? '' : `, ${speed} only`} (${A.p.analysed} and ${B.p.analysed} of them analysed). Each player's skills compare them with their own opponents, so the cards say how well each plays at their own level.</p>
+    <p class="info">Both read from each player's last ${MAX} rated Lichess games${speed === 'all' ? '' : `, ${speed} only`} (${A.p.analysed} and ${B.p.analysed} of them analysed). The rating sets each card's level; each skill then moves up to 10 above or below it, by how the player does against their own opponents.</p>
     ${compareNext(A, B, sa, sb)}`;  document.querySelectorAll('.cmp-speeds [data-speed]').forEach((btn) => btn.addEventListener('click', () => {
     const q = new URLSearchParams(location.search);
     q.set('speed', btn.dataset.speed);
@@ -1060,7 +1072,8 @@ function compareStory(A, B, sa, sb) {
   // "You" when one of the two is the logged-in player; v picks the verb form for that player
   const nm = (P) => (isMe(P.name) ? 'You' : esc(P.name)), a = nm(A), b = nm(B);
   const v = (who, s3, s2) => (who === 'You' ? s2 : s3), their = (who) => (who === 'You' ? 'your' : 'their');
-  const ovr = (sk) => { const k = sk.filter((x) => x.v !== null); return k.length ? Math.round(sum(k, (x) => x.v) / k.length) : null; };
+  // against their own opponents: the skills before the rating sets the card's level
+  const ovr = (sk) => { const k = sk.filter((x) => x.raw !== null); return k.length ? Math.round(sum(k, (x) => x.raw) / k.length) : null; };
   const oa = ovr(sa), ob = ovr(sb), out = [];
   const ra = A.p.speeds[0]?.rating, rb = B.p.speeds[0]?.rating, dr = (ra ?? 0) - (rb ?? 0);
   if (ra && rb) out.push(Math.abs(dr) < 25 ? `<b>Same level on Lichess</b>: ${ra} and ${rb}.` : `<b>${dr > 0 ? a : b} ${v(dr > 0 ? a : b, 'is', 'are')} rated ${Math.abs(dr)} points higher</b> (${Math.max(ra, rb)} against ${Math.min(ra, rb)}).`);
