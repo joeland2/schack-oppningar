@@ -1986,7 +1986,6 @@ main.profile:has(#admin) { max-width: 1320px; }
 .go-sum p, .go-sum ul { margin: 0; }
 .go-sum .go-k { margin-top: 6px; font: 700 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .go-sum .go-k:first-child { margin-top: 0; }
-.go-line { font: 500 13px/1.5 var(--font-mono); color: var(--muted); }
 .go-sum .done-why { padding-left: 18px; display: grid; gap: 4px; }
 .go-sum .facts { margin: 2px 0; }
 .go-ask-q { margin: 6px 0 0; font-weight: 700; }

@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030000822';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030000822';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030000822';
-import { GUIDE } from './guide.js?v=20261030000822';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030000822';
-import { maia3Move } from './maia3.js?v=20261030000822';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030000822';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030000822';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261030000822';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030001357';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030001357';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030001357';
+import { GUIDE } from './guide.js?v=20261030001357';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030001357';
+import { maia3Move } from './maia3.js?v=20261030001357';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030001357';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030001357';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261030001357';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1208,13 +1208,8 @@ function askGo() {
   trackDone();
   // Every way on is here, Next line first, so nothing outside the card is needed.
   const done = mode === 'try' && !misses && !assisted ? 'Line cleared' : mode === 'try' ? 'Line done' : 'Line learned';
-  // What the line gave you before the choice: what you know now, where you stand at your level, and
-  // where to take the game from here.
-  const seq = game.history().map((san, i) => (i % 2 ? san : `${i / 2 + 1}.${san}`)).join(' ');
-  const sum = `<div class="go-sum">
-      <p class="go-k">What you played</p>${learnedFacts()}<p class="go-line">${seq}</p>
-      <p class="go-k">Where you stand</p>${lineFacts()}${lineWhy()}
-    </div>`;
+  // What the line gave you before the choice: where you stand at your level, and where to take the game.
+  const sum = `<div class="go-sum"><p class="go-k">Where you stand</p>${lineFacts()}${lineWhy()}</div>`;
   $('#go-ask').innerHTML = `<div class="depth-card go-card" role="dialog" aria-labelledby="go-title"><p class="depth-k">${done}</p><p class="depth-q" id="go-title">${lineName(lines[lineIdx])}</p>${sum}<p class="go-ask-q">How do you want to go on?</p>
     <button type="button" class="cta go-next" data-go="next">${$('#restart').textContent}<small>${mode === 'try' ? 'the next line to practise' : 'learn the next line, with arrows'}</small></button>
     <div class="go-grid" role="group" aria-label="Or go on with this line">
