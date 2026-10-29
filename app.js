@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029120746';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029120746';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029120746';
-import { GUIDE } from './guide.js?v=20261029120746';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029120746';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029120746';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029120746';
-import { storedGames } from './profile.js?v=20261029120746';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029121032';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029121032';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029121032';
+import { GUIDE } from './guide.js?v=20261029121032';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029121032';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029121032';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029121032';
+import { storedGames } from './profile.js?v=20261029121032';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1433,7 +1433,8 @@ async function rate(i, before, m) {
   if (chance && i === chance.ply && !momentOpen) {
     const c = chance, idea = ideaAt(new Chess(before), m.san), lower = (x) => x.replace(/^./, (y) => y.toLowerCase());
     chance = null;
-    if (notes[i] === 'best' || notes[i] === 'brilliant' || (m.from === c.best.from && m.to === c.best.to)) moment('good', 'You found it!', `<b>${moveLabel(i, m.san)}</b> punishes the blunder${idea ? `: ${lower(idea)}` : '.'}`, [{ label: 'Play on', run: () => {} }], null, null, null);
+    if (notes[i] === 'best' || notes[i] === 'brilliant' || (m.from === c.best.from && m.to === c.best.to)) { banner('You found it!');
+      moment('good', 'You found it!', `<b>${moveLabel(i, m.san)}</b> punishes the blunder${idea ? `: ${lower(idea)}` : '.'}`, [{ label: 'Play on', run: () => {} }], null, null, null); }
     else if (notes[i] === 'good') moment('good', 'Good move', `<b>${moveLabel(i, m.san)}</b> keeps the edge${idea ? `: ${lower(idea)}` : '.'} The strongest was ${moveWords(c.best)}.`, [{ label: 'Play on', run: () => {} }], null, null, null);
     else moment('chance', 'Chance missed', `The strong move was ${moveWords(c.best)}${(() => { const x = ideaAt(new Chess(before), c.best.san); return x ? `: ${lower(x)}` : '.'; })()}`, [{ label: 'Play on', run: () => {} }], null, [[c.best.from, c.best.to, GREEN]], null);
   }
@@ -2457,6 +2458,18 @@ function showMove(n) {
   view = n >= game.history().length ? null : Math.max(0, n);
   sel = null;
   render();
+  const i = view === null ? -1 : view - 1;
+  if (i >= 0 && notes[i] === 'blunder' && game.history({ verbose: true })[i].color !== cur.side) chanceAgain(i);
+}
+// Back on their blunder: the same Chance card, to try again from there (your answer gets its verdict).
+function chanceAgain(i) {
+  const m = game.history({ verbose: true })[i], g = new Chess();
+  game.history().slice(0, i + 1).forEach((x) => g.move(x));
+  const r = EVALS.get(evalKey(g.fen())), best = r?.move && new Chess(g.fen()).move(r.move);
+  const retry = () => { takeBackTo(i + 1); chance = best ? { ply: i + 1, best } : null; say('Find the strong move.', 'good'); };
+  moment('chance', 'Chance!', `${sideName(m.color)}'s <b>${moveLabel(i, m.san)}</b> (red arrow) was a blunder. Try it again: look at checks, captures and threats.`,
+    [{ label: 'Try it', run: retry }, ...(best ? [{ label: 'Show me', run: () => { retry(); chance = null; hintSq = [best.from, best.to]; renderBoard(); say(`${moveWords(best)}.`, 'good'); } }] : [])],
+    null, [[m.from, m.to, RED]], null);
 }
 // Picking up a piece while looking back: back to the game, or, when it is one of your pieces at your
 // own earlier move, the moves after it are taken back and you play on from there.
