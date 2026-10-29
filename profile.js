@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029135806';
-import { STYLE_OF } from './styles.js?v=20261029135806';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029135935';
+import { STYLE_OF } from './styles.js?v=20261029135935';
 
 const MAX = 500;
 const PV = 28;
@@ -698,6 +698,7 @@ const bar = (o) => { const w = o.win ?? o.score, d = o.win == null ? 0 : Math.ma
 const ago = (t) => { const h = (Date.now() - t) / 3.6e6; return h < 1 ? 'less than an hour ago' : h < 48 ? `${Math.round(h)} hours ago` : `${Math.round(h / 24)} days ago`; };
 // Each opening links to its lines in the trainer (?practise=, as on My practice).
 const practiseLink = (side, fam) => `./?practise=${side}~${encodeURIComponent(fam.replace(/^vs /, ''))}`;
+const opLink = (side, fam) => `<a class="pf-op-link" href="${practiseLink(side, fam)}" title="Practise the ${esc(fam.replace(/^vs /, ''))} lines">${esc(fam)}</a>`;
 function openingRows(list, side) {
   return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><a class="pf-op-link" href="${practiseLink(side, o.fam)}" title="Practise the ${esc(o.fam.replace(/^vs /, ''))} lines">${esc(o.fam)}</a><small>${games(o.n)} · ${pct(o.win ?? o.score)} wins</small>${bar(o)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
 }
@@ -736,8 +737,8 @@ const leakOf = (skills) => skills.filter((x) => x.raw !== null && x.raw <= 45).s
 function portrait(name, p, skills, me, part = 'lead') {
   const you = me ? 'You' : esc(name), your = me ? 'your' : 'their', are = me ? 'are' : 'is';
   // The openings chosen, by family: the King's Gambit Accepted and Declined are one King's Gambit.
-  const own = (list) => [...new Set(list.filter((o) => !o.fam.startsWith('vs ')).map((o) => o.fam.replace(/ (Accepted|Declined)$/, '')))].slice(0, 2).map(esc);
-  const w = own(p.openings.w), b = own(p.openings.b);
+  const own = (list, side) => [...new Set(list.filter((o) => !o.fam.startsWith('vs ')).map((o) => o.fam.replace(/ (Accepted|Declined)$/, '')))].slice(0, 2).map((f) => opLink(side, f));
+  const w = own(p.openings.w, 'w'), b = own(p.openings.b, 'b');
   const and = (xs) => xs.join(' and ');
   const out = [];
   const t = p.type.map((x) => x.name.toLowerCase());
@@ -937,7 +938,7 @@ function render(name, at, full) {
       <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
         <button type="button" class="link" data-skill-text aria-expanded="${showSkillText}">${showSkillText ? 'Hide explanations' : 'What each one means'}</button></div>
       ${skillBars(skills, say, me)}
-      <p class="pf-skill-more pf-skill-scale">All against opponents rated within ${PEER} of ${me ? 'you' : 'the player'}, in the same games. The mark on each bar is as good as them.</p>
+      <p class="pf-skill-scale">All against opponents within ${PEER} of ${me ? 'your' : 'their'} rating; the mark on each bar is as good as them.</p>
     </section>
     <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From ${sp === 'all' ? `all ${p.n} games` : `${p.n} ${sp} games`}</span></div>
       <div class="pf-two pf-more-body">
@@ -997,7 +998,7 @@ function recentFacts(rs, p) {
   const won = rs.filter((r) => r.result === 1), lost = rs.filter((r) => r.result === 0), w = rs.filter((r) => r.side === 'w'), b = rs.filter((r) => r.side === 'b');
   const acc = rs.filter((r) => r.acc !== null);
   return [
-    fams.length && ['Openings', fams[0][1].length > 1 ? `${esc(fams[0][0])} ${fams[0][1].length} times, ${n(wins(fams[0][1]), 'win')}${fams[1] ? `; also ${esc(fams[1][0])}` : ''}` : `${fams.length} different openings, none twice`],
+    fams.length && ['Openings', fams[0][1].length > 1 ? `${opLink(fams[0][1][0].side, fams[0][0])} ${fams[0][1].length} times, ${n(wins(fams[0][1]), 'win')}${fams[1] ? `; also ${opLink(fams[1][1][0].side, fams[1][0])}` : ''}` : `${fams.length} different openings, none twice`],
     ['Colours', `${n(wins(w), 'win')} in ${w.length} as White, ${wins(b)} in ${b.length} as Black`],
     (won.length || lost.length) && ['Endings', [won.length && `${ends(won)[1]} of ${n(won.length, 'win')} ${ends(won)[0]}`, lost.length && `${ends(lost)[1]} of ${n(lost.length, 'loss').replace('losss', 'losses')} ${ends(lost)[0]}`].filter(Boolean).join(', ')],
     acc.length >= 3 && p.acc !== null && ['Accuracy', `${Math.round(sum(acc, (r) => r.acc) / acc.length)}% in the ${acc.length} analysed, against ${p.acc}% usually`],

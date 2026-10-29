@@ -1188,7 +1188,7 @@ a { text-underline-offset: .18em; }
 a.pf-res { text-decoration: none; transition: transform .12s; }
 a.pf-res:hover, a.pf-res:focus-visible { transform: translateY(-2px); outline: 2px solid var(--ink); outline-offset: 1px; }
 /* Skills: the scale, in its own small box under the six */
-.pf-skills-card.open .pf-skill-scale { display: block; margin: 32px 0 0; max-width: 62ch; padding: 12px 16px; border: 1px solid var(--line); border-left: 3px solid var(--hot); color: var(--muted); font-size: 14px; }
+.pf-skills-card .pf-skill-scale { display: block; margin: 18px 0 0; padding: 0; border: 0; color: var(--muted); font-size: 12px; }
 /* The type heading with the opening-taste tiles beside it */
 .pf-type-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 24px; }
 .pf-type-row .pf-taste-tiles { flex-direction: column; margin: 0 0 6px; }
