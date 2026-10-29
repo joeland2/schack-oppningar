@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029132212';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029132212';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029132212';
-import { GUIDE } from './guide.js?v=20261029132212';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029132212';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029132212';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029132212';
-import { storedGames } from './profile.js?v=20261029132212';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029132633';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029132633';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029132633';
+import { GUIDE } from './guide.js?v=20261029132633';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029132633';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029132633';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029132633';
+import { storedGames } from './profile.js?v=20261029132633';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -814,7 +814,7 @@ function renderBoard() {
   const n = game.history().length - 1, note = notes[n];
   // At the line's end the best offered move gets an arrow (green: real games, blue: Stockfish); pointing
   // at another tip shows its arrow instead.
-  const offered = endLen && game.history().length === endLen && userTurn() && !(tipHint !== null) ? tipArrows : []; // only at the line's end
+  const offered = mode === 'learn' && endLen && game.history().length === endLen && userTurn() && !(tipHint !== null) ? tipArrows : []; // only at the line's end
   drawBoard(boardEl, game, { side: cur.side, sel, last: lastMove, hint: hintSq, wrong: wrongSq,
     arrow: hintSq.length === 2 && !offered.length ? hintSq : null, arrows: offered,
     mark: (wrongSq && { sq: wrongSq, ok: false }) || (note && lastMove && { sq: lastMove.to, kind: note }),
@@ -943,8 +943,6 @@ $('#line-done').addEventListener('pointerout', (e) => {
 });
 $('#line-done').addEventListener('click', (e) => {
   if (e.target.closest('.done-next')) return $('#restart').click();
-  const go = e.target.closest('[data-go]')?.dataset.go;
-  if (go) goOn(go);
 });
 // The same choice over the board, the moment a line is done.
 let goAsked = false;
@@ -954,8 +952,10 @@ $('#go-ask').addEventListener('click', (e) => {
   $('#go-ask').hidden = true;
   goOn(b.dataset.go);
 });
-// Three ways on: this line again with arrows, this line from memory, or the next line with arrows.
-const GO = [['again', 'Learn this line again', 'The arrows show you every move'], ['try', 'Practise this line', 'Play it from memory, without arrows'], ['next', 'Next line', 'Learn the next line, with arrows']];
+// Four ways on, Learn (arrows) or Practice (from memory), each either playing on from here or starting
+// the line again. Playing on keeps the line-done card beside the board, with its own Next line.
+const GO = [['learn-on', 'Play on in Learn', 'Carry on from here; the arrows show good moves'], ['learn', 'Learn this line again', 'From the start, with arrows'],
+  ['try-on', 'Play on in Practice', 'Carry on from here, without arrows'], ['try', 'Practise this line', 'From the start, from memory']];
 function askGo() {
   goAsked = true;
   $('#go-ask').innerHTML = `<div class="depth-card"><p class="depth-k">Line done</p><p class="depth-q">${lineName(lines[lineIdx])}. How do you want to go on?</p>
@@ -963,13 +963,14 @@ function askGo() {
   $('#go-ask').hidden = false;
 }
 function goOn(go) {
-  setMode(go === 'try' ? 'try' : 'learn', false);
-  play(go === 'next' ? nextLine() : lineIdx);
+  const [m, on] = go.split('-');
+  setMode(m, false);
+  if (on) { render(); if (m === 'learn') guide(); } // play on: the board stays, the arrows follow the mode
+  else play(lineIdx);
 }
-// How to go on once a line is done, beside the board: the same three ways (see GO).
+// Beside the board, once a line is done: Next line (the ways on are asked over the board, see GO).
 function doneNext() {
-  if (trapRun || (mode !== 'learn' && mode !== 'try')) return `<button type="button" class="cta done-next">${$('#restart').textContent}</button>`;
-  return `<p class="done-k">Go on with</p><div class="done-go">${GO.map(([g, label, about]) => `<button type="button" class="${g === 'next' ? 'cta' : 'ghost'}" data-go="${g}">${label}<small>${about}</small></button>`).join('')}</div>`;
+  return `<button type="button" class="cta done-next">${$('#restart').textContent}</button>`;
 }
 let lineDone = '', lineMore = '', tipArrows = []; // the summary shown at the end of the line, and the current tips
 // The idea of the whole opening, its main variations and the trap to know (guide.js), folded under the plan.
