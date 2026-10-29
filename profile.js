@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029225738';
-import { STYLE_OF } from './styles.js?v=20261029225738';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029230037';
+import { STYLE_OF } from './styles.js?v=20261029230037';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1029,11 +1029,29 @@ async function comparePng(A, B, sa, sb, detail, btn) {
   } catch (err) { $('#profile-msg').textContent = `The image could not be made: ${err.message}`; }
   btn.disabled = false; btn.textContent = label;
 }
+// What the downloaded image needs beyond the card's code, so admin can draw the very same image: the
+// number of games, the opening taste as White and Black, and for the style image its lead text.
+const plain = (html) => Object.assign(document.createElement('div'), { innerHTML: html }).textContent;
+function cardExtra(name, p, skills, detail) {
+  const tt = (m) => { const x = taste(m); return x ? `${x.label}:${x.share.toFixed(2)}` : ''; };
+  return [p.n, tt(p.styleMix?.w), tt(p.styleMix?.b), detail ? plain(portrait(name, p, skills, false)).replace(/~/g, '-') : ''].join('~');
+}
 async function cardPng(name, p, t, skills, detail, btn) {
   const label = btn.textContent; btn.disabled = true; btn.textContent = 'Making the image…';
-  CARD = CARDS[cardLook()];
-  window.track?.('card', `${name} · ${detail ? 'style' : 'card'} · ${cardLook()} #${cardCode(p, t, skills)}`);
+  window.track?.('card', `${name} · ${detail ? 'style' : 'card'} · ${cardLook()} #${cardCode(p, t, skills)} ~${cardExtra(name, p, skills, detail)}`);
   try {
+    const canvas = await cardImage(cardLook(), name, p, t, skills, detail, plain(portrait(name, p, skills, false)));
+    const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${name}-chess-${detail ? 'profile' : 'card'}-${cardLook()}.png`, { type: 'image/png' });
+    if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) await navigator.share({ files: [file], title: `${name}'s chess card` }).catch(() => {});
+    else { const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: file.name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+  } catch (err) { $('#profile-msg').textContent = `The image could not be made: ${err.message}`; }
+  btn.disabled = false; btn.textContent = label;
+}
+// The downloaded image as a canvas, in the given look: the card alone, or with detail the style image
+// (card, style, opening taste, the lead text and what each type means). Admin draws it the same way.
+async function cardImage(look, name, p, t, skills, detail, lead) {
+  CARD = CARDS[look];
+  {
     await Promise.all(['400 40px Anton', '400 20px Geist', '600 20px Geist'].map((f) => document.fonts.load(f)));
     const piece = await new Promise((ok) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = `pieces/${CARD.piece}${(p.piece || 'n').toUpperCase()}.svg`; });
     const S = 2, W = detail ? 1080 : 680, H = detail ? 1350 : 860;
@@ -1054,21 +1072,17 @@ async function cardPng(name, p, t, skills, detail, btn) {
         ctx.fillStyle = CARD.paperInk; ctx.font = '400 40px Anton'; ctx.fillText(tt.label.toUpperCase(), x, y += 46);
         ctx.fillStyle = CARD.paperMuted; ctx.font = '400 18px Geist'; ctx.fillText(`${pct(tt.share)} of their choices`, x, y += 28); y += 30;
       }
-      const text = (html) => Object.assign(document.createElement('div'), { innerHTML: html }).textContent;
-      let ty = 760;
+        let ty = 760;
       ctx.fillStyle = CARD.paperInk; ctx.font = '400 32px Geist';
-      ty = wrap(ctx, text(portrait(name, p, skills, false)), 60, ty, W - 120, 46, 5) + 24;
+      ty = wrap(ctx, lead, 60, ty, W - 120, 46, 5) + 24;
       ctx.fillStyle = CARD.paperMuted; ctx.font = '400 24px Geist';
       for (const k of t) { ctx.font = '700 24px Geist'; ctx.fillStyle = CARD.paperInk; ctx.fillText(`${k.name}.`, 60, ty); const w = ctx.measureText(`${k.name}. `).width; ctx.font = '400 24px Geist'; ctx.fillStyle = CARD.paperMuted; ty = wrap(ctx, TYPE_ABOUT[k.name] || '', 60, ty, W - 120, 34, 3, w) + 12; }
       ctx.fillStyle = CARD.hot; ctx.fillRect(60, H - 96, W - 120, 3);
       ctx.fillStyle = CARD.paperInk; ctx.font = '400 30px Anton'; ctx.fillText('CHESS TRAINER', 60, H - 50);
       ctx.fillStyle = CARD.paperMuted; ctx.font = '400 20px Geist'; ctx.textAlign = 'right'; ctx.fillText(`From ${name}'s last ${p.n} rated Lichess games`, W - 60, H - 52); ctx.textAlign = 'left';
     }
-    const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${name}-chess-${detail ? 'profile' : 'card'}-${cardLook()}.png`, { type: 'image/png' });
-    if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) await navigator.share({ files: [file], title: `${name}'s chess card` }).catch(() => {});
-    else { const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: file.name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
-  } catch (err) { $('#profile-msg').textContent = `The image could not be made: ${err.message}`; }
-  btn.disabled = false; btn.textContent = label;
+    return canvas;
+  }
 }
 function cardNote(name, p, me) {
   const main = p.speeds[0];
@@ -1455,7 +1469,7 @@ function failed(name, err) {
 
 // A profile from games already fetched (Lichess's shape), without fetching: for checking the types on many players.
 const profileFromRaw = async (name, raw) => (await loadScores(), profileOf(raw.map((g) => readGame(g, name.toLowerCase()))));
-export { playerCard, fineSkillsOf, gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
+export { cardImage, playerCard, fineSkillsOf, gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
 // ---------- The games themselves ----------
 // The newest games as a list; each opens on game.html with the board, how it went and the key moves.
 const STATUS = { mate: 'mate', resign: 'resignation', outoftime: 'time', timeout: 'time', draw: 'agreement', stalemate: 'stalemate', aborted: 'abort' };

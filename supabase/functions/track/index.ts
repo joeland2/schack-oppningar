@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
   const { cloud, ...place } = await placeOf(ip);
   if (cloud) return new Response('skipped', { status: 202, headers: cors });
   const { error } = await db.from('events').insert({
-    kind: e.kind, page: cut(e.page, 40), target: cut(e.target, 80), visitor: cut(e.visitor, 40), user_name: cut(e.user_name, 30),
+    kind: e.kind, page: cut(e.page, 40), target: cut(e.target, e.kind === 'card' ? 600 : 80), visitor: cut(e.visitor, 40), user_name: cut(e.user_name, 30),
     ip: anonymise(ip), ...place, device: deviceOf(req.headers.get('user-agent') || ''), source: cut(e.source, 80),
   });
   return new Response(error ? 'error' : 'ok', { status: error ? 500 : 201, headers: cors });

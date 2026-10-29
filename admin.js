@@ -1,6 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029225738';
+import { account, login, finishLogin } from './lichess.js?v=20261029230037';
+import { cardImage } from './profile.js?v=20261029230037';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -14,10 +15,13 @@ const SPEED_OF = { bu: 'bullet', bl: 'blitz', ra: 'rapid', cl: 'classical', co: 
 const SKILL_KEYS = ['ATK', 'DEF', 'EARLY', 'LATE', 'ACC', 'SPD'];
 const bandOf = (r) => (!r ? 2 : r < 1000 ? 0 : r < 1400 ? 1 : r < 1800 ? 2 : r < 2200 ? 3 : 4); // as profile.js
 function cardOf(target, board) {
-  const [head, code] = (target || '').split(' #'), name = head.split(/ · |: /)[0];
+  const [head, rest] = (target || '').split(' #'), name = head.split(/ · |: /)[0];
+  const [code, extra] = (rest || '').split(' ~'); // newer downloads also carry what the image needs (profile.js cardExtra)
   if (code) {
     const [ovr, st, sg, sk, rs, piece] = code.split('/'), m = rs.match(/^(\d+)(\w+)$/);
-    return { name, overall: ovr, style: TYPE_CODES[st], strength: TYPE_CODES[sg], skills: sk.split('.').map((v) => (v === '-' ? null : Number(v))), rating: m && Number(m[1]), speed: m && SPEED_OF[m[2]], piece };
+    const [n, w, b, lead] = extra ? extra.split('~') : [];
+    return { name, overall: ovr, style: TYPE_CODES[st], strength: TYPE_CODES[sg], skills: sk.split('.').map((v) => (v === '-' ? null : Number(v))), rating: m && Number(m[1]), speed: m && SPEED_OF[m[2]], piece: piece?.trim(),
+      ...(n ? { n: Number(n), w, b, lead: lead || '' } : {}) };
   }
   const r = board.find((x) => x.name.toLowerCase() === name.toLowerCase());
   return r && { name: r.name, overall: r.overall, style: r.style, strength: r.strength, skills: ['Attack', 'Defense', 'Early game', 'Late game', 'Accuracy', 'Speed'].map((k) => r.skills?.[k] ?? null), rating: r.rating, speed: r.speed, piece: r.piece };
@@ -175,6 +179,17 @@ function cardsOf(body) {
   return out;
 }
 let tip;
+const SHOTS = new Map();
+function shot(key, c, look, style) {
+  if (!SHOTS.has(key)) {
+    const mix = (x) => { if (!x) return null; const [label, share] = x.split(':'); return { n: 99, parts: [{ k: label, label, share: Number(share) }] }; };
+    const p = { n: c.n, piece: c.piece, speeds: c.rating ? [{ rating: c.rating, speed: c.speed }] : [], styleMix: { w: mix(c.w), b: mix(c.b) } };
+    const t = [{ name: c.style }, ...(c.strength ? [{ name: c.strength }] : [])];
+    const skills = ['Attack', 'Defense', 'Early game', 'Late game', 'Accuracy', 'Speed'].map((label, i) => ({ label, v: c.skills[i] }));
+    SHOTS.set(key, cardImage(look, c.name, p, t, skills, style, c.lead).then((cv) => cv.toDataURL('image/png')));
+  }
+  return SHOTS.get(key);
+}
 function bindCards(body) {
   const cards = cardsOf(body), box = $('#admin');
   tip ??= document.body.appendChild(Object.assign(document.createElement('div'), { className: 'ad-card-tip', hidden: true }));
@@ -185,7 +200,11 @@ function bindCards(body) {
     // A download row shows that download as it was: dark or light, with the style beside it or not.
     const own = a?.dataset.card, c = a && ((own && cardOf(own, BOARD)) || cards.get(new URL(a.href).searchParams.get('u').toLowerCase()));
     if (!c) { tip.hidden = true; return; }
-    tip.innerHTML = cardHtml(c, own && / · light\b/.test(own) ? 'light' : 'dark', !!own && / · (style|card \+ style)\b/.test(own)); tip.hidden = false; place(e);
+    const look = own && / · light\b/.test(own) ? 'light' : 'dark', style = !!own && / · (style|card \+ style)\b/.test(own);
+    tip.innerHTML = cardHtml(c, look, style); tip.hidden = false; place(e);
+    // A download that carries its image data is shown as the very image, drawn as the profile page drew it.
+    if (own && c.n) shot(own, c, look, style).then((src) => { if (!tip.hidden && tip.dataset.own === own) { tip.innerHTML = `<img class="ad-shot${style ? ' style' : ''}" src="${src}" alt="">`; place(e); } });
+    tip.dataset.own = own || '';
   };
   box.onmousemove = (e) => { if (!tip.hidden) place(e); };
   box.onmouseout = (e) => { if (e.target.closest?.('a[href*="profile.html?u="]')) tip.hidden = true; };
