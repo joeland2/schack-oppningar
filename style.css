@@ -1759,3 +1759,28 @@ p, li, dd, small { text-wrap: pretty; }
 @media (prefers-reduced-motion: reduce) { .pf-load i { transition: none; } }
 .pf-fetch-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0 4px; }
 .pf-fetch-row .pf-fetch { padding: 6px 12px; font-size: 13px; }
+
+/* Phones: the openings filters as three tight rows (label left, one sideways-scrolling row of
+   choices right) and the opening cards tighter, so the list starts within the first screen. */
+@media (max-width: 560px) {
+  .picker { padding-top: 18px; } #picker .pick-h { font-size: 2.4rem; margin-bottom: 4px; }
+  .filters { padding: 8px 10px; }
+  .filters > summary { font-size: 14px; }
+  .filters[open] .choices, .filters .choices { display: grid; gap: 6px; margin: 8px 0 2px; }
+  .filters .choice { grid-template-columns: 62px minmax(0, 1fr); align-items: center; gap: 8px; }
+  .filters .choice-label { font-size: 12px; line-height: 1.2; }
+  .filters .choice-about { display: none; } /* the summary line names the style */
+  .filters .seg, .filters .seg:has([data-style]) { display: flex; flex-wrap: nowrap; width: auto; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+  .filters .seg::-webkit-scrollbar { display: none; }
+  .filters .seg button { flex: none; padding: 6px 10px; font-size: 14px; white-space: nowrap; }
+  #pick-msg, .og-about { font-size: 13px; margin-block: 6px; }
+  .side-seg button { padding: 6px 10px; font-size: 14px; }
+  .olist { gap: 8px; grid-auto-rows: auto; } /* each card its own height: one long description no longer stretches them all */
+  .ocard { grid-template-columns: 64px minmax(0, 1fr); gap: 10px; padding: 10px; }
+  .ocard .board.mini { width: 64px; }
+  .ocard h3 { font-size: 18px; line-height: 1.05; }
+  .ocard-body { gap: 4px; }
+  .odesc { font-size: 13px; line-height: 1.4; }
+  .ostats { gap: 4px 12px; font-size: 12px; margin-top: 2px; }
+  .ostats .wdl { width: 80px; }
+}
