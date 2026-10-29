@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029100213';
-import { STYLE_OF } from './styles.js?v=20261029100213';
+import { account, login, finishLogin } from './lichess.js?v=20261029100504';
+import { STYLE_OF } from './styles.js?v=20261029100504';
 
 const MAX = 500;
 const PV = 19;
@@ -315,29 +315,29 @@ function rawSkills(p) {
   return [
     // The player's own attacking openings weigh double once they have 40 such games; fewer say less.
     { label: 'Attack', v: avg([q.attN >= 15 ? [clamp(50 + q.attGain * 150), 2 * Math.min(1, q.attN / 40)] : null, q.n >= 30 ? vs(q.quickW, q.quickL, 0.05) : null, an ? vs(q.oppUp, q.meUp, 0.2) : null]),
-      means: 'Getting an attack going and finishing it: how the attacking openings and gambits you choose go compared with how they usually go at your level, and against your opponents: quick wins, and keeping it clean once you are clearly ahead (1.5 pawns or more). Gambits and traps that work show up here.',
-      why: [q.attN >= 15 && `In the ${q.attN} games where you chose an attacking opening or gambit you score ${pct(q.attScore)}, where players at your level usually score ${pct(q.attExp)}`, `${q.attN >= 15 ? 'win' : 'You win'} ${pct(q.quickW ?? 0)} of your games within 25 moves (they ${pct(q.quickL ?? 0)})`, an && q.meUp != null && `and make ${f1(q.meUp)} mistakes per 10 moves when ahead (they ${f1(q.oppUp)})`].filter(Boolean).join(', ') + '.',
+      means: 'Do attacks work? Attacking openings and gambits against how they usually go at this level, quick wins, and few slips when ahead.',
+      why: [q.attN >= 15 && `Attacking openings ${pct(q.attScore)} (usual ${pct(q.attExp)})`, `wins in 25 moves ${pct(q.quickW ?? 0)} (opponents ${pct(q.quickL ?? 0)})`, an && q.meUp != null && `slips when ahead ${f1(q.meUp)} per 10 moves (opponents ${f1(q.oppUp)})`].filter(Boolean).join(' · ').replace(/^./, (c) => c.toUpperCase()) + '.',
       train: 'When ahead: trade pieces, not pawns, take away their counterplay first, and do not rush.', href: './mistakes.html' },
     // shortcut: "usual" saves (42%) is the mean of eight checked players, all levels; measure it per level when there is data for it
     { label: 'Defense', needs: true, v: avg([q.solidN >= 15 ? clamp(50 + q.solidGain * 150) : null, q.vsAttN >= 15 ? clamp(50 + q.vsAttGain * 150) : null, an && q.downs >= 5 && q.saved != null ? clamp(50 + (q.saved - 0.42) * 150) : null, an ? vs(q.oppDown, q.meDown, 0.2) : null, vs(up, down, 0.1)]),
-      means: 'Solid play and holding bad positions: how the solid openings you choose, and the attacking ones played against you, go compared with how they usually go at your level; and against your opponents: how many games you still win or draw after being clearly behind (3 pawns or more), how few mistakes you make while behind, and how rarely they get clearly ahead of you at all (3 pawns or more).',
-      why: `${[q.solidN >= 15 && `In your ${q.solidN} solid or positional openings you score ${pct(q.solidScore)} (usual at your level ${pct(q.solidExp)})`, q.vsAttN >= 15 && `against ${q.vsAttN} attacking openings and gambits you score ${pct(q.vsAttScore)} (usual ${pct(q.vsAttExp)})`].filter(Boolean).join('; ')}${q.solidN >= 15 || q.vsAttN >= 15 ? '; you save' : 'You save'} ${pct(q.saved ?? 0)} of the games where you were clearly losing (about 42% is usual); when behind you make ${f1(q.meDown)} mistakes per 10 moves (they ${f1(q.oppDown)})${an ? `; they get clearly ahead of you in ${pct(down)} of analysed games, you of them in ${pct(up)}` : ''}.`,
+      means: 'Hard to beat? Solid openings and defending against attacks, against how they usually go at this level, saving lost positions, and how rarely opponents get ahead.',
+      why: [q.solidN >= 15 && `Solid openings ${pct(q.solidScore)} (usual ${pct(q.solidExp)})`, q.vsAttN >= 15 && `against attacks ${pct(q.vsAttScore)} (usual ${pct(q.vsAttExp)})`, an && `lost positions saved ${pct(q.saved ?? 0)} (usual 42%)`, an && `opponents clearly ahead in ${pct(down)} of games (the other way ${pct(up)})`].filter(Boolean).join(' · ').replace(/^./, (c) => c.toUpperCase()) + '.',
       train: 'When behind: keep pieces on, make threats, and set traps rather than waiting.' },
     { label: 'Early game', needs: true, v: an && q.after12 !== null ? clamp(50 + q.after12 / 4) : null,
-      means: 'How you stand when the opening is over (after move 12), against your opponents at your level.',
-      why: `After move 12 you stand ${pawns(q.after12 ?? 0)} pawns on average against them.`,
+      means: 'How the position stands after move 12.',
+      why: `${pawns(q.after12 ?? 0)} pawns on average after move 12.`,
       train: 'Practise the lines of the openings you play, and learn the plan behind them, not just the moves.', href: './' },
     { label: 'Late game', v: q.endgames >= 10 ? clamp(50 + (q.endScore - 0.5) * 150) : null,
-      means: 'How you do once most pieces are gone (6 or fewer besides kings and pawns), against your opponents at your level.',
-      why: `You score ${pct(q.endScore ?? 0)} in ${q.endgames} endgames against them (50% is even).`,
+      means: 'Results once most pieces are gone (6 or fewer besides kings and pawns).',
+      why: `${pct(q.endScore ?? 0)} in ${q.endgames} endgames (50% is even).`,
       train: 'Learn the basic endgames: king activity, passed pawns, and the key king-and-pawn positions.' },
     { label: 'Accuracy', needs: true, v: an && q.myBl !== null && q.oppBl !== null ? clamp(vs(q.oppBl, q.myBl, 0.5)) : null,
-      means: 'How often you blunder (throw away a piece or the game), against your opponents at your level.',
-      why: `${(q.myBl ?? 0).toFixed(1)} blunders a game; your opponents ${(q.oppBl ?? 0).toFixed(1)}.`,
+      means: 'How often a piece or the game is thrown away.',
+      why: `${(q.myBl ?? 0).toFixed(1)} blunders a game (opponents ${(q.oppBl ?? 0).toFixed(1)}).`,
       train: 'Before every move, check every check, capture and threat your opponent has after it. Then solve the positions where you blundered.', href: './mistakes.html' },
     { label: 'Speed', v: q.n >= 30 ? clamp(50 + (q.oppLow - q.myLow) * 100 + (q.timeWins - q.timeLosses) * 100) : null,
-      means: 'Using your time well compared with your opponents: who ends up short of time, and who loses on it.',
-      why: `Short of time in ${pct(q.myLow ?? 0)} of games (they ${pct(q.oppLow ?? 0)}); you win ${pct(q.timeWins ?? 0)} and lose ${pct(q.timeLosses ?? 0)} of games on time.`,
+      means: 'Handling the clock: who ends up short of time, and who wins or loses on it.',
+      why: `Short of time ${pct(q.myLow ?? 0)} (opponents ${pct(q.oppLow ?? 0)}) · wins on time ${pct(q.timeWins ?? 0)}, losses ${pct(q.timeLosses ?? 0)}.`,
       train: 'Play the opening fast (you know it), and save your thinking time for the critical moments.' },
   ];
 }
@@ -608,7 +608,7 @@ function openingRows(list) {
   return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><span>${esc(o.fam)}</span><small>${games(o.n)} · ${pct(o.win ?? o.score)} wins</small>${bar(o)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
 }
 // Each bar: what it measures, what the games show, and below 50 how to train it; the words show on request.
-let showSkillText = false;
+let showSkillText = true; // what each skill measures is open from the start
 function skillBars(skills, say, me) {
   return `<ul class="pf-skills">${skills.map((x) => `<li${x.v === null ? ' class="pf-skill-none"' : ''}>
       <span class="pf-skill-name">${x.label}</span><span class="pf-skill-val">${x.v ?? '–'}</span>
@@ -761,7 +761,7 @@ async function cardPng(name, p, t, skills, detail, btn) {
 function cardNote(name, p, me) {
   const main = p.speeds[0];
   if (!main) return '';
-  return `<details class="pf-card-help"><summary>How the card works</summary><p class="pf-card-note"><b>The level comes from the ${main.speed} rating</b>: about 60 at 1200, 76 at 2000, 88 at 2800. Each skill sits above or below it by how ${me ? 'you do' : `${esc(name)} does`} against ${me ? 'your' : 'their'} own opponents rated ${main.rating - PEER}–${main.rating + PEER} in the same games; the gaps between the six are drawn twice as large, so the shape of the player shows. The big number is the average of the six.</p></details>`;
+  return `<details class="pf-card-help"><summary>How the stats work</summary><p class="pf-card-note"><b>Every stat compares ${me ? 'you' : esc(name)} with ${me ? 'your' : 'their'} own opponents</b>, rated ${main.rating - PEER}–${main.rating + PEER}, in the same games. A higher rating starts the card higher; the big number is the average of the six skills. <a href="#pf-skills">What each skill measures</a></p></details>`;
 }
 // One time control at a time: bullet and blitz games say different things about speed, endgames and
 // the level, so the profile reads the player's main time control unless another (or All) is picked.
@@ -806,12 +806,12 @@ function render(name, at, full) {
     <dl class="pf-kpis">${kpis.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
     ${leadStory(name, p, skills, me)}
     ${analysePanel(name, full)}
-    <section class="pf-card pf-skills-card${showSkillText ? ' open' : ''}">
+    <section class="pf-card pf-skills-card${showSkillText ? ' open' : ''}" id="pf-skills">
       ${p.n < MIN_GAMES ? `<p class="pf-an-few">Only ${p.n} rated games: skills need at least ${MIN_GAMES}.</p>` : ''}
       <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
         <button type="button" class="link" data-skill-text aria-expanded="${showSkillText}">${showSkillText ? 'Hide explanations' : 'What each one means'}</button></div>
       ${skillBars(skills, say, me)}
-      <p class="pf-skill-more pf-skill-scale">The level comes from the rating (about 60 at 1200, 76 at 2000, 88 at 2800). Each skill sits above or below it by how ${me ? 'you do' : 'the player does'} against ${me ? 'your' : 'their'} own opponents rated within ${PEER} points, in the same games; the gaps between the six are drawn twice as large, so ${me ? 'your' : 'their'} shape shows. The mark on each bar, ${skills[0]?.level ?? 50}, is as good as them.</p>
+      <p class="pf-skill-more pf-skill-scale">All against opponents rated within ${PEER} of ${me ? 'you' : 'the player'}, in the same games. The mark on each bar is as good as them.</p>
     </section>
     <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From ${sp === 'all' ? `all ${p.n} games` : `${p.n} ${sp} games`}</span></div>
       <div class="pf-two pf-more-body">
@@ -843,6 +843,7 @@ function render(name, at, full) {
   document.querySelectorAll('[data-card-png]').forEach((b) => b.addEventListener('click', () => cardPng(name, p, t, skills, b.dataset.cardPng === 'style', b)));
   bindSearch();
   bindAnalyse(name);
+  $('.pf-card-help a[href="#pf-skills"]')?.addEventListener('click', (e) => { e.preventDefault(); $('#pf-skills').scrollIntoView({ behavior: 'smooth' }); });
   document.querySelectorAll('[data-pf-speed]').forEach((b) => b.addEventListener('click', () => { pfSpeed = b.dataset.pfSpeed; const y = scrollY; render(...shown); scrollTo(0, y); }));
   bindPlayerBar(name);
   gamesList(name, 8);

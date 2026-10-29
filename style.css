@@ -1362,3 +1362,6 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .ad-table td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
 .ad-table td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ad-table td small { color: var(--muted); }
+
+/* The card's link to the skills lands below the sticky header */
+#pf-skills { scroll-margin-top: 80px; }
