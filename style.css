@@ -1966,3 +1966,8 @@ main.profile:has(#admin) { max-width: 1320px; }
 .choice-search { display: flex; align-items: center; gap: 8px; }
 .pin-favs { flex: none; padding: 4px 9px; font-size: 12px; font-weight: 600; white-space: nowrap; color: var(--muted); }
 .pin-favs[aria-pressed="true"] { color: var(--ink); border-color: var(--hot); }
+/* The scroll bar inside admin cards: orange, and in a lane of its own right of the numbers. */
+#admin .pf-two > .pf-card > :last-child, #admin .ad-three > .pf-card > :last-child { padding-right: 14px; margin-right: -14px; scrollbar-width: thin; scrollbar-color: var(--data) transparent; }
+#admin .pf-card > :last-child::-webkit-scrollbar { width: 6px; }
+#admin .pf-card > :last-child::-webkit-scrollbar-thumb { background: var(--data); border-radius: 3px; }
+#admin .pf-card > :last-child::-webkit-scrollbar-track { background: transparent; }
