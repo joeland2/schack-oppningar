@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029092850';
-import { STYLE_OF } from './styles.js?v=20261029092850';
+import { account, login, finishLogin } from './lichess.js?v=20261029093049';
+import { STYLE_OF } from './styles.js?v=20261029093049';
 
 const MAX = 500;
 const PV = 19;
@@ -910,9 +910,11 @@ async function ratingChart(name, p) {
   const draw = () => {
     const all = h[chartState.speed], days = RANGES.find(([k]) => k === chartState.range)[1];
     const end = Date.now(), from = days === Infinity ? all[0][0] : end - days * DAY;
-    // The rating going into the range, then every change inside it.
-    const before = all.filter(([t]) => t < from).pop();
-    const pts = [...(before ? [[from, before[1]]] : []), ...all.filter(([t]) => t >= from)];
+    // The rating going into the range, every change inside it, and the rating held until today, so a
+    // quiet week still has a line and the cursor reaches the right edge.
+    const before = all.filter(([t]) => t < from).pop(), inside = all.filter(([t]) => t >= from);
+    const pts = [...(before ? [[from, before[1]]] : []), ...inside];
+    if (pts.length && pts[pts.length - 1][0] < end) pts.push([end, pts[pts.length - 1][1]]);
     const first = all[0][0];
     const covers = full || from >= first;
     el.innerHTML = `<div class="pf-chart-head"><h2>Rating</h2>
