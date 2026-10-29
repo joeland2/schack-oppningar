@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261029164344';
-import { account } from './lichess.js?v=20261029164344';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029164344';
+import { drawBoard } from './board.js?v=20261029164724';
+import { account } from './lichess.js?v=20261029164724';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029164724';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -14,7 +14,7 @@ const RED = 'var(--bad)', GREEN = 'var(--good)';
 const GLYPHS = { Inaccuracy: '?!', Mistake: '?', Blunder: '??' };
 const HOW = { mate: 'by mate', resign: 'by resignation', outoftime: 'on time', timeout: 'on time', draw: 'by agreement', stalemate: 'by stalemate', insufficientMaterialClaim: 'by insufficient material', repetition: 'by repetition' };
 
-let g = null, moves = [], fens = [], side = 'white', idx = 0, flip = false, focus = null;
+let g = null, moves = [], fens = [], side = 'white', idx = 0, flip = false, focus = null, showBest = false;
 
 async function load() {
   await gamesReady;
@@ -65,6 +65,15 @@ function moments() {
     const before = chanceAt(i - 1), after = chanceAt(i);
     return [{ i, j, m, best: bestMove(i), mine: mine(i), swing: Math.round(mine(i) ? before - after : after - before) }];
   });
+}
+// Your answer to your opponent's mistake: punished when it gave nothing back (no inaccuracy or worse).
+function answer(x) {
+  const k = x.i + 1;
+  if (x.mine || k >= moves.length) return '';
+  const best = bestMove(k);
+  return g.analysis[k]?.judgment
+    ? `<span class="pf-bad">You missed it: ${best ? `<b>${best.san}</b> punished it, ` : ''}you played <b>${moves[k].san}</b></span>`
+    : `<span class="pf-good">You punished it with <b>${moves[k].san}</b></span>`;
 }
 
 // What went well and what went badly, read from the result and the analysis.
@@ -127,16 +136,18 @@ function drawPosition() {
   let last = idx ? { from: moves[idx - 1].from, to: moves[idx - 1].to } : null;
   if (focus !== null && idx === focus) { // a key moment: the move played in red, the better one in green
     const m = moves[focus], b = bestMove(focus);
-    arrows.push([m.from, m.to, RED]);
+    if (!b || b.san !== m.san) arrows.push([m.from, m.to, RED]);
     if (b) arrows.push([b.from, b.to, GREEN]);
     last = null;
-  }
+  } else if (showBest && idx < moves.length && bestMove(idx)) { const b = bestMove(idx); arrows.push([b.from, b.to, GREEN]); }
   const bottom = (side === 'white') !== flip ? 'w' : 'b';
   drawBoard($('#board'), c, { side: bottom, last, arrows, mark: focus === null && idx ? { sq: moves[idx - 1].to, kind: kindOf(idx - 1) } : null });
   players(bottom);
   const i = idx - 1, j = g.analysis?.[i]?.judgment?.name;
+  const fb = focus !== null && idx === focus ? bestMove(focus) : null;
   $('#here').innerHTML = focus !== null && idx === focus
-    ? `${moveNo(focus)} <b>${moves[focus].san}</b> was played here (red)${bestMove(focus) ? `; <b>${bestMove(focus).san}</b> (green) was better` : ''}.`
+    ? (fb && fb.san === moves[focus].san ? `${moveNo(focus)} <b>${fb.san}</b> was played here (green), the best move.` : `${moveNo(focus)} <b>${moves[focus].san}</b> was played here (red)${fb ? `; <b>${fb.san}</b> (green) was better` : ''}.`)
+    : showBest && idx < moves.length ? (bestMove(idx) ? `Best move here: <b>${bestMove(idx).san}</b> (green). ${moveNo(idx)} <b>${moves[idx].san}</b> was played.` : 'No best move kept for this position.')
     : idx ? `${moveNo(i)} <b>${moves[i].san}</b>${j ? ` <span class="gm-j j-${j}">${GLYPHS[j]} ${j.toLowerCase()}</span>` : ''}${g.analysis ? ` · your chances ${Math.round(chanceAt(i))}%` : ''}` : 'The start position.';
   document.querySelectorAll('.gm-move').forEach((b) => b.classList.toggle('on', Number(b.dataset.i) === idx - 1));
   const cur = document.querySelector('.gm-move.on');
@@ -187,13 +198,18 @@ function render() {
     </section>
     ${graph()}
     ${list.length ? `<section class="gm-moments"><h2>The moves that decided it</h2><ul>${list.map((x) => `<li><button type="button" class="gm-moment ${x.mine ? 'mine' : 'theirs'}" data-moment="${x.i}">
-      <span class="gm-j j-${x.j}">${GLYPHS[x.j]}</span><span><b>${moveNo(x.i)} ${x.m.san}</b> ${x.mine ? 'by you' : 'by your opponent'}${x.best ? `: <b>${x.best.san}</b> was better` : ''}<br><small>${x.mine ? `cost you ${x.swing}% of your winning chances` : `gave you ${x.swing}%`}</small></span></button></li>`).join('')}</ul></section>` : ''}
+      <span class="gm-j j-${x.j}">${GLYPHS[x.j]}</span><span><b>${moveNo(x.i)} ${x.m.san}</b> ${x.mine ? 'by you' : 'by your opponent'}${x.best ? `: <b>${x.best.san}</b> was better` : ''}<br><small>${x.mine ? `cost you ${x.swing}% of your winning chances` : `gave you ${x.swing}%`}</small>${answer(x) ? `<br><small>${answer(x)}</small>` : ''}</span></button></li>`).join('')}</ul></section>` : ''}
     <section class="gm-moves"><h2>Moves</h2><ol>${pairs.map((i) => `<li><span class="n">${i / 2 + 1}.</span>${[i, i + 1].filter((k) => k < moves.length).map((k) => {
       const j = g.analysis?.[k]?.judgment?.name;
       return `<button type="button" class="gm-move${j ? ` j-${j}` : ''}" data-i="${k}">${moves[k].san}${j ? GLYPHS[j] : ''}</button>`;
     }).join('')}</li>`).join('')}</ol></section>`;
   $('#game').querySelectorAll('.gm-move').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.i) + 1)));
-  $('#game').querySelectorAll('[data-moment]').forEach((b) => b.addEventListener('click', () => { focus = Number(b.dataset.moment); idx = focus; drawPosition(); }));
+  $('#game').querySelectorAll('[data-moment]').forEach((b) => b.addEventListener('click', () => {
+    const i = Number(b.dataset.moment), theirs = !mine(i) && i + 1 < moves.length;
+    focus = theirs ? i + 1 : i; idx = focus; drawPosition(); // their slip: your answer to it, with the best one
+  }));
+  const bb = $('#best');
+  bb.hidden = !g.analysis;
   $('#game').querySelector('[data-analyse]')?.addEventListener('click', analyse);
   const svg = $('#game').querySelector('.gm-graph svg');
   svg?.addEventListener('click', (e) => { const r = svg.getBoundingClientRect(); go(Math.round(((e.clientX - r.left) / r.width) * moves.length)); });
@@ -214,7 +230,10 @@ async function impact() {
   // own numbers (your rating sets the card's level, so a won or lost game lifts or lowers them all).
   const tenth = (d) => Math.round(d * 10) / 10;
   const moved = a.map((x, i) => ({ label: x.label, now: x.v === null ? null : Math.round(x.v), d: x.v !== null && b[i].v !== null ? tenth(x.v - b[i].v) : 0 })).filter((x) => x.now !== null);
-  const dOvr = ovr(a) !== null && ovr(b) !== null ? tenth(ovr(a) - ovr(b)) : 0, style = withIt.type?.[0]?.name, was = without.type?.[0]?.name;
+  // Overall over the skills known both with and without the game, so a skill that only one of them has
+  // (it unlocks or locks with this game) does not swing it against the skills shown.
+  const both = a.map((x, i) => i).filter((i) => a[i].v !== null && b[i].v !== null);
+  const dOvr = both.length ? tenth(both.reduce((t, i) => t + a[i].v - b[i].v, 0) / both.length) : 0, style = withIt.type?.[0]?.name, was = without.type?.[0]?.name;
   const sign = (d) => (d > 0 ? `+${d}` : d < 0 ? `${d}`.replace('-', '−') : '±0');
   const way = (d) => (d > 0 ? 'up' : d < 0 ? 'down' : 'same');
   el.innerHTML = `<h2>How this game affected your stats</h2>
@@ -246,6 +265,7 @@ $('#prev').addEventListener('click', () => go(idx - 1));
 $('#next').addEventListener('click', () => go(idx + 1));
 $('#last').addEventListener('click', () => go(moves.length));
 $('#flip').addEventListener('click', () => { flip = !flip; drawPosition(); });
+$('#best').addEventListener('click', (e) => { showBest = !showBest; focus = null; e.currentTarget.setAttribute('aria-pressed', showBest); e.currentTarget.textContent = showBest ? 'Hide best move' : 'Show best move'; drawPosition(); });
 addEventListener('keydown', (e) => {
   if (e.target.closest('input, textarea')) return;
   if (e.key === 'ArrowLeft') go(idx - 1);
