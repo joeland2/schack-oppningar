@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029145336';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029145336';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029145336';
-import { GUIDE } from './guide.js?v=20261029145336';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029145336';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029145336';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029145336';
-import { storedGames } from './profile.js?v=20261029145336';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029145707';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029145707';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029145707';
+import { GUIDE } from './guide.js?v=20261029145707';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029145707';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029145707';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029145707';
+import { storedGames } from './profile.js?v=20261029145707';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1040,18 +1040,23 @@ let goAsked = false;
 $('#go-ask').addEventListener('click', (e) => {
   const b = e.target.closest('[data-go]');
   if (!b) return;
-  $('#go-ask').hidden = true;
+  showGo(false);
   goOn(b.dataset.go);
 });
 // Four ways on, Learn (arrows) or Practice (from memory), each either playing on from here or starting
 // the line again. Playing on keeps the line-done card beside the board, with its own Next line.
 const GO = [['learn-on', 'Play on in Learn', 'Carry on from here; the arrows show good moves'], ['learn', 'Learn this line again', 'From the start, with arrows'],
   ['try-on', 'Play on in Practice', 'Carry on from here, without arrows'], ['try', 'Practise this line', 'From the start, from memory']];
+// While the choice is up nothing else in the trainer can be used: the game waits for the choice.
+function showGo(on) {
+  $('#go-ask').hidden = !on;
+  for (const el of [$('#trainer .panel'), $('#trainer .side'), $('#trainer .controls'), $('#trainer .progress'), $('.m-bar'), boardEl, $('#move-form')]) if (el) el.inert = on;
+}
 function askGo() {
   goAsked = true;
   $('#go-ask').innerHTML = `<div class="depth-card"><p class="depth-k">Line done</p><p class="depth-q">${lineName(lines[lineIdx])}. How do you want to go on?</p>
     ${GO.map(([g, label, about]) => `<button type="button" class="depth-opt" data-go="${g}"><b>${label}</b><span>${about}</span></button>`).join('')}</div>`;
-  $('#go-ask').hidden = false;
+  showGo(true);
 }
 function goOn(go) {
   const [m, on] = go.split('-');
@@ -1337,7 +1342,7 @@ function start(op, keepTraps = false) {
   window.track?.('practise', `${op.side === 'b' ? 'Black' : 'White'}: ${(isVs(op) ? 'vs ' : '') + op.name}`);
   line = []; lines = []; game = new Chess();
   $('#depth-ask').hidden = true;
-  $('#go-ask').hidden = true;
+  showGo(false);
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   misses = 0; missesHere = 0; busy = true;
   $('#op-title').textContent = (isVs(op) ? 'vs ' : '') + op.name;
@@ -1415,7 +1420,7 @@ function play(i, again = false) {
   gameGen++; // ignore an opponent reply still on its way from the previous game
   playing = false; opponent = saidOpponent = null;
   premove = null; notes = []; betters = []; lineDone = ''; view = null;
-  goAsked = false; $('#go-ask').hidden = true;
+  goAsked = false; showGo(false);
   clearShapes(boardEl);
   redo = [];
   $('#restart').textContent = 'Restart';
@@ -2605,6 +2610,7 @@ function finish() {
   renderLines();
   renderLineBox();
   $('#restart').textContent = trapRun ? 'Next trap' : mode === 'try' && (misses || assisted) ? 'Try again' : 'Next line';
+  $('#restart').classList.add('primary');
   const on = 'Play on if you like: the arrow shows a good next move.';
   if (mode === 'learn') say(`Line learned. ${on} Or press Next line, or switch to Practice to play it from memory.`, 'good');
   else if (assisted) say(`Line done. You switched to Practice on the way, so it does not count as cleared: press Try again to play it from the start. ${on}`, 'good');
@@ -2817,7 +2823,7 @@ function stepForward() {
 $('#step-back').addEventListener('click', stepBack);
 $('#step-fwd').addEventListener('click', stepForward);
 document.addEventListener('keydown', (e) => {
-  if ($('#trainer').hidden || e.target.closest?.('input, textarea, select') || e.altKey || e.metaKey || e.ctrlKey) return;
+  if ($('#trainer').hidden || !$('#go-ask').hidden || e.target.closest?.('input, textarea, select') || e.altKey || e.metaKey || e.ctrlKey) return;
   if (e.key === 'ArrowLeft') { e.preventDefault(); stepBack(); }
   if (e.key === 'ArrowRight') { e.preventDefault(); stepForward(); }
 });

@@ -32,38 +32,17 @@ export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint 
       ? `<span class="mark k-${mark.kind}" title="${mark.kind}">${mark.kind === 'book' ? BOOK : GLYPH[mark.kind]}</span>`
       : mark && mark.sq === sq
       ? `<span class="mark ${mark.ok ? 'ok' : 'bad'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${mark.ok ? 'M5 12.5l4.5 4.5L19 7.5' : 'M7 7l10 10M17 7L7 17'}"/></svg></span>` : '';
-    // One tab stop for the whole board (roving tabindex): the square last moved to with the keys, else the
-    // selected square, else e2/e7; the arrow keys move between squares (see boardKeys).
-    const stop = (el._focus || sel || (side === 'w' ? 'e2' : 'e7')) === sq;
-    html += `<button class="${cls.join(' ')}" data-sq="${sq}" tabindex="${stop ? 0 : -1}" aria-label="${sq}${p ? `, ${p.color === 'w' ? 'white' : 'black'} ${NAMES[p.type]}` : ''}${sq === sel ? ', selected' : ''}">${piece}${badge}${fileLbl}${rankLbl}</button>`;
+    // Where the page has a field to type moves in (data-typed), the squares are for the mouse and touch
+    // only, so tabbing reaches the field instead of 64 squares.
+    html += `<button class="${cls.join(' ')}" data-sq="${sq}"${el.dataset.typed ? ' tabindex="-1"' : ''} aria-label="${sq}${p ? `, ${p.color === 'w' ? 'white' : 'black'} ${NAMES[p.type]}` : ''}${sq === sel ? ', selected' : ''}">${piece}${badge}${fileLbl}${rankLbl}</button>`;
   }
-  const had = el.contains(document.activeElement) ? document.activeElement.dataset.sq : null; // keep the keyboard's place on a redraw
-  boardKeys(el);
   el.innerHTML = html + (arrow ? arrowSvg(arrow, side) : arrows.map((a) => arrowSvg(a, side)).join('')) + (el.classList.contains('mini') ? '' : '<svg class="shapes" viewBox="0 0 8 8" aria-hidden="true"></svg>');
   el._game = game;
-  if (had) el.querySelector(`[data-sq="${had}"]`)?.focus();
   drawShapes(el);
   if (el._anim) stepAnim(el, performance.now());
 }
 
 const NAMES = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
-// The arrow keys move the focus between squares as they are drawn (so up is always up the screen);
-// Enter or Space presses the square, the same as a click.
-function boardKeys(el) {
-  if (el._keys || el.classList.contains('mini')) return;
-  el._keys = true;
-  el.addEventListener('keydown', (e) => {
-    const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -8, ArrowDown: 8 }[e.key];
-    const sqs = [...el.querySelectorAll('.sq')], i = sqs.indexOf(document.activeElement);
-    if (step === undefined || i < 0) return;
-    e.preventDefault(); e.stopPropagation(); // the page's own arrow keys step through the moves
-    const j = i + step;
-    if (j < 0 || j > 63 || (Math.abs(step) === 1 && Math.floor(j / 8) !== Math.floor(i / 8))) return;
-    sqs[i].tabIndex = -1; sqs[j].tabIndex = 0; sqs[j].focus();
-    el._focus = sqs[j].dataset.sq;
-  });
-}
-
 // ---------- Move animation, as on Lichess (chessground's anim.ts) ----------
 // Each piece that appears on a square flies in from the nearest square that lost the same piece;
 // a piece that disappears (a capture) stays half-faded on its square until the move lands.
