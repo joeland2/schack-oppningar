@@ -844,7 +844,7 @@ h1, .picker h1 { font-family: var(--font-poster); font-weight: 400; text-transfo
 .seg { border-radius: var(--radius); }
 .seg button { border-radius: 2px; }
 .ghost, .controls button { color: var(--ink); }
-main a:not(.cta):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op), button.link { color: var(--hot); }
+main a:not(.cta):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op):not(.lb-name), button.link { color: var(--hot); }
 .cta { border-radius: var(--radius); }
 a.cta { color: var(--accent-ink); }
 @media (max-width: 560px) { /* five sections on a phone: one row that scrolls sideways if it must */
