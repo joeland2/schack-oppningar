@@ -1,6 +1,6 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029165636';
+import { account, login, finishLogin } from './lichess.js?v=20261029165953';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -95,7 +95,8 @@ function render(s) {
           <span>${esc(v.device || '–')}</span>
           <span class="num">${v.views} views · since ${day(v.first)}</span>
           <span class="num">${when(v.last)}</span></summary>
-          <ol class="ad-events">${v.events.map((e) => `<li><span class="num">${when(e.at)}</span><span>${e.kind === 'view' ? `Opened ${esc(pageName(e.page))}` : `${esc(KIND[e.kind] || e.kind)}${e.target ? `: <b>${esc(e.target)}</b>` : ''}`}</span></li>`).join('')}</ol></details>`).join('')}</div>`
+          <ol class="ad-events">${v.events.map((e) => `<li><span class="num">${when(e.at)}</span><span>${e.kind === 'view' ? `Opened ${esc(pageName(e.page))}` : `${esc(KIND[e.kind] || e.kind)}${e.target ? `: <b>${esc(e.target)}</b>` : ''}`}</span></li>`).join('')}</ol></details>`).join('')}</div>
+      ${s.visitors.length > 10 ? `<button type="button" class="ghost ad-more" data-more aria-expanded="false">Show all ${s.visitors.length}</button>` : ''}`
       : '<p class="info">Nobody yet.</p>'}</section>
     <div class="pf-two">
       <section class="pf-card"><h2>Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="ad-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
@@ -132,6 +133,9 @@ function show(body) {
   bindLine(body.perDay);
   $('#ad-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = Number(b.dataset.span);
     $('#ad-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body.perDay); });
+  // The visitor list shows the newest 10 until opened.
+  $('[data-more]')?.addEventListener('click', (e) => { const b = e.currentTarget, open = $('.ad-visitors').classList.toggle('open');
+    b.setAttribute('aria-expanded', open); b.textContent = open ? 'Show the newest 10' : `Show all ${body.visitors.length}`; });
   $('[data-demo]').addEventListener('click', () => { if (!body.demo) { real = body; show(demoData()); } });
   $('[data-real]').addEventListener('click', () => { if (body.demo) show(real); });
 }
