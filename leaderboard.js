@@ -12,14 +12,15 @@ const BY = [['overall', 'Overall', (r) => r.overall], ...['Attack', 'Defense', '
 // six skills, the ranked one marked), and beside it the name, style + strength and the openings played most.
 const practise = (side, fam) => `./?practise=${side}~${encodeURIComponent(fam.replace(/^vs /, ''))}`;
 const PIECE = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
+const bandOf = (r) => (!r ? 2 : r < 1000 ? 0 : r < 1400 ? 1 : r < 1800 ? 2 : r < 2200 ? 3 : 4); // the card's colour, as in profile.js
 function row(r, i, value) {
   const top = (side) => (r.openings || []).filter((o) => o.side === side).sort((a, b) => b.n - a.n)[0];
   const w = top('w'), bl = top('b'), href = `profile.html?u=${encodeURIComponent(r.name)}`;
   return `<li class="lb-row${i === null ? ' unranked' : ''}"><span class="lb-rank">${i === null ? '–' : i + 1}</span>
-    <a class="lb-card" href="${href}" aria-label="${esc(r.name)}'s profile"><div class="pf-pcard"><div class="pf-pcard-top"><div><b class="pf-ovr">${r.overall ?? '–'}</b><span class="pf-pos">${esc(r.style || '')}</span></div>
+    <a class="lb-card" href="${href}" aria-label="${esc(r.name)}'s profile"><div class="pf-pcard" data-band="${bandOf(r.rating)}"><div class="pf-pcard-top"><div><b class="pf-ovr">${r.overall ?? '–'}</b><span class="pf-pos">${esc(r.style || '')}</span>${r.strength ? `<span class="pf-str">+ ${esc(r.strength)}</span>` : ''}</div>
       <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(r.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(r.piece || 'n').toUpperCase()}.svg" alt="" title="Most important piece: the ${PIECE[r.piece || 'n']}"><span class="pf-pcard-rating">${r.rating} <small>${esc(r.speed)}</small></span></div></div>
       <p class="pf-pcard-name">${esc(r.name)}</p>
-      <div class="pf-pcard-stats">${Object.entries(ABBR).map(([k, a]) => `<span${state.by === k ? ' class="lb-by"' : ''}><b>${r.skills?.[k] ?? '–'}</b>${a}</span>`).join('')}</div></div></a>
+      <div class="pf-pcard-bars">${Object.entries(ABBR).map(([k, a]) => `<div${state.by === k ? ' class="on"' : ''}><span>${a}</span><i style="--v:${r.skills?.[k] ?? 0}%"></i><b>${r.skills?.[k] ?? '–'}</b></div>`).join('')}</div></div></a>
     <div class="lb-info"><a class="lbd-name" href="${href}">${esc(r.name)}</a>
       <p class="lb-type">${esc(r.style || '')}${r.strength ? ` <span>+ ${esc(r.strength)}</span>` : ''}</p>
       <p class="lb-ops">${w ? `<span><small>Most played as White</small> <a class="lb-op" href="${practise('w', w.fam)}">${esc(w.fam)}</a></span>` : ''}${bl ? `<span><small>Most played as Black</small> <a class="lb-op" href="${practise('b', bl.fam)}">${esc(bl.fam)}</a></span>` : ''}</p>

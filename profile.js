@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029172845';
-import { STYLE_OF } from './styles.js?v=20261029172845';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029175411';
+import { STYLE_OF } from './styles.js?v=20261029175411';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -855,17 +855,23 @@ function portrait(name, p, skills, me, part = 'lead') {
 // The piece is drawn white for the black card; in dark mode, where the card is cream, CSS inverts it.
 const CARD_INK = 'w';
 const PIECE_NAME = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
+// The card's picture is coloured by rating, in the leaderboard's bands: under 1000, 1000–1399,
+// 1400–1799, 1800–2199, 2200+ (CSS [data-band], and BAND for the downloaded image).
+const bandOf = (r) => (!r ? 2 : r < 1000 ? 0 : r < 1400 ? 1 : r < 1800 ? 2 : r < 2200 ? 3 : 4);
+const BAND = ['#3f7a5c', '#2c6b9e', '#e2561c', '#c4283f', '#7a4ad6'];
+// The six skills as bars, so a player's shape reads before the numbers; [label, value] pairs.
+const cardBars = (xs, on = null) => `<div class="pf-pcard-bars">${xs.map(([k, v]) => `<div${k === on ? ' class="on"' : ''}><span>${k}</span><i style="--v:${v ?? 0}%"></i><b>${v ?? '–'}</b></div>`).join('')}</div>`;
 const ABBR = { Attack: 'ATK', Defense: 'DEF', 'Early game': 'EARLY', 'Late game': 'LATE', Accuracy: 'ACC', Speed: 'SPD' };
 function playerCard(name, p, t, skills) {
   const known = skills.filter((x) => x.v !== null);
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
   const main = p.speeds[0];
-  return `<div class="pf-pcard" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">
-    <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span></div>
-      <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title="${esc(name)}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
+  return `<div class="pf-pcard" data-band="${bandOf(main?.rating)}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">
+    <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span>${t[1] ? `<span class="pf-str">+ ${esc(t[1].name)}</span>` : ''}</div>
+      <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title=""${esc(name)}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
         ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
     <p class="pf-pcard-name">${esc(name)}</p>
-    <div class="pf-pcard-stats">${skills.map((x) => `<span><b>${x.v ?? '–'}</b>${ABBR[x.label]}</span>`).join('')}</div>
+    ${cardBars(skills.map((x) => [ABBR[x.label], x.v]))}
     <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
   </div>`;
 }
@@ -892,25 +898,31 @@ function wrap(ctx, text, x, y, max, lh, lines = 99, indent = 0) {
 // One card, 600 x 780 units, top left at (x, y).
 function drawCard(ctx, x, y, name, p, t, skills, piece) {
   const known = skills.filter((k) => k.v !== null), ovr = known.length ? String(Math.round(sum(known, (k) => k.v) / known.length)) : '–', main = p.speeds[0];
+  const band = BAND[bandOf(main?.rating)];
   ctx.save(); ctx.translate(x, y);
   ctx.fillStyle = CARD.bg; ctx.beginPath(); ctx.roundRect(0, 0, 600, 780, 10); ctx.fill();
+  ctx.fillStyle = band; ctx.beginPath(); ctx.roundRect(0, 0, 600, 14, [10, 10, 0, 0]); ctx.fill();
   ctx.textBaseline = 'alphabetic'; ctx.letterSpacing = '0px';
-  ctx.fillStyle = CARD.hot; ctx.font = '400 150px Anton'; ctx.fillText(ovr, 40, 185);
-  ctx.fillStyle = CARD.ink; fit(ctx, t[0].name.toUpperCase(), '400 #px Anton', 40, 300); ctx.fillText(t[0].name.toUpperCase(), 42, 235);
+  ctx.fillStyle = band; ctx.font = '400 150px Anton'; ctx.fillText(ovr, 40, 185);
+  ctx.fillStyle = CARD.ink; fit(ctx, t[0].name.toUpperCase(), '400 #px Anton', 40, 300); ctx.fillText(t[0].name.toUpperCase(), 42, 232);
+  if (t[1]) { ctx.fillStyle = CARD.muted; ctx.font = '600 24px Geist'; ctx.fillText(`+ ${t[1].name}`, 42, 266); }
   if (piece) ctx.drawImage(piece, 450, 48, 110, 110);
   if (main) {
-    ctx.textAlign = 'right'; ctx.font = '400 26px Anton'; ctx.fillStyle = CARD.muted; const sp = main.speed.toUpperCase(); ctx.fillText(sp, 560, 235);
-    const w = ctx.measureText(sp).width; ctx.font = '400 52px Anton'; ctx.fillStyle = CARD.ink; ctx.fillText(String(main.rating), 560 - w - 10, 235); ctx.textAlign = 'left';
+    ctx.textAlign = 'right'; ctx.font = '400 26px Anton'; ctx.fillStyle = CARD.muted; const sp = main.speed.toUpperCase(); ctx.fillText(sp, 560, 232);
+    const w = ctx.measureText(sp).width; ctx.font = '400 52px Anton'; ctx.fillStyle = CARD.ink; ctx.fillText(String(main.rating), 560 - w - 10, 232); ctx.textAlign = 'left';
   }
-  ctx.fillStyle = CARD.line; ctx.fillRect(40, 262, 520, 2); ctx.fillRect(40, 372, 520, 2);
-  ctx.fillStyle = CARD.ink; ctx.textAlign = 'center'; fit(ctx, name.toUpperCase(), '400 #px Anton', 64, 520); ctx.fillText(name.toUpperCase(), 300, 342); ctx.textAlign = 'left';
+  ctx.fillStyle = CARD.line; ctx.fillRect(40, 292, 520, 2); ctx.fillRect(40, 392, 520, 2);
+  ctx.fillStyle = CARD.ink; ctx.textAlign = 'center'; fit(ctx, name.toUpperCase(), '400 #px Anton', 60, 520); ctx.fillText(name.toUpperCase(), 300, 366); ctx.textAlign = 'left';
+  // The six skills as bars, in the card's colour.
   skills.forEach((k, i) => {
-    const cx = i % 2 ? 330 : 70, cy = 470 + Math.floor(i / 2) * 95;
-    ctx.fillStyle = CARD.ink; ctx.font = '400 72px Anton'; const v = String(k.v ?? '–'); ctx.fillText(v, cx, cy);
-    ctx.fillStyle = CARD.muted; ctx.font = '400 34px Anton'; ctx.fillText(ABBR[k.label], cx + ctx.measureText('00').width * 72 / 34 + 18, cy);
+    const cy = 452 + i * 50;
+    ctx.fillStyle = CARD.muted; ctx.font = '400 28px Anton'; ctx.fillText(ABBR[k.label], 44, cy);
+    ctx.fillStyle = CARD.line; ctx.beginPath(); ctx.roundRect(150, cy - 20, 330, 14, 3); ctx.fill();
+    if (k.v) { ctx.fillStyle = band; ctx.beginPath(); ctx.roundRect(150, cy - 20, 330 * k.v / 100, 14, 3); ctx.fill(); }
+    ctx.fillStyle = CARD.ink; ctx.font = '400 38px Anton'; ctx.textAlign = 'right'; ctx.fillText(String(k.v ?? '–'), 558, cy + 2); ctx.textAlign = 'left';
   });
   ctx.fillStyle = CARD.muted; ctx.textAlign = 'center'; ctx.font = '600 20px Geist'; ctx.letterSpacing = '4px';
-  ctx.fillText(`${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} GAMES`, 300, 742);
+  ctx.fillText(`${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} GAMES`, 300, 752);
   ctx.restore();
 }
 async function cardPng(name, p, t, skills, detail, btn) {

@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029172845';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029172845';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029172845';
-import { GUIDE } from './guide.js?v=20261029172845';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029172845';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029172845';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029172845';
-import { storedGames, gamesReady } from './profile.js?v=20261029172845';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029175411';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029175411';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029175411';
+import { GUIDE } from './guide.js?v=20261029175411';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029175411';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029175411';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029175411';
+import { storedGames, gamesReady } from './profile.js?v=20261029175411';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3159,10 +3159,11 @@ async function deepLink() {
 // shown as their player cards (from the leaderboard; their names alone until it answers).
 const ABBR = { Attack: 'ATK', Defense: 'DEF', 'Early game': 'EARLY', 'Late game': 'LATE', Accuracy: 'ACC', Speed: 'SPD' };
 const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-const pcard = (r) => `<div class="pf-pcard"><div class="pf-pcard-top"><div><b class="pf-ovr">${r.overall ?? '–'}</b><span class="pf-pos">${esc(r.style)}</span></div>
+const bandOf = (x) => (!x ? 2 : x < 1000 ? 0 : x < 1400 ? 1 : x < 1800 ? 2 : x < 2200 ? 3 : 4); // the card's colour, as in profile.js
+const pcard = (r) => `<div class="pf-pcard" data-band="${bandOf(r.rating)}"><div class="pf-pcard-top"><div><b class="pf-ovr">${r.overall ?? '–'}</b><span class="pf-pos">${esc(r.style)}</span>${r.strength ? `<span class="pf-str">+ ${esc(r.strength)}</span>` : ''}</div>
     <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(r.piece || 'n').toUpperCase()}.svg" alt=""><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(r.piece || 'n').toUpperCase()}.svg" alt=""><span class="pf-pcard-rating">${r.rating} <small>${esc(r.speed)}</small></span></div></div>
     <p class="pf-pcard-name">${esc(r.name)}</p>
-    <div class="pf-pcard-stats">${Object.entries(ABBR).map(([k, a]) => `<span><b>${r.skills?.[k] ?? '–'}</b>${a}</span>`).join('')}</div></div>`;
+    <div class="pf-pcard-bars">${Object.entries(ABBR).map(([k, a]) => `<div><span>${a}</span><i style="--v:${r.skills?.[k] ?? 0}%"></i><b>${r.skills?.[k] ?? '–'}</b></div>`).join('')}</div></div>`;
 // The brand opens the landing; the Openings section (./#openings) goes straight to the openings.
 function landing() { $('.hero').hidden = !!account() || location.hash === '#openings'; } // a declaration: a link straight to a trainer calls it early
 landing();
@@ -3170,7 +3171,7 @@ addEventListener('hashchange', landing);
 if (!account()) fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard').then((r) => (r.ok ? r.json() : [])).then((rows) => {
   document.querySelectorAll('.hero-p[data-p]').forEach((a) => {
     const r = rows.find((x) => x.name.toLowerCase() === a.dataset.p);
-    if (r) a.innerHTML = `${pcard(r)}<span class="hero-r">${esc(a.dataset.lvl)} · ${esc(r.strength || '')}</span>`;
+    if (r) a.innerHTML = `${pcard(r)}<span class="hero-r">${esc(a.dataset.lvl)}</span>`;
   });
 }).catch(() => {});
 

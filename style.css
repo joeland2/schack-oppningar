@@ -1788,3 +1788,22 @@ p, li, dd, small { text-wrap: pretty; }
   .ostats { gap: 4px 12px; font-size: 12px; margin-top: 2px; }
   .ostats .wdl { width: 80px; }
 }
+
+/* The player card with bars: a rule and the overall in the rating's colour (the leaderboard's bands),
+   the style with its strength under it, and the six skills as bars. */
+.pf-pcard { --band: #e2561c; border-top: 5px solid var(--band-ink, var(--band)); }
+.pf-pcard[data-band="0"] { --band: #3f9a6e; } .pf-pcard[data-band="1"] { --band: #3a86c8; } .pf-pcard[data-band="2"] { --band: #e2561c; }
+.pf-pcard[data-band="3"] { --band: #d63a4f; } .pf-pcard[data-band="4"] { --band: #8a5ae0; }
+.pf-pcard { --band-ink: var(--band); }
+/* Dark mode turns the card cream: the colour a shade darker there, so it still reads */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pf-pcard { --band-ink: color-mix(in srgb, var(--band) 78%, #000); } }
+:root[data-theme="dark"] .pf-pcard { --band-ink: color-mix(in srgb, var(--band) 78%, #000); }
+:root .pf-pcard .pf-ovr { color: var(--band-ink); }
+.pf-str { display: block; margin-top: 3px; font: 600 12px/1.2 var(--font-body); letter-spacing: .01em; text-transform: none; opacity: .8; }
+.pf-pcard-bars { display: grid; gap: 7px; padding: 2px 4px 0; }
+.pf-pcard-bars > div { display: grid; grid-template-columns: 52px minmax(0, 1fr) 30px; align-items: center; gap: 10px; font: 400 14px/1 var(--font-poster); letter-spacing: .05em; }
+.pf-pcard-bars span { opacity: .8; }
+.pf-pcard-bars i { height: 8px; border-radius: 2px; background: color-mix(in srgb, currentColor 16%, transparent); overflow: hidden; }
+.pf-pcard-bars i::before { content: ""; display: block; width: var(--v); height: 100%; background: var(--band-ink); }
+.pf-pcard-bars b { font-weight: 400; font-size: 20px; text-align: right; }
+.pf-pcard-bars .on span, .pf-pcard-bars .on b { color: var(--band-ink); opacity: 1; }
