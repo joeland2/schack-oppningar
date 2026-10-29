@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029170321';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029170321';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029170321';
-import { GUIDE } from './guide.js?v=20261029170321';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029170321';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029170321';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029170321';
-import { storedGames, gamesReady } from './profile.js?v=20261029170321';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029170912';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029170912';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029170912';
+import { GUIDE } from './guide.js?v=20261029170912';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029170912';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029170912';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029170912';
+import { storedGames, gamesReady } from './profile.js?v=20261029170912';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -433,7 +433,7 @@ const PHONE = matchMedia('(max-width: 560px)');
 // Wide screens have the line list and moves in their own column, open.
 if (matchMedia('(min-width: 1400px)').matches) document.querySelectorAll('.side details').forEach((d) => { d.open = true; });
 
-gamesReady.then(() => renderList()); // the kept games load after the first draw
+gamesReady.then(() => { if (OPENINGS.length) renderList(); }); // the kept games may load after the first draw; never before the openings
 function renderList() {
   const about = {
     w: (n) => `${sort === 'played' ? 'Most played first' : 'Best results first'}. ${style === 'any'
@@ -919,7 +919,8 @@ function renderMoves() {
   $('#op-line').textContent = lines[lineIdx] && mode !== 'explore' ? lineName(lines[lineIdx]) : '';
   // The phone's bar above the board: the opening, the line and the mode, which the panel shows lower down.
   $('#m-name').textContent = $('#op-title').textContent;
-  $('#m-line').textContent = lines[lineIdx] && mode !== 'explore' ? `Line ${lineIdx + 1} of ${lines.length} · ${lineName(lines[lineIdx])}` : mode === 'explore' ? 'Exploring' : '';
+  // The line's own name leads (two lines share an opening's name), its number after.
+  $('#m-line').textContent = lines[lineIdx] && mode !== 'explore' ? `${lineName(lines[lineIdx])} · ${lineIdx + 1}/${lines.length}` : mode === 'explore' ? 'Exploring' : '';
   $('#m-mode').value = mode;
   // The path: how many lines wait for review under Practice, and what a step means until a line is learned.
   const st = cur && stats[statKey(cur.id)], due = dueCount(st);
@@ -1057,6 +1058,7 @@ $('#go-ask').addEventListener('click', (e) => {
 function showGo(on) {
   $('#go-ask').hidden = !on;
   if (on) $('#line-done').hidden = true; // the line's summary and its tips come back once you play on
+  $('#restart').style.visibility = on ? 'hidden' : ''; // the card has the one Next line / Try again
   for (const el of [$('#trainer .panel'), $('#trainer .side'), $('#trainer .controls'), $('#trainer .progress'), $('.m-bar'), boardEl, $('#move-form')]) if (el) el.inert = on;
 }
 function askGo() {
@@ -1065,10 +1067,10 @@ function askGo() {
   const done = mode === 'try' && !misses && !assisted ? 'Line cleared' : mode === 'try' ? 'Line done' : 'Line learned';
   $('#go-ask').innerHTML = `<div class="depth-card" role="dialog" aria-labelledby="go-title"><p class="depth-k">${done}</p><p class="depth-q" id="go-title">${lineName(lines[lineIdx])}. How do you want to go on?</p>
     <button type="button" class="cta go-next" data-go="next">${$('#restart').textContent}<small>${mode === 'try' ? 'the next line to practise' : 'learn the next line, with arrows'}</small></button>
-    <div class="go-grid" role="group" aria-label="Or this line again">
+    <div class="go-grid" role="group" aria-label="Or go on with this line">
       <span></span><span class="go-col">Learn<small>arrows</small></span><span class="go-col">Practice<small>from memory</small></span>
-      <span class="go-row">Play on from here</span><button type="button" data-go="learn-on">Learn on</button><button type="button" data-go="try-on">Practise on</button>
-      <span class="go-row">From the start</span><button type="button" data-go="learn">Learn again</button><button type="button" data-go="try">Practise it</button>
+      <span class="go-row">Play on from here</span><button type="button" data-go="learn-on" aria-label="Learn on from here, with arrows">Learn on</button><button type="button" data-go="try-on" aria-label="Practise on from here, from memory">Practise on</button>
+      <span class="go-row">From the start</span><button type="button" data-go="learn" aria-label="Learn this line again from the start, with arrows">Learn again</button><button type="button" data-go="try" aria-label="Practise this line from the start, from memory">Practise it</button>
     </div></div>`;
   showGo(true);
   confetti(done === 'Line cleared' ? 110 : done === 'Line learned' ? 60 : 0);
@@ -2545,8 +2547,6 @@ function tryMove(from, to) {
     // The board stays with the right move as an arrow until you choose to go again.
     clearInterval(trial.timer); trial.end = null; trial.left = 0; $('#trial-clock').classList.remove('waiting');
     say(`Not ${m.san}: the arrow shows ${want}. ${plural(trial.score, 'move')} right${record ? ', a new best' : ''}.`, 'bad');
-    msgEl.insertAdjacentHTML('beforeend', ' <button type="button" class="cta trial-again">Try again</button>');
-    msgEl.querySelector('.trial-again').addEventListener('click', () => { wrongSq = null; startTrial(); });
     $('#restart').textContent = 'Try again'; $('#restart').classList.add('primary');
     return true;
   }
@@ -2909,6 +2909,9 @@ function stepBack() {
 
 function stepForward() {
   if (view !== null) return showMove(view + 1);
+  // At a trap or a key moment, the right arrow takes its main action (Punish it, Find the answer).
+  const act = $('.moment [data-act="0"]');
+  if (act) return act.click();
   // In Learn the right arrow plays the line's next move for you, as if the arrow on the board were followed.
   if (mode === 'learn' && !playing && !busy && ply < line.length && userTurn() && $('#go-ask').hidden) {
     const m = expectedMove();
@@ -2934,7 +2937,7 @@ $('#restart').addEventListener('click', () => {
   if ($('#restart').textContent === 'Restart' && ply > 0 && ply < line.length && !confirm('Start this line again from the first move?')) return;
   if (trapRun) return nextTrap();
   if (!lines.length) return start(cur);
-  if (mode === 'time') return startTrial();
+  if (mode === 'time') { wrongSq = null; return startTrial(); }
   if (mode === 'learn') return ply >= line.length ? learnNext() : play(lineIdx);
   play(ply >= line.length && misses === 0 ? nextLine() : lineIdx);
 });
@@ -3152,6 +3155,14 @@ async function deepLink() {
     findTeachers(name).catch((err) => { $('#learn-from').innerHTML = `<p class="info">${err.message}</p>`; });
   }
 }
+
+// The landing's three example players: their style and strength from the leaderboard.
+fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard').then((r) => (r.ok ? r.json() : [])).then((rows) => {
+  document.querySelectorAll('.hero-p[data-p]').forEach((a) => {
+    const r = rows.find((x) => x.name.toLowerCase() === a.dataset.p);
+    if (r) a.querySelector('small').textContent = [r.style, r.strength, r.overall && `overall ${r.overall}`].filter(Boolean).join(' · ');
+  });
+}).catch(() => {});
 
 // ---------- Lichess login ----------
 // Logged in, the rating is always your own from Lichess; only without a login can it be typed in.

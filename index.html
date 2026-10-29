@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261029170321">
-  <script src="header.js?v=20261029170321" defer></script>
-  <script src="theme.js?v=20261029170321"></script>
+  <link rel="stylesheet" href="style.css?v=20261029170912">
+  <script src="header.js?v=20261029170912" defer></script>
+  <script src="theme.js?v=20261029170912"></script>
 </head>
 <body>
   <header class="top">
@@ -29,7 +29,20 @@
   </header>
 
   <section id="picker" class="wrap picker">
-    <h1>Practise openings</h1>
+    <div class="hero">
+      <h1>How does anyone on Lichess really play?</h1>
+      <p class="hero-sub">Type a Lichess name: their player card, style, strengths, openings and slips, read from their last 500 games.</p>
+      <form class="hero-search" action="profile.html" role="search">
+        <input name="u" type="search" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="A Lichess username" aria-label="A Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button type="submit" class="cta">See the profile</button>
+      </form>
+      <div class="hero-ex" aria-label="Example profiles">
+        <a class="hero-p" href="profile.html?u=piero73" data-p="piero73"><b>piero73</b><span class="hero-r">blitz 1376 · club player</span><small></small></a>
+        <a class="hero-p" href="profile.html?u=pablo_calcaterra" data-p="pablo_calcaterra"><b>pablo_calcaterra</b><span class="hero-r">blitz 1782 · strong</span><small></small></a>
+        <a class="hero-p" href="profile.html?u=DrNykterstein" data-p="drnykterstein"><b>DrNykterstein</b><span class="hero-r">bullet 3263 · world class</span><small></small></a>
+      </div>
+    </div>
+    <h2 class="pick-h">Practise openings</h2>
     <div id="rating-step" class="rating-ask" hidden>
     <form id="rating-user-form">
       <label for="rating-user">Your Lichess username</label>
@@ -203,7 +216,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261029170321"></script>
+  <script type="module" src="app.js?v=20261029170912"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>
