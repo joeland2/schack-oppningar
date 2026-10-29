@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029133915';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029133915';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029133915';
-import { GUIDE } from './guide.js?v=20261029133915';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029133915';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029133915';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029133915';
-import { storedGames } from './profile.js?v=20261029133915';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029134126';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029134126';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029134126';
+import { GUIDE } from './guide.js?v=20261029134126';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029134126';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029134126';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029134126';
+import { storedGames } from './profile.js?v=20261029134126';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3025,14 +3025,14 @@ function renderLogin() {
   lockRating();
   const a = account(), b = $('#lichess-login');
   b.textContent = a ? a.name : 'Log in';
-  b.title = a ? `Logged in to Lichess as ${a.name}: play-outs follow real games from all of Lichess. Click to log out.`
+  b.title = a ? `Logged in to Lichess as ${a.name}: your profile (log out there)`
     : 'Log in with Lichess: play-outs then follow real games from all of Lichess, and your rating and games are filled in.';
   b.setAttribute('aria-pressed', String(!!a));
 }
 $('#lichess-login').addEventListener('click', () => {
   const a = account();
   if (!a) return login();
-  if (confirm(`Log out of Lichess (${a.name})?`)) { logout(); renderLogin(); }
+  location.href = `profile.html?u=${encodeURIComponent(a.name)}`;
 });
 renderLogin();
 // Logged in: your Lichess ratings fill in on every visit and stay current, so the openings match your level.

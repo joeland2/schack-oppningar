@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029133915';
-import { STYLE_OF } from './styles.js?v=20261029133915';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029134126';
+import { STYLE_OF } from './styles.js?v=20261029134126';
 
 const MAX = 500;
 const PV = 27;
@@ -341,7 +341,7 @@ function skillsOf(p) {
   const base = levelOf(p.speeds?.[0]?.rating), raw = rawSkills(p).map((x) => (p.n < MIN_GAMES ? { ...x, v: null } : x)), known = raw.filter((x) => x.v !== null);
   const mean = known.length ? sum(known, (x) => x.v) / known.length : 50;
   const card = (r) => base + 0.5 * (mean - 50 + SHAPE * (r - mean));
-  return raw.map((x) => ({ ...x, raw: x.v, level: clamp(card(50)), v: x.v === null ? null : Math.min(99, clamp(card(x.v))) }));
+  return raw.map((x) => ({ ...x, have: p.peer?.analysed ?? 0, raw: x.v, level: clamp(card(50)), v: x.v === null ? null : Math.min(99, clamp(card(x.v))) }));
 }
 { // the shape is stretched, the overall (the mean of the card's skills) stays at base + half the mean gap
   const s = skillsOf({ speeds: [{ rating: 1200 }], peer: { analysed: 120, ups: 36, downs: 32, saved: 0.5, quickW: 0.2, quickL: 0.15, after12: 40, myBl: 2.8, oppBl: 3, meUp: 2.7, oppUp: 3.6, meDown: 1.5, oppDown: 1.4, endgames: 300, endScore: 0.57, n: 400, myLow: 0.15, oppLow: 0.22, timeWins: 0.15, timeLosses: 0.04 } });
@@ -595,7 +595,7 @@ async function analyse(name, target) {
 // in all. New games are fetched first; games already analysed are always skipped.
 // Stat accuracy: how many games are analysed, as three steps (Fair, Good, Best), with the button that
 // reaches the next step first. A player with fewer games than a step reaches it by analysing them all.
-function analysePanel(name, p) {
+function analysePanel(name, p, shown = p) {
   if (analysing) return `<div id="pf-analyse" class="pf-analyse running"><span class="pf-an-progress">Analysing…</span><div class="pf-an-bar"><i></i></div><button type="button" class="link" data-stop>Stop</button></div>`;
   if (!p.todo || p.n < MIN_GAMES) return '';
   const tiers = TIERS.map(([n, label]) => [Math.min(n, p.n), label]).filter(([n], i, a) => i === a.findIndex(([m]) => m === n));
@@ -607,10 +607,13 @@ function analysePanel(name, p) {
   let prev = 0;
   const steps = tiers.map(([n, label]) => { const fill = Math.max(0, Math.min(1, (p.analysed - prev) / (n - prev))); prev = n;
     return `<li class="${p.analysed >= n ? 'done' : fill > 0 ? 'now' : ''}"><span class="pf-acc-bar"><i style="width:${fill * 100}%"></i></span><span class="pf-acc-label"><b>${label}</b> ${n}</span></li>`; }).join('');
-  const locked = rawSkills(p).filter((x) => x.v === null && x.needs).map((x) => x.label);
+  // The skills count only analysed games against opponents near your rating, in the time control shown,
+  // so they can stay locked after the panel's total (all games) has reached a tier.
+  const locked = rawSkills(shown).filter((x) => x.v === null && x.needs).map((x) => x.label), have = shown.peer?.analysed ?? 0;
+  const lockedNote = reached && locked.length ? ` ${locked.join(' and ')} still need${locked.length > 1 ? '' : 's'} ${ENOUGH} analysed games against opponents within ${PEER} of your rating${shown !== p && shown.speeds?.[0] ? ` in ${shown.speeds[0].speed}` : ''}: ${have} so far.` : '';
   const say = !reached ? `Analyse ${next[0]} games to unlock ${locked.length ? `${locked.join(' and ')}, and ` : ''}the parts of Attack and Defense that need analysis (mistakes and advantages).`
-    : next ? `Skills can still move a few points. ${next[1]} at ${next[0]} analysed games.`
-    : 'Every skill rests on all the games there are.';
+    : next ? `Skills can still move a few points. ${next[1]} at ${next[0]} analysed games.${lockedNote}`
+    : `Every skill rests on all the games there are.${lockedNote}`;
   return `<div id="pf-analyse" class="pf-analyse pf-acc${reached ? '' : ' few'}">
     <div class="pf-acc-head"><span class="pf-acc-k">Stat accuracy</span><b class="pf-acc-v">${reached ? reached[1] : 'Locked'}</b>
       <span class="pf-acc-n">${p.analysed} of ${p.n} games analysed</span>
@@ -659,7 +662,7 @@ function skillBars(skills, say, me) {
   return `<ul class="pf-skills">${skills.map((x) => `<li${x.v === null ? ' class="pf-skill-none"' : ''}>
       <span class="pf-skill-name">${x.label}</span><span class="pf-skill-val">${x.v ?? '–'}</span>
       <div class="pf-meter" style="--even:${x.level ?? 50}%" title="The mark: ${x.level ?? 50}, as good as ${me ? 'your' : 'their'} opponents" role="img" aria-label="${x.label}: ${x.v === null ? 'not enough games' : `${x.v} of 100, ${x.level ?? 50} is as good as the opponents`}"><i style="width:${x.v ?? 0}%"></i></div>
-      ${x.v === null && x.needs ? '<small class="pf-skill-lock">Needs more analysed games</small>' : ''}
+      ${x.v === null && x.needs ? `<small class="pf-skill-lock">Needs ${ENOUGH} analysed games against opponents within ${PEER} of ${me ? 'you' : 'them'}: ${x.have} so far</small>` : ''}
       <div class="pf-skill-more"><p class="pf-means">${esc(x.means)}</p>
       <small>${x.v === null ? 'Not enough games to say.' : esc(say(x.why))}</small>
       ${x.raw !== null && x.raw <= 45 ? `<p class="pf-train"><b>How to train:</b> ${esc(x.train)}${me && x.href ? ` <a href="${x.href}">Start</a>` : ''}</p>` : ''}</div></li>`).join('')}</ul>`;
@@ -809,6 +812,12 @@ function cardNote(name, p, me) {
   if (!main) return '';
   return `<details class="pf-card-help"><summary>How the stats work</summary><p class="pf-card-note"><b>Every stat compares ${me ? 'you' : esc(name)} with ${me ? 'your' : 'their'} own opponents</b>, rated ${main.rating - PEER}–${main.rating + PEER}, in the same games. A higher rating starts the card higher; the big number is the average of the six skills. <a href="#pf-skills">What each skill measures</a></p></details>`;
 }
+// Logged in: a small log-out button in the top bar, on the profile only.
+if (account()) {
+  document.querySelector('#theme')?.insertAdjacentHTML('beforebegin', `<button id="pf-logout" class="ghost theme" type="button" title="Log out of Lichess (${account().name})" aria-label="Log out"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11"/></svg></button>`);
+  document.querySelector('#pf-logout')?.addEventListener('click', () => { if (confirm(`Log out of Lichess (${account().name})?`)) { logout(); location.href = './'; } });
+}
+
 // ---------- The leaderboard ----------
 // Your card goes to the leaderboard only if you ticked the box, and is sent again when your profile
 // shows newer numbers. The leaderboard function checks your Lichess login and stores the card under
@@ -885,7 +894,7 @@ function render(name, at, full) {
     <section class="pf-card pf-chart" id="pf-chart"></section>
     <dl class="pf-kpis">${kpis.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
     ${leadStory(name, p, skills, me)}
-    ${analysePanel(name, full)}
+    ${analysePanel(name, full, p)}
     <section class="pf-card pf-skills-card${showSkillText ? ' open' : ''}" id="pf-skills">
       ${p.n < MIN_GAMES ? `<p class="pf-an-few">Only ${p.n} rated games: skills need at least ${MIN_GAMES}.</p>` : ''}
       <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
