@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029155812';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029155812';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029155812';
-import { GUIDE } from './guide.js?v=20261029155812';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029155812';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029155812';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029155812';
-import { storedGames } from './profile.js?v=20261029155812';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029160407';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029160407';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029160407';
+import { GUIDE } from './guide.js?v=20261029160407';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029160407';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029160407';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029160407';
+import { storedGames } from './profile.js?v=20261029160407';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1043,7 +1043,9 @@ $('#go-ask').addEventListener('click', (e) => {
     showGo(false);
     if (t === 'again') return startTrial();
     if (t === 'pick') return showPicker();
-    return setMode(t); // Practice or Learn, from the next line
+    if (t === 'continue') return play((lineIdx + 1 + Math.floor(Math.random() * (lines.length - 1))) % lines.length);
+    setMode(t, false); // Practice or Learn, from the next line
+    return play(nextLine());
   }
   const b = e.target.closest('[data-go]');
   if (!b) return;
@@ -2659,7 +2661,16 @@ function finish() {
     // A line played without a slip against the clock earns its diamond star in the lines list.
     const st = stats[statKey(cur.id)], k = lineKey(line);
     if (!misses && st && !(st.timed ??= []).includes(k)) { st.timed.push(k); store(STORE, stats); }
-    return setTimeout(() => { if (mode === 'time' && trialLeft() > 0) play((lineIdx + 1 + Math.floor(Math.random() * (lines.length - 1))) % lines.length); }, 300); }
+    // The clock stops and the board asks how to go on: the next line against the clock, or the next
+    // line in Learn or Practice.
+    pauseTrial();
+    const opt = (k, label, about) => `<button type="button" class="depth-opt" data-trial="${k}"><b>${label}</b><span>${about}</span></button>`;
+    $('#go-ask').innerHTML = `<div class="depth-card"><p class="depth-k">Line done · ${plural(trial.score, 'move')} right</p>
+      <p class="depth-q">${lineName(lines[lineIdx])}${!misses ? ' · a diamond star' : ''}. How do you want to go on?</p>
+      <button type="button" class="cta go-next" data-trial="continue">Next line in Time<small>the clock starts on your first move, ${Math.ceil(trialLeft() / 1000)} s left</small></button>
+      ${opt('learn', 'Learn the next line', 'Every move shown, with arrows')}
+      ${opt('try', 'Practise the next line', 'From memory, without the clock')}</div>`;
+    return setTimeout(() => { if (mode === 'time') { showGo(true); $('#go-ask button')?.focus(); } }, 300); }
   // A mate in 10 or less for you at the line's end is played out too, before the line is done. That
   // needs Stockfish's verdict, so wait for it (the board waits with you).
   const key = evalKey(game.fen());

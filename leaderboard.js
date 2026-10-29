@@ -5,7 +5,9 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const ABBR = { Attack: 'ATK', Defense: 'DEF', 'Early game': 'EARLY', 'Late game': 'LATE', Accuracy: 'ACC', Speed: 'SPD' };
 const BANDS = [['All', 0, 9999], ['Under 1000', 0, 999], ['1000–1399', 1000, 1399], ['1400–1799', 1400, 1799], ['1800–2199', 1800, 2199], ['2200+', 2200, 9999]];
-const BY = [['overall', 'Overall', (r) => r.overall], ...['Attack', 'Defense', 'Early game', 'Late game', 'Accuracy', 'Speed'].map((k) => [k, k, (r) => r.skills?.[k] ?? null])];
+const starsOf = (r) => (r.stars ? (r.stars.green || 0) + (r.stars.gold || 0) + (r.stars.diamond || 0) : 0);
+const BY = [['overall', 'Overall', (r) => r.overall], ...['Attack', 'Defense', 'Early game', 'Late game', 'Accuracy', 'Speed'].map((k) => [k, k, (r) => r.skills?.[k] ?? null]),
+  ['stars', 'Most stars', (r) => starsOf(r) || null]];
 // One row: the place, a small player card as on the profile (overall, style, piece, rating, name and the
 // six skills, the ranked one marked), and beside it the name, style + strength and the openings played most.
 const practise = (side, fam) => `./?practise=${side}~${encodeURIComponent(fam.replace(/^vs /, ''))}`;
@@ -21,7 +23,7 @@ function row(r, i, value) {
     <div class="lb-info"><a class="lbd-name" href="${href}">${esc(r.name)}</a>
       <p class="lb-type">${esc(r.style || '')}${r.strength ? ` <span>+ ${esc(r.strength)}</span>` : ''}</p>
       <p class="lb-ops">${w ? `<span><small>Most played as White</small> <a class="lb-op" href="${practise('w', w.fam)}">${esc(w.fam)}</a></span>` : ''}${bl ? `<span><small>Most played as Black</small> <a class="lb-op" href="${practise('b', bl.fam)}">${esc(bl.fam)}</a></span>` : ''}</p>
-      <p class="lb-value">${BY.find(([k]) => k === state.by)[1]}: <b>${value}</b> <small>· ${r.rating} ${esc(r.speed)} · ${r.games} games</small></p></div></li>`;
+      <p class="lb-value">${state.by === 'stars' ? `Stars: <b>${value}</b> <small>(${r.stars.green || 0} learned · ${r.stars.gold || 0} cleared · ${r.stars.diamond || 0} perfect in Time)</small>` : `${BY.find(([k]) => k === state.by)[1]}: <b>${value}</b>`} <small>· ${r.rating} ${esc(r.speed)} · ${r.games} games</small></p></div></li>`;
 }
 const state = { speed: 'blitz', band: 'All', by: 'overall' };
 let rows = [];

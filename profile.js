@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029155812';
-import { STYLE_OF } from './styles.js?v=20261029155812';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029160407';
+import { STYLE_OF } from './styles.js?v=20261029160407';
 
 const MAX = 500;
-const PV = 32;
+const PV = 33;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -146,7 +146,9 @@ export function profileOf(games) {
     // How narrow the openings this player chose are: the top two families' share, and how many
     // families they play at least three times.
     ...(() => {
-      const own = games.filter((g) => g.chosen), fams = Object.values(own.reduce((m, g) => ({ ...m, [g.family]: (m[g.family] || 0) + 1 }), {})).sort((a, b) => b - a);
+      // King's Gambit Accepted and Declined are the King's Gambit: one opening chosen, the answer is the opponent's.
+      const own = games.filter((g) => g.chosen), base = (f) => f.replace(/ (Accepted|Declined)$/, '');
+      const fams = Object.values(own.reduce((m, g) => ({ ...m, [base(g.family)]: (m[base(g.family)] || 0) + 1 }), {})).sort((a, b) => b - a);
       return { top2: own.length ? ((fams[0] || 0) + (fams[1] || 0)) / own.length : 0, families: fams.filter((k) => k >= 3).length };
     })(),
     // Against stronger players (100 or more above): points per game above what the rating gap predicts.
@@ -279,7 +281,7 @@ const SAME = { 'Endgame artist': 'Late game', Houdini: 'Defense', 'Time scramble
 // checked (their main time control). A style counts by how far above the median a player is, against
 // that spread, so a style the player is below the usual on (29 moves where 36 is usual) never wins.
 const PAR = { Striker: [0.74, 1.3], 'Solid builder': [0.66, 1.4], 'Endgame artist': [0.76, 0.92], Houdini: [0.41, 1.13], 'Time scrambler': [0.63, 1.07],
-  Trickster: [0.53, 1.15], Specialist: [0.69, 0.98], Explorer: [0.25, 0.39], Marathoner: [0.75, 0.87], Guardian: [0.11, 1.33] };
+  Trickster: [0.53, 1.15], Specialist: [0.72, 0.98], Explorer: [0.22, 0.39], Marathoner: [0.75, 0.87], Guardian: [0.11, 1.33] };
 function traitsOf(p) {
   const q = p.peer || {}, rating = p.speeds?.[0]?.rating, raw = rawSkills(p), def = raw.find((x) => x.label === 'Defense');
   const styles = [
@@ -886,6 +888,7 @@ function boardCard(name, full, sp) {
   const gambits = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))].filter((o) => !/^vs /.test(o.fam) && /Gambit/.test(o.fam) && !/Accepted|Declined/.test(o.fam));
   const gn = gambits.reduce((s, o) => s + o.n, 0);
   return { speed, rating: p.speeds[0].rating, games: p.n, analysed: p.analysed || 0, overall: known.length ? Math.round(sum(known, (x) => x.v) / known.length) : null,
+    stars: (({ sum }) => ({ green: sum('green'), gold: sum('gold'), diamond: sum('diamond') }))(starCounts()),
     style: t[0]?.name, strength: t[1]?.name, piece: p.piece || 'n', skills: Object.fromEntries(skills.map((x) => [x.label, x.v])),
     gambit_games: gn, gambit_score: gn ? gambits.reduce((s, o) => s + o.score * o.n, 0) / gn : null,
     openings: [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))].sort((a, b) => b.n - a.n).slice(0, 12).map((o) => ({ fam: o.fam, side: o.side, n: o.n, score: o.score })) };
@@ -1038,6 +1041,18 @@ function leadStory(name, p, skills, me) {
 const STAR_PATH = 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z';
 const starIcon = (kind) => `<svg class="line-star ${kind}" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_PATH}"/></svg>`;
 function starsCard() {
+  const { ops, sum } = starCounts();
+  if (!ops.length) return `<section class="pf-card pf-stars"><h2>Your stars</h2><p class="info">Learn a line in the <a href="./">Openings trainer</a> for your first green star; clear it in Practice for gold, and play it without a slip in the time trial for a diamond.</p></section>`;
+  const nameOf = (id) => id.replace(/^b:/, '').replace(/^vs:/, 'vs ');
+  const sideOf = (id) => (/^(b|vs):/.test(id) ? 'b' : 'w');
+  return `<section class="pf-card pf-stars"><h2>Your stars</h2>
+    <div class="pf-star-totals">${[['green', 'learned'], ['gold', 'cleared'], ['diamond', 'perfect in Time']].map(([k, w]) => `<div>${starIcon(k)}<b>${sum(k)}</b><span>${w}</span></div>`).join('')}</div>
+    <ul class="pf-star-ops">${ops.slice(0, 6).map((o) => `<li><a class="pf-op-link" href="${practiseLink(sideOf(o.id), nameOf(o.id))}">${esc(nameOf(o.id))}</a>
+      <span>${['green', 'gold', 'diamond'].filter((k) => o[k].size).map((k) => `${starIcon(k)}${o[k].size}`).join(' ')}</span></li>`).join('')}</ul>
+    <p class="info">Saved in this browser. A line counts once, in every time control.</p></section>`;
+}
+// The stars in this browser, per opening and in all (see starsCard).
+function starCounts() {
   let all = {};
   try { all = JSON.parse(localStorage.getItem('opening-book-v2')) || {}; } catch {}
   const per = new Map();
@@ -1050,14 +1065,7 @@ function starsCard() {
   }
   const ops = [...per.values()].map((o) => ({ ...o, n: o.green.size + o.gold.size + o.diamond.size })).filter((o) => o.n).sort((a, b) => b.n - a.n);
   const sum = (k) => ops.reduce((t, o) => t + o[k].size, 0);
-  if (!ops.length) return `<section class="pf-card pf-stars"><h2>Your stars</h2><p class="info">Learn a line in the <a href="./">Openings trainer</a> for your first green star; clear it in Practice for gold, and play it without a slip in the time trial for a diamond.</p></section>`;
-  const nameOf = (id) => id.replace(/^b:/, '').replace(/^vs:/, 'vs ');
-  const sideOf = (id) => (/^(b|vs):/.test(id) ? 'b' : 'w');
-  return `<section class="pf-card pf-stars"><h2>Your stars</h2>
-    <div class="pf-star-totals">${[['green', 'learned'], ['gold', 'cleared'], ['diamond', 'perfect in Time']].map(([k, w]) => `<div>${starIcon(k)}<b>${sum(k)}</b><span>${w}</span></div>`).join('')}</div>
-    <ul class="pf-star-ops">${ops.slice(0, 6).map((o) => `<li><a class="pf-op-link" href="${practiseLink(sideOf(o.id), nameOf(o.id))}">${esc(nameOf(o.id))}</a>
-      <span>${['green', 'gold', 'diamond'].filter((k) => o[k].size).map((k) => `${starIcon(k)}${o[k].size}`).join(' ')}</span></li>`).join('')}</ul>
-    <p class="info">Saved in this browser. A line counts once, in every time control.</p></section>`;
+  return { ops, sum };
 }
 function nextActions(name, me) {
   const friend = favs()[0];

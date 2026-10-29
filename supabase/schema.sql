@@ -55,3 +55,4 @@ create table if not exists public.players (
 alter table public.players enable row level security;
 -- No policies: the public key can neither read nor write it; the Edge Function uses the service role.
 alter table public.players add column if not exists piece text check (piece in ('n', 'b', 'r', 'q')); -- the card's most important piece
+alter table public.players add column if not exists stars jsonb not null default '{}'; -- the trainer's stars: green, gold, diamond
