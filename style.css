@@ -1853,9 +1853,11 @@ p, li, dd, small { text-wrap: pretty; }
 @media (max-width: 640px) {
   #profile > .pf-players { order: 1; }
   .pf-name { text-align: center; }
-  .pf-name-row { flex-direction: column-reverse; align-items: stretch; gap: 0; }
-  .pf-acts { justify-content: flex-end; margin-bottom: 14px; }
-  .pf-name-row .pf-name { line-height: 1.05; } /* the poster face rises above a tighter line box, into the icons */
-  .pf-act { width: 44px; height: 44px; }
+  /* The icons stacked down the right edge beside the name and the style, taking no row of their own */
+  .pf-name-row { display: block; position: relative; }
+  .pf-name-row .pf-name { padding-inline: 46px; font-size: clamp(1.8rem, 10.5vw, 3rem); }
+  .pf-acts { position: absolute; top: 0; right: 0; z-index: 2; flex-direction: column; gap: 4px; }
+  .pf-act { width: 40px; height: 40px; background: var(--bg); }
+  #profile .pf-hero .pf-type-row > div:first-child { padding-right: 46px; }
   #profile > .pf-hero ~ :not(.pf-players) { order: 2; }
 }
