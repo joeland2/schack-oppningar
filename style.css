@@ -2003,3 +2003,9 @@ main.profile:has(#admin) { max-width: 1320px; }
   #go-ask { position: fixed; inset: 0; z-index: 60; padding: 12px; background: rgb(0 0 0 / .6); }
   #go-ask .depth-card.go-card { max-height: calc(100dvh - 24px); }
 }
+/* The filter box's summary (phones) shows it opens and closes: a small triangle, down when open */
+.filters > summary { justify-content: flex-start; }
+.filters > summary span { margin-left: auto; }
+.filters > summary::before { content: ''; flex: none; align-self: center; width: 0; height: 0; margin-right: -4px; border-left: 6px solid currentColor; border-block: 5px solid transparent; transition: transform .15s; }
+.filters[open] > summary::before { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { .filters > summary::before { transition: none; } }
