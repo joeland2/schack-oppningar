@@ -27,6 +27,7 @@
     // Logged out, the Profile section reads Log in: the profile page logs in and comes back to your profile.
     const prof = document.querySelector('.top-nav a[href="profile.html"]');
     if (!user() && prof) { prof.textContent = 'Log in'; prof.href = 'profile.html?login'; prof.title = 'Log in with Lichess to see your profile'; }
+    if (!user()) document.querySelector('.top-nav a[href="practice.html"]:not([aria-current])')?.remove(); // your practice plan needs your games
     if (user()?.toLowerCase() === 'joelandersson') document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', `<a href="admin.html"${page === 'admin.html' ? ' aria-current="page"' : ''}>Admin</a>`);
   });
 })();
