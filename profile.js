@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029180532';
-import { STYLE_OF } from './styles.js?v=20261029180532';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029181247';
+import { STYLE_OF } from './styles.js?v=20261029181247';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -758,7 +758,7 @@ function analysePanel(name, p, shown = p) {
     : `Every skill rests on all the games there are.${lockedNote}`;
   return `<div id="pf-analyse" class="pf-analyse pf-acc${reached ? '' : ' few'}">
     <div class="pf-acc-head"><span class="pf-acc-k">Stat accuracy</span><b class="pf-acc-v">${reached ? reached[1] : 'Locked'}</b>
-      <span class="pf-acc-n">${p.analysed} of ${p.n} games analysed</span>
+      <span class="pf-acc-n">${p.analysed} of ${shown !== p ? 'all ' : ''}${p.n} games analysed${shown !== p && shown.speeds?.[0] ? ` (${shown.analysed} in ${shown.speeds[0].speed})` : ''}</span>
       <details class="pf-help"><summary title="${WHY_ANALYSE}" aria-label="Why analyse?">?</summary><p>${WHY_ANALYSE}</p></details></div>
     <ol class="pf-acc-steps" aria-label="Stat accuracy: ${reached ? reached[1] : 'locked'}">${steps}</ol>
     <p class="pf-acc-src">Counts the games analysed on lichess.org (${p.analysed - (p.ours || 0)}) and here (${p.ours || 0}). The buttons analyse more of the Lichess games with Stockfish in your browser; each game is done once and kept.</p>
@@ -1027,13 +1027,14 @@ function render(name, at, full) {
   document.title = me ? 'Your Profile' : `${name} · Profile`;
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
+    <h1 class="pf-name">${esc(name)}</h1>
     ${playerBar(name, at)}
     ${speedBar(name, full, sp, avail)}
     <section class="pf-hero">
       <div class="pf-card-col">${playerCard(name, p, t, skills)}${me ? starsStrip() : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
         <div class="pf-dl-menu" role="group" aria-label="Download"><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
-        <div class="pf-type-row"><div><h1 class="pf-h1">${esc(t[0].name)}</h1>
+        <div class="pf-type-row"><div><h2 class="pf-h1">${esc(t[0].name)}</h2>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}</div>${tasteLine(p.styleMix, me)}</div>
         <p class="pf-portrait">${portrait(name, p, skills, me)}</p>
         <div class="pf-why-type">
@@ -1045,7 +1046,6 @@ function render(name, at, full) {
     <section class="pf-card pf-chart" id="pf-chart"></section>
     <dl class="pf-kpis">${kpis.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
     ${leadStory(name, p, skills, me)}
-    ${analysePanel(name, full, p)}
     <section class="pf-card pf-skills-card${showSkillText ? ' open' : ''}" id="pf-skills">
       ${p.n < MIN_GAMES ? `<p class="pf-an-few">Only ${p.n} rated games: skills need at least ${MIN_GAMES}.</p>` : ''}
       <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
@@ -1053,6 +1053,7 @@ function render(name, at, full) {
       ${skillBars(skills, say, me)}
       <p class="pf-skill-scale">All against opponents within ${PEER} of ${me ? 'your' : 'their'} rating; the mark on each bar is as good as them.</p>
     </section>
+    ${analysePanel(name, full, p)}
     <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From ${sp === 'all' ? `all ${p.n} games` : `${p.n} ${sp} games`}</span></div>
       <div class="pf-two pf-more-body">
         <section><h3>By colour and time control</h3>
@@ -1075,7 +1076,7 @@ function render(name, at, full) {
       <p class="info">Read from ${me ? 'your' : `${esc(name)}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
       <p class="info">Results, openings, opening style, the clock, endgames and the rating graph use all ${p.n} games.
         Early game uses Stockfish's verdict on the position after move 12 in every game (looked at here once). Accuracy, blunders and the Defense and Accuracy skills (and part of Attack) need a computer's verdict on every move, so they use only the
-        ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'}${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. ${p.todo ? 'Analyse more with the Analyse button above Skills.' : ''}</p>
+        ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'} among the ${p.n} shown${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. ${p.todo ? 'Analyse more with the Analyse button under Skills.' : ''}</p>
       <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Win rate counts wins out of all games; an endgame score counts a draw as half.</p>
     </section>
     ${me ? starsCard() : ''}
@@ -1381,7 +1382,8 @@ function playerBar(name, at) {
   const me = isMe(name), mine = myName(), list = favs().filter((x) => x.toLowerCase() !== name.toLowerCase());
   return `<div class="pf-players">
     ${me ? '' : `<button type="button" class="ghost pf-star" data-fav aria-pressed="${isFav(name)}">${isFav(name) ? `<svg class="ico ico-solid" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg> Starred` : `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg> Star player`}</button>`}
-    ${!me && mine ? `<a class="ghost" href="${compareLink(mine, name)}">Compare with me</a>` : ''}
+    ${!me && mine && mine.toLowerCase() !== name.toLowerCase() ? `<a class="ghost" href="${compareLink(mine, name)}">Compare with me</a>` : ''}
+    <a class="ghost pf-jump" href="#pf-games">Games ↓</a>
     ${me ? '' : `<a class="link-out" href="https://lichess.org/@/${encodeURIComponent(name)}" target="_blank" rel="noopener">${esc(name)} on Lichess</a>`}
     ${list.length ? `<span class="pf-players-list"><small>${me ? 'Your players' : 'Starred'}</small>${list.map((x) => `<a class="pf-chip" href="${profileLink(x)}">${esc(x)}</a>${me ? `<a class="pf-chip pf-vs" href="${compareLink(name, x)}" title="Compare ${esc(name)} with ${esc(x)}">vs</a>` : ''}`).join('')}</span>` : ''}
   </div>`;

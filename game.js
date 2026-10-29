@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261029180532';
-import { account } from './lichess.js?v=20261029180532';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029180532';
+import { drawBoard } from './board.js?v=20261029181247';
+import { account } from './lichess.js?v=20261029181247';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029181247';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -227,12 +227,12 @@ async function impact() {
   if (!el || !g.analysis || !all.some((x) => x.id === g.id) || all.length < 50) return;
   el.innerHTML = '<p class="info">Working out how this game affected your stats…</p>';
   const [withIt, without] = await Promise.all([profileFromRaw(name, all), profileFromRaw(name, all.filter((x) => x.id !== g.id))]);
-  const a = fineSkillsOf(withIt), b = fineSkillsOf(without, withIt);
+  const a = fineSkillsOf(withIt), b = fineSkillsOf(without, withIt), card = skillsOf(withIt); // card: the numbers the profile card shows
   const known = (xs) => xs.filter((x) => x.v !== null), ovr = (xs) => (known(xs).length ? known(xs).reduce((t, x) => t + x.v, 0) / known(xs).length : null);
   // One game moves a skill by a fraction of a point, so unrounded and shown to one decimal: the card's
   // own numbers (your rating sets the card's level, so a won or lost game lifts or lowers them all).
   const tenth = (d) => Math.round(d * 10) / 10;
-  const moved = a.map((x, i) => ({ label: x.label, now: x.v === null ? null : Math.round(x.v), d: x.v !== null && b[i].v !== null ? tenth(x.v - b[i].v) : 0 })).filter((x) => x.now !== null);
+  const moved = a.map((x, i) => ({ label: x.label, now: card[i].v, d: x.v !== null && b[i].v !== null ? tenth(x.v - b[i].v) : 0 })).filter((x) => x.now !== null);
   // Overall over the skills known both with and without the game, so a skill that only one of them has
   // (it unlocks or locks with this game) does not swing it against the skills shown.
   const both = a.map((x, i) => i).filter((i) => a[i].v !== null && b[i].v !== null);
@@ -240,7 +240,7 @@ async function impact() {
   const sign = (d) => (d > 0 ? `+${d}` : d < 0 ? `${d}`.replace('-', '−') : '±0');
   const way = (d) => (d > 0 ? 'up' : d < 0 ? 'down' : 'same');
   el.innerHTML = `<h2>How this game affected your stats</h2>
-    ${moved.length ? `<ul class="gm-moves-card">${ovr(a) !== null ? `<li class="${way(dOvr)}"><b>${sign(dOvr)}</b> overall <small>now ${Math.round(ovr(a))}</small></li>` : ''}
+    ${moved.length ? `<ul class="gm-moves-card">${ovr(a) !== null ? `<li class="${way(dOvr)}"><b>${sign(dOvr)}</b> overall <small>now ${Math.round(ovr(card))}</small></li>` : ''}
       ${moved.map((x) => `<li class="${way(x.d)}"><b>${sign(x.d)}</b> ${x.label} <small>now ${x.now}</small></li>`).join('')}</ul>`
       : `<p class="info">This game hardly moved your stats: under a tenth of a point each.</p>`}
     ${style && was && style !== was ? `<p>It changed your style: <b>${esc(was)}</b> → <b>${esc(style)}</b>.</p>` : ''}`;

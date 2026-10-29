@@ -746,7 +746,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
    analyse + skills, the players bar + hero, the small print + what next) */
 #profile { --flow: 40px; --tight: 12px; display: grid; gap: var(--flow); }
 @media (max-width: 560px) { #profile { --flow: 28px; --tight: 10px; } }
-#profile > .pf-chart + .pf-kpis, #profile > .pf-analyse + .pf-skills-card, #profile > .pf-players + .pf-hero, #profile > .pf-about-data + .pf-next { margin-top: calc(var(--tight) - var(--flow)); }
+#profile > .pf-chart + .pf-kpis, #profile > .pf-skills-card + .pf-analyse, #profile > .pf-players + .pf-hero, #profile > .pf-about-data + .pf-next { margin-top: calc(var(--tight) - var(--flow)); }
 #profile-msg:empty { display: none; }
 .pf-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px 24px; flex-wrap: wrap; }
 .pf-bar .info { max-width: 60ch; font-size: 14px; }
@@ -1194,7 +1194,7 @@ a { text-underline-offset: .18em; }
   .pf-hero .pf-taste-tile small { font-size: 10.5px; letter-spacing: .06em; } .pf-hero .pf-taste-tile b { font-size: 18px; }
   .pf-hero .pf-taste-tile small:last-child { display: none; }
   .pf-hero .pf-portrait { order: 2; margin: 0; } .pf-hero .pf-why-type { order: 3; }
-  .pf-hero .pf-star-strip { order: 4; } .pf-hero .pf-dl { order: 5; justify-self: start; } .pf-hero .pf-card-help { order: 6; max-width: none; }
+  .pf-hero .pf-star-strip { order: 4; } .pf-hero .pf-dl { order: 5; justify-self: start; } .pf-hero .pf-dl-menu { right: auto; left: 0; } .pf-hero .pf-card-help { order: 6; max-width: none; }
 }
 /* Skeleton while the games are read */
 .pf-skeleton .pf-pcard { min-height: 380px; opacity: .55; }
@@ -1392,6 +1392,7 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .pf-acc-v { font: 400 28px/1 var(--font-poster); text-transform: uppercase; letter-spacing: .02em; color: var(--ink); }
 .pf-acc-n { font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pf-acc-head .pf-help { margin-left: auto; }
+.pf-acc-head .pf-help p { left: auto; right: 0; } /* it sits at the right edge: open toward the page, never past it */
 .pf-acc-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 4px; }
 .pf-acc-bar { display: block; height: 8px; background: var(--track); border-radius: 2px; overflow: hidden; }
 .pf-acc-bar i { display: block; height: 100%; background: var(--data); }
@@ -1820,3 +1821,16 @@ p, li, dd, small { text-wrap: pretty; }
 .pf-pcard-bars i::before { content: ""; display: block; width: var(--v); height: 100%; background: var(--band-ink); }
 .pf-pcard-bars b { font-weight: 400; font-size: 20px; text-align: right; }
 .pf-pcard-bars .on span, .pf-pcard-bars .on b { color: var(--band-ink); opacity: 1; }
+
+/* Profile: the player's name heads the page, the actions in a row under it */
+.pf-name { margin: 0 0 10px; font: 400 clamp(2.2rem, 7vw, 3.8rem)/.95 var(--font-poster); text-transform: uppercase; letter-spacing: .01em; overflow-wrap: anywhere; }
+#profile > .pf-name + .pf-players { margin-top: 0; }
+/* Phones: every control in the profile at least 44px tall, for a thumb */
+@media (max-width: 640px) {
+  .pf-players .ghost, .pf-players .link-out, .pf-seg button, .pf-an-opt, .pf-an-go, .pf-fetch, .pf-chip { min-height: 44px; display: inline-flex; align-items: center; }
+  .pf-help summary { width: 30px; height: 30px; font-size: 13px; }
+  .pf-dl > summary { width: 44px; height: 44px; }
+  .pf-res { width: 34px; height: 44px; }
+  .pf-more .pf-op-link { display: inline-block; padding-block: 8px; } /* in the opening rows; in running text the line height carries them */
+  #refresh, .pf-card-help summary { min-height: 44px; display: inline-flex; align-items: center; }
+}
