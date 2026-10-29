@@ -32,3 +32,25 @@ alter table public.events add column if not exists country text check (char_leng
 alter table public.events add column if not exists device text check (char_length(device) <= 40);
 alter table public.events add column if not exists city text check (char_length(city) <= 60);
 alter table public.events add column if not exists source text check (char_length(source) <= 80);
+
+-- Added 2026-10-29: the leaderboard. One row per player and time control, written only by the
+-- leaderboard Edge Function after it has checked the player's Lichess login (a player can only add,
+-- update or remove their own row), and only for players who ticked "Show me on the leaderboard".
+create table if not exists public.players (
+  name          text not null check (char_length(name) <= 30),
+  speed         text not null check (speed in ('bullet', 'blitz', 'rapid', 'classical', 'correspondence')),
+  rating        int not null,
+  games         int not null,
+  analysed      int not null default 0,
+  overall       int,
+  style         text check (char_length(style) <= 30),
+  strength      text check (char_length(strength) <= 30),
+  skills        jsonb not null default '{}',
+  gambit_games  int not null default 0,
+  gambit_score  real,
+  openings      jsonb not null default '[]',
+  updated       timestamptz not null default now(),
+  primary key (name, speed)
+);
+alter table public.players enable row level security;
+-- No policies: the public key can neither read nor write it; the Edge Function uses the service role.

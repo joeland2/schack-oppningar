@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029133422';
-import { STYLE_OF } from './styles.js?v=20261029133422';
+import { account, login, finishLogin } from './lichess.js?v=20261029133915';
+import { STYLE_OF } from './styles.js?v=20261029133915';
 
 const MAX = 500;
 const PV = 27;
@@ -809,6 +809,40 @@ function cardNote(name, p, me) {
   if (!main) return '';
   return `<details class="pf-card-help"><summary>How the stats work</summary><p class="pf-card-note"><b>Every stat compares ${me ? 'you' : esc(name)} with ${me ? 'your' : 'their'} own opponents</b>, rated ${main.rating - PEER}–${main.rating + PEER}, in the same games. A higher rating starts the card higher; the big number is the average of the six skills. <a href="#pf-skills">What each skill measures</a></p></details>`;
 }
+// ---------- The leaderboard ----------
+// Your card goes to the leaderboard only if you ticked the box, and is sent again when your profile
+// shows newer numbers. The leaderboard function checks your Lichess login and stores the card under
+// the name Lichess gives back. Unticking removes you.
+const BOARD = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard';
+const BOARD_KEY = 'chess-trainer-leaderboard';
+const onBoard = () => { try { return localStorage.getItem(BOARD_KEY) === '1'; } catch { return false; } };
+const sentCards = new Set();
+function boardCard(name, full, sp) {
+  const speed = sp === 'all' ? full.speeds[0]?.speed : sp, p = speed && forSpeed(name, full, speed);
+  if (!p || p.n < MIN_GAMES) return null;
+  const skills = skillsOf(p), known = skills.filter((x) => x.v !== null), t = p.type;
+  // Gambits you chose: your own openings with Gambit in the name (not the other side's answer to one).
+  const gambits = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))].filter((o) => !/^vs /.test(o.fam) && /Gambit/.test(o.fam) && !/Accepted|Declined/.test(o.fam));
+  const gn = gambits.reduce((s, o) => s + o.n, 0);
+  return { speed, rating: p.speeds[0].rating, games: p.n, analysed: p.analysed || 0, overall: known.length ? Math.round(sum(known, (x) => x.v) / known.length) : null,
+    style: t[0]?.name, strength: t[1]?.name, skills: Object.fromEntries(skills.map((x) => [x.label, x.v])),
+    gambit_games: gn, gambit_score: gn ? gambits.reduce((s, o) => s + o.score * o.n, 0) / gn : null,
+    openings: [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))].sort((a, b) => b.n - a.n).slice(0, 12).map((o) => ({ fam: o.fam, side: o.side, n: o.n, score: o.score })) };
+}
+async function sendCard(name, full, sp) {
+  const card = boardCard(name, full, sp), token = account()?.token;
+  if (!card || !token || sentCards.has(card.speed)) return;
+  sentCards.add(card.speed);
+  await fetch(BOARD, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ token, card }) }).catch(() => sentCards.delete(card.speed));
+}
+async function setOnBoard(on, name, full, sp) {
+  try { localStorage.setItem(BOARD_KEY, on ? '1' : '0'); } catch {}
+  const token = account()?.token;
+  if (on) return sendCard(name, full, sp);
+  sentCards.clear();
+  if (token) await fetch(BOARD, { method: 'DELETE', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ token }) }).catch(() => {});
+}
+
 // One time control at a time: bullet and blitz games say different things about speed, endgames and
 // the level, so the profile reads the player's main time control unless another (or All) is picked.
 let pfSpeed = null, shown = null; // the picked time control ('all' or a speed); the last render's arguments
@@ -837,7 +871,7 @@ function render(name, at, full) {
     ${playerBar(name)}
     ${speedBar(name, full, sp, avail)}
     <section class="pf-hero">
-      <div class="pf-card-col">${playerCard(name, p, t, skills)}<div class="pf-card-actions"><span>Download</span><button type="button" class="link" data-card-png="card">Card</button><button type="button" class="link" data-card-png="style">Card + style</button></div>${cardNote(name, p, me)}</div>
+      <div class="pf-card-col">${playerCard(name, p, t, skills)}<div class="pf-card-actions"><span>Download</span><button type="button" class="link" data-card-png="card">Card</button><button type="button" class="link" data-card-png="style">Card + style</button></div>${me ? `<label class="pf-board-opt"><input type="checkbox" id="pf-board"${onBoard() ? ' checked' : ''}> Show me on the <a href="leaderboard.html">leaderboard</a></label>` : ''}${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h1 class="pf-h1">${esc(t[0].name)}</h1>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}</div>${tasteLine(p.styleMix, me)}</div>
@@ -886,6 +920,10 @@ function render(name, at, full) {
     </section>
     ${nextActions(name, me)}`;
   $('#refresh').addEventListener('click', () => run(name));
+  if (me) {
+    $('#pf-board').addEventListener('change', (e) => setOnBoard(e.target.checked, name, full, sp));
+    if (onBoard()) sendCard(name, full, sp);
+  }
   document.querySelectorAll('[data-card-png]').forEach((b) => b.addEventListener('click', () => cardPng(name, p, t, skills, b.dataset.cardPng === 'style', b)));
   bindSearch();
   bindAnalyse(name);
