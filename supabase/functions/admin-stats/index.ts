@@ -96,6 +96,8 @@ Deno.serve(async (req) => {
     devices: count(recentVisitors.map((w) => w.device ?? 'Unknown')),
     hours, weekdays,
     profiles: count(rows.filter((r) => r.kind === 'profile').map((r) => r.target)), // all time
+    // The latest profiles looked up, newest first, with where the visitor was.
+    recentProfiles: rows.filter((r) => r.kind === 'profile').slice(-40).reverse().map((r) => ({ at: r.at, target: r.target, name: r.user_name, country: r.country, city: r.city, device: r.device })),
     registered: registered.sort((a, b) => a.localeCompare(b)),
     compares: count(recent.filter((r) => r.kind === 'compare').map((r) => r.target)),
     usage: count(recent.filter((r) => r.kind !== 'view' && r.kind !== 'profile').map((r) => r.kind)),

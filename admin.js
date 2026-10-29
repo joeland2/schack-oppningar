@@ -1,6 +1,6 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029204247';
+import { account, login, finishLogin } from './lichess.js?v=20261029205731';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -98,6 +98,8 @@ function render(s) {
           <ol class="ad-events">${v.events.map((e) => `<li><span class="num">${when(e.at)}</span><span>${e.kind === 'view' ? `Opened ${esc(pageName(e.page))}` : `${esc(KIND[e.kind] || e.kind)}${e.target ? `: <b>${esc(e.target)}</b>` : ''}`}</span></li>`).join('')}</ol></details>`).join('')}</div>
       ${s.visitors.length > 10 ? `<button type="button" class="ghost ad-more" data-more aria-expanded="false">Show all ${s.visitors.length}</button>` : ''}`
       : '<p class="info">Nobody yet.</p>'}</section>
+    <section class="pf-card"><div class="ad-head"><h2>Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
+      ${(s.recentProfiles || []).length ? `<ul class="pf-rows ad-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: r.target })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${esc(r.device || '')} · ${when(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
     <div class="pf-two">
       <section class="pf-card"><h2>Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="ad-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
       <section class="pf-card"><h2>Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>
@@ -182,7 +184,8 @@ function demoData() {
     pages: count(events.filter((e) => e.kind === 'view').map((e) => e.page)).map((x) => ({ ...x, n: x.n * 9, unique: x.n * 3 })),
     sources: count(visitors.map((v) => v.source)), countries: count(visitors.map((v) => v.country)), cities: count(visitors.map((v) => `${v.city}, ${v.country}`)), devices: count(visitors.map((v) => v.device)),
     hours, weekdays: [520, 480, 470, 500, 560, 760, 720],
-    profiles: count(events.filter((e) => e.kind === 'profile').map((e) => e.target)), compares: count(events.filter((e) => e.kind === 'compare').map((e) => e.target)),
+    profiles: count(events.filter((e) => e.kind === 'profile').map((e) => e.target)),
+    recentProfiles: events.filter((e) => e.kind === 'profile').slice(0, 40).map((e) => ({ at: e.at, target: e.target, country: 'SE', city: 'Malmö', device: 'iPhone · Safari' })), compares: count(events.filter((e) => e.kind === 'compare').map((e) => e.target)),
     usage: count(events.filter((e) => !['view', 'profile'].includes(e.kind)).map((e) => e.kind)), practised: count(events.filter((e) => e.kind === 'practise').map((e) => e.target)),
     visitors, registered: registered.sort(), users: registered.map((name) => ({ name, n: 5 + Math.floor(rnd() * 40), last: iso(now - rnd() * 6 * 864e5) })),
   };
