@@ -3,12 +3,12 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029162211';
-import { STYLE_OF } from './styles.js?v=20261029162211';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029162309';
+import { STYLE_OF } from './styles.js?v=20261029162309';
 
 const MAX = 500;
 const EARLY = 120; // games before a first look-up draws the profile, while the rest still come in
-const PV = 33;
+const PV = 34;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -324,9 +324,10 @@ function traitsOf(p) {
 function typeOf(p) {
   const { styles, strengths } = traitsOf(p);
   const style = styles[0]; // the style that leans furthest, even when none stands out clearly
-  // The strength: the one furthest above the player's own opponents (64 or more where 50 is even).
+  // The strength: the one furthest above the player's own opponents (50 is even). One that stands out
+  // (64 or more) wins; failing that, everyone still gets the one they are best at, if above their opponents.
   // Defense has no strength of its own: being best at it is the Guardian style.
-  const best = strengths.filter((x) => x.label !== 'Defense' && x.v !== null && x.v >= 64 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v)[0];
+  const best = strengths.filter((x) => x.label !== 'Defense' && x.v !== null && x.v > 50 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v)[0];
   const second = best ? { name: STRENGTH[best.label] || best.label, why: STRENGTH[best.label] ? `${best.label} is where you beat your level most: ${best.why}` : best.why } : styles[1].lean >= 1 ? styles[1] : null; // a second style only when it is top-tenth
   return second ? [style, second] : [style];
 }
