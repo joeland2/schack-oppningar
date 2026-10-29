@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029083238';
-import { STYLE_OF } from './styles.js?v=20261029083238';
+import { account, login, finishLogin } from './lichess.js?v=20261029084256';
+import { STYLE_OF } from './styles.js?v=20261029084256';
 
 const MAX = 500;
-const PV = 18;
+const PV = 19;
 const ENOUGH = 20;
 const WHY_ANALYSE = 'Lichess only analyses games you ask it to. Analysed games give your blunders, accuracy and four of the skills, and become puzzles in My practice. Stockfish runs in your browser; no game is done twice.'; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -17,6 +17,18 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const sum = (xs, f) => xs.reduce((s, x) => s + f(x), 0);
 const score = (gs) => (gs.length ? sum(gs, (g) => g.result) / gs.length : null);
 
+
+// What players at a rating usually score in an opening family (data/opening-scores.json, built by
+// tools/make_opening_scores.py from the Lichess games behind the Openings page). Loaded before games are read.
+let SCORES = null;
+const loadScores = async () => (SCORES ??= await fetch('data/opening-scores.json?v=2026-10-29').then((r) => r.json()).catch(() => ({})));
+function expectOf(family, side, rating, speed) {
+  const row = SCORES?.[speed === 'classical' ? 'classical' : 'blitz']?.[family], b = SCORES?.buckets;
+  if (!row || !b) return null;
+  const i = b.findLastIndex((x) => x <= rating);
+  const j = [i, i - 1, i + 1].find((k) => row[0][k] >= 200 && row[1][k] != null);
+  return j === undefined ? null : side === 'w' ? row[1][j] : 1 - row[1][j];
+}
 
 // ---------- One game, from your side ----------
 const cpOf = (a) => (!a ? null : a.mate !== undefined ? Math.sign(a.mate) * 1000 : Math.max(-1000, Math.min(1000, a.eval)));
@@ -53,7 +65,10 @@ function readGame(g, me) {
   return {
     side, speed: g.speed, at: g.createdAt, status: g.status, plies: moves.length,
     result: !g.winner ? 0.5 : (g.winner === 'white') === (side === 'w') ? 1 : 0,
-    family: (g.opening?.name || 'Unknown').split(':')[0], rating: mine.rating, diff: mine.ratingDiff || 0, them: theirs.rating,
+    family: (g.opening?.name || 'Unknown').split(':')[0], rating: mine.rating,
+    // Lichess names Black's choices Defense; the rest are White's. chosen: this player picked the opening.
+    chosen: /Defen[cs]e/.test((g.opening?.name || '').split(':')[0]) === (side === 'b'),
+    expect: expectOf((g.opening?.name || 'Unknown').split(':')[0], side, mine.rating, g.speed), diff: mine.ratingDiff || 0, them: theirs.rating,
     castled, queensOff, endgame: endgameAt !== null, pieces, played,
     analysed: v.length > 0, ours: !!g.ours, acc: mine.analysis?.accuracy ?? null, blunders: mine.analysis?.blunder ?? null, mistakes: mine.analysis?.mistake ?? null,
     best: v.length ? Math.max(...v) : null, worst: v.length ? Math.min(...v) : null, after12: v.length > 23 ? v[23] : null, slips,
@@ -188,9 +203,15 @@ function peerOf(games) {
     saved: rate(downs, (g) => g.result > 0), oppSaved: rate(ups, (g) => g.result < 1), score: score(gs),
     // Won and lost within 25 moves: attacks and traps that land, yours and theirs.
     quickW: rate(gs, (g) => g.result === 1 && g.plies <= 50), quickL: rate(gs, (g) => g.result === 0 && g.plies <= 50),
-    // Games in attacking openings and gambits, and in solid or positional ones, and the score in each.
-    ...(() => { const a = gs.filter((g) => styleOf(g.family).includes('attacking')), d = gs.filter((g) => styleOf(g.family).some((x) => x === 'solid' || x === 'positional'));
-      return { attN: a.length, attScore: score(a), solidN: d.length, solidScore: score(d) }; })(),
+    // Openings against what players at this level usually score in them: the attacking openings and
+    // gambits the player chose, the solid or positional ones they chose, and the attacking ones played
+    // against them. Gain is the points per game above the usual score.
+    ...(() => {
+      const kind = (g, k) => styleOf(g.family).some((x) => k.includes(x)), known = gs.filter((g) => g.expect != null);
+      const group = (key, gx) => ({ [`${key}N`]: gx.length, [`${key}Score`]: score(gx), [`${key}Exp`]: mean(gx.map((g) => g.expect)), [`${key}Gain`]: mean(gx.map((g) => g.result - g.expect)) });
+      return { ...group('att', known.filter((g) => g.chosen && kind(g, ['attacking']))), ...group('solid', known.filter((g) => g.chosen && kind(g, ['solid', 'positional']))),
+        ...group('vsAtt', known.filter((g) => !g.chosen && kind(g, ['attacking']))) };
+    })(),
     myLow: rate(gs, (g) => g.lowTime), oppLow: rate(gs, (g) => g.oppLowTime),
     timeWins: rate(gs, (g) => g.result === 1 && /outoftime|timeout/.test(g.status)), timeLosses: rate(gs, (g) => g.result === 0 && /outoftime|timeout/.test(g.status)),
   };
@@ -287,14 +308,14 @@ function rawSkills(p) {
   const avg = (xs) => { const k = xs.filter((x) => x != null && !Number.isNaN(x)); return k.length ? clamp(sum(k, (x) => x) / k.length) : null; };
   const up = an ? q.ups / q.analysed : null, down = an ? q.downs / q.analysed : null, f1 = (x) => (x ?? 0).toFixed(1);
   return [
-    { label: 'Attack', v: avg([q.attN >= 15 ? clamp(50 + (q.attScore - 0.5) * 150) : null, q.n >= 30 ? vs(q.quickW, q.quickL, 0.05) : null, vs(up, down, 0.1), an ? vs(q.oppUp, q.meUp, 0.2) : null]),
-      means: 'Getting an attack going and finishing it, against your opponents at your level: how you score in attacking openings and gambits, quick wins, how often you get clearly ahead (3 pawns or more), and keeping it clean once you are. Gambits and traps that work show up here.',
-      why: [q.attN >= 15 && `You score ${pct(q.attScore)} in ${q.attN} games with attacking openings and gambits (50% is even)`, `${q.attN >= 15 ? 'win' : 'You win'} ${pct(q.quickW ?? 0)} of your games within 25 moves (they ${pct(q.quickL ?? 0)})`, an && `get clearly ahead in ${pct(up)} of analysed games (they ${pct(down)})`, an && q.meUp != null && `and make ${f1(q.meUp)} mistakes per 10 moves when ahead (they ${f1(q.oppUp)})`].filter(Boolean).join(', ') + '.',
+    { label: 'Attack', v: avg([q.attN >= 15 ? clamp(50 + q.attGain * 150) : null, q.n >= 30 ? vs(q.quickW, q.quickL, 0.05) : null, vs(up, down, 0.1), an ? vs(q.oppUp, q.meUp, 0.2) : null]),
+      means: 'Getting an attack going and finishing it: how the attacking openings and gambits you choose go compared with how they usually go at your level, and against your opponents: quick wins, how often you get clearly ahead (3 pawns or more), and keeping it clean once you are. Gambits and traps that work show up here.',
+      why: [q.attN >= 15 && `In the ${q.attN} games where you chose an attacking opening or gambit you score ${pct(q.attScore)}, where players at your level usually score ${pct(q.attExp)}`, `${q.attN >= 15 ? 'win' : 'You win'} ${pct(q.quickW ?? 0)} of your games within 25 moves (they ${pct(q.quickL ?? 0)})`, an && `get clearly ahead in ${pct(up)} of analysed games (they ${pct(down)})`, an && q.meUp != null && `and make ${f1(q.meUp)} mistakes per 10 moves when ahead (they ${f1(q.oppUp)})`].filter(Boolean).join(', ') + '.',
       train: 'When ahead: trade pieces, not pawns, take away their counterplay first, and do not rush.', href: './mistakes.html' },
     // shortcut: "usual" saves (42%) is the mean of eight checked players, all levels; measure it per level when there is data for it
-    { label: 'Defense', needs: true, v: avg([q.solidN >= 15 ? clamp(50 + (q.solidScore - 0.5) * 150) : null, an && q.downs >= 5 && q.saved != null ? clamp(50 + (q.saved - 0.42) * 150) : null, an ? vs(q.oppDown, q.meDown, 0.2) : null]),
-      means: 'Solid play and holding bad positions, against your opponents at your level: how you score in solid and positional openings, how many games you still win or draw after being clearly behind (3 pawns or more), and how few mistakes you make while behind.',
-      why: `${q.solidN >= 15 ? `You score ${pct(q.solidScore)} in ${q.solidN} games with solid or positional openings (50% is even); you save` : 'You save'} ${pct(q.saved ?? 0)} of the games where you were clearly losing (about 42% is usual); when behind you make ${f1(q.meDown)} mistakes per 10 moves (they ${f1(q.oppDown)}).`,
+    { label: 'Defense', needs: true, v: avg([q.solidN >= 15 ? clamp(50 + q.solidGain * 150) : null, q.vsAttN >= 15 ? clamp(50 + q.vsAttGain * 150) : null, an && q.downs >= 5 && q.saved != null ? clamp(50 + (q.saved - 0.42) * 150) : null, an ? vs(q.oppDown, q.meDown, 0.2) : null]),
+      means: 'Solid play and holding bad positions: how the solid openings you choose, and the attacking ones played against you, go compared with how they usually go at your level; and against your opponents: how many games you still win or draw after being clearly behind (3 pawns or more), and how few mistakes you make while behind.',
+      why: `${[q.solidN >= 15 && `In your ${q.solidN} solid or positional openings you score ${pct(q.solidScore)} (usual at your level ${pct(q.solidExp)})`, q.vsAttN >= 15 && `against ${q.vsAttN} attacking openings and gambits you score ${pct(q.vsAttScore)} (usual ${pct(q.vsAttExp)})`].filter(Boolean).join('; ')}${q.solidN >= 15 || q.vsAttN >= 15 ? '; you save' : 'You save'} ${pct(q.saved ?? 0)} of the games where you were clearly losing (about 42% is usual); when behind you make ${f1(q.meDown)} mistakes per 10 moves (they ${f1(q.oppDown)}).`,
       train: 'When behind: keep pieces on, make threats, and set traps rather than waiting.' },
     { label: 'Early game', needs: true, v: an && q.after12 !== null ? clamp(50 + q.after12 / 4) : null,
       means: 'How you stand when the opening is over (after move 12), against your opponents at your level.',
@@ -416,6 +437,7 @@ async function current(name) {
 }
 async function readAll(name, raw) {
   const msg = msgEl();
+  await loadScores();
   const me = name.toLowerCase(), games = [];
   for (let i = 0; i < raw.length; i++) {
     games.push(readGame(raw[i], me));
@@ -1040,6 +1062,7 @@ function recordsOf(name, games) {
 }
 const MIN_SPEED = 10; // games in a time control needed to compare it
 async function compare(a, b, speed = new URLSearchParams(location.search).get('speed')) {
+  await loadScores();
   window.track?.('compare', `${a} vs ${b}`);
   $('#profile').innerHTML = '';
   try {
