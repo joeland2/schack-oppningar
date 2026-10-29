@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029084256';
-import { STYLE_OF } from './styles.js?v=20261029084256';
+import { account, login, finishLogin } from './lichess.js?v=20261029084659';
+import { STYLE_OF } from './styles.js?v=20261029084659';
 
 const MAX = 500;
 const PV = 19;
@@ -305,17 +305,19 @@ function rawSkills(p) {
   const q = p.peer || {}, an = (q.analysed ?? 0) >= ENOUGH, pawns = (cp) => { const r = Math.round(cp / 10) / 10; return r === 0 ? '0.0' : `${r > 0 ? '+' : '−'}${Math.abs(r).toFixed(1)}`; };
   // a against b (yours against your opponents'): 50 when equal, 100 when only you; floor keeps rare things from swinging
   const vs = (a, b, floor) => (a == null || b == null ? null : 50 + (50 * (a - b)) / Math.max(floor, a + b));
-  const avg = (xs) => { const k = xs.filter((x) => x != null && !Number.isNaN(x)); return k.length ? clamp(sum(k, (x) => x) / k.length) : null; };
+  // each part is a value or [value, weight]; parts without a value are left out
+  const avg = (xs) => { const k = xs.map((x) => (Array.isArray(x) ? x : [x, 1])).filter(([x, w]) => x != null && !Number.isNaN(x) && w > 0); return k.length ? clamp(sum(k, ([x, w]) => x * w) / sum(k, ([, w]) => w)) : null; };
   const up = an ? q.ups / q.analysed : null, down = an ? q.downs / q.analysed : null, f1 = (x) => (x ?? 0).toFixed(1);
   return [
-    { label: 'Attack', v: avg([q.attN >= 15 ? clamp(50 + q.attGain * 150) : null, q.n >= 30 ? vs(q.quickW, q.quickL, 0.05) : null, vs(up, down, 0.1), an ? vs(q.oppUp, q.meUp, 0.2) : null]),
-      means: 'Getting an attack going and finishing it: how the attacking openings and gambits you choose go compared with how they usually go at your level, and against your opponents: quick wins, how often you get clearly ahead (3 pawns or more), and keeping it clean once you are. Gambits and traps that work show up here.',
-      why: [q.attN >= 15 && `In the ${q.attN} games where you chose an attacking opening or gambit you score ${pct(q.attScore)}, where players at your level usually score ${pct(q.attExp)}`, `${q.attN >= 15 ? 'win' : 'You win'} ${pct(q.quickW ?? 0)} of your games within 25 moves (they ${pct(q.quickL ?? 0)})`, an && `get clearly ahead in ${pct(up)} of analysed games (they ${pct(down)})`, an && q.meUp != null && `and make ${f1(q.meUp)} mistakes per 10 moves when ahead (they ${f1(q.oppUp)})`].filter(Boolean).join(', ') + '.',
+    // The player's own attacking openings weigh double once they have 40 such games; fewer say less.
+    { label: 'Attack', v: avg([q.attN >= 15 ? [clamp(50 + q.attGain * 150), 2 * Math.min(1, q.attN / 40)] : null, q.n >= 30 ? vs(q.quickW, q.quickL, 0.05) : null, an ? vs(q.oppUp, q.meUp, 0.2) : null]),
+      means: 'Getting an attack going and finishing it: how the attacking openings and gambits you choose go compared with how they usually go at your level, and against your opponents: quick wins, and keeping it clean once you are clearly ahead (1.5 pawns or more). Gambits and traps that work show up here.',
+      why: [q.attN >= 15 && `In the ${q.attN} games where you chose an attacking opening or gambit you score ${pct(q.attScore)}, where players at your level usually score ${pct(q.attExp)}`, `${q.attN >= 15 ? 'win' : 'You win'} ${pct(q.quickW ?? 0)} of your games within 25 moves (they ${pct(q.quickL ?? 0)})`, an && q.meUp != null && `and make ${f1(q.meUp)} mistakes per 10 moves when ahead (they ${f1(q.oppUp)})`].filter(Boolean).join(', ') + '.',
       train: 'When ahead: trade pieces, not pawns, take away their counterplay first, and do not rush.', href: './mistakes.html' },
     // shortcut: "usual" saves (42%) is the mean of eight checked players, all levels; measure it per level when there is data for it
-    { label: 'Defense', needs: true, v: avg([q.solidN >= 15 ? clamp(50 + q.solidGain * 150) : null, q.vsAttN >= 15 ? clamp(50 + q.vsAttGain * 150) : null, an && q.downs >= 5 && q.saved != null ? clamp(50 + (q.saved - 0.42) * 150) : null, an ? vs(q.oppDown, q.meDown, 0.2) : null]),
-      means: 'Solid play and holding bad positions: how the solid openings you choose, and the attacking ones played against you, go compared with how they usually go at your level; and against your opponents: how many games you still win or draw after being clearly behind (3 pawns or more), and how few mistakes you make while behind.',
-      why: `${[q.solidN >= 15 && `In your ${q.solidN} solid or positional openings you score ${pct(q.solidScore)} (usual at your level ${pct(q.solidExp)})`, q.vsAttN >= 15 && `against ${q.vsAttN} attacking openings and gambits you score ${pct(q.vsAttScore)} (usual ${pct(q.vsAttExp)})`].filter(Boolean).join('; ')}${q.solidN >= 15 || q.vsAttN >= 15 ? '; you save' : 'You save'} ${pct(q.saved ?? 0)} of the games where you were clearly losing (about 42% is usual); when behind you make ${f1(q.meDown)} mistakes per 10 moves (they ${f1(q.oppDown)}).`,
+    { label: 'Defense', needs: true, v: avg([q.solidN >= 15 ? clamp(50 + q.solidGain * 150) : null, q.vsAttN >= 15 ? clamp(50 + q.vsAttGain * 150) : null, an && q.downs >= 5 && q.saved != null ? clamp(50 + (q.saved - 0.42) * 150) : null, an ? vs(q.oppDown, q.meDown, 0.2) : null, vs(up, down, 0.1)]),
+      means: 'Solid play and holding bad positions: how the solid openings you choose, and the attacking ones played against you, go compared with how they usually go at your level; and against your opponents: how many games you still win or draw after being clearly behind (3 pawns or more), how few mistakes you make while behind, and how rarely they get clearly ahead of you at all (3 pawns or more).',
+      why: `${[q.solidN >= 15 && `In your ${q.solidN} solid or positional openings you score ${pct(q.solidScore)} (usual at your level ${pct(q.solidExp)})`, q.vsAttN >= 15 && `against ${q.vsAttN} attacking openings and gambits you score ${pct(q.vsAttScore)} (usual ${pct(q.vsAttExp)})`].filter(Boolean).join('; ')}${q.solidN >= 15 || q.vsAttN >= 15 ? '; you save' : 'You save'} ${pct(q.saved ?? 0)} of the games where you were clearly losing (about 42% is usual); when behind you make ${f1(q.meDown)} mistakes per 10 moves (they ${f1(q.oppDown)})${an ? `; they get clearly ahead of you in ${pct(down)} of analysed games, you of them in ${pct(up)}` : ''}.`,
       train: 'When behind: keep pieces on, make threats, and set traps rather than waiting.' },
     { label: 'Early game', needs: true, v: an && q.after12 !== null ? clamp(50 + q.after12 / 4) : null,
       means: 'How you stand when the opening is over (after move 12), against your opponents at your level.',
@@ -335,7 +337,7 @@ function rawSkills(p) {
       train: 'Play the opening fast (you know it), and save your thinking time for the critical moments.' },
   ];
 }
-console.assert(rawSkills({ peer: { analysed: 30, ups: 9, downs: 3, after12: 100, myBl: 1, oppBl: 1, meUp: 1, oppUp: 3, endgames: 0, n: 10 } }).map((x) => x.v).slice(0, 3).join() === '75,,75', 'rawSkills');
+console.assert(rawSkills({ peer: { analysed: 30, ups: 9, downs: 3, after12: 100, myBl: 1, oppBl: 1, meUp: 1, oppUp: 3, endgames: 0, n: 10 } }).map((x) => x.v).slice(0, 3).join() === '75,75,75', 'rawSkills');
 {
   const g = (o) => ({ side: 'w', speed: 'blitz', status: 'resign', plies: 60, result: 1, family: 'Italian Game', rating: 1500, diff: 5, castled: 8, queensOff: null, endgame: false, analysed: false, acc: null, blunders: null, best: null, worst: null, after12: null, slips: { opening: 0, middlegame: 0, endgame: 0 }, lowTime: false, ...o });
   const p = profileOf([g({}), g({ result: 0 }), g({ side: 'b', result: 0 }), g({ side: 'b', result: 0.5 })]);
