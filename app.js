@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029223905';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029223905';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029223905';
-import { GUIDE } from './guide.js?v=20261029223905';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029223905';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029223905';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029223905';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029223905';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029224059';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029224059';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029224059';
+import { GUIDE } from './guide.js?v=20261029224059';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029224059';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029224059';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029224059';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029224059';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -758,12 +758,13 @@ async function findTeachers(name) {
     lfPanel(2, 0.4 + 0.6 * (i / cands.length), `Reading <b>${esc(cand)}</b>'s games (${r}) and comparing them with yours: player ${i + 1} of ${cands.length}…`);
     try {
       const gs = await fetchGames(cand), p = await profileFromRaw(cand, gs), sk = skillsOf(p), x = inOpening(gs, cand, o, mySlips);
-      read.push({ name: cand, rating: r, gs, p, sk, ...x, match: matchOf(myCard, { type: p.type, skills: sk }, myOps, analyse(gs, cand).openings.slice(0, 8).map((y) => y.family)) });
+      const ops = analyse(gs, cand).openings.slice(0, 8).map((y) => y.family);
+      read.push({ name: cand, rating: r, gs, p, sk, ...x, shared: myOps.filter((f) => ops.includes(f)).length, match: matchOf(myCard, { type: p.type, skills: sk }, myOps, ops) });
     } catch (err) { if (/busy/.test(err.message)) break; }
   }
   const rate = (x) => x.slips / x.games, score = (x) => x.points / Math.max(1, x.games);
   // The most alike first, among those who play the opening at least 3 times and do at least as well with it.
-  const best = read.filter((x) => x.games >= 3 && score(x) >= score(mine) && (!mine.slips || rate(x) <= rate(mine))).sort((a, b) => b.match - a.match || score(b) - score(a)).slice(0, 3);
+  const best = read.filter((x) => x.games >= 3 && score(x) >= score(mine) && (!mine.slips || rate(x) <= rate(mine))).sort((a, b) => b.match - a.match || score(b) - score(a)).slice(0, 4);
   if (!best.length) return stop(`None of the players found does better than you with the ${what} (you score ${pct(score(mine))}${mine.slips ? `, a slip in ${pct(rate(mine))} of games` : ''}). Nothing to learn here right now.`);
   // Games to watch: where you usually slip and they play on well, else their wins with the opening.
   const lessons = (x) => {
@@ -773,7 +774,15 @@ async function findTeachers(name) {
     return out.slice(0, 2);
   };
   const link = (x, l) => `game.html?${new URLSearchParams({ u: x.name, id: l.id, play: 1, at: l.at, note: l.note, ...(l.mine ? { mine: l.mine } : {}) })}`;
-  const why = (x) => [x.p.type[0]?.name === myCard.type[0]?.name && `Also a ${x.p.type[0].name}`, `${x.rating - rating >= 0 ? '+' : ''}${x.rating - rating} rating`, `scores ${pct(score(x))} with it (you ${pct(score(mine))})`].filter(Boolean);
+  // Under each card: why they match, then what they do with the opening, each against you.
+  const why = (x) => [
+    x.p.type[0]?.name === myCard.type[0]?.name ? `Also a ${x.p.type[0].name}${x.p.type[1] ? ` + ${x.p.type[1].name}` : ''}` : `A ${x.p.type[0]?.name || 'player'}, you are a ${myCard.type[0]?.name}`,
+    `<b>${x.rating}</b> ${speed}, ${x.rating - rating >= 0 ? `${x.rating - rating} above` : `${rating - x.rating} below`} you`,
+    `Played the ${esc(shortName(o.family))} in <b>${x.games}</b> of their last ${x.gs.length} games`,
+    `Scores <b>${pct(score(x))}</b> with it, you ${pct(score(mine))}`,
+    mine.slips ? `Goes wrong where you do in <b>${pct(rate(x))}</b> of games, you ${pct(rate(mine))}` : '',
+    myOps.length ? `Plays <b>${x.shared} of your ${myOps.length}</b> main openings` : '',
+  ].filter(Boolean);
   done(`<h2>Players to learn from <small>${esc(what)}</small></h2>
     <p class="lf-what">Players like you, further on: the same kind of game, your opening, a higher rating. Watch a game of theirs and it stops where it matters.</p>
     <ul class="lf-list">${best.map((x) => `<li>
