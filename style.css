@@ -1537,3 +1537,12 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .ad-events { margin: 0 0 12px; padding: 0 0 0 12px; list-style: none; display: grid; gap: 3px; font-size: 13px; border-left: 2px solid var(--hot); }
 .ad-events li { display: grid; grid-template-columns: 9em 1fr; gap: 10px; }
 @media (max-width: 760px) { .ad-visitor summary { grid-template-columns: 1fr 1fr; } }
+.ad-line-box { position: relative; }
+.ad-line .ad-cross { stroke: var(--muted); stroke-dasharray: 3 3; }
+.ad-line .ad-dot { fill: var(--hot); stroke: var(--surface); stroke-width: 2; }
+.ad-tip { position: absolute; top: 0; transform: translateX(-50%); padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); font-size: 12px; line-height: 1.4; pointer-events: none; white-space: nowrap; }
+.ad-key { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.ad-key span { display: inline-block; width: 14px; height: 3px; background: var(--hot); }
+.ad-key .ad-k-area { height: 10px; margin-left: 12px; background: color-mix(in srgb, var(--hot) 25%, transparent); }
+.ad-kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.ad-names { margin: 0; line-height: 1.8; }

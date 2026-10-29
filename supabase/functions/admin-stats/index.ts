@@ -34,6 +34,8 @@ Deno.serve(async (req) => {
     rows.push(...data);
     if (data.length < 1000) break;
   }
+  // Everyone who has ever logged in here with Lichess (the admins too): the profiles created.
+  const registered = [...new Set(rows.map((r) => r.user_name).filter(Boolean))] as string[];
   // The admins' own visits stay out (every browser that was ever logged in as one), and so do the hidden ones.
   const own = new Set(rows.filter((r) => ADMINS.includes(r.user_name?.toLowerCase() ?? '')).map((r) => r.visitor).concat(HIDDEN_VISITORS));
   rows = rows.filter((r) => !own.has(r.visitor) && !BOT_IPS.includes(r.ip ?? ''));
@@ -57,10 +59,12 @@ Deno.serve(async (req) => {
   // that day, and page views.
   const days: Record<string, { fresh: number; visitors: Set<string>; views: number }> = {};
   const first = rows.length ? Date.parse(rows[0].at) : Date.now();
-  for (let t = first; t <= Date.now() + 864e5; t += 864e5) days[day(new Date(t).toISOString())] ??= { fresh: 0, visitors: new Set(), views: 0 };
+  for (let t = first; t <= Date.now(); t += 864e5) days[day(new Date(t).toISOString())] ??= { fresh: 0, visitors: new Set(), views: 0 };
   for (const r of views) { const d = days[day(r.at)]; if (d) { d.views++; d.visitors.add(r.visitor); } }
   for (const w of visitors) { const d = days[day(w.first)]; if (d) d.fresh++; }
   const today = day(new Date().toISOString());
+  // Visitors in the last n days: each counted once (seen at all), and unique ones (their very first visit).
+  const seenIn = (n: number) => new Set(views.filter((r) => Date.now() - Date.parse(r.at) < n * 864e5).map((r) => r.visitor)).size;
   const newIn = (n: number) => visitors.filter((w) => Date.now() - Date.parse(w.first) < n * 864e5).length;
 
   // The lists cover the last DAYS days. [name, count], most first; `unique` counts each visitor once per value.
@@ -80,8 +84,8 @@ Deno.serve(async (req) => {
   return json({
     days: DAYS,
     totals: {
-      newToday: visitors.filter((w) => day(w.first) === today).length, back: visitors.filter((w) => day(w.first) !== today && day(w.last) === today).length,
-      new7: newIn(7), new30: newIn(DAYS), all: visitors.length, views: views.length,
+      today: visitors.filter((w) => day(w.last) === today).length, newToday: visitors.filter((w) => day(w.first) === today).length,
+      week: seenIn(7), new7: newIn(7), month: seenIn(DAYS), new30: newIn(DAYS), all: visitors.length, views: views.length, registered: registered.length,
       mobile: recentVisitors.length ? mobile / recentVisitors.length : 0, loggedIn: Object.keys(logins).length,
     },
     perDay: Object.entries(days).map(([d, x]) => ({ day: d, fresh: x.fresh, visitors: x.visitors.size, views: x.views })),
@@ -91,7 +95,8 @@ Deno.serve(async (req) => {
     cities: count(recentVisitors.filter((w) => w.city).map((w) => `${w.city}, ${w.country ?? ''}`)),
     devices: count(recentVisitors.map((w) => w.device ?? 'Unknown')),
     hours, weekdays,
-    profiles: count(recent.filter((r) => r.kind === 'profile').map((r) => r.target)),
+    profiles: count(rows.filter((r) => r.kind === 'profile').map((r) => r.target)), // all time
+    registered: registered.sort((a, b) => a.localeCompare(b)),
     compares: count(recent.filter((r) => r.kind === 'compare').map((r) => r.target)),
     usage: count(recent.filter((r) => r.kind !== 'view' && r.kind !== 'profile').map((r) => r.kind)),
     practised: count(recent.filter((r) => r.kind === 'practise').map((r) => r.target)),

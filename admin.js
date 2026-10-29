@@ -1,6 +1,6 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029142022';
+import { account, login, finishLogin } from './lichess.js?v=20261029142618';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -12,19 +12,45 @@ const NAMES = new Intl.DisplayNames(['en'], { type: 'region' });
 const land = (c) => { try { return c && c !== '–' ? `${NAMES.of(c)} (${c})` : 'Unknown'; } catch { return c || 'Unknown'; } };
 const KIND = { profile: 'Looked up a profile', compare: 'Comparisons', analyse: 'Analyses started', practise: 'Openings practised', card: 'Cards downloaded', login: 'Lichess logins' };
 
-// New unique visitors per day as a line (a visitor counts once, on the day they first came), over the
-// picked span; each day's numbers in a tooltip.
+// Visitors per day (each counted once that day) as a line, and unique visitors (their first visit
+// ever) as the shaded area under it, over the picked span; days without visits are zero. Moving the
+// mouse along the graph shows that day's numbers.
 const SPANS = [['1W', 7], ['1M', 30], ['6M', 182], ['1Y', 365], ['All', Infinity]];
 let span = 30;
-function visitorLine(perDay) {
-  const ds = perDay.slice(-Math.min(span, perDay.length)), W = 760, H = 180, top = Math.max(1, ...ds.map((d) => d.fresh));
-  const x = (i) => (ds.length > 1 ? (i / (ds.length - 1)) * W : W / 2), y = (v) => H - (v / top) * (H - 8);
-  const pts = ds.map((d, i) => `${x(i).toFixed(1)},${y(d.fresh).toFixed(1)}`).join(' '), bw = W / ds.length;
-  return `<svg class="ad-line" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="New unique visitors per day, ${ds.length} days, ${ds.reduce((t, d) => t + d.fresh, 0)} in all">
+const W = 760, H = 180;
+function spanDays(perDay) {
+  const by = new Map(perDay.map((d) => [d.day, d])), n = Number.isFinite(span) ? span : Math.max(perDay.length, 2), out = [];
+  const iso = (t) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm' }).format(new Date(t));
+  for (let i = n - 1; i >= 0; i--) { const k = iso(Date.now() - i * 864e5); out.push(by.get(k) || { day: k, fresh: 0, visitors: 0, views: 0 }); }
+  return out;
+}
+function visitorLine(ds) {
+  const top = Math.max(1, ...ds.map((d) => d.visitors)), x = (i) => (i / (ds.length - 1)) * W, y = (v) => H - (v / top) * (H - 10);
+  const line = (k) => ds.map((d, i) => `${x(i).toFixed(1)},${y(d[k]).toFixed(1)}`).join(' ');
+  return `<svg class="ad-line" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Visitors per day over ${ds.length} days: ${ds.reduce((t, d) => t + d.fresh, 0)} unique">
     <line class="ad-axis" x1="0" y1="${H}" x2="${W}" y2="${H}"></line>
-    <polygon class="ad-area" points="0,${H} ${pts} ${W},${H}"></polygon><polyline points="${pts}"></polyline>
-    ${ds.map((d, i) => `<g><title>${day(d.day)}: ${d.fresh} new, ${d.visitors} visitors in all, ${d.views} page views</title><rect class="hit" x="${i * bw}" y="0" width="${bw}" height="${H}"></rect>${d.fresh ? `<circle cx="${x(i)}" cy="${y(d.fresh)}" r="3"></circle>` : ''}</g>`).join('')}
-    <text x="0" y="${H + 16}">${day(ds[0].day)}</text><text x="${W}" y="${H + 16}" text-anchor="end">Today</text><text x="0" y="12">${top}</text></svg>`;
+    <polygon class="ad-area" points="0,${H} ${line('fresh')} ${W},${H}"></polygon><polyline points="${line('visitors')}"></polyline>
+    <line class="ad-cross" x1="0" y1="0" x2="0" y2="${H}" visibility="hidden"></line><circle class="ad-dot" r="4" visibility="hidden"></circle>
+    <text x="0" y="${H + 16}">${day(ds[0].day)}</text><text x="${W}" y="${H + 16}" text-anchor="end">Today</text><text x="4" y="12">${top}</text></svg>
+    <div class="ad-tip" hidden></div>
+    <p class="ad-key"><span class="ad-k-line"></span>Visitors <span class="ad-k-area"></span>Unique (first visit)</p>`;
+}
+function bindLine(perDay) {
+  const ds = spanDays(perDay), box = $('#ad-line');
+  box.innerHTML = visitorLine(ds);
+  const svg = box.querySelector('svg'), cross = svg.querySelector('.ad-cross'), dot = svg.querySelector('.ad-dot'), tip = box.querySelector('.ad-tip');
+  const top = Math.max(1, ...ds.map((d) => d.visitors));
+  svg.addEventListener('pointermove', (e) => {
+    const r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(ds.length - 1, Math.round(((e.clientX - r.left) / r.width) * (ds.length - 1)))), d = ds[i];
+    const cx = (i / (ds.length - 1)) * W, cy = H - (d.visitors / top) * (H - 10);
+    cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.setAttribute('visibility', 'visible');
+    dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('visibility', 'visible');
+    tip.hidden = false;
+    tip.innerHTML = `<b>${day(d.day)}</b><br>${d.visitors} visitor${d.visitors === 1 ? '' : 's'} · ${d.fresh} unique<br><small>${d.views} page views</small>`;
+    const px = (cx / W) * r.width;
+    tip.style.left = `${Math.min(Math.max(px, 60), r.width - 60)}px`;
+  });
+  svg.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.hidden = true; });
 }
 const rows = (list, label = (x) => esc(x.name)) => (list.length
   ? `<ul class="pf-rows ad-rows">${list.map((x) => `<li><span>${label(x)}</span><small>${x.n}</small></li>`).join('')}</ul>`
@@ -50,14 +76,19 @@ function render(s) {
   const link = (x) => `<a href="profile.html?u=${encodeURIComponent(x.name)}">${esc(x.name)}</a>`, t = s.totals;
   $('#admin').innerHTML = `
     <header class="pr-head"><h1 class="pf-h1">Admin</h1><p class="info">How Chess Trainer is used. A visitor is a browser, counted once: on the day they first came. The admins' own visits and automated browsers are not counted.</p></header>
-    <dl class="pf-kpis">
-      <div><dt>New visitors today</dt><dd>${t.newToday}</dd><small>${t.back} came back today</small></div>
-      <div><dt>New visitors, 7 days</dt><dd>${t.new7}</dd></div>
-      <div><dt>New visitors, ${s.days} days</dt><dd>${t.new30}</dd><small>${Math.round(t.mobile * 100)}% on a phone</small></div>
-      <div><dt>Visitors, all time</dt><dd>${t.all}</dd><small>${t.all ? (t.views / t.all).toFixed(1) : 0} pages a visitor · ${t.loggedIn} logged in (${s.days} days)</small></div>
+    <dl class="pf-kpis ad-kpis">
+      <div><dt>Visitors today</dt><dd>${t.today}</dd><small>${t.newToday} unique (first visit)</small></div>
+      <div><dt>Visitors, 7 days</dt><dd>${t.week}</dd><small>${t.new7} unique</small></div>
+      <div><dt>Visitors, ${s.days} days</dt><dd>${t.month}</dd><small>${t.new30} unique · ${Math.round(t.mobile * 100)}% on a phone</small></div>
+      <div><dt>Visitors, all time</dt><dd>${t.all}</dd><small>${t.all ? (t.views / t.all).toFixed(1) : 0} pages a visitor</small></div>
+      <div><dt>Profiles created</dt><dd>${t.registered}</dd><small>logged in with Lichess</small></div>
     </dl>
-    <section class="pf-card"><div class="ad-head"><h2>New unique visitors</h2><div class="seg" role="group" aria-label="Time span" id="ad-span">${SPANS.map(([l, n]) => `<button type="button" data-span="${n}" aria-pressed="${n === span}">${l}</button>`).join('')}</div></div>
-      <div id="ad-line">${visitorLine(s.perDay)}</div></section>
+    <section class="pf-card"><div class="ad-head"><h2>Visitors</h2><div class="seg" role="group" aria-label="Time span" id="ad-span">${SPANS.map(([l, n]) => `<button type="button" data-span="${n}" aria-pressed="${n === span}">${l}</button>`).join('')}</div></div>
+      <div id="ad-line" class="ad-line-box"></div></section>
+    <div class="pf-two">
+      <section class="pf-card"><h2>Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="ad-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
+      <section class="pf-card"><h2>Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>
+    </div>
     <div class="pf-two">
       <section class="pf-card"><h2>Most visited pages</h2>${bars(s.pages, (x) => esc(pageName(x.name)), (x) => ` <small>${x.unique} unique</small>`)}</section>
       <section class="pf-card"><h2>Where visitors come from</h2>${bars(s.sources || [])}</section>
@@ -83,15 +114,14 @@ function render(s) {
       : '<p class="info">Nobody yet.</p>'}</section>
     <div class="pf-two">
       <section class="pf-card"><h2>What people do</h2>${rows(s.usage, (x) => KIND[x.name] || esc(x.name))}</section>
-      <section class="pf-card"><h2>Profiles looked up</h2>${rows(s.profiles, link)}</section>
+      <section class="pf-card"><h2>Logged-in players · ${s.days} days</h2>${s.users.length
+        ? `<ul class="pf-rows ad-rows">${s.users.map((u) => `<li><span>${link(u)}</span><small>${u.n} actions · last ${when(u.last)}</small></li>`).join('')}</ul>` : '<p class="info">Nobody yet.</p>'}</section>
     </div>
     <div class="pf-two">
       <section class="pf-card"><h2>Comparisons</h2>${rows(s.compares)}</section>
       <section class="pf-card"><h2>Openings practised</h2>${rows(s.practised)}</section>
     </div>
-    <section class="pf-card"><h2>Logged-in players</h2>${s.users.length
-      ? `<ul class="pf-rows ad-rows">${s.users.map((u) => `<li><span>${link(u)}</span><small>${u.n} actions · last ${when(u.last)}</small></li>`).join('')}</ul>`
-      : '<p class="info">Nobody yet.</p>'}</section>`;
+`;
 }
 
 async function start() {
@@ -109,8 +139,9 @@ async function start() {
     $('#profile-msg').textContent = '';
     try { localStorage.setItem('chess-trainer-no-track', '1'); } catch {} // this browser is the admin's: its visits stay out of the numbers
     render(body);
+    bindLine(body.perDay);
     $('#ad-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = Number(b.dataset.span);
-      $('#ad-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); $('#ad-line').innerHTML = visitorLine(body.perDay); });
+      $('#ad-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body.perDay); });
   } catch (err) {
     $('#profile-msg').innerHTML = `${esc(err.message)} <button type="button" class="link" data-retry>Try again</button>`;
     $('[data-retry]').addEventListener('click', start);

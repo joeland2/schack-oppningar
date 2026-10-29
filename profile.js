@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029142022';
-import { STYLE_OF } from './styles.js?v=20261029142022';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029142618';
+import { STYLE_OF } from './styles.js?v=20261029142618';
 
 const MAX = 500;
 const PV = 32;
@@ -1150,9 +1150,9 @@ async function run(name) {
   const mine = ++runs, c = cache()[name.toLowerCase()];
   await loadScores(); // a saved profile is drawn without reading the games, but its time controls are read again
   if (shown && shown[0].toLowerCase() !== name.toLowerCase()) pfSpeed = null; // another player starts on their own main time control
-  window.track?.('profile', name);
   // Seen before: show the saved profile at once, then fetch new games quietly and redraw only if there were any.
   if (c && c.v === PV) {
+    window.track?.('profile', c.name || name); // counted only for a player that was found
     try { render(c.name || name, c.at, c.p); } catch (err) { console.warn('saved profile could not be shown, reading it again', err); }
     const before = storedGames(name) || [], top = before[0]?.id; // no games kept here yet: redraw once they are, with their time controls
     quiet = true;
@@ -1170,6 +1170,7 @@ async function run(name) {
   const slow = setTimeout(() => { if (mine === runs && /Looking up|Fetching/.test($('#profile-msg').textContent)) $('#profile-msg').textContent += ' Lichess is slow right now; still waiting.'; }, 12000);
   try {
     const p = await build(name);
+    window.track?.('profile', cache()[name.toLowerCase()]?.name || name);
     if (mine === runs) render(name, Date.now(), p);
   } catch (err) {
     if (mine === runs) failed(name, err);
