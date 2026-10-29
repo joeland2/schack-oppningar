@@ -1,8 +1,9 @@
 // Usage counting (supabase/schema.sql), on every page: a page view, and window.track(kind, target) for
 // what people do. The visitor is a random id kept in this browser; the Lichess name only when logged
-// in. The public key can only add events, never read them. Not counted on this computer's own server.
+// in. The track Edge Function adds the country and the IP address with its last part zeroed. Not
+// counted on this computer's own server.
 (() => {
-  const API = 'https://duhlvhjtxoofgnjegspa.supabase.co/rest/v1/events', KEY = 'sb_publishable_6jWrlp6aNe4REB4v-uebxA_giKYde2o';
+  const API = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/track';
   const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   let visitor = 'anon';
   try { visitor = localStorage.getItem('chess-trainer-visitor') || crypto.randomUUID(); localStorage.setItem('chess-trainer-visitor', visitor); } catch {}
@@ -13,7 +14,7 @@
   const own = () => { try { return user()?.toLowerCase() === 'joelandersson' || localStorage.getItem('chess-trainer-no-track') === '1'; } catch { return false; } };
   window.track = (kind, target = null) => {
     if (local || own()) return;
-    fetch(API, { method: 'POST', keepalive: true, headers: { apikey: KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    fetch(API, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'text/plain' }, // plain text: no preflight, so it still goes as the page closes
       body: JSON.stringify({ kind, page, target: target && String(target).slice(0, 80), visitor, user_name: user() }) }).catch(() => {});
   };
   window.track('view');

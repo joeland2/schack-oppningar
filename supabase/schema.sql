@@ -22,3 +22,8 @@ create policy "anyone can add an event" on public.events
     kind in ('view', 'profile', 'compare', 'analyse', 'practise', 'card', 'login')
   );
 -- No select, update or delete policy: with the public key the table can be written to, never read.
+
+-- Added 2026-10-29: where visitors come from. Events now go through the track Edge Function, which
+-- stores the IP address with its last part zeroed (83.250.12.0), never the whole address, and the country.
+alter table public.events add column if not exists ip text check (char_length(ip) <= 45);
+alter table public.events add column if not exists country text check (char_length(country) <= 2);

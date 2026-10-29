@@ -22,9 +22,9 @@ Deno.serve(async (req) => {
 
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const since = new Date(Date.now() - DAYS * 864e5).toISOString();
-  let rows: { at: string; kind: string; page: string | null; target: string | null; visitor: string; user_name: string | null }[] = [];
+  let rows: { at: string; kind: string; page: string | null; target: string | null; visitor: string; user_name: string | null; ip: string | null; country: string | null }[] = [];
   for (let from = 0; ; from += 1000) { // shortcut: reads every event of the last 30 days; move the counting into SQL past ~100k events
-    const { data, error } = await db.from('events').select('at, kind, page, target, visitor, user_name').gte('at', since).order('at').range(from, from + 999);
+    const { data, error } = await db.from('events').select('at, kind, page, target, visitor, user_name, ip, country').gte('at', since).order('at').range(from, from + 999);
     if (error) return json({ error: error.message }, 500);
     rows.push(...data);
     if (data.length < 1000) break;
@@ -39,6 +39,13 @@ Deno.serve(async (req) => {
   const days: Record<string, { views: number; visitors: Set<string> }> = {};
   for (let d = DAYS - 1; d >= 0; d--) days[new Date(Date.now() - d * 864e5).toISOString().slice(0, 10)] = { views: 0, visitors: new Set() };
   for (const r of views) { const d = days[r.at.slice(0, 10)]; if (d) { d.views++; d.visitors.add(r.visitor); } }
+  // Each visitor (a browser): where from (cut IP and country, as last seen), page views, first and last visit.
+  const who: Record<string, { ip: string | null; country: string | null; views: number; first: string; last: string; name: string | null }> = {};
+  for (const r of rows) {
+    const w = (who[r.visitor] ??= { ip: null, country: null, views: 0, first: r.at, last: r.at, name: null });
+    w.last = r.at; w.ip = r.ip ?? w.ip; w.country = r.country ?? w.country; w.name = r.user_name ?? w.name;
+    if (r.kind === 'view') w.views++;
+  }
   const logins: Record<string, { n: number; last: string }> = {};
   for (const r of rows) if (r.user_name) logins[r.user_name] = { n: (logins[r.user_name]?.n || 0) + 1, last: r.at };
 
@@ -56,6 +63,8 @@ Deno.serve(async (req) => {
     compares: count(rows.filter((r) => r.kind === 'compare').map((r) => r.target)),
     usage: count(rows.filter((r) => r.kind !== 'view' && r.kind !== 'profile').map((r) => r.kind)),
     practised: count(rows.filter((r) => r.kind === 'practise').map((r) => r.target)),
+    countries: count(Object.values(who).map((w) => w.country ?? '–')),
+    visitors: Object.values(who).sort((a, b) => b.last.localeCompare(a.last)).slice(0, 40),
     users: Object.entries(logins).sort((a, b) => b[1].last.localeCompare(a[1].last)).map(([name, x]) => ({ name, n: x.n, last: x.last })),
   });
 });

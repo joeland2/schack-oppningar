@@ -1,12 +1,15 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029094300';
+import { account, login, finishLogin } from './lichess.js?v=20261029094949';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const day = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 const when = (iso) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+// A country code as a name: SE is Sweden; – for an unknown country.
+const NAMES = new Intl.DisplayNames(['en'], { type: 'region' });
+const land = (c) => { try { return c && c !== '–' ? `${NAMES.of(c)} (${c})` : 'Unknown'; } catch { return c || 'Unknown'; } };
 const KIND = { compare: 'Comparisons', analyse: 'Analyses started', practise: 'Openings practised', card: 'Cards downloaded', login: 'Lichess logins' };
 
 // Visitors per day as bars; the day's page views in each bar's tooltip.
@@ -40,6 +43,12 @@ function render(s) {
     <div class="pf-two">
       <section class="pf-card"><h2>Profiles looked up</h2>${rows(s.profiles, link)}</section>
       <section class="pf-card"><h2>Comparisons</h2>${rows(s.compares)}</section>
+    </div>
+    <div class="pf-two">
+      <section class="pf-card"><h2>Countries</h2>${rows(s.countries || [], (x) => esc(land(x.name)))}<p class="info">Unique visitors per country.</p></section>
+      <section class="pf-card"><h2>Recent visitors</h2>${(s.visitors || []).length
+        ? `<ul class="pf-rows ad-rows">${s.visitors.map((v) => `<li><span>${esc(land(v.country))} <small>${esc(v.ip || 'no IP')}</small>${v.name ? ` · ${link({ name: v.name })}` : ''}</span><small>${v.views} views · last ${when(v.last)}</small></li>`).join('')}</ul>`
+        : '<p class="info">Nobody yet.</p>'}</section>
     </div>
     <div class="pf-two">
       <section class="pf-card"><h2>Openings practised</h2>${rows(s.practised)}</section>
