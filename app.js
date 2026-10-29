@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029142941';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029142941';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029142941';
-import { GUIDE } from './guide.js?v=20261029142941';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029142941';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029142941';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029142941';
-import { storedGames } from './profile.js?v=20261029142941';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029144200';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029144200';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029144200';
+import { GUIDE } from './guide.js?v=20261029144200';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029144200';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029144200';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029144200';
+import { storedGames } from './profile.js?v=20261029144200';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -921,6 +921,10 @@ function renderMoves() {
   $('#bar').style.width = line.length ? `${Math.min(ply / line.length, 1) * 100}%` : '0';
   $('#line-at').textContent = lines[lineIdx] && mode !== 'explore' ? `Line ${lineIdx + 1} of ${lines.length}` : '';
   $('#op-line').textContent = lines[lineIdx] && mode !== 'explore' ? lineName(lines[lineIdx]) : '';
+  // The phone's bar above the board: the opening, the line and the mode, which the panel shows lower down.
+  $('#m-name').textContent = $('#op-title').textContent;
+  $('#m-line').textContent = lines[lineIdx] && mode !== 'explore' ? `Line ${lineIdx + 1} of ${lines.length} · ${lineName(lines[lineIdx])}` : mode === 'explore' ? 'Exploring' : '';
+  $('#m-mode').value = mode;
   $('#depth').textContent = `${depthName(load(STORE + '-depth', {})[cur?.id] || MAX_LINES)} ▾`;
   $('#depth').hidden = allLines.length <= DEPTHS[0][1] || !!trapRun || mode === 'explore';
 }
@@ -2892,6 +2896,8 @@ document.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('clic
   if (OPENINGS.length) renderList();
 }));
 $('#back').addEventListener('click', showPicker);
+$('#m-back').addEventListener('click', showPicker);
+$('#m-mode').addEventListener('change', (e) => $(`#mode-${e.target.value}`).click());
 function setMode(m, restart = true, remember = true) {
   const was = mode;
   mode = m; view = null;
@@ -3025,6 +3031,7 @@ function renderLogin() {
   lockRating();
   const a = account(), b = $('#lichess-login');
   b.textContent = a ? a.name : 'Log in';
+  b.hidden = !a; // logged out, the section bar's Log in is the one way in
   b.title = a ? `Logged in to Lichess as ${a.name}: your profile (log out there)`
     : 'Log in with Lichess: play-outs then follow real games from all of Lichess, and your rating and games are filled in.';
   b.setAttribute('aria-pressed', String(!!a));

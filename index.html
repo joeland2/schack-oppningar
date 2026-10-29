@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261029142941">
-  <script src="header.js?v=20261029142941" defer></script>
-  <script src="theme.js?v=20261029142941"></script>
+  <link rel="stylesheet" href="style.css?v=20261029144200">
+  <script src="header.js?v=20261029144200" defer></script>
+  <script src="theme.js?v=20261029144200"></script>
 </head>
 <body>
   <header class="top">
@@ -100,6 +100,13 @@
 
   <main id="trainer" class="wrap layout" hidden>
     <section class="play">
+      <div class="m-bar">
+        <button id="m-back" class="m-back" type="button" aria-label="All openings"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <div class="m-title"><b id="m-name"></b><small id="m-line"></small></div>
+        <label class="m-mode"><span class="visually-hidden">Mode</span><select id="m-mode">
+          <option value="learn">Learn</option><option value="try">Practice</option><option value="explore">Explore</option><option value="time">Time</option>
+        </select></label>
+      </div>
       <div class="progress">
         <span id="line-at"></span>
         <div class="track"><div id="bar" class="fill"></div></div>
@@ -191,7 +198,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261029142941"></script>
+  <script type="module" src="app.js?v=20261029144200"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>
