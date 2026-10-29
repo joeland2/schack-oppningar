@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029130836';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029130836';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029130836';
-import { GUIDE } from './guide.js?v=20261029130836';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029130836';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029130836';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029130836';
-import { storedGames } from './profile.js?v=20261029130836';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029131052';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029131052';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029131052';
+import { GUIDE } from './guide.js?v=20261029131052';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029131052';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029131052';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029131052';
+import { storedGames } from './profile.js?v=20261029131052';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2574,12 +2574,17 @@ function showMove(n) {
   if (i >= 0 && notes[i] === 'blunder' && game.history({ verbose: true })[i].color !== cur.side) chanceAgain(i);
 }
 // Back on their blunder: the same Chance card, to try again from there (your answer gets its verdict).
-function chanceAgain(i) {
-  const m = game.history({ verbose: true })[i], g = new Chess();
+// Stockfish's best answer to the blunder at move i, or null while it is not evaluated yet.
+function bestAfter(i) {
+  const g = new Chess();
   game.history().slice(0, i + 1).forEach((x) => g.move(x));
-  const r = EVALS.get(evalKey(g.fen())), best = r?.move && new Chess(g.fen()).move(r.move);
+  const r = EVALS.get(evalKey(g.fen()));
+  return r?.move ? new Chess(g.fen()).move(r.move) : null;
+}
+function chanceAgain(i) {
+  const m = game.history({ verbose: true })[i], best = bestAfter(i);
   const retry = () => { takeBackTo(i + 1); chance = best ? { ply: i + 1, best } : null; say('Find the strong move.', 'good'); };
-  moment('chance', 'Chance!', `${sideName(m.color)}'s <b>${moveLabel(i, m.san)}</b> (red arrow) was a blunder. Try it again: look at checks, captures and threats.`,
+  moment('chance', 'Chance!', `${sideName(m.color)}'s <b>${moveLabel(i, m.san)}</b> (red arrow) was a blunder.${betters[i] ? ` ${sideName(m.color)} should have played ${betters[i].san}.` : ''} Try it again: look at checks, captures and threats.`,
     [{ label: 'Try it', run: retry }, ...(best ? [{ label: 'Show me', run: () => { retry(); chance = null; hintSq = [best.from, best.to]; renderBoard(); say(`${moveWords(best)}.`, 'good'); } }] : [])],
     null, [[m.from, m.to, RED]], null);
 }
@@ -2592,6 +2597,9 @@ function leaveView(sq) {
   if (g.get(sq)?.color !== g.turn()) { showMove(Infinity); return false; }
   if (n < line.length || g.turn() !== cur.side) { exploreFrom(n, 'Explore from here: move any piece, for either side. '); return true; }
   takeBackTo(n);
+  // Moving straight away on their blunder is trying the chance again, as Try it does.
+  const best = notes[n - 1] === 'blunder' && bestAfter(n - 1);
+  if (best) { closeMoment(); chance = { ply: n, best }; say('Find the strong move.', 'good'); }
   return true;
 }
 // Back to the position after n moves, for you to play on from (the moves after it are gone).
