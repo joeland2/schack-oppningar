@@ -2,9 +2,9 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261029081638';
-import { findMistakes, pickPuzzles } from './mistakes.js?v=20261029081638';
-import { current, cache, myName, skillsOf, storedGames } from './profile.js?v=20261029081638';
+import { login } from './lichess.js?v=20261029082741';
+import { findMistakes, pickPuzzles } from './mistakes.js?v=20261029082741';
+import { current, cache, myName, skillsOf, storedGames } from './profile.js?v=20261029082741';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -26,11 +26,11 @@ const practise = (side, fam) => `./?practise=${side}~${encodeURIComponent(fam.re
 
 // Where each weak skill is trained on this site.
 const SKILL_GO = {
-  Openings: null, // the openings that cost you most are their own step
-  Tactics: { href: 'mistakes.html', label: 'Solve your own mistakes' },
-  'Winning when ahead': { href: 'mistakes.html', label: 'Solve your own mistakes' },
-  Defending: null,
-  Endgames: null,
+  Attack: { href: 'mistakes.html', label: 'Solve your own mistakes' },
+  Defense: null,
+  'Early game': null, // the openings that cost you most are their own step
+  'Late game': null,
+  Accuracy: { href: 'mistakes.html', label: 'Solve your own mistakes' },
   Speed: null,
 };
 
@@ -44,7 +44,7 @@ function render(name, p) {
   for (const x of weak.slice(0, 2)) {
     const go = SKILL_GO[x.label];
     steps.push([`Train ${x.label.toLowerCase()} <small>${x.v}</small>`, `<p>${esc(x.means)} ${esc(x.why)}</p><p class="pr-how"><b>How:</b> ${esc(x.train)}</p>`,
-      go ? `<a class="cta" href="${go.href}">${go.label}</a>` : x.label === 'Openings' ? '<a class="cta" href="#pr-openings">See the openings below</a>' : '']);
+      go ? `<a class="cta" href="${go.href}">${go.label}</a>` : x.label === 'Early game' ? '<a class="cta" href="#pr-openings">See the openings below</a>' : '']);
   }
   const mine = puzzles();
   steps.push(['Puzzles from your own games', mine.length

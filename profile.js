@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029081638';
-import { STYLE_OF } from './styles.js?v=20261029081638';
+import { account, login, finishLogin } from './lichess.js?v=20261029082741';
+import { STYLE_OF } from './styles.js?v=20261029082741';
 
 const MAX = 500;
-const PV = 16;
+const PV = 17;
 const ENOUGH = 20;
 const WHY_ANALYSE = 'Lichess only analyses games you ask it to. Analysed games give your blunders, accuracy and four of the skills, and become puzzles in My practice. Stockfish runs in your browser; no game is done twice.'; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
@@ -159,11 +159,11 @@ const TYPE_ABOUT = {
   'Time scrambler': 'Spends a lot of time early and plays the end on the clock. Strong in scrambles, but some games are lost on time.',
   'King walker': 'Often leaves the king in the centre. Bold, and sometimes it pays off, but it gives the opponent targets.',
   'All-rounder': 'No style stands out: plays a bit of everything and adapts to the position.',
-  'Opening expert': 'Comes out of the opening better than players at the same level: knows the lines and the plans behind them.',
-  Tactician: 'Blunders less than players at the same level and punishes their mistakes.',
-  Closer: 'Wins the won games: stays clean when ahead, where players at the same level let it slip.',
-  Defender: 'Hard to finish off: makes fewer mistakes when behind than players at the same level.',
-  'Endgame grinder': 'Scores more in endgames than players at the same level: the long games are theirs.',
+  Finisher: 'Gets attacks going and finishes them: quick wins, clear advantages, and few slips once ahead.',
+  Wall: 'Hard to finish off: saves lost positions and makes few mistakes while behind.',
+  'Fast starter': 'Comes out of the opening better than players at the same level: knows the lines and the plans behind them.',
+  Grinder: 'Scores more in endgames than players at the same level: the long games are theirs.',
+  'Sure hand': 'Blunders less than players at the same level: rarely throws a piece or a game away.',
   'Speed demon': 'Handles the clock better than players at the same level: rarely short of time, and wins on it.',
 };
 // You against players at your level: your own opponents rated within 200 of you, in the same games.
@@ -186,6 +186,8 @@ function peerOf(games) {
     endScore: score(ends),
     // Saved when clearly losing (won or drew), for you and for your opponents against you.
     saved: rate(downs, (g) => g.result > 0), oppSaved: rate(ups, (g) => g.result < 1), score: score(gs),
+    // Won and lost within 25 moves: attacks and traps that land, yours and theirs.
+    quickW: rate(gs, (g) => g.result === 1 && g.plies <= 50), quickL: rate(gs, (g) => g.result === 0 && g.plies <= 50),
     myLow: rate(gs, (g) => g.lowTime), oppLow: rate(gs, (g) => g.oppLowTime),
     timeWins: rate(gs, (g) => g.result === 1 && /outoftime|timeout/.test(g.status)), timeLosses: rate(gs, (g) => g.result === 0 && /outoftime|timeout/.test(g.status)),
   };
@@ -216,7 +218,9 @@ console.assert(pieceOf([{ played: { n: [40, 8], b: [40, 1], r: [10, 0], q: [40, 
 const odds = (x) => (x == null ? 1 : Math.min(9, Math.max(1 / 9, x / (1 - x))));
 // Draws grow with the level: about 5% at 1200 and 9% at 2800 in Lichess blitz.
 const usualDraws = (rating) => 0.02 + (rating || 1500) / 40000;
-const STRENGTH = { Openings: 'Opening expert', Tactics: 'Tactician', 'Winning when ahead': 'Closer', Defending: 'Defender', Endgames: 'Endgame grinder', Speed: 'Speed demon' };
+const STRENGTH = { Attack: 'Finisher', Defense: 'Wall', 'Early game': 'Fast starter', 'Late game': 'Grinder', Accuracy: 'Sure hand', Speed: 'Speed demon' };
+// A strength on the same theme as the style says the same thing twice; then the next best skill is named.
+const SAME = { 'Endgame player': 'Late game', 'Comeback player': 'Defense', 'Time scrambler': 'Speed' };
 function typeOf(p) {
   const q = p.peer || {}, rating = p.speeds?.[0]?.rating;
   const styles = [
@@ -234,8 +238,8 @@ function typeOf(p) {
     { name: 'King walker', w: p.noCastle / 0.3, why: `Your king stays in the centre in ${pct(p.noCastle)} of your longer games.` },
   ].sort((x, y) => y.w - x.w);
   // The strength: the skill clearly above the player's own opponents (62 or more where 50 is even).
-  const best = rawSkills(p).filter((x) => x.v !== null && x.v >= 62).sort((x, y) => y.v - x.v)[0];
   const style = styles[0].w >= 0.8 ? styles[0] : { name: 'All-rounder', why: 'No style stands out: you play a bit of everything.' };
+  const best = rawSkills(p).filter((x) => x.v !== null && x.v >= 62 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v)[0];
   const second = best ? { name: STRENGTH[best.label], why: `${best.label} is where you beat your level most: ${best.why}` } : styles[1].w >= 0.8 && style === styles[0] ? styles[1] : null;
   return second ? [style, second] : [style];
 }
@@ -266,43 +270,48 @@ function skillsOf(p) {
   return raw.map((x) => ({ ...x, raw: x.v, level: clamp(card(50)), v: x.v === null ? null : Math.min(99, clamp(card(x.v))) }));
 }
 { // the shape is stretched, the overall (the mean of the card's skills) stays at base + half the mean gap
-  const s = skillsOf({ speeds: [{ rating: 1200 }], peer: { analysed: 30, after12: 40, myBl: 2.8, oppBl: 3, meUp: 2.7, oppUp: 3.6, meDown: 1.5, oppDown: 1.4, endgames: 300, endScore: 0.57, n: 400, myLow: 0.15, oppLow: 0.22, timeWins: 0.15, timeLosses: 0.04 } });
+  const s = skillsOf({ speeds: [{ rating: 1200 }], peer: { analysed: 30, ups: 9, downs: 8, saved: 0.5, quickW: 0.2, quickL: 0.15, after12: 40, myBl: 2.8, oppBl: 3, meUp: 2.7, oppUp: 3.6, meDown: 1.5, oppDown: 1.4, endgames: 300, endScore: 0.57, n: 400, myLow: 0.15, oppLow: 0.22, timeWins: 0.15, timeLosses: 0.04 } });
   const m = sum(s, (x) => x.raw) / 6, o = sum(s, (x) => x.v) / 6;
   console.assert(Math.abs(o - (60 + (m - 50) / 2)) < 1 && Math.abs((s[5].v - s[3].v) - (s[5].raw - s[3].raw)) <= 1, 'skillsOf shape'); // SHAPE 2 at half size: a gap of 10 between two skills stays 10
 }
 console.assert(typeOf({ attacking: 0.54, solid: 0.2, queensOff: 0.1, draws: 0.05, moves: 30, lowTime: 0.16, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, score: 0.5, downs: 30, ups: 30, saved: 0.47, oppSaved: 0.2, myLow: 0.15, oppLow: 0.22, timeWins: 0.15, timeLosses: 0.04 } }).map((t) => t.name).join() === 'Attacker,Speed demon', 'typeOf');
-console.assert(typeOf({ attacking: 0.27, solid: 0.56, queensOff: 0.23, draws: 0.03, moves: 29, lowTime: 0.15, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, analysed: 30, after12: 96 } }).map((t) => t.name).join() === 'Fighter,Opening expert', 'typeOf: same level, other strength');
+console.assert(typeOf({ attacking: 0.27, solid: 0.56, queensOff: 0.23, draws: 0.03, moves: 29, lowTime: 0.15, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, analysed: 30, after12: 96 } }).map((t) => t.name).join() === 'Fighter,Fast starter', 'typeOf: same level, other strength');
 console.assert(levelOf(1200) === 60 && levelOf(2400) === 82 && levelOf(5000) === 92 && levelOf(100) === 35, 'levelOf');
 function rawSkills(p) {
   const q = p.peer || {}, an = (q.analysed ?? 0) >= ENOUGH, pawns = (cp) => { const r = Math.round(cp / 10) / 10; return r === 0 ? '0.0' : `${r > 0 ? '+' : '−'}${Math.abs(r).toFixed(1)}`; };
+  // a against b (yours against your opponents'): 50 when equal, 100 when only you; floor keeps rare things from swinging
+  const vs = (a, b, floor) => (a == null || b == null ? null : 50 + (50 * (a - b)) / Math.max(floor, a + b));
+  const avg = (xs) => { const k = xs.filter((x) => x != null && !Number.isNaN(x)); return k.length ? clamp(sum(k, (x) => x) / k.length) : null; };
+  const up = an ? q.ups / q.analysed : null, down = an ? q.downs / q.analysed : null, f1 = (x) => (x ?? 0).toFixed(1);
   return [
-    { label: 'Openings', needs: true, v: an && q.after12 !== null ? clamp(50 + q.after12 / 4) : null,
-      means: 'How you come out of the first 12 moves, against your opponents at your level.',
+    { label: 'Attack', v: avg([q.n >= 30 ? vs(q.quickW, q.quickL, 0.05) : null, vs(up, down, 0.1), an ? vs(q.oppUp, q.meUp, 0.2) : null]),
+      means: 'Getting an attack going and finishing it, against your opponents at your level: quick wins, how often you get clearly ahead (3 pawns or more), and keeping it clean once you are. Gambits and traps that work show up here.',
+      why: [`You win ${pct(q.quickW ?? 0)} of your games within 25 moves (they ${pct(q.quickL ?? 0)})`, an && `get clearly ahead in ${pct(up)} of analysed games (they ${pct(down)})`, an && q.meUp != null && `and make ${f1(q.meUp)} mistakes per 10 moves when ahead (they ${f1(q.oppUp)})`].filter(Boolean).join(', ') + '.',
+      train: 'When ahead: trade pieces, not pawns, take away their counterplay first, and do not rush.', href: './mistakes.html' },
+    // shortcut: "usual" saves (42%) is the mean of eight checked players, all levels; measure it per level when there is data for it
+    { label: 'Defense', needs: true, v: avg([an && q.downs >= 5 && q.saved != null ? clamp(50 + (q.saved - 0.42) * 150) : null, an ? vs(q.oppDown, q.meDown, 0.2) : null]),
+      means: 'Holding bad positions, against your opponents at your level: how many games you still win or draw after being clearly behind (3 pawns or more), and how few mistakes you make while behind.',
+      why: `You save ${pct(q.saved ?? 0)} of the games where you were clearly losing (about 42% is usual); when behind you make ${f1(q.meDown)} mistakes per 10 moves (they ${f1(q.oppDown)}).`,
+      train: 'When behind: keep pieces on, make threats, and set traps rather than waiting.' },
+    { label: 'Early game', needs: true, v: an && q.after12 !== null ? clamp(50 + q.after12 / 4) : null,
+      means: 'How you stand when the opening is over (after move 12), against your opponents at your level.',
       why: `After move 12 you stand ${pawns(q.after12 ?? 0)} pawns on average against them.`,
       train: 'Practise the lines of the openings you play, and learn the plan behind them, not just the moves.', href: './' },
-    { label: 'Tactics', needs: true, v: an && q.myBl !== null && q.oppBl !== null ? clamp(50 + (50 * (q.oppBl - q.myBl)) / Math.max(0.5, q.oppBl + q.myBl)) : null,
-      means: 'How often you blunder (throw away a piece or the game) compared with players at your level.',
-      why: `${(q.myBl ?? 0).toFixed(1)} blunders a game; your opponents ${(q.oppBl ?? 0).toFixed(1)}.`,
-      train: 'Before every move, check every check, capture and threat your opponent has after it. Then solve the positions where you blundered.', href: './mistakes.html' },
-    { label: 'Winning when ahead', needs: true, v: an && q.meUp != null && q.oppUp != null ? clamp(50 + (50 * (q.oppUp - q.meUp)) / Math.max(0.2, q.oppUp + q.meUp)) : null,
-      means: 'Keeping it clean when you are clearly ahead (1.5 pawns or more): how often you make a mistake then, against your opponents when they are ahead.',
-      why: `When ahead: ${(q.meUp ?? 0).toFixed(1)} mistakes per 10 moves; your opponents ${(q.oppUp ?? 0).toFixed(1)}.`,
-      train: 'When ahead: trade pieces, not pawns, take away their counterplay first, and do not rush.', href: './mistakes.html' },
-    { label: 'Defending', needs: true, v: an && q.meDown != null && q.oppDown != null ? clamp(50 + (50 * (q.oppDown - q.meDown)) / Math.max(0.2, q.oppDown + q.meDown)) : null,
-      means: 'Holding on when you are clearly behind (1.5 pawns or more): how often you make another mistake then, against your opponents when they are behind.',
-      why: `When behind: ${(q.meDown ?? 0).toFixed(1)} mistakes per 10 moves; your opponents ${(q.oppDown ?? 0).toFixed(1)}.`,
-      train: 'When behind: keep pieces on, make threats, and set traps rather than waiting.' },
-    { label: 'Endgames', v: q.endgames >= 10 ? clamp(50 + (q.endScore - 0.5) * 150) : null,
-      means: 'How you do against players at your level once most pieces are gone (6 or fewer besides kings and pawns).',
+    { label: 'Late game', v: q.endgames >= 10 ? clamp(50 + (q.endScore - 0.5) * 150) : null,
+      means: 'How you do once most pieces are gone (6 or fewer besides kings and pawns), against your opponents at your level.',
       why: `You score ${pct(q.endScore ?? 0)} in ${q.endgames} endgames against them (50% is even).`,
       train: 'Learn the basic endgames: king activity, passed pawns, and the key king-and-pawn positions.' },
+    { label: 'Accuracy', needs: true, v: an && q.myBl !== null && q.oppBl !== null ? clamp(vs(q.oppBl, q.myBl, 0.5)) : null,
+      means: 'How often you blunder (throw away a piece or the game), against your opponents at your level.',
+      why: `${(q.myBl ?? 0).toFixed(1)} blunders a game; your opponents ${(q.oppBl ?? 0).toFixed(1)}.`,
+      train: 'Before every move, check every check, capture and threat your opponent has after it. Then solve the positions where you blundered.', href: './mistakes.html' },
     { label: 'Speed', v: q.n >= 30 ? clamp(50 + (q.oppLow - q.myLow) * 100 + (q.timeWins - q.timeLosses) * 100) : null,
       means: 'Using your time well compared with your opponents: who ends up short of time, and who loses on it.',
       why: `Short of time in ${pct(q.myLow ?? 0)} of games (they ${pct(q.oppLow ?? 0)}); you win ${pct(q.timeWins ?? 0)} and lose ${pct(q.timeLosses ?? 0)} of games on time.`,
       train: 'Play the opening fast (you know it), and save your thinking time for the critical moments.' },
   ];
 }
-console.assert(rawSkills({ peer: { analysed: 30, after12: 100, myBl: 1, oppBl: 1, meUp: 1, oppUp: 3, endgames: 0, n: 10 } }).map((x) => x.v).slice(0, 3).join() === '75,50,75', 'rawSkills');
+console.assert(rawSkills({ peer: { analysed: 30, ups: 9, downs: 3, after12: 100, myBl: 1, oppBl: 1, meUp: 1, oppUp: 3, endgames: 0, n: 10 } }).map((x) => x.v).slice(0, 3).join() === '75,,75', 'rawSkills');
 {
   const g = (o) => ({ side: 'w', speed: 'blitz', status: 'resign', plies: 60, result: 1, family: 'Italian Game', rating: 1500, diff: 5, castled: 8, queensOff: null, endgame: false, analysed: false, acc: null, blunders: null, best: null, worst: null, after12: null, slips: { opening: 0, middlegame: 0, endgame: 0 }, lowTime: false, ...o });
   const p = profileOf([g({}), g({ result: 0 }), g({ side: 'b', result: 0 }), g({ side: 'b', result: 0.5 })]);
@@ -518,7 +527,7 @@ function analysePanel(name, p) {
       <details class="pf-help"><summary title="${WHY_ANALYSE}" aria-label="Why analyse?">?</summary><p>${WHY_ANALYSE}</p></details></span>
     ${btn(main, 'cta pf-an-go')}
     ${rest.length ? `<details class="pf-an-menu"><summary>More</summary><div>${rest.map((o) => btn(o, 'pf-an-opt')).join('')}</div></details>` : ''}</div>
-    ${few ? `<p class="pf-an-few">Analyse at least ${ENOUGH} games to unlock Openings, Tactics, Winning when ahead, Defending, accuracy and blunders.</p>` : ''}
+    ${few ? `<p class="pf-an-few">Analyse at least ${ENOUGH} games to unlock Defense, Early game, Accuracy and all of Attack, and the accuracy and blunder numbers.</p>` : ''}
   </div>`;
 }
 function bindAnalyse(name) {
@@ -595,7 +604,7 @@ function portrait(name, p, skills, me, part = 'lead') {
   out.push(`${you} ${are} ${article(t[0])} ${t[0]}${t[1] ? ` with a ${t[1]}'s streak` : ''}${w.length || b.length ? `, reaching for ${[w.length && `the ${and(w)} as White`, b.length && `the ${and(b)} as Black`].filter(Boolean).join(' and ')}` : ''}.`);
   const known = skills.filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
   const leak = leakOf(skills);
-  const named = (x) => ({ Openings: 'the openings' }[x.label || x.title] || (x.label || x.title).toLowerCase());
+  const named = (x) => ({ 'Early game': 'the early game', 'Late game': 'the late game' }[x.label || x.title] || (x.label || x.title).toLowerCase());
   if (known.length >= 2) out.push(`${me ? 'Your' : 'Their'} game is carried by ${named(known[0])}${leak ? ` and held back most by ${named(leak)}` : `, and ${me ? 'you match your' : 'they match their'} opponents everywhere else`}.`);
   if (part === 'lead') return out.join(' ');
   out.length = 0;
@@ -606,7 +615,7 @@ function portrait(name, p, skills, me, part = 'lead') {
 // The piece is drawn white for the black card; in dark mode, where the card is cream, CSS inverts it.
 const CARD_INK = 'w';
 const PIECE_NAME = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
-const ABBR = { Openings: 'OPN', Tactics: 'TAC', 'Winning when ahead': 'WIN', Defending: 'DEF', Endgames: 'END', Speed: 'SPD' };
+const ABBR = { Attack: 'ATK', Defense: 'DEF', 'Early game': 'EARLY', 'Late game': 'LATE', Accuracy: 'ACC', Speed: 'SPD' };
 function playerCard(name, p, t, skills) {
   const known = skills.filter((x) => x.v !== null);
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
@@ -758,7 +767,7 @@ function render(name, at, p) {
       <h2>About these numbers</h2>
       <p class="info">Read from ${me ? 'your' : `${esc(name)}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
       <p class="info">Results, openings, opening style, the clock, endgames and the rating graph use all ${p.n} games.
-        Accuracy, blunders and the Openings, Tactics, Winning when ahead and Defending skills need a computer's verdict on every move, so they use only the
+        Accuracy, blunders and the Defense, Early game and Accuracy skills (and part of Attack) need a computer's verdict on every move, so they use only the
         ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'}${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. ${p.todo ? 'Analyse more with the Analyse button above Skills.' : ''}</p>
       <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Win rate counts wins out of all games; an endgame score counts a draw as half.</p>
     </section>
