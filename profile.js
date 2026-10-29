@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029111420';
-import { STYLE_OF } from './styles.js?v=20261029111420';
+import { account, login, finishLogin } from './lichess.js?v=20261029111725';
+import { STYLE_OF } from './styles.js?v=20261029111725';
 
 const MAX = 500;
-const PV = 24;
+const PV = 25;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -189,7 +189,6 @@ const TYPE_ABOUT = {
   Fighter: 'Plays every game for a result and rarely settles for a draw. Wins and losses both come quickly.',
   'Comeback player': 'Keeps finding chances in bad positions and turns lost games around. Stubborn defence is a real strength.',
   'Time scrambler': 'Spends a lot of time early and plays the end on the clock. Strong in scrambles, but some games are lost on time.',
-  'King walker': 'Often leaves the king in the centre. Bold, and sometimes it pays off, but it gives the opponent targets.',
   'All-rounder': 'No style stands out: plays a bit of everything and adapts to the position.',
   Finisher: 'Gets attacks going and finishes them: quick wins, clear advantages, and few slips once ahead.',
   Guardian: 'Hard to finish off: saves lost positions and makes few mistakes while behind.',
@@ -289,7 +288,6 @@ function traitsOf(p) {
       why: `In ${pct(q.saved ?? 0)} of the games where you were clearly losing, you still won or drew; your opponents at your level, clearly losing against you, only ${pct(q.oppSaved ?? 0)}.` },
     { name: 'Time scrambler', w: Math.min(p.lowTime / 0.3, q.n >= 30 && q.myLow != null ? q.myLow / Math.max(q.oppLow, 0.05) / 1.4 : 0),
       why: `You end ${pct(p.lowTime)} of your games with under a tenth of your time left${q.oppLow != null ? `; your opponents at your level ${pct(q.oppLow)}` : ''}.` },
-    { name: 'King walker', w: p.noCastle / 0.3, why: `Your king stays in the centre in ${pct(p.noCastle)} of your longer games.` },
     { name: 'Trickster', w: q.n >= 30 && (q.quickW ?? 0) >= 0.1 ? (q.quickW / Math.max(q.quickL, 0.03)) / 1.6 : 0,
       why: `You win ${pct(q.quickW ?? 0)} of your games within 25 moves, your opponents at your level ${pct(q.quickL ?? 0)}: your traps and tricks land.` },
     // most club players lean on two openings (about 0.75 in 25 checked), so Specialist needs nearly all
