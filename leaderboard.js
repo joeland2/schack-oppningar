@@ -22,7 +22,7 @@ function row(r, i, value) {
       <div class="pf-pcard-stats">${Object.entries(ABBR).map(([k, a]) => `<span${state.by === k ? ' class="lb-by"' : ''}><b>${r.skills?.[k] ?? '–'}</b>${a}</span>`).join('')}</div></div></a>
     <div class="lb-info"><a class="lb-name" href="${href}">${esc(r.name)}</a>
       <p class="lb-type">${esc(r.style || '')}${r.strength ? ` <span>+ ${esc(r.strength)}</span>` : ''}</p>
-      <p class="lb-ops">${w ? `<span><small>As White</small> <a class="lb-op" href="${practise('w', w.fam)}">${esc(w.fam)}</a></span>` : ''}${bl ? `<span><small>As Black</small> <a class="lb-op" href="${practise('b', bl.fam)}">${esc(bl.fam)}</a></span>` : ''}</p>
+      <p class="lb-ops">${w ? `<span><small>Most played as White</small> <a class="lb-op" href="${practise('w', w.fam)}">${esc(w.fam)}</a></span>` : ''}${bl ? `<span><small>Most played as Black</small> <a class="lb-op" href="${practise('b', bl.fam)}">${esc(bl.fam)}</a></span>` : ''}</p>
       <p class="lb-value">${state.by === 'gambits' ? `Gambits: <b>${value}%</b> in ${r.gambit_games} games` : `${BY.find(([k]) => k === state.by)[1]}: <b>${value}</b>`} <small>· ${r.rating} ${esc(r.speed)} · ${r.games} games</small></p></div></li>`;
 }
 const state = { speed: 'blitz', band: 'All', by: 'overall' };
