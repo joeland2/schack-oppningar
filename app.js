@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029120040';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029120040';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029120040';
-import { GUIDE } from './guide.js?v=20261029120040';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029120040';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029120040';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029120040';
-import { storedGames } from './profile.js?v=20261029120040';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029120522';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029120522';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029120522';
+import { GUIDE } from './guide.js?v=20261029120522';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029120522';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029120522';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029120522';
+import { storedGames } from './profile.js?v=20261029120522';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1382,7 +1382,11 @@ function slipWhy(n, arrows = true) {
   const m = game.history({ verbose: true })[n], better = betters[n];
   const after = new Chess(m.before);
   after.move(m.san);
-  const danger = m.color === cur.side ? dangerAfter(m.before, m.san) : ''; // its wording is for your own moves
+  const was = EVALS.get(evalKey(m.before)), now = EVALS.get(evalKey(after.fen()));
+  const won = was && winPct(toCp(was)) >= 80; // the mover was winning before this move
+  const drawn = after.isDraw() ? `It ends the game in a draw by ${drawReason(after)}${won ? ', when it was winning' : ''}.`
+    : won && now && Math.abs(winPct(-toCp(now)) - 50) <= 12 ? 'It lets the win slip: the position is now about level, heading for a draw.' : '';
+  const danger = drawn || (m.color === cur.side ? dangerAfter(m.before, m.san) : ''); // its wording is for your own moves
   const r = EVALS.get(evalKey(after.fen()));
   const reply = r?.move && new Chess(after.fen()).move(r.move);
   const replyIdea = reply && ideaAt(new Chess(after.fen()), reply.san);
@@ -1518,13 +1522,22 @@ async function opponentPlays() {
   guide();
 }
 
+// Why a finished game is a draw, in words.
+const drawReason = (g) => (g.isStalemate() ? 'stalemate' : g.isThreefoldRepetition() ? 'threefold repetition' : g.isInsufficientMaterial() ? 'insufficient material' : 'the 50-move rule');
 function ended() {
   if (!game.isGameOver()) return false;
   if (punishDone && !endLen) finish(); // the guided moves ended the game: the line is done
-  if (!game.isCheckmate()) say('Draw. Press Next line to go on.');
-  else if (game.turn() === cur.side) say('Checkmate: you lost this one. Press Restart to play the line again.', 'bad');
+  if (!game.isCheckmate()) { say(`Draw by ${drawReason(game)}. Press Next line to go on.`); banner(`Draw · ${drawReason(game)}`, 'draw'); }
+  else if (game.turn() === cur.side) { say('Checkmate: you lost this one. Press Restart to play the line again.', 'bad'); banner('Checkmated', 'lost'); }
   else { say('Checkmate! You won.', 'good'); celebrate(); }
   return true;
+}
+// The banner over the board when a game ends (a win also gets confetti, see celebrate).
+function banner(text, kind = '') {
+  const frame = $('.board-frame');
+  frame.querySelector('.mate-banner')?.remove();
+  frame.insertAdjacentHTML('beforeend', `<div class="mate-banner${kind ? ` ${kind}` : ''}" role="status">${text}</div>`);
+  setTimeout(() => frame.querySelector('.mate-banner')?.remove(), 3500);
 }
 
 // When the game is over: how your moves were rated, kind by kind (badges arrive as Stockfish rates them).
@@ -1534,7 +1547,7 @@ function gameStats() {
   const mine = notes.filter((k, i) => k && (i % 2 === 0) === (cur.side === 'w'));
   const count = (k) => mine.filter((x) => x === k).length;
   const badge = (k) => `<span class="mark k-${k} legend-badge">${k === 'book' ? BOOK_ICON : GLYPH[k]}</span>`;
-  const result = game.isCheckmate() ? (game.turn() === cur.side ? 'You were checkmated' : 'You won by checkmate') : 'Draw';
+  const result = game.isCheckmate() ? (game.turn() === cur.side ? 'You were checkmated' : 'You won by checkmate') : `Draw by ${drawReason(game)}`;
   return `<div class="game-stats"><p class="gs-head">${result} · your ${plural(mine.length, 'move')}</p>
     <ul>${KINDS.map((k) => `<li class="${count(k) ? '' : 'none'}"><button type="button" data-kind="${k}" ${count(k) ? '' : 'disabled'}>${badge(k)}<b>${count(k)}</b> ${KIND_NAME[k]}</button></li>`).join('')}</ul></div>`;
 }
@@ -1621,9 +1634,7 @@ function flash(text, kind = 'line') {
 // Checkmate by you: a banner over the board and a short burst of confetti (no confetti with reduced motion).
 function celebrate() {
   const frame = $('.board-frame');
-  frame.querySelector('.mate-banner')?.remove();
-  frame.insertAdjacentHTML('beforeend', '<div class="mate-banner" role="status">Checkmate!</div>');
-  setTimeout(() => frame.querySelector('.mate-banner')?.remove(), 3500);
+  banner('Checkmate!');
   if (REDUCE_MOTION) return;
   const box = frame.getBoundingClientRect();
   const colours = ['#2e7d32', '#1d5fbf', '#e0b23a', '#c4242a', '#f0d9b5', '#b58863'];

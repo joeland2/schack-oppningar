@@ -1379,3 +1379,5 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .op-guide ul { margin: 6px 0 0; padding-left: 1.1em; display: grid; gap: 4px; line-height: 1.45; }
 .op-guide-k { font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .trap-tag.theory { background: var(--raised); color: var(--ink); }
+.mate-banner.draw { background: rgb(120 110 95 / .45); font-size: clamp(18px, 8cqi, 48px); }
+.mate-banner.lost { background: rgb(180 35 24 / .35); }
