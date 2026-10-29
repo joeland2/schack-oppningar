@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029224737';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029224737';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029224737';
-import { GUIDE } from './guide.js?v=20261029224737';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029224737';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029224737';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029224737';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029224737';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029224831';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029224831';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029224831';
+import { GUIDE } from './guide.js?v=20261029224831';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029224831';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029224831';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029224831';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029224831';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -105,12 +105,12 @@ const numbered = (moves) => moves.split(' ').map((m, i) => (i % 2 ? m : `${i / 2
 // on the site. Reaching higher keeps more games deep into the lines, and they are better games.
 const LEVEL = { below: 300, above: 500 };
 // The rating band the openings, the lines and the replies come from, picked with the slider over the
-// Lichess explorer's group edges (it counts games in these groups only). By default your rating ±300.
+// Lichess explorer's group edges (it counts games in these groups only). By default 100 below your rating to 200 above.
 const EDGES = [...BUCKETS, 3200];
 let band = load(STORE + '-band', null); // [lo, hi] edge indexes, or null: your level, following your rating
 function autoBand() {
-  const r = rating || 1500, lo = Math.max(0, EDGES.findLastIndex((e) => e <= r - 300));
-  let hi = EDGES.findIndex((e) => e >= r + 300);
+  const r = rating || 1500, lo = Math.max(0, EDGES.findLastIndex((e) => e <= r - 100));
+  let hi = EDGES.findIndex((e) => e >= r + 200);
   if (hi < 0) hi = EDGES.length - 1;
   return [lo, Math.max(hi, lo + 1)];
 }
@@ -3109,12 +3109,16 @@ function renderBand(lo = bandNow()[0], hi = bandNow()[1]) {
   const fill = $('#band .range2-track i'), max = EDGES.length - 1;
   $('#band-lo').value = lo; $('#band-hi').value = hi;
   fill.style.left = `${(lo / max) * 100}%`; fill.style.right = `${100 - (hi / max) * 100}%`;
+  // Your own rating as a thin line on the track, placed between the two steps around it.
+  const r = rating || 0, k = Math.max(0, EDGES.findLastIndex((e) => e <= r)), at = Math.min(max, k + (r - EDGES[k]) / ((EDGES[k + 1] ?? EDGES[k] + 1) - EDGES[k]));
+  const me = $('#band-me');
+  me.hidden = !rating; me.style.left = `${(at / max) * 100}%`; me.title = `Your rating: ${rating}`;
   // A mark at every step: the steps are the explorer's own rating groups, there are no finer ones.
   $('#band-ticks').innerHTML = EDGES.map((e, i) => `<span class="${i >= lo && i <= hi ? 'in' : ''}" style="left:${(i / max) * 100}%">${i === max ? 'Top' : e}</span>`).join('');
   const saved = band; band = [lo, hi]; // label the handles' spot without saving it
   $('#band-text').textContent = levelText();
   band = saved;
-  $('#band-about').innerHTML = band ? 'Your own range. <button type="button" class="link" id="band-reset">Back to your level</button>' : `Your level: your rating ±300.`;
+  $('#band-about').innerHTML = band ? 'Your own range. <button type="button" class="link" id="band-reset">Back to your level</button>' : `Your level: from 100 below your rating to 200 above.`;
   $('#band-reset')?.addEventListener('click', () => { band = null; store(STORE + '-band', null); renderBand(); showPicker(); });
 }
 for (const [id, other, sign] of [['#band-lo', '#band-hi', 1], ['#band-hi', '#band-lo', -1]]) {

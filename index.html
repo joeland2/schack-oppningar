@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261029224737">
-  <script src="header.js?v=20261029224737" defer></script>
-  <script src="theme.js?v=20261029224737"></script>
+  <link rel="stylesheet" href="style.css?v=20261029224831">
+  <script src="header.js?v=20261029224831" defer></script>
+  <script src="theme.js?v=20261029224831"></script>
 </head>
 <body>
   <header class="top">
@@ -91,7 +91,7 @@
       </div>
       <div class="choice choice-band">
         <span class="choice-label">Players rated <b id="band-text"></b></span>
-        <div class="range2" id="band"><div class="range2-track"><i></i></div>
+        <div class="range2" id="band"><div class="range2-track"><i></i><span id="band-me" class="range2-me" hidden></span></div>
           <input type="range" min="0" max="9" step="1" id="band-lo" aria-label="Lowest rating of the players">
           <input type="range" min="0" max="9" step="1" id="band-hi" aria-label="Highest rating of the players"></div>
         <div class="range2-ticks" id="band-ticks" aria-hidden="true"></div>
@@ -224,7 +224,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261029224737"></script>
+  <script type="module" src="app.js?v=20261029224831"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>

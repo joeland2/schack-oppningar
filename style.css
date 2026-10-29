@@ -1959,3 +1959,5 @@ main .learn-from a.lf-link { font-size: 14px; }
 main.profile:has(#admin) { max-width: 1320px; }
 #admin .pf-two, #admin .ad-three { align-items: start; }
 #admin .ad-rows, #admin .ad-recent, #admin .ad-list { max-height: 400px; overflow-y: auto; overscroll-behavior: contain; }
+.range2-me { position: absolute; top: -6px; bottom: -6px; width: 2px; margin-left: -1px; background: var(--ink); border-radius: 1px; }
+.range2-me::after { content: 'You'; position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%); font: 700 10px/1 var(--font-mono); color: var(--ink); }
