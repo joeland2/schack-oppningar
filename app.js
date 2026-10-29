@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029193752';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029193752';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029193752';
-import { GUIDE } from './guide.js?v=20261029193752';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029193752';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029193752';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029193752';
-import { storedGames, gamesReady } from './profile.js?v=20261029193752';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029200500';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029200500';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029200500';
+import { GUIDE } from './guide.js?v=20261029200500';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029200500';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029200500';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029200500';
+import { storedGames, gamesReady } from './profile.js?v=20261029200500';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -123,6 +123,21 @@ async function loadTree() {
   TREE = TREES[speed];
   console.assert(explore(['e4'], [3]).moves.some((m) => m.san === 'c5'), `data/explorer-${speed}.json is not in the expected format`);
 }
+
+// The opening list for each rating group set, worked out beforehand (data/popular-<speed>.json, made
+// with ?make-popular, see the end of this file): the list shows at once from a few hundred KB, and the
+// large tree loads behind it, needed only once an opening is opened. Missing: computed from the tree.
+const POPS = {};
+async function popularFor() {
+  const key = ratingsAround(rating).join();
+  POPS[speed] ??= fetch(`data/popular-${speed}.json?v=${DATA}`).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+  const pre = (await POPS[speed])[key];
+  if (pre) return pre;
+  await loadTree();
+  return popularOpenings();
+}
+// The tree for what needs it (an opening's lines, traps, drills): loaded once per time control.
+const needTree = (then) => (TREE && TREE === TREES[speed] ? false : (say(`Loading ${speed} games…`), loadTree().then(then), true));
 
 // data/*.tsv: named opening lines from github.com/lichess-org/chess-openings (CC0): eco, name, pgn.
 async function loadBook() {
@@ -1365,6 +1380,7 @@ function lineTips() {
 
 // ---------- Game ----------
 function start(op, keepTraps = false) {
+  if (needTree(() => start(op, keepTraps))) return;
   if (!keepTraps) trapRun = null; // choosing an opening ends trap training
   if (mode === 'explore') setMode('learn', false);
   cur = op;
@@ -2007,6 +2023,7 @@ function careful(before, want) {
 // It does not count towards clearing lines (you did not play them from the start).
 let trapRun = null; // { queue: [{ op, key, ply }], now, done, total }
 function startTraps() {
+  if (needTree(startTraps)) return;
   const trapsOf = (ops) => ops.flatMap((op) => buildLines(op).filter((l) => l.trap).map((l) => ({ op, key: lineKey(l.moves), ply: l.trap.ply })))
     .sort(() => Math.random() - 0.5).slice(0, 15);
   let queue = trapsOf(OPENINGS.filter((o) => repertoire.has(o.id)));
@@ -2088,6 +2105,7 @@ function hardHit() {
 const lineFor = (k) => lines.findIndex((l) => (lineKey(l.moves) + ' ').startsWith(k ? k + ' ' : ''));
 const hardDue = () => Object.entries(hardOf()).filter(([k, h]) => h.due <= Date.now() && lineFor(k) >= 0).map(([k]) => k);
 function startDrill() {
+  if (needTree(startDrill)) return;
   const queue = hardDue();
   if (!queue.length) return;
   if (mode !== 'try') setMode('try', false, false);
@@ -2982,8 +3000,8 @@ async function showPicker() {
   $('.choice-search').hidden = !rating;
   if (!rating) return ($('#pick-msg').textContent = 'The openings you see depend on what players at your level actually play.');
   $('#pick-msg').textContent = `Loading ${speed} games…`;
-  try { await loadTree(); } catch { return say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .'); }
-  OPENINGS = POPULAR[`${speed}:${rating}`] ??= popularOpenings();
+  try { OPENINGS = POPULAR[`${speed}:${rating}`] ??= await popularFor(); } catch { return say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .'); }
+  loadTree().catch(() => {}); // in the background, so an opening opens at once
   $('#pick-msg').textContent = `Real ${speed} games by players rated ${levelText(rating)}${style === 'any' ? '' : `, ${STYLES[style].label.toLowerCase()} White openings only`}. Pick one to practise.`;
   renderList();
 }
@@ -3121,6 +3139,17 @@ try { await loadBook(); } catch {
 // Left over from when the page logged in to Lichess and cached its API answers.
 try { for (const k of Object.keys(localStorage)) if (k === STORE + '-token' || k.startsWith(STORE + '-x')) localStorage.removeItem(k); } catch {}
 setMode(mode);
+// ?make-popular: work out data/popular-<speed>.json (every rating group set) and print it on the page,
+// for headless Chrome's --dump-dom. Run it again whenever data/explorer-*.json is rebuilt.
+if (location.search === '?make-popular') {
+  const out = {};
+  for (const sp of ['blitz', 'classical']) {
+    speed = sp; await loadTree(); out[sp] = {};
+    for (let r = 400; r <= 3200; r += 50) { const key = ratingsAround(r).join(); if (!out[sp][key]) { rating = r; out[sp][key] = popularOpenings(); } }
+  }
+  document.body.innerHTML = `<pre id="popular">${JSON.stringify(out).replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`)}</pre>`;
+  throw new Error('made the opening lists'); // stop here
+}
 showPicker().then(deepLink);
 
 // Links from My practice: ?practise=<w|b>~<opening> opens that opening's lines (or the list searched
