@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029225403';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029225403';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029225403';
-import { GUIDE } from './guide.js?v=20261029225403';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029225403';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029225403';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029225403';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029225403';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029225511';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029225511';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029225511';
+import { GUIDE } from './guide.js?v=20261029225511';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029225511';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029225511';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029225511';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029225511';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -512,8 +512,10 @@ function renderList() {
     } else if (!REDUCE_MOTION && was.size) c.animate([{ opacity: 0, transform: 'scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: 'ease-out' });
     if (!REDUCE_MOTION) {
       if (!from) seen.observe(c); // a card already on show keeps its board, without replaying the moves
-      c.addEventListener('mouseenter', () => playPreview(c));
-      c.addEventListener('focusin', (e) => { if (e.target.closest('.ocard-open')) playPreview(c); });
+      c.addEventListener('mouseenter', () => playPreview(c, true));
+      c.addEventListener('mouseleave', () => stopPreview(c));
+      c.addEventListener('focusin', (e) => { if (e.target.closest('.ocard-open')) playPreview(c, true); });
+      c.addEventListener('focusout', () => stopPreview(c));
     }
     c.addEventListener('click', go);
   });
@@ -548,25 +550,41 @@ const seen = new IntersectionObserver((entries) => entries.forEach((e) => {
 }), { threshold: 0.6 });
 
 // Draws a card's mini board after its first n moves.
-function previewAt(card, n) {
+function previewAt(card, n, moves) {
   const op = OPENINGS.find((o) => o.id === card.dataset.id);
   const g = new Chess();
-  op.root.split(' ').slice(0, n).forEach((m) => g.move(m));
+  (moves || op.root.split(' ')).slice(0, n).forEach((m) => g.move(m));
   drawBoard(card.querySelector('.mini'), g, { side: op.side, last: g.history({ verbose: true }).at(-1) });
 }
 
-// Plays the opening move by move from the start position; a newer run on the same card cancels the old one.
-function playPreview(card) {
-  const total = OPENINGS.find((o) => o.id === card.dataset.id).root.split(' ').length;
+// The opening's main line, as the trainer's first line: the most common moves at your level. Until the
+// game tree is loaded, the opening's own first moves.
+const MAIN = new Map();
+function mainLine(op) {
+  if (!TREE || TREE !== TREES[speed]) { loadTree().catch(() => {}); return op.root.split(' '); }
+  const key = `${speed}:${myGroups().join()}:${op.id}`;
+  if (!MAIN.has(key)) MAIN.set(key, buildLines(op)[0]?.moves || op.root.split(' '));
+  return MAIN.get(key);
+}
+// Plays the opening move by move from the start position; a newer run on the same card cancels the old
+// one. On hover it plays the whole main line and starts over after a pause, until the pointer leaves.
+function playPreview(card, loop = false) {
+  const op = OPENINGS.find((o) => o.id === card.dataset.id);
+  const moves = loop ? mainLine(op) : op.root.split(' ');
   const run = String(Number(card.dataset.run || 0) + 1);
   card.dataset.run = run;
   let n = 0;
   const step = () => {
     if (card.dataset.run !== run || !card.isConnected) return;
-    previewAt(card, n);
-    if (n++ < total) setTimeout(step, n === 1 ? 350 : 600);
+    previewAt(card, n, moves);
+    if (n++ < moves.length) setTimeout(step, n === 1 ? 350 : 600);
+    else if (loop) { n = 0; setTimeout(step, 1600); }
   };
   step();
+}
+function stopPreview(card) {
+  card.dataset.run = String(Number(card.dataset.run || 0) + 1);
+  previewAt(card, OPENINGS.find((o) => o.id === card.dataset.id).root.split(' ').length);
 }
 
 // ---------- Your own games ----------
