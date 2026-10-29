@@ -1681,7 +1681,7 @@ p, li, dd, small { text-wrap: pretty; }
 .gm-impact h2 { margin: 0 0 8px; font: 600 12px var(--font-body); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
 .gm-moves-card { margin: 0 0 8px; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; }
 .gm-moves-card li { font-size: 15px; }
-.gm-moves-card b { font: 400 22px var(--font-poster); margin-right: 4px; }
+.gm-moves-card b { font-size: 14px; letter-spacing: -2px; margin-right: 8px; display: inline-block; min-width: 1.6em; }
 .gm-moves-card .up b { color: var(--good); }
 .gm-moves-card .down b { color: var(--bad); }
 .gm-moves-card .same b { color: var(--muted); }
