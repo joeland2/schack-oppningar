@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261029130400">
-  <script src="header.js?v=20261029130400" defer></script>
-  <script src="theme.js?v=20261029130400"></script>
+  <link rel="stylesheet" href="style.css?v=20261029130504">
+  <script src="header.js?v=20261029130504" defer></script>
+  <script src="theme.js?v=20261029130504"></script>
 </head>
 <body>
   <header class="top">
@@ -85,6 +85,7 @@
     </div>
     </details>
     <section id="my-openings" class="my-lichess" hidden></section>
+    <p id="mine-msg" class="info" aria-live="polite"></p>
     <p id="pick-msg" class="info" aria-live="polite"></p>
     <div class="og-bar">
       <div id="side-tabs"></div>
@@ -94,16 +95,6 @@
       </div>
     </div>
     <nav id="openings" class="picks" aria-label="Openings"></nav>
-    <details class="mine mine-bottom">
-      <summary>Your opening mistakes, from your Lichess games</summary>
-      <form id="mine-form" class="rating-row">
-        <input id="mine-name" type="text" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Lichess username">
-        <button type="submit" class="cta">Check my last 100 games</button>
-      </form>
-      <p class="info">Uses your public games in the time control picked above. No login. Your games are only read in this browser.</p>
-      <p id="mine-msg" class="info" aria-live="polite"></p>
-      <div id="mine-out"></div>
-    </details>
   </section>
 
   <main id="trainer" class="wrap layout" hidden>
@@ -197,7 +188,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261029130400"></script>
+  <script type="module" src="app.js?v=20261029130504"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>

@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029130400';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029130400';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029130400';
-import { GUIDE } from './guide.js?v=20261029130400';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029130400';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029130400';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029130400';
-import { storedGames } from './profile.js?v=20261029130400';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029130504';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029130504';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029130504';
+import { GUIDE } from './guide.js?v=20261029130504';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029130504';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029130504';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029130504';
+import { storedGames } from './profile.js?v=20261029130504';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -648,7 +648,6 @@ function leftLines(games, name) {
 // mistakes you repeat in whole games.
 function renderMine({ counted, slips, openings }, name) {
   const left = rating ? leftLines(lastGames?.games || [], name) : [];
-  $('#mine-out').innerHTML = '';
   const el = $('#my-openings');
   el.hidden = !counted;
   if (!counted) return ($('#mine-msg').textContent = `No rated ${speed} games found for ${name}.`);
@@ -755,10 +754,7 @@ async function runMistakes() {
 
 async function checkMyGames(name) {
   store(STORE + '-lichess-name', name);
-  $('#mine-name').value = name;
-  $('details.mine').open = true;
   $('#mine-msg').textContent = `Fetching ${name}'s last 100 rated ${speed} games from Lichess…`;
-  $('#mine-out').innerHTML = '';
   try {
     await loadTree();
     lastGames = { games: await fetchGames(name), name };
@@ -768,7 +764,6 @@ async function checkMyGames(name) {
     $('#mine-msg').textContent = err.message;
   }
 }
-$('#mine-form').addEventListener('submit', (e) => { e.preventDefault(); checkMyGames($('#mine-name').value.trim()); });
 
 // Your Lichess username instead of typing a rating: your public profile gives your blitz and classical
 // ratings, then your own games are checked for slips. Public data only, so no login is needed.
@@ -789,7 +784,7 @@ $('#rating-user-form').addEventListener('submit', async (e) => {
   $('#rating-user-msg').textContent = `Looking up ${name} on Lichess…`;
   try { await useLichess(name); } catch (err) { $('#rating-user-msg').textContent = err.message; }
 });
-$('#mine-name').value = $('#rating-user').value = load(STORE + '-lichess-name', '');
+$('#rating-user').value = load(STORE + '-lichess-name', '');
 $('#search').addEventListener('input', (e) => { query = e.target.value; if (OPENINGS.length) renderList(); });
 
 // ---------- Board ----------
@@ -2863,7 +2858,7 @@ async function deepLink() {
     const name = load(STORE + '-lichess-name', '') || account()?.name;
     if (!name) return;
     await checkMyGames(name);
-    $('details.mine').scrollIntoView({ behavior: 'smooth' });
+    $('#my-openings').scrollIntoView({ behavior: 'smooth' });
     if (lastGames) runMistakes();
   }
 }

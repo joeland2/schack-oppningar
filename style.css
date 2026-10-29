@@ -854,9 +854,9 @@ a.cta { color: var(--accent-ink); }
 /* Dark mode: White's cards are dimmed warm paper, not bright cream, so they do not glare beside the
    black ones; the two sides still read apart. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .ocard.side-w { --accent: #f4efe6; --surface: #2c2823; --ink: #f4efe6; --muted: #b5ad9f; --line: #3d3730; --raised: #39342d; --good: #5fc48a; --bad: #ff6b6b; }
+  :root:not([data-theme="light"]) .ocard.side-w { --accent: #f4efe6; --surface: #3a352e; --ink: #f4efe6; --muted: #c0b8aa; --line: #4b443b; --raised: #474037; --good: #5fc48a; --bad: #ff6b6b; }
 }
-:root[data-theme="dark"] .ocard.side-w { --accent: #f4efe6; --surface: #2c2823; --ink: #f4efe6; --muted: #b5ad9f; --line: #3d3730; --raised: #39342d; --good: #5fc48a; --bad: #ff6b6b; }
+:root[data-theme="dark"] .ocard.side-w { --accent: #f4efe6; --surface: #3a352e; --ink: #f4efe6; --muted: #c0b8aa; --line: #4b443b; --raised: #474037; --good: #5fc48a; --bad: #ff6b6b; }
 /* Profile: the slim analyse bar at the top */
 .pf-analyse { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 13.5px; color: var(--muted); }
 .pf-analyse b { color: var(--ink); }
