@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029132009';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029132009';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029132009';
-import { GUIDE } from './guide.js?v=20261029132009';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029132009';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029132009';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029132009';
-import { storedGames } from './profile.js?v=20261029132009';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029132128';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029132128';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029132128';
+import { GUIDE } from './guide.js?v=20261029132128';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029132128';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029132128';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029132128';
+import { storedGames } from './profile.js?v=20261029132128';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -946,13 +946,14 @@ $('#line-done').addEventListener('click', (e) => {
   const go = e.target.closest('[data-go]')?.dataset.go;
   if (go) goOn(go);
 });
-// The same choice over the board, the moment a line is done; Play on keeps the position to play out.
+// The same choice over the board, the moment a line is done, or simply the next line.
 let goAsked = false;
 $('#go-ask').addEventListener('click', (e) => {
   const b = e.target.closest('[data-go]');
   if (!b) return;
   $('#go-ask').hidden = true;
-  if (b.dataset.go !== 'on') goOn(b.dataset.go);
+  if (b.dataset.go === 'next') $('#restart').click(); // the next line, in the mode you are in
+  else goOn(b.dataset.go);
 });
 function askGo() {
   goAsked = true;
@@ -960,7 +961,7 @@ function askGo() {
   $('#go-ask').innerHTML = `<div class="depth-card"><p class="depth-k">Line done</p><p class="depth-q">${lineName(lines[lineIdx])}. How do you want to go on?</p>
     ${opt('learn', 'Learn the next line', 'The arrows show you every move')}
     ${opt('try', mode === 'learn' ? 'Practise this line' : 'Practise on', 'Play it from memory, without arrows')}
-    <button type="button" class="link go-on" data-go="on">Play on from here</button></div>`;
+    <button type="button" class="link go-on" data-go="next">Next line</button></div>`;
   $('#go-ask').hidden = false;
 }
 function goOn(go) {
