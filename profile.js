@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029214753';
-import { STYLE_OF } from './styles.js?v=20261029214753';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029215146';
+import { STYLE_OF } from './styles.js?v=20261029215146';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -946,26 +946,79 @@ function drawCard(ctx, x, y, name, p, t, skills, piece) {
   ctx.fillText(`${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} GAMES`, 300, 752);
   ctx.restore();
 }
-// A comparison as one compact image: the two cards side by side with VS between them, in the look
-// picked in the menu (dark or light), and the site's name under them.
-async function comparePng(A, B, sa, sb, btn) {
+// A comparison as an image, in the look picked in the menu (dark or light): the two cards side by side
+// with VS between them, and with detail, each player's style and strength explained under their card and
+// the comparison in short below.
+async function comparePng(A, B, sa, sb, detail, btn) {
   const label = btn.textContent; btn.disabled = true; btn.textContent = 'Making the image…';
   CARD = CARDS[cardLook()];
-  window.track?.('card', `${A.name} vs ${B.name}`.slice(0, 60) + ` · compare · ${cardLook()}`);
+  window.track?.('card', `${A.name} vs ${B.name}`.slice(0, 50) + ` · ${detail ? 'compare + text' : 'compare'} · ${cardLook()}`);
   try {
-    await Promise.all(['400 40px Anton', '400 20px Geist', '600 20px Geist'].map((f) => document.fonts.load(f)));
+    await Promise.all(['400 40px Anton', '400 20px Geist', '600 20px Geist', '700 20px Geist'].map((f) => document.fonts.load(f)));
     const img = (p) => new Promise((ok) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = `pieces/${CARD.piece}${(p.piece || 'n').toUpperCase()}.svg`; });
     const [pa, pb] = await Promise.all([img(A.p), img(B.p)]);
-    const S = 2, W = 1160, H = 760, k = 0.78;
+    const S = 2, W = 1280, k = 0.85, cw = 600 * k, ch = 780 * k, top = 70, gap = W - 2 * 70 - 2 * cw;
+    const text = (html) => Object.assign(document.createElement('div'), { innerHTML: html }).textContent;
+    const story = detail ? compareStory(A, B, sa, sb).map(text) : [];
+    // Measure the text first, so the image is just tall enough for it.
+    const probe = document.createElement('canvas').getContext('2d');
+    const lines = (t, font, max) => { probe.font = font; return wrap(probe, t, 0, 0, max, 1, 99) / 1; };
+    const colH = (X) => 70 + X.p.type.reduce((h, t) => h + 40 + lines(TYPE_ABOUT[t.name] || '', '400 22px Geist', cw) * 31 + 14, 0);
+    const storyH = story.length ? 70 + story.reduce((h, t) => h + lines(t, '400 24px Geist', W - 140) * 34 + 14, 0) : 0;
+    // The numbers, as on the page: [label, A, B, A value, B value, 1 higher is better / -1 lower / 0 neither]
+    const n = (v, f = (x) => x) => (v === null || v === undefined ? '–' : f(v)), ra = A.p.speeds[0], rb = B.p.speeds[0];
+    const nums = detail ? [
+      ['Rating', n(ra?.rating), n(rb?.rating), ra?.rating, rb?.rating, 1], ['Win rate', pct(A.p.winRate), pct(B.p.winRate), A.p.winRate, B.p.winRate, 1],
+      ['Wins as White', n(A.p.winW, pct), n(B.p.winW, pct), A.p.winW, B.p.winW, 1], ['Wins as Black', n(A.p.winB, pct), n(B.p.winB, pct), A.p.winB, B.p.winB, 1],
+      ['Accuracy', n(A.p.acc, (x) => `${x}%`), n(B.p.acc, (x) => `${x}%`), A.p.acc, B.p.acc, 1], ['Blunders / game', n(A.p.blunders, (x) => x.toFixed(1)), n(B.p.blunders, (x) => x.toFixed(1)), A.p.blunders, B.p.blunders, -1],
+      ['Draws', pct(A.p.draws), pct(B.p.draws), 0, 0, 0], ['Moves a game', A.p.moves, B.p.moves, 0, 0, 0],
+    ] : [];
+    const numsH = nums.length ? 60 + nums.length * 44 : 0;
+    const H = top + ch + (detail ? 50 + Math.max(colH(A), colH(B)) + numsH + storyH : 60) + 100;
     const canvas = Object.assign(document.createElement('canvas'), { width: W * S, height: H * S }), ctx = canvas.getContext('2d');
     ctx.scale(S, S);
     ctx.fillStyle = CARD.paper; ctx.fillRect(0, 0, W, H);
-    for (const [X, sk, pc, x] of [[A, sa, pa, 40], [B, sb, pb, W - 40 - 600 * k]]) { ctx.save(); ctx.translate(x, 36); ctx.scale(k, k); drawCard(ctx, 0, 0, X.name, X.p, X.p.type, sk, pc); ctx.restore(); }
-    ctx.fillStyle = CARD.hot; ctx.font = '400 72px Anton'; ctx.textAlign = 'center'; ctx.fillText('VS', W / 2, 36 + 780 * k / 2 + 26);
-    ctx.fillStyle = CARD.hot; ctx.fillRect(40, H - 70, W - 80, 3);
-    ctx.fillStyle = CARD.paperInk; ctx.font = '400 26px Anton'; ctx.textAlign = 'left'; ctx.fillText('CHESS TRAINER', 40, H - 30);
-    ctx.fillStyle = CARD.paperMuted; ctx.font = '400 18px Geist'; ctx.textAlign = 'right'; ctx.fillText(`${A.name} vs ${B.name}, from their last ${MAX} rated Lichess games`, W - 40, H - 32); ctx.textAlign = 'left';
-    const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${A.name}-vs-${B.name}-${cardLook()}.png`, { type: 'image/png' });
+    const xs = [70, W - 70 - cw];
+    [[A, sa, pa], [B, sb, pb]].forEach(([X, sk, pc], i) => { ctx.save(); ctx.translate(xs[i], top); ctx.scale(k, k); drawCard(ctx, 0, 0, X.name, X.p, X.p.type, sk, pc); ctx.restore(); });
+    ctx.fillStyle = CARD.hot; ctx.font = '400 84px Anton'; ctx.textAlign = 'center'; ctx.fillText('VS', W / 2, top + ch / 2 + 30); ctx.textAlign = 'left';
+    let y = top + ch + 60;
+    if (detail) {
+      // Under each card: its style and strength, each with what it means.
+      const ys = [A, B].map((X, i) => {
+        let yy = y; const x = xs[i];
+        ctx.fillStyle = CARD.paperInk; fit(ctx, X.p.type[0].name.toUpperCase(), '400 #px Anton', 52, cw); ctx.fillText(X.p.type[0].name.toUpperCase(), x, yy += 40);
+        if (X.p.type[1]) { ctx.fillStyle = CARD.paperMuted; fit(ctx, `+ ${X.p.type[1].name}`, '400 #px Anton', 30, cw); ctx.fillText(`+ ${X.p.type[1].name}`, x, yy += 40); }
+        yy += 24;
+        for (const t of X.p.type) {
+          ctx.fillStyle = CARD.paperInk; ctx.font = '700 22px Geist'; ctx.fillText(`${t.name}.`, x, yy += 6);
+          const w = ctx.measureText(`${t.name}. `).width; ctx.font = '400 22px Geist'; ctx.fillStyle = CARD.paperMuted;
+          yy = wrap(ctx, TYPE_ABOUT[t.name] || '', x, yy, cw, 31, 99, w) + 14;
+        }
+        return yy;
+      });
+      y = Math.max(...ys) + 20;
+      // The numbers between the two: A's value left, the label in the middle, B's right; the better one in the hot colour.
+      ctx.fillStyle = CARD.hot; ctx.fillRect(70, y, W - 140, 3);
+      ctx.fillStyle = CARD.paperMuted; ctx.font = '700 16px Geist'; ctx.letterSpacing = '3px'; ctx.fillText('NUMBERS', 70, y += 40); ctx.letterSpacing = '0px';
+      for (const [label, a, b, va, vb, dir] of nums) {
+        y += 44;
+        const lead = dir && va != null && vb != null && va !== vb ? ((va > vb) === (dir > 0) ? 'a' : 'b') : '';
+        ctx.font = '400 30px Anton'; ctx.fillStyle = lead === 'a' ? CARD.hot : CARD.paperInk; ctx.fillText(String(a), 70, y);
+        ctx.textAlign = 'right'; ctx.fillStyle = lead === 'b' ? CARD.hot : CARD.paperInk; ctx.fillText(String(b), W - 70, y);
+        ctx.textAlign = 'center'; ctx.fillStyle = CARD.paperMuted; ctx.font = '400 21px Geist'; ctx.fillText(label, W / 2, y - 4); ctx.textAlign = 'left';
+      }
+      y += 36;
+      if (story.length) {
+        ctx.fillStyle = CARD.hot; ctx.fillRect(70, y, W - 140, 3);
+        ctx.fillStyle = CARD.paperMuted; ctx.font = '700 16px Geist'; ctx.letterSpacing = '3px'; ctx.fillText('IN SHORT', 70, y += 40); ctx.letterSpacing = '0px';
+        ctx.fillStyle = CARD.paperInk; ctx.font = '400 24px Geist'; y += 20;
+        for (const t of story) y = wrap(ctx, t, 70, y + 12, W - 140, 34) + 2;
+      }
+    }
+    ctx.fillStyle = CARD.hot; ctx.fillRect(70, H - 76, W - 140, 3);
+    ctx.fillStyle = CARD.paperInk; ctx.font = '400 28px Anton'; ctx.fillText('CHESS TRAINER', 70, H - 34);
+    ctx.fillStyle = CARD.paperMuted; ctx.font = '400 19px Geist'; ctx.textAlign = 'right'; ctx.fillText(`${A.name} vs ${B.name}, from their last ${MAX} rated Lichess games`, W - 70, H - 36); ctx.textAlign = 'left';
+    const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${A.name}-vs-${B.name}${detail ? '-text' : ''}-${cardLook()}.png`, { type: 'image/png' });
     if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) await navigator.share({ files: [file], title: `${A.name} vs ${B.name}` }).catch(() => {});
     else { const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: file.name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
   } catch (err) { $('#profile-msg').textContent = `The image could not be made: ${err.message}`; }
@@ -1523,7 +1576,7 @@ function renderCompare(A, B, speed = 'all', avail = []) {
     <header class="cmp-head"><h1 class="pf-h1"><a href="${profileLink(A.name)}">${esc(A.name)}</a> <span>vs</span> <a href="${profileLink(B.name)}">${esc(B.name)}</a></h1>
       <div class="pf-seg cmp-speeds" role="group" aria-label="Time control">${['all', ...SPEEDS].map((sp) => `<button type="button" data-speed="${sp}" aria-pressed="${sp === speed}" ${sp === 'all' || avail.includes(sp) ? '' : `disabled title="Fewer than ${MIN_SPEED} ${sp} games for one of you"`}>${sp === 'all' ? 'All games' : sp[0].toUpperCase() + sp.slice(1)}</button>`).join('')}</div>
       <details class="pf-dl cmp-dl"><summary title="Download the comparison" aria-label="Download the comparison"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
-        <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-cmp-png>Image</button></div></details>
+        <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-cmp-png="cards">Cards</button><button type="button" data-cmp-png="text">Cards + text</button><button type="button" data-cmp-png="both">Both</button></div></details>
       <p class="info cmp-scope">${speed === 'all' ? 'Every number below is from all rated games.' : `Every number below is from ${speed} games only, so it can differ a little from the profiles, which use all games.`}</p></header>
     <section class="cmp-cards">
       <div><a class="cmp-card" href="${profileLink(A.name)}" title="Open ${esc(A.name)}'s profile">${playerCard(A.name, A.p, A.p.type, sa)}</a><p class="cmp-type"><b>${A.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
@@ -1559,7 +1612,11 @@ function renderCompare(A, B, speed = 'all', avail = []) {
     try { localStorage.setItem('chess-trainer-card-look', btn.dataset.cardLook); } catch {}
     document.querySelectorAll('.cmp-dl [data-card-look]').forEach((x) => x.setAttribute('aria-pressed', x === btn));
   }));
-  $('[data-cmp-png]')?.addEventListener('click', (e) => { e.currentTarget.closest('details').open = false; comparePng(A, B, sa, sb, e.currentTarget); });
+  document.querySelectorAll('[data-cmp-png]').forEach((b) => b.addEventListener('click', async () => {
+    b.closest('details').open = false;
+    if (b.dataset.cmpPng !== 'text') await comparePng(A, B, sa, sb, false, b);
+    if (b.dataset.cmpPng !== 'cards') await comparePng(A, B, sa, sb, true, b);
+  }));
 
 }
 const article = (w) => (/^[aeiou]/i.test(w) ? 'an' : 'a');
