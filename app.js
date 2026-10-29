@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029131417';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029131417';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029131417';
-import { GUIDE } from './guide.js?v=20261029131417';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029131417';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029131417';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029131417';
-import { storedGames } from './profile.js?v=20261029131417';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029131547';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029131547';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029131547';
+import { GUIDE } from './guide.js?v=20261029131547';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029131547';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029131547';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029131547';
+import { storedGames } from './profile.js?v=20261029131547';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -836,7 +836,8 @@ function renderMoves() {
   if (mode === 'time') return; // the trial's clock owns the progress bar
   $('#progress').textContent = mode === 'explore' ? 'Exploring' : playing ? `Line done · playing it out${opponent ? ` · opponent: ${opponent}` : ''}` : line.length ? `${Math.min(ply, line.length)} of ${line.length} moves` : '';
   $('#bar').style.width = line.length ? `${Math.min(ply / line.length, 1) * 100}%` : '0';
-  $('#line-at').textContent = lines[lineIdx] && mode !== 'explore' ? `Line ${lineIdx + 1} of ${lines.length}: ${lineName(lines[lineIdx])}` : '';
+  $('#line-at').textContent = lines[lineIdx] && mode !== 'explore' ? `Line ${lineIdx + 1} of ${lines.length}` : '';
+  $('#op-line').textContent = lines[lineIdx] && mode !== 'explore' ? lineName(lines[lineIdx]) : '';
   $('#depth').textContent = `${depthName(load(STORE + '-depth', {})[cur?.id] || MAX_LINES)} ▾`;
   $('#depth').hidden = allLines.length <= DEPTHS[0][1] || !!trapRun || mode === 'explore';
 }

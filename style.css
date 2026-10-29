@@ -1476,3 +1476,5 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .line-btn.beyond { opacity: .55; }
 .line-btn.beyond:hover { opacity: 1; }
 #line-at { overflow: hidden; text-overflow: ellipsis; max-width: 40ch; }
+.op-head .op-line { margin: 4px 0 0; font-size: 15px; color: var(--ink); }
+.op-head .op-line:empty { display: none; }
