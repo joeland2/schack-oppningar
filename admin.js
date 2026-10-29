@@ -1,6 +1,6 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029160455';
+import { account, login, finishLogin } from './lichess.js?v=20261029160607';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -75,7 +75,8 @@ const pageName = (p) => PAGE[p] || p;
 function render(s) {
   const link = (x) => `<a href="profile.html?u=${encodeURIComponent(x.name)}">${esc(x.name)}</a>`, t = s.totals;
   $('#admin').innerHTML = `
-    <header class="pr-head"><h1 class="pf-h1">Admin</h1><p class="info">How Chess Trainer is used. A visitor is a browser, counted once: on the day they first came. The admins' own visits and automated browsers are not counted.</p></header>
+    <header class="pr-head"><h1 class="pf-h1">Admin</h1><p class="info">How Chess Trainer is used. A visitor is a browser, counted once: on the day they first came. The admins' own visits and automated browsers are not counted.</p>
+      <p class="ad-demo-row">${s.demo ? '<b class="ad-demo-tag">Demo data</b> Made up, to see how the page looks with many visitors. <button type="button" class="link" data-real>Show the real numbers</button>' : '<button type="button" class="link" data-demo>Show demo data</button>'}</p></header>
     <dl class="pf-kpis ad-kpis">
       <div><dt>Visitors today</dt><dd>${t.today}</dd><small>${t.newToday} unique (first visit)</small></div>
       <div><dt>Visitors, 7 days</dt><dd>${t.week}</dd><small>${t.new7} unique</small></div>
@@ -124,6 +125,63 @@ function render(s) {
 `;
 }
 
+// Draw the numbers (real or demo) and wire the graph's spans and the demo switch.
+function show(body) {
+  render(body);
+  bindLine(body.perDay);
+  $('#ad-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = Number(b.dataset.span);
+    $('#ad-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body.perDay); });
+  $('[data-demo]')?.addEventListener('click', () => { real = body; show(demoData()); });
+  $('[data-real]')?.addEventListener('click', () => show(real));
+}
+let real = null;
+// Made-up numbers in the real shape: a year of growth, a few hundred visitors from many places with
+// what they did, and logged-in players. Nothing is stored; it is drawn only on this page.
+function demoData() {
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const pick = (xs) => xs[Math.floor(rnd() * xs.length)];
+  const DAYS = 365, now = Date.now(), iso = (t) => new Date(t).toISOString();
+  const day = (t) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm' }).format(new Date(t));
+  const PLACES = [['SE', 'Stockholm'], ['SE', 'Gothenburg'], ['SE', 'Malmö'], ['SE', 'Uppsala'], ['NO', 'Oslo'], ['DK', 'Copenhagen'], ['FI', 'Helsinki'], ['DE', 'Berlin'], ['GB', 'London'], ['US', 'New York'], ['NL', 'Amsterdam'], ['IN', 'Mumbai'], ['FR', 'Paris'], ['ES', 'Madrid']];
+  const DEVICES = ['iPhone · Safari', 'Android · Chrome', 'Mac · Chrome', 'Windows · Chrome', 'Mac · Safari', 'Windows · Edge', 'iPad · Safari', 'Linux · Firefox'];
+  const PAGES = ['index.html', 'profile.html', 'leaderboard.html', 'practice.html', 'mistakes.html', 'game.html'];
+  const OPS = ['White: Italian Game', 'White: London System', 'White: Danish Gambit', "White: Queen's Gambit", 'Black: Sicilian Defense', 'Black: Caro-Kann Defense', 'Black: vs Italian Game', 'White: Scotch Game'];
+  const NAMES = ['knightrider', 'pawnstorm77', 'gambit_greta', 'eriksson_chess', 'blitzbjorn', 'castlequeen', 'fianchetto_fred', 'tactix', 'endgame_eva', 'sicilian_sam', 'rookie2000', 'mateinthree', 'zugzwang_zoe', 'bishoppair', 'olof_plays'];
+  const SOURCES = ['Direct', 'Direct', 'Direct', 'google.com', 'lichess.org', 'reddit.com', 'discord.com', 'facebook.com'];
+  const perDay = [], visitors = [];
+  for (let d = DAYS - 1; d >= 0; d--) {
+    const t = now - d * 864e5, growth = 2 + (DAYS - d) * 0.12, weekend = [0, 6].includes(new Date(t).getDay()) ? 1.4 : 1;
+    const fresh = Math.max(0, Math.round(growth * weekend * (0.6 + rnd() * 0.8)));
+    perDay.push({ day: day(t), fresh, visitors: Math.round(fresh * (1.6 + rnd())), views: Math.round(fresh * (5 + rnd() * 4)) });
+    for (let i = 0; i < fresh && visitors.length < 300 && d < 60; i++) {
+      const [country, city] = pick(PLACES), first = t + rnd() * 864e5 * 0.9, name = rnd() < 0.25 ? pick(NAMES) : null;
+      const events = Array.from({ length: 2 + Math.floor(rnd() * 8) }, (_, k) => {
+        const kind = k === 0 ? 'view' : pick(['view', 'view', 'view', 'practise', 'profile', 'analyse', 'compare']);
+        return { at: iso(first + k * 90e3), kind, page: kind === 'view' ? pick(PAGES) : 'index.html', target: kind === 'practise' ? pick(OPS) : kind === 'profile' ? pick(NAMES) : kind === 'compare' ? `${pick(NAMES)} vs ${pick(NAMES)}` : null };
+      }).reverse();
+      visitors.push({ id: `demo-${visitors.length}`, ip: `${Math.floor(rnd() * 200) + 20}.${Math.floor(rnd() * 255)}.${Math.floor(rnd() * 255)}.0`, country, city, device: pick(DEVICES), source: pick(SOURCES), name,
+        views: events.filter((e) => e.kind === 'view').length, first: iso(first), last: events[0].at, events });
+    }
+  }
+  visitors.sort((a, b) => b.last.localeCompare(a.last));
+  const count = (xs) => Object.entries(xs.reduce((m, x) => ({ ...m, [x]: (m[x] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([name, n]) => ({ name, n }));
+  const sum = (n, k) => perDay.slice(-n).reduce((t, d) => t + d[k], 0), events = visitors.flatMap((v) => v.events);
+  const registered = [...new Set(visitors.map((v) => v.name).filter(Boolean))];
+  const hours = Array.from({ length: 24 }, (_, h) => Math.round(40 + 120 * Math.max(0, Math.sin(((h - 7) / 16) * Math.PI)) * (0.8 + rnd() * 0.4)));
+  return {
+    demo: true, days: 30,
+    totals: { today: perDay.at(-1).visitors, newToday: perDay.at(-1).fresh, week: Math.round(sum(7, 'visitors') * 0.6), new7: sum(7, 'fresh'), month: Math.round(sum(30, 'visitors') * 0.5), new30: sum(30, 'fresh'),
+      all: sum(DAYS, 'fresh'), views: sum(DAYS, 'views'), mobile: visitors.filter((v) => /iPhone|Android/.test(v.device)).length / visitors.length, loggedIn: registered.length, registered: registered.length * 6 },
+    perDay,
+    pages: count(events.filter((e) => e.kind === 'view').map((e) => e.page)).map((x) => ({ ...x, n: x.n * 9, unique: x.n * 3 })),
+    sources: count(visitors.map((v) => v.source)), countries: count(visitors.map((v) => v.country)), cities: count(visitors.map((v) => `${v.city}, ${v.country}`)), devices: count(visitors.map((v) => v.device)),
+    hours, weekdays: [520, 480, 470, 500, 560, 760, 720],
+    profiles: count(events.filter((e) => e.kind === 'profile').map((e) => e.target)), compares: count(events.filter((e) => e.kind === 'compare').map((e) => e.target)),
+    usage: count(events.filter((e) => !['view', 'profile'].includes(e.kind)).map((e) => e.kind)), practised: count(events.filter((e) => e.kind === 'practise').map((e) => e.target)),
+    visitors, registered: registered.sort(), users: registered.map((name) => ({ name, n: 5 + Math.floor(rnd() * 40), last: iso(now - rnd() * 6 * 864e5) })),
+  };
+}
 async function start() {
   const a = account();
   if (!a) {
@@ -138,10 +196,7 @@ async function start() {
     if (!res.ok) throw new Error(body.error || `The stats service answered ${res.status}.`);
     $('#profile-msg').textContent = '';
     try { localStorage.setItem('chess-trainer-no-track', '1'); } catch {} // this browser is the admin's: its visits stay out of the numbers
-    render(body);
-    bindLine(body.perDay);
-    $('#ad-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = Number(b.dataset.span);
-      $('#ad-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body.perDay); });
+    show(body);
   } catch (err) {
     $('#profile-msg').innerHTML = `${esc(err.message)} <button type="button" class="link" data-retry>Try again</button>`;
     $('[data-retry]').addEventListener('click', start);
