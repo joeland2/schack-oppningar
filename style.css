@@ -1919,3 +1919,15 @@ p, li, dd, small { text-wrap: pretty; }
 .lf-games { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; } .lf-games .ghost { padding: 7px 12px; font-size: 14px; text-decoration: none; color: var(--ink); }
 main .learn-from a.lf-link { color: var(--muted); font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .lf-card .pf-pcard { transition: none; } }
+
+/* Two-handle rating range: two range inputs on one track; only the thumbs take the pointer. */
+.choice-band .choice-label b { color: var(--ink); font-weight: 700; }
+.range2 { position: relative; height: 28px; min-width: 200px; }
+.range2-track { position: absolute; left: 10px; right: 10px; top: 12px; height: 4px; border-radius: 2px; background: var(--line); }
+.range2-track i { position: absolute; top: 0; bottom: 0; background: var(--hot); border-radius: 2px; }
+.range2 input { position: absolute; inset: 0; width: 100%; margin: 0; background: none; pointer-events: none; -webkit-appearance: none; appearance: none; }
+.range2 input::-webkit-slider-runnable-track { background: none; }
+.range2 input::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); border: 2px solid var(--hot); cursor: grab; }
+.range2 input::-moz-range-thumb { pointer-events: auto; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); border: 2px solid var(--hot); cursor: grab; }
+.range2 input::-moz-range-track { background: none; }
+.range2 input:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--hot); outline-offset: 2px; }

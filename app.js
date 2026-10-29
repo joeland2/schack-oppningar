@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029222947';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029222947';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029222947';
-import { GUIDE } from './guide.js?v=20261029222947';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029222947';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029222947';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029222947';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029222947';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029223756';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029223756';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029223756';
+import { GUIDE } from './guide.js?v=20261029223756';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029223756';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029223756';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029223756';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029223756';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -104,7 +104,19 @@ const numbered = (moves) => moves.split(' ').map((m, i) => (i % 2 ? m : `${i / 2
 // Indexes of the rating groups overlapping 300 below to 500 above your rating: "your level" everywhere
 // on the site. Reaching higher keeps more games deep into the lines, and they are better games.
 const LEVEL = { below: 300, above: 500 };
-const levelText = (r) => `${r - LEVEL.below}–${r + LEVEL.above}`;
+// The rating band the openings, the lines and the replies come from, picked with the slider over the
+// Lichess explorer's group edges (it counts games in these groups only). By default your rating ±300.
+const EDGES = [...BUCKETS, 3200];
+let band = load(STORE + '-band', null); // [lo, hi] edge indexes, or null: your level, following your rating
+function autoBand() {
+  const r = rating || 1500, lo = Math.max(0, EDGES.findLastIndex((e) => e <= r - 300));
+  let hi = EDGES.findIndex((e) => e >= r + 300);
+  if (hi < 0) hi = EDGES.length - 1;
+  return [lo, Math.max(hi, lo + 1)];
+}
+const bandNow = () => band || autoBand();
+const myGroups = () => { const [lo, hi] = bandNow(); return Array.from({ length: hi - lo }, (_, i) => lo + i); };
+const levelText = () => { const [lo, hi] = bandNow(); return hi === EDGES.length - 1 ? `${EDGES[lo]}+` : lo === 0 ? `under ${EDGES[hi]}` : `${EDGES[lo]}–${EDGES[hi] - 1}`; };
 function ratingsAround(r) {
   return BUCKETS.flatMap((b, i) => (b <= r + LEVEL.above && (BUCKETS[i + 1] ?? Infinity) > r - LEVEL.below ? [i] : []));
 }
@@ -124,14 +136,14 @@ async function loadTree() {
   console.assert(explore(['e4'], [3]).moves.some((m) => m.san === 'c5'), `data/explorer-${speed}.json is not in the expected format`);
 }
 
-// The opening list for each rating group set, worked out beforehand (data/popular-<speed>.json, made
+// The opening list for each rating band, worked out beforehand (data/popular/<speed>-<groups>.json, made
 // with ?make-popular, see the end of this file): the list shows at once from a few hundred KB, and the
 // large tree loads behind it, needed only once an opening is opened. Missing: computed from the tree.
 const POPS = {};
 async function popularFor() {
-  const key = ratingsAround(rating).join();
-  POPS[speed] ??= fetch(`data/popular-${speed}.json?v=${DATA}`).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
-  const pre = (await POPS[speed])[key];
+  const key = `${speed}-${myGroups().join('.')}`; // one small file per time control and group set
+  POPS[key] ??= fetch(`data/popular/${key}.json?v=${DATA}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const pre = await POPS[key];
   if (pre) return pre;
   await loadTree();
   return popularOpenings();
@@ -191,7 +203,7 @@ function explore(moves, groups) {
 // Real games at a position: your level first; where too few of them reach it, players higher up as
 // well (there are many more games at the top, and they are better ones).
 function gamesAt(moves) {
-  const mine = ratingsAround(rating);
+  const mine = myGroups();
   const x = explore(moves, mine);
   return x.total >= MIN_GAMES ? x : explore(moves, BUCKETS.map((_, i) => i).filter((i) => i >= mine[0]));
 }
@@ -243,7 +255,7 @@ function isTheory(moves, side) {
 }
 function buildLines(op) {
   const book = familyBook(op);
-  const mine = ratingsAround(rating);
+  const mine = myGroups();
   const nameOf = (moves, fallback) => {
     const n = NAMES.get(lineKey(moves));
     return n ? `${n.eco} · ${n.name}` : fallback;
@@ -310,7 +322,7 @@ function reachOf(moves, groups) {
 }
 
 function popularOpenings() {
-  const mine = ratingsAround(rating);
+  const mine = myGroups();
   const found = new Map();
   const defences = new Map(); // Black's own openings (Sicilian, French…); only shown when searched for
   const named = new Set(); // every family seen so far; the first sighting decides whose opening it is
@@ -452,8 +464,8 @@ gamesReady.then(() => { if (OPENINGS.length) renderList(); }); // the kept games
 function renderList() {
   const about = {
     w: (n) => `${sort === 'played' ? 'Most played first' : 'Best results first'}. ${style === 'any'
-      ? `The ${n} most played openings at your level.`
-      : `The ${n} most played ${STYLES[style].label.toLowerCase()} openings at your level.`}`,
+      ? `The ${n} most played openings among players rated ${levelText()}.`
+      : `The ${n} most played ${STYLES[style].label.toLowerCase()} openings among players rated ${levelText()}.`}`,
     b: (n) => `The same ${n} White openings, from Black's side: how to meet them, ${sort === 'played' ? 'most often met first' : 'the ones Black does best against first'}. Search for your own defences, like the Sicilian.`,
   };
   const q = query.trim().toLowerCase();
@@ -851,7 +863,7 @@ function renderMine({ counted, slips, openings }, name) {
 // An opening made from your own games' moves, for ones the list does not hold (a defence you face as
 // White, a rare line). Its figures come from games at your level that reached the same position.
 function practiceOpening(o) {
-  const mine = ratingsAround(rating);
+  const mine = myGroups();
   let node = TREE;
   for (const m of o.root) node = node?.[3]?.[m];
   const sum = (c) => mine.reduce((s, i) => s + c[i], 0);
@@ -1063,7 +1075,7 @@ const sideName = (c) => (c === 'w' ? 'White' : 'Black');
 // What the opponent plays here at your level, most common first, and which of your lines covers each
 // reply: the replies you can expect to meet, compared with the one this line practises.
 function repliesText(before, played) {
-  const x = explore(before, ratingsAround(rating));
+  const x = explore(before, myGroups());
   if (x.total < MIN_GAMES) return '';
   const covers = (san) => lines.findIndex((l) => lineKey(l.moves.slice(0, before.length + 1)) === lineKey([...before, san]));
   const top = x.moves.filter((m) => m.n / x.total >= 0.02).slice(0, 5);
@@ -1279,7 +1291,7 @@ function resultsAt(moves) {
   let node = TREE;
   for (const m of moves) node = node?.[3]?.[m];
   if (!node) return null;
-  const sum = (c) => ratingsAround(rating).reduce((s, i) => s + c[i], 0);
+  const sum = (c) => myGroups().reduce((s, i) => s + c[i], 0);
   const n = sum(node[0]);
   if (n < MIN_GAMES) return null;
   const whiteWin = sum(node[1]) / n, draw = sum(node[2]) / n;
@@ -1535,7 +1547,7 @@ function play(i, again = false) {
 // what it aims to do.
 function exploreSay(prefix = '') {
   const at = game.fen(), side = game.turn();
-  const top = explore(game.history().map(clean), ratingsAround(rating)).moves.find((m) => m.n >= MIN_GAMES);
+  const top = explore(game.history().map(clean), myGroups()).moves.find((m) => m.n >= MIN_GAMES);
   const next = (m, who) => {
     hintSq = [m.from, m.to];
     renderBoard();
@@ -1580,7 +1592,7 @@ function exploreMove(from, to, promotion = 'q', keepRedo = false, prefix = '') {
 
 function opponentAnswers(prefix) {
   const at = game.fen();
-  const real = explore(game.history().map(clean), ratingsAround(rating)).moves.filter((x) => x.n >= MIN_GAMES);
+  const real = explore(game.history().map(clean), myGroups()).moves.filter((x) => x.n >= MIN_GAMES);
   if (!real.length) return exploreSay(prefix + 'Real games run out here, so the opponent no longer answers by itself. ');
   busy = true;
   const gen = gameGen;
@@ -1828,10 +1840,10 @@ let opponent = null, saidOpponent = null; // who plays the opponent now (shown o
 // would likely play (its own human mistakes included); above its range, or if it cannot load,
 // Stockfish at your rating.
 async function engineReply(at) {
-  const live = await liveGames(at, ratingsAround(rating).map((i) => BUCKETS[i]), speed);
+  const live = await liveGames(at, myGroups().map((i) => BUCKETS[i]), speed);
   const total = live ? live.white + live.draws + live.black : 0;
   if (live?.moves?.length && total >= MIN_GAMES) {
-    return { san: live.moves[0].san, label: `Lichess games ${levelText(rating)}`,
+    return { san: live.moves[0].san, label: `Lichess games ${levelText()}`,
       note: `The saved games run out here, so the moves now come from all ${total.toLocaleString('en')} Lichess games at your level in this position.` };
   }
   if (rating < MAIA_MAX + 100) {
@@ -1850,7 +1862,7 @@ async function opponentPlays() {
   const gen = gameGen, at = game.fen();
   // Follow the real games as long as any reach this position: the reply played most there.
   const real = gamesAt(game.history().map(clean)).moves[0];
-  let m = real ? { san: real.san, label: `Real games ${levelText(rating)}` } : await engineReply(at).catch((e) => (console.warn(e), null));
+  let m = real ? { san: real.san, label: `Real games ${levelText()}` } : await engineReply(at).catch((e) => (console.warn(e), null));
   if (!m && gen === gameGen && game.fen() === at && !game.isGameOver()) { // no engine answered: the game goes on all the same
     const all = game.moves();
     m = { san: all[Math.floor(Math.random() * all.length)], label: 'Random move', note: 'The engines did not answer here, so the opponent played a random legal move.' };
@@ -2008,7 +2020,7 @@ function explainWrong(san) {
   const strong = strongGroups(before);
   const want = expectedMove();
   const share = (s) => strong.x.moves.find((x) => x.san === s)?.n / strong.x.total || 0;
-  const mine = explore(before, ratingsAround(rating)).moves;
+  const mine = explore(before, myGroups()).moves;
   const score = (s) => { const m = mine.find((x) => x.san === s); return m && m.n >= MIN_GAMES ? scoreFor(m, cur.side) : null; };
   const lineMove = mode === 'learn' ? want.san : "the line's move";
   const parts = [share(clean(san)) >= RARE ? 'It is playable, but this line practises another move.' : 'Strong players rarely play it here.'];
@@ -2062,7 +2074,7 @@ msgEl.addEventListener('click', (e) => { const b = e.target.closest('[data-choos
 // A trap against you: a move your side often plays here at your level (a tenth of the games or more,
 // TRAP_GAMES at least) that scores TRAP_SCORE or less, other than the line's.
 function careful(before, want) {
-  const x = explore(before, ratingsAround(rating));
+  const x = explore(before, myGroups());
   return x.moves.filter((m) => m.san !== want && m.n >= TRAP_GAMES && m.n / x.total >= 0.1 && scoreFor(m, cur.side) <= TRAP_SCORE).sort((a, b) => b.n - a.n)[0];
 }
 
@@ -2462,7 +2474,7 @@ showLinesView();
 
 function showComplete() {
   $('#complete-title').textContent = `${isVs(cur) ? 'vs ' : ''}${cur.name}: complete`;
-  $('#complete-text').textContent = `You cleared all ${lines.length} lines: every common reply at ${levelText(rating)} in ${speed}, each played from memory without a mistake.`;
+  $('#complete-text').textContent = `You cleared all ${lines.length} lines: every common reply at ${levelText()} in ${speed}, each played from memory without a mistake.`;
   $('#complete').showModal();
 }
 $('#complete-more').addEventListener('click', () => { $('#complete').close(); play((lineIdx + 1) % lines.length); });
@@ -3053,14 +3065,42 @@ async function showPicker() {
   $('.choice-search').hidden = !rating;
   if (!rating) return ($('#pick-msg').textContent = 'The openings you see depend on what players at your level actually play.');
   $('#pick-msg').textContent = `Loading ${speed} games…`;
-  try { OPENINGS = POPULAR[`${speed}:${rating}`] ??= await popularFor(); } catch { return say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .'); }
+  try { OPENINGS = POPULAR[`${speed}:${myGroups().join()}`] ??= await popularFor(); } catch { return say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .'); }
   loadTree().catch(() => {}); // in the background, so an opening opens at once
-  $('#pick-msg').textContent = `Real ${speed} games by players rated ${levelText(rating)}${style === 'any' ? '' : `, ${STYLES[style].label.toLowerCase()} White openings only`}. Pick one to practise.`;
+  $('#pick-msg').textContent = `Real ${speed} games by players rated ${levelText()}${style === 'any' ? '' : `, ${STYLES[style].label.toLowerCase()} White openings only`}. Pick one to practise.`;
   renderList();
 }
 
+// The rating band: two handles on the explorer's group edges; the label says what the games cover.
+function renderBand(lo = bandNow()[0], hi = bandNow()[1]) {
+  const fill = $('#band .range2-track i'), max = EDGES.length - 1;
+  $('#band-lo').value = lo; $('#band-hi').value = hi;
+  fill.style.left = `${(lo / max) * 100}%`; fill.style.right = `${100 - (hi / max) * 100}%`;
+  const saved = band; band = [lo, hi]; // label the handles' spot without saving it
+  $('#band-text').textContent = levelText();
+  band = saved;
+  $('#band-about').innerHTML = band ? 'Your own range. <button type="button" class="link" id="band-reset">Back to your level</button>' : `Your level: your rating ±300.`;
+  $('#band-reset')?.addEventListener('click', () => { band = null; store(STORE + '-band', null); renderBand(); showPicker(); });
+}
+for (const [id, other, sign] of [['#band-lo', '#band-hi', 1], ['#band-hi', '#band-lo', -1]]) {
+  // Live while dragging (the handles never cross); the list is redrawn when let go.
+  $(id).addEventListener('input', () => {
+    let lo = Number($('#band-lo').value), hi = Number($('#band-hi').value);
+    if (lo >= hi) { if (sign > 0) lo = hi - 1; else hi = lo + 1; }
+    renderBand(Math.max(0, lo), Math.min(EDGES.length - 1, hi));
+  });
+  $(id).addEventListener('change', () => {
+    band = [Number($('#band-lo').value), Number($('#band-hi').value)];
+    if (band[0] >= band[1]) band[1] = band[0] + 1;
+    const auto = autoBand();
+    if (band[0] === auto[0] && band[1] === auto[1]) band = null; // back on your level: follow your rating again
+    store(STORE + '-band', band);
+    renderBand(); showPicker();
+  });
+}
 // Time control and style switches, plus the rating labels that depend on the time control.
 function renderChoices() {
+  renderBand();
   document.querySelectorAll('[data-speed]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.speed === speed));
   document.querySelectorAll('[data-sort]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.sort === sort));
   document.querySelectorAll('[data-style]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.style === style));
@@ -3068,7 +3108,7 @@ function renderChoices() {
   document.querySelectorAll('.speed-name').forEach((el) => (el.textContent = speed));
   $('#rating').value = rating || '';
   lockRating();
-  $('#filters-sum').innerHTML = `Filters <span>${speed[0].toUpperCase() + speed.slice(1)} · ${style === 'any' ? 'any style' : STYLES[style].label} · ${sort === 'played' ? 'most played' : 'best results'}</span>`;
+  $('#filters-sum').innerHTML = `Filters <span>${speed[0].toUpperCase() + speed.slice(1)} · ${levelText()} · ${style === 'any' ? 'any style' : STYLES[style].label} · ${sort === 'played' ? 'most played' : 'best results'}</span>`;
 }
 document.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('click', () => {
   speed = b.dataset.speed;
@@ -3192,13 +3232,13 @@ try { await loadBook(); } catch {
 // Left over from when the page logged in to Lichess and cached its API answers.
 try { for (const k of Object.keys(localStorage)) if (k === STORE + '-token' || k.startsWith(STORE + '-x')) localStorage.removeItem(k); } catch {}
 setMode(mode);
-// ?make-popular: work out data/popular-<speed>.json (every rating group set) and print it on the page,
+// ?make-popular: work out data/popular/<speed>-<groups>.json (every rating band) and print it on the page,
 // for headless Chrome's --dump-dom. Run it again whenever data/explorer-*.json is rebuilt.
 if (location.search === '?make-popular') {
   const out = {};
   for (const sp of ['blitz', 'classical']) {
     speed = sp; await loadTree(); out[sp] = {};
-    for (let r = 400; r <= 3200; r += 50) { const key = ratingsAround(r).join(); if (!out[sp][key]) { rating = r; out[sp][key] = popularOpenings(); } }
+    for (let lo = 0; lo < EDGES.length - 1; lo++) for (let hi = lo + 1; hi < EDGES.length; hi++) { band = [lo, hi]; out[sp][myGroups().join('.')] = popularOpenings(); }
   }
   document.body.innerHTML = `<pre id="popular">${JSON.stringify(out).replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`)}</pre>`;
   throw new Error('made the opening lists'); // stop here
