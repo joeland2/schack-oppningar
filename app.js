@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029221244';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029221244';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029221244';
-import { GUIDE } from './guide.js?v=20261029221244';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029221244';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029221244';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029221244';
-import { storedGames, gamesReady } from './profile.js?v=20261029221244';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029221517';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029221517';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029221517';
+import { GUIDE } from './guide.js?v=20261029221517';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029221517';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029221517';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029221517';
+import { storedGames, gamesReady } from './profile.js?v=20261029221517';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -656,10 +656,11 @@ function inOpening(games, name, o, mySlips) {
   }
   return out;
 }
-async function candidatesFor(o, positions, token) {
+async function candidatesFor(o, positions, token, step = () => {}) {
   const bands = BUCKETS.filter((b) => b >= rating + 100 && b <= rating + 600);
   const found = new Map();
-  for (const moves of positions) {
+  for (const [i, moves] of positions.entries()) {
+    step(i, positions.length);
     const g = new Chess();
     for (const m of moves) g.move(m);
     const res = await fetch('https://explorer.lichess.org/lichess?' + new URLSearchParams({
@@ -677,7 +678,8 @@ async function candidatesFor(o, positions, token) {
 async function findTeachers(name) {
   const el = $('#learn-from');
   el.hidden = false;
-  const msg = (t) => (el.innerHTML = `<h2>A player to learn from</h2><p class="info">${t}</p>`);
+  // Each step says what it does, with a bar for how far the whole search has come (frac 0–1; none when done).
+  const msg = (t, frac = null) => (el.innerHTML = `<h2>A player to learn from</h2><p class="info">${t}</p>${frac === null ? '' : `<div class="lf-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(frac * 100)}"><i style="width:${Math.round(frac * 100)}%"></i></div>`}`);
   const token = account()?.token;
   if (!token) { msg('Searching needs the Lichess opening explorer, which needs you to log in. <button type="button" class="link" id="lf-login">Log in with Lichess</button>'); return $('#lf-login').addEventListener('click', login); }
   if (!lastGames) return msg('Check your games first.');
@@ -686,22 +688,26 @@ async function findTeachers(name) {
   const mySlips = me.slips.filter((x) => x.family === o.family && x.side === o.side).slice(0, 3);
   const mine = inOpening(lastGames.games, name, o, mySlips);
   const what = `${o.vs ? 'vs ' : ''}${shortName(o.family)} as ${sideName(o.side)}`;
-  msg(`Looking for players above ${rating} who play the ${what}…`);
-  const cands = (await candidatesFor(o, [o.root, ...mySlips.map((x) => x.before)], token)).filter(([n]) => n.toLowerCase() !== name.toLowerCase()).slice(0, 8);
+  msg(`Looking for players above ${rating} who play the ${what}…`, 0.2);
+  const cands = (await candidatesFor(o, [o.root, ...mySlips.map((x) => x.before)], token, (i, n) => msg(`Looking for players above ${rating} who play the ${what}: position ${i + 1} of ${n}…`, 0.2 + 0.2 * (i / n)))).filter(([n]) => n.toLowerCase() !== name.toLowerCase()).slice(0, 8);
   if (!cands.length) return msg(`No players above your rating found in the ${what} right now. Try again later.`);
   const read = [];
   for (const [i, [cand, r]] of cands.entries()) {
-    msg(`Reading ${cand}'s games (${i + 1} of ${cands.length})…`);
+    msg(`Reading ${cand}'s games, player ${i + 1} of ${cands.length}…`, 0.4 + 0.6 * (i / cands.length));
     try { read.push({ name: cand, rating: r, ...inOpening(await fetchGames(cand), cand, o, mySlips) }); } catch (err) { if (/busy/.test(err.message)) break; }
   }
-  const rate = (x) => x.slips / x.games;
-  const best = read.filter((x) => x.games >= 3).sort((a, b) => rate(a) - rate(b) || b.points / b.games - a.points / a.games).slice(0, 3);
-  if (!best.length) return msg(`The players found play the ${what} too rarely to compare. Try again later.`);
+  const rate = (x) => x.slips / x.games, score = (x) => x.points / Math.max(1, x.games);
+  // No slips of yours in the opening: nothing to learn there, so the players to learn from are the ones
+  // who score more with it than you do.
+  const clean = rate(mine) === 0;
+  const best = read.filter((x) => x.games >= 3 && (!clean || score(x) > score(mine)))
+    .sort((a, b) => (clean ? score(b) - score(a) : rate(a) - rate(b) || score(b) - score(a))).slice(0, 3);
+  if (!best.length) return msg(clean ? `You make no opening slips in the ${what} and score ${pct(score(mine))}: none of the players found scores more with it. Nothing to learn here right now.` : `The players found play the ${what} too rarely to compare. Try again later.`);
   const theirs = (x, k) => [...x.at[k]].sort((a, b) => b[1] - a[1])[0]?.[0];
   el.innerHTML = `<h2>Players to learn from: ${what}</h2>
-    <p class="info">You: a slip in ${pct(rate(mine) || 0)} of ${plural(mine.games, 'game')}, scoring ${pct(mine.points / Math.max(1, mine.games))}. Players above your rating who play it, read from their last 100 ${speed} games:</p>
+    <p class="info">${clean ? `You make no opening slips in your ${plural(mine.games, 'game')} of it, and score ${pct(score(mine))}. These players above your rating score more with it: see how they go on from where the opening ends.` : `You: a slip in ${pct(rate(mine))} of ${plural(mine.games, 'game')}, scoring ${pct(score(mine))}. Players above your rating who play it, read from their last 100 ${speed} games:`}</p>
     <ul class="lf-list">${best.map((x) => `<li><a href="https://lichess.org/@/${encodeURIComponent(x.name)}" target="_blank" rel="noopener"><b>${x.name}</b></a> <small>${x.rating}</small>
-      <span class="lf-meta">a slip in ${pct(rate(x))} of ${plural(x.games, 'game')} · scores ${pct(x.points / x.games)}</span>
+      <span class="lf-meta">${clean ? `scores ${pct(score(x))} in ${plural(x.games, 'game')}` : `a slip in ${pct(rate(x))} of ${plural(x.games, 'game')} · scores ${pct(score(x))}`}</span>
       ${mySlips.map((sl, k) => { const t = theirs(x, k); return t && t !== sl.played ? `<span class="lf-meta">Where you play <b class="down">${sl.played}</b> (move ${Math.floor(sl.before.length / 2) + 1}), they play <b>${t}</b></span>` : ''; }).join('')}
       <a class="lf-link" href="profile.html?u=${encodeURIComponent(x.name)}">See their profile</a></li>`).join('')}</ul>`;
 }
@@ -3183,8 +3189,13 @@ async function deepLink() {
   if (act === 'learnfrom') {
     const name = load(STORE + '-lichess-name', '') || account()?.name;
     if (!name) return;
+    // The search takes a while: it shows at the top of the page from the first step, with a bar.
+    const el = $('#learn-from');
+    $('#picker .pick-h')?.after(el);
+    el.hidden = false;
+    el.innerHTML = `<h2>A player to learn from</h2><p class="info">Reading your last 100 ${speed} games…</p><div class="lf-bar" role="progressbar" aria-valuenow="5"><i style="width:5%"></i></div>`;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     await checkMyGames(name);
-    $('#learn-from').scrollIntoView({ behavior: 'smooth' });
     findTeachers(name).catch((err) => { $('#learn-from').innerHTML = `<p class="info">${err.message}</p>`; });
   }
 }

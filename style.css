@@ -1894,3 +1894,7 @@ p, li, dd, small { text-wrap: pretty; }
 .cmp-cards { position: relative; }
 .cmp-dl { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); margin: 0; } /* between the two cards, at their foot */
 .cmp-dl .pf-dl-menu { right: auto; left: 50%; transform: translateX(-50%); }
+/* A player to learn from: the search's progress */
+.lf-bar { height: 6px; margin-top: 10px; border-radius: 3px; background: var(--track, var(--line)); overflow: hidden; }
+.lf-bar i { display: block; height: 100%; background: var(--hot); transition: width .4s ease-out; }
+@media (prefers-reduced-motion: reduce) { .lf-bar i { transition: none; } }
