@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029144554';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029144554';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029144554';
-import { GUIDE } from './guide.js?v=20261029144554';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029144554';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029144554';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029144554';
-import { storedGames } from './profile.js?v=20261029144554';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029144633';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029144633';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029144633';
+import { GUIDE } from './guide.js?v=20261029144633';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029144633';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029144633';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029144633';
+import { storedGames } from './profile.js?v=20261029144633';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -472,7 +472,7 @@ function renderList() {
   $('#side-tabs').innerHTML = `<div class="seg side-seg" role="group" aria-label="Your side">
       ${['w', 'b', 'r'].map((side) => `<button type="button" data-side="${side}" aria-pressed="${!q && side === listSide}">${side === 'r' ? '<span class="wide-only">My </span>Favorites' : `<span class="wide-only">You play </span>${sideName(side)}`} <span class="og-n">${count(side)}</span></button>`).join('')}
     </div>`;
-  listEl.innerHTML = `${q ? '<h2 class="og-h">Search results</h2>' : ''}${body}`;
+  listEl.innerHTML = `${q ? '<h2 class="og-h">Search results</h2>' : `<h2 class="visually-hidden">${listSide === 'r' ? 'Your favorites' : `Openings for ${sideName(listSide)}`}</h2>`}${body}`; // the cards' h3 sit under an h2
   seen.disconnect();
   listEl.querySelector('[data-start]')?.addEventListener('click', (e) => start(OPENINGS.find((o) => o.id === e.currentTarget.dataset.start)));
   listEl.querySelectorAll('.ocard').forEach((c) => {
