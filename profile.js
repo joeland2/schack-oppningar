@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029215324';
-import { STYLE_OF } from './styles.js?v=20261029215324';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029215723';
+import { STYLE_OF } from './styles.js?v=20261029215723';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -973,7 +973,7 @@ async function comparePng(A, B, sa, sb, detail, btn) {
       ['Accuracy', n(A.p.acc, (x) => `${x}%`), n(B.p.acc, (x) => `${x}%`), A.p.acc, B.p.acc, 1], ['Blunders / game', n(A.p.blunders, (x) => x.toFixed(1)), n(B.p.blunders, (x) => x.toFixed(1)), A.p.blunders, B.p.blunders, -1],
       ['Draws', pct(A.p.draws), pct(B.p.draws), 0, 0, 0], ['Moves a game', A.p.moves, B.p.moves, 0, 0, 0],
     ] : [];
-    const numsH = nums.length ? 60 + nums.length * 44 : 0;
+    const numsH = nums.length ? 110 + nums.length * 44 : 0;
     const H = top + ch + (detail ? 50 + Math.max(colH(A), colH(B)) + numsH + storyH : 60) + 100;
     const canvas = Object.assign(document.createElement('canvas'), { width: W * S, height: H * S }), ctx = canvas.getContext('2d');
     ctx.scale(S, S);
@@ -997,22 +997,27 @@ async function comparePng(A, B, sa, sb, detail, btn) {
         return yy;
       });
       y = Math.max(...ys) + 20;
-      // The numbers between the two: A's value left, the label in the middle, B's right; the better one in the hot colour.
-      ctx.fillStyle = CARD.hot; ctx.fillRect(70, y, W - 140, 3);
-      ctx.fillStyle = CARD.paperMuted; ctx.font = '700 16px Geist'; ctx.letterSpacing = '3px'; ctx.fillText('NUMBERS', 70, y += 40); ctx.letterSpacing = '0px';
-      for (const [label, a, b, va, vb, dir] of nums) {
-        y += 44;
-        const lead = dir && va != null && vb != null && va !== vb ? ((va > vb) === (dir > 0) ? 'a' : 'b') : '';
-        ctx.font = '400 30px Anton'; ctx.fillStyle = lead === 'a' ? CARD.hot : CARD.paperInk; ctx.fillText(String(a), 70, y);
-        ctx.textAlign = 'right'; ctx.fillStyle = lead === 'b' ? CARD.hot : CARD.paperInk; ctx.fillText(String(b), W - 70, y);
-        ctx.textAlign = 'center'; ctx.fillStyle = CARD.paperMuted; ctx.font = '400 21px Geist'; ctx.fillText(label, W / 2, y - 4); ctx.textAlign = 'left';
-      }
-      y += 36;
       if (story.length) {
         ctx.fillStyle = CARD.hot; ctx.fillRect(70, y, W - 140, 3);
         ctx.fillStyle = CARD.paperMuted; ctx.font = '700 16px Geist'; ctx.letterSpacing = '3px'; ctx.fillText('IN SHORT', 70, y += 40); ctx.letterSpacing = '0px';
         ctx.fillStyle = CARD.paperInk; ctx.font = '400 24px Geist'; y += 20;
         for (const t of story) y = wrap(ctx, t, 70, y + 12, W - 140, 34) + 2;
+        y += 30;
+      }
+      // The numbers as on the page: the label on the left, one column per player under their name, a line
+      // under each row, the better one in the hot colour.
+      const ca = W - 70 - 2 * 260, cb = W - 70 - 260; // the two columns' left edges
+      ctx.fillStyle = CARD.hot; ctx.fillRect(70, y, W - 140, 3);
+      ctx.fillStyle = CARD.paperMuted; ctx.font = '700 16px Geist'; ctx.letterSpacing = '3px'; ctx.fillText('NUMBERS', 70, y += 40); ctx.letterSpacing = '0px';
+      ctx.fillStyle = CARD.paperInk; ctx.font = '700 20px Geist'; fit(ctx, A.name, '700 #px Geist', 20, 240); ctx.fillText(A.name, ca, y); fit(ctx, B.name, '700 #px Geist', 20, 240); ctx.fillText(B.name, cb, y);
+      y += 14;
+      for (const [label, a, b, va, vb, dir] of nums) {
+        ctx.fillStyle = CARD.paperMuted; ctx.globalAlpha = 0.35; ctx.fillRect(70, y, W - 140, 1); ctx.globalAlpha = 1;
+        y += 44;
+        const lead = dir && va != null && vb != null && va !== vb ? ((va > vb) === (dir > 0) ? 'a' : 'b') : '';
+        ctx.fillStyle = CARD.paperInk; ctx.font = '600 22px Geist'; ctx.fillText(label, 70, y - 6);
+        ctx.font = '400 30px Anton'; ctx.fillStyle = lead === 'a' ? CARD.hot : CARD.paperInk; ctx.fillText(String(a), ca, y - 4);
+        ctx.fillStyle = lead === 'b' ? CARD.hot : CARD.paperInk; ctx.fillText(String(b), cb, y - 4);
       }
     }
     ctx.fillStyle = CARD.hot; ctx.fillRect(70, H - 76, W - 140, 3);
