@@ -1366,9 +1366,8 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
   .account { flex: 0 1 auto; min-width: 0; }
   .account #lichess-login { min-width: 0; max-width: 34vw; overflow: hidden; text-overflow: ellipsis; }
   /* The sections in larger poster type, scrolling sideways when they do not fit */
-  .top-nav { overflow-x: auto; scrollbar-width: none; justify-content: flex-start; }
-  .top-nav::-webkit-scrollbar { display: none; }
-  .top-nav a { flex: 1 0 auto; padding: 14px 12px 13px; font-size: 19px; } }
+  .top-nav { overflow: hidden; justify-content: space-between; }
+  .top-nav a { flex: 1 1 auto; padding: 14px 6px 13px; font-size: clamp(14px, 4.6vw, 19px); letter-spacing: .02em; } }
 
 /* Stat accuracy: three steps (Fair 100, Good 250, Best 500 analysed games) under a heavy rule, the
    step reached in poster type, and the button to the next step */
