@@ -2,7 +2,7 @@
 // sorted by what kind of slip it was, so the ones you keep repeating stand out. Lichess's own computer
 // analysis is used where a game has one; the rest are checked here with Stockfish (evaluate).
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { hanging, mateInOne } from './ideas.js?v=20261029132850';
+import { hanging, mateInOne } from './ideas.js?v=20261029133422';
 
 const VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 // Lichess's winning chances, 0-100; a move that costs 10 points or more is a mistake, 15 a blunder.

@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029132850';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029132850';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029132850';
-import { GUIDE } from './guide.js?v=20261029132850';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029132850';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029132850';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029132850';
-import { storedGames } from './profile.js?v=20261029132850';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029133422';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029133422';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029133422';
+import { GUIDE } from './guide.js?v=20261029133422';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029133422';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029133422';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029133422';
+import { storedGames } from './profile.js?v=20261029133422';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -570,6 +570,20 @@ function openingOf(moves, side) {
   return family && { family, vs: !mine, root: roots.get(family) };
 }
 
+// The first of your moves in a game that strong players rarely play and no named line has, or null.
+function firstSlip(moves, side) {
+  for (let i = side === 'w' ? 0 : 1; i < moves.length; i += 2) {
+    const before = moves.slice(0, i);
+    const strong = explore(before, STRONG[speed]);
+    if (strong.total < JUDGE_GAMES) return null; // past what the data can judge
+    const mine = strong.moves.find((m) => m.san === moves[i]);
+    const key = lineKey([...before, moves[i]]);
+    if ((mine && mine.n / strong.total >= RARE) || IN_BOOK.has(key)) continue;
+    return { before, key, played: moves[i], mine, strong };
+  }
+  return null;
+}
+
 // For each game: the first of your moves that strong players rarely play, plus your score per opening.
 function analyse(games, name) {
   const me = name.toLowerCase();
@@ -590,19 +604,12 @@ function analyse(games, name) {
       o.games++; o.points += points; o.won += points === 1; o.drawn += points === 0.5;
       openings.set(key, o);
     }
-    for (let i = side === 'w' ? 0 : 1; i < moves.length; i += 2) {
-      const before = moves.slice(0, i);
-      const strong = explore(before, STRONG[speed]);
-      if (strong.total < JUDGE_GAMES) break; // past what the data can judge
-      const mine = strong.moves.find((m) => m.san === moves[i]);
-      const key = lineKey([...before, moves[i]]);
-      if ((mine && mine.n / strong.total >= RARE) || IN_BOOK.has(key)) continue;
-      const slip = slips.get(key) ?? { before, side, family, played: moves[i], playedShare: (mine?.n ?? 0) / strong.total,
-        best: strong.moves[0].san, bestShare: strong.moves[0].n / strong.total, games: 0, points: 0 };
-      slip.games++; slip.points += points;
-      slips.set(key, slip);
-      break;
-    }
+    const f = firstSlip(moves, side);
+    if (!f) continue;
+    const slip = slips.get(f.key) ?? { before: f.before, side, family, played: f.played, playedShare: (f.mine?.n ?? 0) / f.strong.total,
+      best: f.strong.moves[0].san, bestShare: f.strong.moves[0].n / f.strong.total, games: 0, points: 0 };
+    slip.games++; slip.points += points;
+    slips.set(f.key, slip);
   }
   return {
     counted,
@@ -611,6 +618,79 @@ function analyse(games, name) {
   };
 }
 console.assert(analyse([], 'x').counted === 0, 'analyse');
+
+// ---------- A player to learn from ----------
+// Someone rated a bit above you who plays your most played opening and makes fewer of its slips. The
+// candidates come from the Lichess explorer: recent and top games, at the higher ratings, from the
+// opening's position and from the positions where you slip. Each candidate's last 100 games are then
+// read with the same slip test as yours, so no engine is needed.
+const sideIn = (g, me) => (g.players.white.user?.id === me ? 'w' : g.players.black.user?.id === me ? 'b' : null);
+// One player's games in an opening: how many, the points, the slips, and what they play where you slip.
+function inOpening(games, name, o, mySlips) {
+  const me = name.toLowerCase(), out = { games: 0, points: 0, slips: 0, at: mySlips.map(() => new Map()) };
+  for (const g of games) {
+    if (sideIn(g, me) !== o.side || !g.moves) continue;
+    const moves = g.moves.split(' ').map(clean).slice(0, MAX_PLY);
+    if (openingOf(moves, o.side)?.family !== o.family) continue;
+    out.games++;
+    out.points += !g.winner ? 0.5 : g.winner === (o.side === 'w' ? 'white' : 'black') ? 1 : 0;
+    if (firstSlip(moves, o.side)) out.slips++;
+    mySlips.forEach((sl, k) => {
+      const n = sl.before.length;
+      if (moves.length > n && lineKey(moves.slice(0, n)) === lineKey(sl.before)) out.at[k].set(moves[n], (out.at[k].get(moves[n]) || 0) + 1);
+    });
+  }
+  return out;
+}
+async function candidatesFor(o, positions, token) {
+  const bands = BUCKETS.filter((b) => b >= rating + 100 && b <= rating + 600);
+  const found = new Map();
+  for (const moves of positions) {
+    const g = new Chess();
+    for (const m of moves) g.move(m);
+    const res = await fetch('https://explorer.lichess.org/lichess?' + new URLSearchParams({
+      variant: 'standard', fen: g.fen(), speeds: speed, ratings: (bands.length ? bands : [BUCKETS.at(-1)]).join(','), moves: 0, topGames: 4, recentGames: 8,
+    }), { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) continue;
+    const x = await res.json();
+    for (const game of [...(x.recentGames || []), ...(x.topGames || [])]) {
+      const p = game[o.side === 'w' ? 'white' : 'black'];
+      if (p?.name && p.rating > rating) found.set(p.name, p.rating);
+    }
+  }
+  return [...found];
+}
+async function findTeachers(name) {
+  const el = $('#learn-from');
+  el.hidden = false;
+  const msg = (t) => (el.innerHTML = `<h2>A player to learn from</h2><p class="info">${t}</p>`);
+  const token = account()?.token;
+  if (!token) { msg('Searching needs the Lichess opening explorer, which needs you to log in. <button type="button" class="link" id="lf-login">Log in with Lichess</button>'); return $('#lf-login').addEventListener('click', login); }
+  if (!lastGames) return msg('Check your games first.');
+  const me = analyse(lastGames.games, name), o = me.openings.find((x) => x.games >= 5);
+  if (!o) return msg('Play at least 5 games of one opening first.');
+  const mySlips = me.slips.filter((x) => x.family === o.family && x.side === o.side).slice(0, 3);
+  const mine = inOpening(lastGames.games, name, o, mySlips);
+  const what = `${o.vs ? 'vs ' : ''}${shortName(o.family)} as ${sideName(o.side)}`;
+  msg(`Looking for players above ${rating} who play the ${what}…`);
+  const cands = (await candidatesFor(o, [o.root, ...mySlips.map((x) => x.before)], token)).filter(([n]) => n.toLowerCase() !== name.toLowerCase()).slice(0, 8);
+  if (!cands.length) return msg(`No players above your rating found in the ${what} right now. Try again later.`);
+  const read = [];
+  for (const [i, [cand, r]] of cands.entries()) {
+    msg(`Reading ${cand}'s games (${i + 1} of ${cands.length})…`);
+    try { read.push({ name: cand, rating: r, ...inOpening(await fetchGames(cand), cand, o, mySlips) }); } catch (err) { if (/busy/.test(err.message)) break; }
+  }
+  const rate = (x) => x.slips / x.games;
+  const best = read.filter((x) => x.games >= 3).sort((a, b) => rate(a) - rate(b) || b.points / b.games - a.points / a.games).slice(0, 3);
+  if (!best.length) return msg(`The players found play the ${what} too rarely to compare. Try again later.`);
+  const theirs = (x, k) => [...x.at[k]].sort((a, b) => b[1] - a[1])[0]?.[0];
+  el.innerHTML = `<h2>Players to learn from: ${what}</h2>
+    <p class="info">You: a slip in ${pct(rate(mine) || 0)} of ${plural(mine.games, 'game')}, scoring ${pct(mine.points / Math.max(1, mine.games))}. Players above your rating who play it, read from their last 100 ${speed} games:</p>
+    <ul class="lf-list">${best.map((x) => `<li><a href="https://lichess.org/@/${encodeURIComponent(x.name)}" target="_blank" rel="noopener"><b>${x.name}</b></a> <small>${x.rating}</small>
+      <span class="lf-meta">a slip in ${pct(rate(x))} of ${plural(x.games, 'game')} · scores ${pct(x.points / x.games)}</span>
+      ${mySlips.map((sl, k) => { const t = theirs(x, k); return t && t !== sl.played ? `<span class="lf-meta">Where you play <b class="down">${sl.played}</b> (move ${Math.floor(sl.before.length / 2) + 1}), they play <b>${t}</b></span>` : ''; }).join('')}
+      <a class="lf-link" href="profile.html?u=${encodeURIComponent(x.name)}">See their profile</a></li>`).join('')}</ul>`;
+}
 
 
 // Where your games left your lines: in each game of an opening in the list, the first of your moves
@@ -685,7 +765,10 @@ function renderMine({ counted, slips, openings }, name) {
       </button></li>`).join('') || '<li class="info">No repeated slips in the openings.</li>'}</ul>
       <h3>Mistakes in whole games</h3>
       <div id="my-mistakes"></div>
+      <h3>A player to learn from</h3>
+      <p class="info">Someone a bit above you who plays your main opening without your slips. <button type="button" class="link" id="lf-go">Find one</button></p>
     </div>`;
+  $('#lf-go')?.addEventListener('click', () => findTeachers(name).catch((err) => { $('#learn-from').innerHTML = `<p class="info">${err.message}</p>`; }));
   el.querySelectorAll('[data-left]').forEach((b) => b.addEventListener('click', () => {
     const f = left[Number(b.dataset.left)];
     start(f.op);
@@ -2921,6 +3004,13 @@ async function deepLink() {
     await checkMyGames(name);
     $('#my-openings').scrollIntoView({ behavior: 'smooth' });
     if (lastGames) runMistakes();
+  }
+  if (act === 'learnfrom') {
+    const name = load(STORE + '-lichess-name', '') || account()?.name;
+    if (!name) return;
+    await checkMyGames(name);
+    $('#learn-from').scrollIntoView({ behavior: 'smooth' });
+    findTeachers(name).catch((err) => { $('#learn-from').innerHTML = `<p class="info">${err.message}</p>`; });
   }
 }
 

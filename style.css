@@ -1484,3 +1484,12 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .line-star.green { fill: var(--good); stroke: var(--good); }
 .line-star.gold { fill: #e0b23a; stroke: #b88a12; }
 .line-star.diamond { fill: #bdf0ff; stroke: #4fb8e0; filter: drop-shadow(0 0 3px rgb(120 220 255 / .7)); }
+/* A player to learn from */
+.learn-from { display: grid; gap: 8px; }
+.learn-from h2 { margin: 0; font-size: 18px; }
+.lf-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.lf-list li { display: grid; gap: 2px; padding: 10px 0; border-top: 1px solid var(--line); }
+.lf-list small { color: var(--muted); font-family: var(--font-mono); }
+.lf-meta { font-size: 13px; color: var(--muted); }
+.lf-meta b { color: var(--ink); }
+.lf-link { font-size: 13px; }

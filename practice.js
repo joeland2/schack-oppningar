@@ -2,9 +2,9 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261029132850';
-import { findMistakes, pickPuzzles } from './mistakes.js?v=20261029132850';
-import { current, cache, myName, skillsOf, storedGames } from './profile.js?v=20261029132850';
+import { login } from './lichess.js?v=20261029133422';
+import { findMistakes, pickPuzzles } from './mistakes.js?v=20261029133422';
+import { current, cache, myName, skillsOf, storedGames } from './profile.js?v=20261029133422';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -57,6 +57,8 @@ function render(name, p) {
     steps.push(['<span id="pr-openings">Openings that cost you points</span>', `<ul class="pr-list">${ops.map((o) => `<li><a href="${practise(o.side, o.fam)}"><b>${esc(o.fam)}</b> as ${o.side === 'w' ? 'White' : 'Black'}</a><small>${pct(o.win ?? o.score)} wins in ${o.n} games</small></li>`).join('')}</ul>`,
       '<small class="info">Each opens that opening\'s lines in the trainer.</small>']);
   }
+  steps.push(['A player to learn from', '<p>Someone rated a bit above you who plays your main opening and avoids the moves that cost you: see what they play where you go wrong.</p>',
+    '<a class="cta" href="./?do=learnfrom">Find one</a>']);
   steps.push(['Traps in your openings', '<p>The traps players at your level fall into in the openings you play, one after another: spot the slip and punish it.</p>',
     '<a class="cta" href="./?do=traps">Practise the traps</a>']);
   const best = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))]
