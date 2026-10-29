@@ -1696,3 +1696,6 @@ p, li, dd, small { text-wrap: pretty; }
 /* Players' names on the game page lead to their profiles */
 .gm-who { color: inherit; text-decoration: none; }
 .gm-who:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pf-news-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.pf-news-head h2 { margin-right: auto; }
+.pf-news-head .pf-fetch { padding: 6px 12px; font-size: 13px; }

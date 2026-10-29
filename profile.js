@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029162013';
-import { STYLE_OF } from './styles.js?v=20261029162013';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029162131';
+import { STYLE_OF } from './styles.js?v=20261029162131';
 
 const MAX = 500;
 const PV = 33;
@@ -1033,7 +1033,9 @@ function leadStory(name, p, skills, me) {
   const change = recent.length ? after(recent[0]) - (before ? after(before) : recent.at(-1).players[sideOf(recent.at(-1))].rating) : null;
   const last = (mine.length ? mine : games).slice(0, 10), form = last.map(res), wins = form.filter((x) => x === 'W').length, latest = last[0];
   return `<section class="pf-lead solo">
-    <div class="pf-news"><h2>Latest</h2>
+    <div class="pf-news"><div class="pf-news-head"><h2>Latest</h2>
+      <button type="button" class="ghost pf-fetch" data-fetch title="Fetch the games played on Lichess since this profile was read"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg> New games</button>
+      ${shown?.[1] ? `<small class="pf-fetched" id="pf-fetched">Updated ${ago(shown[1])}</small>` : ''}</div>
       ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${last.map((g, i) => `<a class="pf-res r-${form[i]}" href="game.html?u=${encodeURIComponent(name)}&id=${g.id}" title="${{ W: 'Won', L: 'Lost', D: 'Drew' }[form[i]]} against ${esc(g.players[sideOf(g) === 'white' ? 'black' : 'white'].user?.id || 'anonymous')}, ${day(g.createdAt)}: open the game">${form[i]}</a>`).join('')}</p>
         <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}${main ? ` ${main}` : ''} games, newest first · last played ${day(latest.createdAt)}${change !== null ? ` · <b class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</b> this week in ${recent.length} game${recent.length === 1 ? '' : 's'}` : ''}</p>` : ''}
       ${last.length ? `<dl class="pf-facts">${recentFacts(last.map((g) => readGame(g, name.toLowerCase())), p).map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''}
@@ -1274,8 +1276,6 @@ const compareLink = (a, b) => `profile.html?u=${encodeURIComponent(a)}&vs=${enco
 function playerBar(name, at) {
   const me = isMe(name), mine = myName(), list = favs().filter((x) => x.toLowerCase() !== name.toLowerCase());
   return `<div class="pf-players">
-    <button type="button" class="ghost pf-fetch" data-fetch title="Fetch the games played on Lichess since this profile was read"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg> New games</button>
-    ${at ? `<small class="pf-fetched" id="pf-fetched">Updated ${ago(at)}</small>` : ''}
     ${me ? '' : `<button type="button" class="ghost pf-star" data-fav aria-pressed="${isFav(name)}">${isFav(name) ? `<svg class="ico ico-solid" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg> Starred` : `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg> Star player`}</button>`}
     ${!me && mine ? `<a class="ghost" href="${compareLink(mine, name)}">Compare with me</a>` : ''}
     ${me ? '' : `<a class="link-out" href="https://lichess.org/@/${encodeURIComponent(name)}" target="_blank" rel="noopener">${esc(name)} on Lichess</a>`}
@@ -1284,7 +1284,9 @@ function playerBar(name, at) {
 }
 function bindPlayerBar(name) {
   // New games: only the games played since the last read are fetched, then the whole profile is read again.
-  $('[data-fetch]')?.addEventListener('click', async (e) => {
+  const fetchBtn = $('[data-fetch]:not([data-bound])'); // wired once (the player bar is redrawn when a player is starred)
+  fetchBtn?.setAttribute('data-bound', '1');
+  fetchBtn?.addEventListener('click', async (e) => {
     const b = e.currentTarget, top = (storedGames(name) || [])[0]?.id, mine = runs;
     b.disabled = true; b.lastChild.textContent = ' Fetching…';
     try {
