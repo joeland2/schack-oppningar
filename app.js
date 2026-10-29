@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029123006';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029123006';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029123006';
-import { GUIDE } from './guide.js?v=20261029123006';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029123006';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029123006';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029123006';
-import { storedGames } from './profile.js?v=20261029123006';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029123308';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029123308';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029123308';
+import { GUIDE } from './guide.js?v=20261029123308';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029123308';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029123308';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029123308';
+import { storedGames } from './profile.js?v=20261029123308';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -941,6 +941,34 @@ function guideOf(op) {
     <p class="op-guide-k">Main variations</p><ul>${gd.lines.map(([n, t]) => `<li><b>${n}:</b> ${t}</li>`).join('')}</ul>
     <p><b>Watch out:</b> ${gd.watch}</p></details>` : '';
 }
+// The opening book for the position on the board: Wikibooks' Chess Opening Theory (CC BY-SA 4.0), the
+// same text Lichess shows on its opening pages. Fetched once per position, then kept for this visit.
+const WIKI = new Map(); // moves key → { html, url } | null (no page) | 'loading'
+function wikiTitle(moves) {
+  return 'Chess_Opening_Theory/' + moves.map((san, i) => (i % 2 ? `${Math.floor(i / 2) + 1}...${san}` : `${i / 2 + 1}._${san}`)).join('/');
+}
+function wikiFor(moves) {
+  const key = moves.join(' ');
+  if (WIKI.has(key)) return WIKI.get(key) === 'loading' ? null : WIKI.get(key);
+  WIKI.set(key, 'loading');
+  const title = wikiTitle(moves);
+  fetch(`https://en.wikibooks.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&origin=*&titles=${encodeURIComponent(title)}`)
+    .then((r) => r.json()).then((d) => {
+      const page = Object.values(d.query?.pages || {})[0];
+      const text = page?.extract;
+      if (!text || page.missing !== undefined) return WIKI.set(key, null);
+      // The position's own section: from its heading to the next top-level one (theory table, references).
+      const body = text.split(/\n== (?!=)/)[1]?.replace(/^[^\n]*==\n/, '') ?? text;
+      const esc = (t) => t.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`);
+      const html = body.split(/\n+/).map((x) => x.trim()).filter(Boolean).map((x) => {
+        const h = x.match(/^=+\s*(.*?)\s*=+$/);
+        return h ? `<p class="wiki-h">${esc(h[1])}</p>` : `<p>${esc(x.replace(/\[\d+\]/g, ''))}</p>`;
+      }).join('');
+      WIKI.set(key, { html, url: `https://en.wikibooks.org/wiki/${title}` });
+    }).catch(() => WIKI.set(key, null))
+    .finally(() => { if (cur && game.history().join(' ') === key) renderWhy(); });
+  return null;
+}
 function renderWhy() {
   const el = $('#why');
   if (!cur || !line.length || mode === 'explore' || mode === 'time') { $('#line-done').hidden = true; return (el.innerHTML = ''); } // Explore explains in the message
@@ -971,6 +999,8 @@ function renderWhy() {
     if (!yours && betters[n] && ['inaccuracy', 'mistake', 'blunder'].includes(k)) parts.push(`<p class="verdict k-${k}"><b>That was ${NOTE_WORD[k]}.</b> ${slipWhy(n, false)}</p>`);
     const t = lines[lineIdx]?.trap;
     if (t && n === t.ply && mode !== 'explore') { const w = t.kind === 'mistake' ? mistakeWhy(t) : null; parts.push(`<p class="trap-now"><b>That is the mistake: ${trapMove(t)}</b> ${w ? `${w.why} ` : ''}You score ${pct(1 - t.score)} after it at your level. ${mode === 'learn' ? punishText(t) : 'Find the move that punishes it.'}${w ? ` ${w.how}` : ''}</p>`); }
+    const w = (mode === 'learn' || mode === 'explore') && view === null ? wikiFor(hist) : null;
+    if (w?.html) parts.push(`<details class="wiki" open><summary>From the opening book</summary>${w.html}<p class="wiki-src">From <a href="${w.url}" target="_blank" rel="noopener">Wikibooks, Chess Opening Theory</a>, CC BY-SA 4.0</p></details>`);
     const reps = !yours && repliesText(before, san);
     if (reps) parts.push(`<details class="reps-box"><summary>What players at your level answer here</summary>${reps}</details>`);
   }

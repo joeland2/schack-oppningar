@@ -1402,3 +1402,11 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .op-odds-r input { flex: 1; accent-color: var(--data); }
 #op-about .op-lines { margin: 0 0 10px; padding-left: 1.1em; display: grid; gap: 4px; line-height: 1.5; font-size: 15px; }
 #op-about .op-guide-k { margin: 6px 0 2px; font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+/* The opening book (Wikibooks) for the position on the board */
+.why .wiki { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.why .wiki summary { cursor: pointer; font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.why .wiki p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.5; }
+.why .wiki .wiki-h { font-weight: 700; margin-top: 10px; }
+.why .wiki .wiki-src { font-size: 11.5px; color: var(--muted); }
+.why .wiki .wiki-src a { color: var(--muted); }
