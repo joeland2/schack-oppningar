@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029144415';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029144415';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029144415';
-import { GUIDE } from './guide.js?v=20261029144415';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029144415';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029144415';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029144415';
-import { storedGames } from './profile.js?v=20261029144415';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029144525';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029144525';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029144525';
+import { GUIDE } from './guide.js?v=20261029144525';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029144525';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029144525';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029144525';
+import { storedGames } from './profile.js?v=20261029144525';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -461,7 +461,11 @@ function renderList() {
     const pinned = mineList.filter((o) => o.side === listSide);
     const ops = [...pinned, ...list.filter((o) => o.side === listSide && !repertoire.has(o.id))];
     const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for White at your level. Try another style.</p>`;
-    body = `<p class="og-about">${about[listSide](ops.length)}</p>${ops.length ? '' : empty}
+    // Start here: the most played opening of this side that you have not learned a line of yet.
+    const fresh = [...ops].sort((a, b) => b.share - a.share).find((o) => !(stats[statKey(o.id)]?.played?.length)) || null;
+    const start = fresh ? `<div class="start-here"><p><b>Start here:</b> ${isVs(fresh) ? 'vs ' : ''}${fresh.name}, ${popularity(fresh).replace(/^The/, 'the')} at your level, and new to you.</p>
+      <button type="button" class="cta" data-start="${fresh.id}">Learn it</button></div>` : '';
+    body = `${start}<p class="og-about">${about[listSide](ops.length)}</p>${ops.length ? '' : empty}
       <div class="olist">${ops.map(card).join('')}</div>`;
   }
   // The side tabs sit beside the search box, outside the list, so typing a search keeps its focus.
@@ -470,6 +474,7 @@ function renderList() {
     </div>`;
   listEl.innerHTML = `${q ? '<h2 class="og-h">Search results</h2>' : ''}${body}`;
   seen.disconnect();
+  listEl.querySelector('[data-start]')?.addEventListener('click', (e) => start(OPENINGS.find((o) => o.id === e.currentTarget.dataset.start)));
   listEl.querySelectorAll('.ocard').forEach((c) => {
     const op = OPENINGS.find((o) => o.id === c.dataset.id);
     const go = (e) => { if (!e?.target.closest?.('.star')) start(op); };
@@ -501,7 +506,6 @@ listEl.addEventListener('click', (e) => {
   }
 
 });
-PHONE.addEventListener('change', (e) => { if (!e.matches) $('#filters').open = true; }); // desktop always shows the filters
 
 // ---------- Animated previews ----------
 const REDUCE_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -3077,4 +3081,3 @@ async function ratingsFromLichess() {
   } catch {}
 }
 finishLogin().then((user) => { if (user) { renderLogin(); return useLichess(user.username); } return ratingsFromLichess(); }).catch((err) => alert(err.message));
-if (PHONE.matches) $('#filters').open = false;

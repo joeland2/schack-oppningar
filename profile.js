@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029144415';
-import { STYLE_OF } from './styles.js?v=20261029144415';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029144525';
+import { STYLE_OF } from './styles.js?v=20261029144525';
 
 const MAX = 500;
 const PV = 32;

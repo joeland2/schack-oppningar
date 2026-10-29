@@ -410,16 +410,16 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 }
 
 /* Phones: a compact picker and board view. Desktop is unchanged. */
-.filters > summary { display: none; }
+/* The filters fold into one summary line everywhere: what is picked shows, the choices open on a click */
+.filters { margin-top: 14px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.filters > summary { display: flex; justify-content: space-between; gap: 12px; cursor: pointer; font-weight: 700; list-style: none; }
+.filters > summary::-webkit-details-marker { display: none; }
+.filters > summary span { color: var(--muted); font-weight: 500; }
+.filters[open] .choices { margin: 12px 0 4px; }
 @media (max-width: 560px) {
   .top-in { padding-block: 10px; }
   .picker { display: flex; flex-direction: column; }
   .picker > .mine { order: 10; }
-  .filters { margin-top: 14px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
-  .filters > summary { display: flex; justify-content: space-between; gap: 12px; cursor: pointer; font-weight: 700; list-style: none; }
-  .filters > summary::-webkit-details-marker { display: none; }
-  .filters > summary span { color: var(--muted); font-weight: 500; }
-  .filters .choices { margin: 12px 0 4px; }
   .filters .seg:has([data-style]) { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
   .ocard { grid-template-columns: 84px minmax(0, 1fr); gap: 12px; padding: 12px; }
   .ocard .board.mini { width: 84px; }
@@ -1586,3 +1586,10 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .move-type:focus-within { position: static; width: auto; height: auto; overflow: visible; clip-path: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .move-type label { font-size: 13px; color: var(--muted); }
 .move-type input { width: 12em; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: 15px var(--font-mono); }
+
+/* Start here: one suggestion above the list, the most played opening you have not learned yet */
+.start-here { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin: 4px 0 14px; padding: 14px 16px; border: 1px solid var(--hot); border-radius: var(--radius); background: color-mix(in srgb, var(--hot) 7%, transparent); }
+.start-here p { margin: 0; flex: 1 1 22em; }
+.start-here b { font-weight: 700; }
+/* The move symbols matter only where moves are judged: the trainer */
+body:has(#trainer[hidden]) .legend-mini { display: none; }
