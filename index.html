@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261029130117">
-  <script src="header.js?v=20261029130117" defer></script>
-  <script src="theme.js?v=20261029130117"></script>
+  <link rel="stylesheet" href="style.css?v=20261029130400">
+  <script src="header.js?v=20261029130400" defer></script>
+  <script src="theme.js?v=20261029130400"></script>
 </head>
 <body>
   <header class="top">
@@ -186,32 +186,18 @@
     </aside>
   </main>
 
-  <section class="wrap backup" aria-label="Your progress">
-    <h2>Your progress</h2>
-    <p class="info">Progress is saved in this browser only. Save it to a file to keep it safe or move it to another device, and load it there.</p>
-    <p class="info">The site counts visits and what is used (pages, profiles looked up, openings practised) to see how it is used, with a random id for this browser, your country, your IP address with its last part removed (so it points to no one) and, when you are logged in, your Lichess name. Nothing else about you is stored.</p>
-    <div class="backup-row">
-      <button type="button" class="ghost" id="export">Save progress to a file</button>
-      <label class="ghost file-btn">Load progress from a file<input type="file" id="import" accept="application/json,.json" hidden></label>
-      <span id="backup-msg" class="info" aria-live="polite"></span>
+  <footer class="wrap foot-mini">
+    <ul class="legend-mini" aria-label="Move symbols"><li title="A move of the line you are learning"><span class="mark k-book legend-badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c3-1.5 5.5-1.5 8 0 2.5-1.5 5-1.5 8 0v12c-3-1.5-5.5-1.5-8 0-2.5-1.5-5-1.5-8 0zM12 6v12"/></svg></span>Book</li><li title="The best move, and it gives up a piece to get there"><span class="mark k-brilliant legend-badge">!!</span>Brilliant</li><li title="Stockfish's top choice"><span class="mark k-best legend-badge">★</span>Best</li><li title="Loses almost nothing"><span class="mark k-good legend-badge">✓</span>Good</li><li title="Gives away 5–10% of your winning chances"><span class="mark k-inaccuracy legend-badge">?!</span>Inaccuracy</li><li title="Gives away 10–15%"><span class="mark k-mistake legend-badge">?</span>Mistake</li><li title="Gives away 15% or more"><span class="mark k-blunder legend-badge">??</span>Blunder</li></ul>
+    <div class="foot-row">
+      <span>Progress is saved in this browser.</span>
+      <button type="button" class="link" id="export">Save to a file</button>
+      <label class="link file-btn">Load from a file<input type="file" id="import" accept="application/json,.json" hidden></label>
+      <span id="backup-msg" aria-live="polite"></span>
+      <details class="privacy"><summary>Privacy</summary><p>The site counts visits and what is used (pages, profiles looked up, openings practised) to see how it is used, with a random id for this browser, your country, your IP address with its last part removed (so it points to no one) and, when you are logged in, your Lichess name. Nothing else about you is stored.</p></details>
     </div>
-  </section>
-  <section class="wrap legend" aria-label="Move symbols">
-    <h2>Move symbols</h2>
-    <ul>
-      <li><span class="mark k-book legend-badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c3-1.5 5.5-1.5 8 0 2.5-1.5 5-1.5 8 0v12c-3-1.5-5.5-1.5-8 0-2.5-1.5-5-1.5-8 0zM12 6v12"/></svg></span><b>Book</b> a move of the line you are learning</li>
-      <li><span class="mark k-brilliant legend-badge">!!</span><b>Brilliant</b> the best move, and it gives up a piece to get there</li>
-      <li><span class="mark k-best legend-badge">★</span><b>Best</b> Stockfish's top choice</li>
-      <li><span class="mark k-good legend-badge">✓</span><b>Good</b> loses almost nothing</li>
-      <li><span class="mark k-inaccuracy legend-badge">?!</span><b>Inaccuracy</b> gives away a little (5–10% of your winning chances)</li>
-      <li><span class="mark k-mistake legend-badge">?</span><b>Mistake</b> gives away a lot (10–15%)</li>
-      <li><span class="mark k-blunder legend-badge">??</span><b>Blunder</b> gives away the game (15% or more)</li>
-    </ul>
-    <p class="info">Book marks the line's own moves. The others come from Stockfish, in Explore and when you play on after a line, using the same thresholds as Lichess.</p>
-  </section>
-  <footer class="wrap foot">Click a piece, then the square to move it to. Your opponent plays the replies real Lichess players from 300 below to 500 above your rating choose in your time control, most common first. Style tags are our own judgement; popularity comes from real games. Learn shows every move; Practice tests you, and cleared lines come back for review.</footer>
+  </footer>
 
-  <script type="module" src="app.js?v=20261029130117"></script>
+  <script type="module" src="app.js?v=20261029130400"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>

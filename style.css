@@ -1444,3 +1444,14 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .op-more #op-info { margin-bottom: 12px; }
 #trainer .controls button:not(.primary) { background: none; border-color: transparent; color: var(--muted); }
 #trainer .controls button:not(.primary):hover:not(:disabled) { color: var(--ink); border-color: var(--line); }
+
+/* The page foot: move symbols in one small row, progress and privacy in one line */
+.foot-mini { display: grid; gap: 8px; padding-block: 20px 28px; font-size: 12px; color: var(--muted); }
+.legend-mini { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.legend-mini li { display: flex; align-items: center; gap: 5px; cursor: help; }
+.legend-mini .legend-badge { position: static; flex: none; width: 16px; height: 16px; font-size: 8px; animation: none; }
+.foot-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.foot-row .link { font-size: 12px; color: var(--muted); }
+.foot-row label.link { font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.foot-row .privacy summary { cursor: pointer; }
+.foot-row .privacy p { margin: 6px 0 0; max-width: 70ch; }
