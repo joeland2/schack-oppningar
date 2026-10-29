@@ -22,13 +22,16 @@ Deno.serve(async (req) => {
 
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const since = new Date(Date.now() - DAYS * 864e5).toISOString();
-  const rows: { at: string; kind: string; page: string | null; target: string | null; visitor: string; user_name: string | null }[] = [];
+  let rows: { at: string; kind: string; page: string | null; target: string | null; visitor: string; user_name: string | null }[] = [];
   for (let from = 0; ; from += 1000) { // shortcut: reads every event of the last 30 days; move the counting into SQL past ~100k events
     const { data, error } = await db.from('events').select('at, kind, page, target, visitor, user_name').gte('at', since).order('at').range(from, from + 999);
     if (error) return json({ error: error.message }, 500);
     rows.push(...data);
     if (data.length < 1000) break;
   }
+  // The admin's own visits stay out: every browser that was ever logged in as the admin, and the setup test.
+  const own = new Set(rows.filter((r) => r.user_name?.toLowerCase() === ADMIN).map((r) => r.visitor).concat('claude-setup-test'));
+  rows = rows.filter((r) => !own.has(r.visitor));
 
   const count = (xs: (string | null)[]) => Object.entries(xs.reduce((m, x) => (x ? { ...m, [x]: (m[x] || 0) + 1 } : m), {} as Record<string, number>))
     .sort((a, b) => b[1] - a[1]).slice(0, 15).map(([name, n]) => ({ name, n }));

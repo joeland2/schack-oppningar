@@ -1,6 +1,6 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029093049';
+import { account, login, finishLogin } from './lichess.js?v=20261029094300';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -25,7 +25,7 @@ const rows = (list, label = (x) => esc(x.name)) => (list.length
 function render(s) {
   const link = (x) => `<a href="profile.html?u=${encodeURIComponent(x.name)}">${esc(x.name)}</a>`;
   $('#admin').innerHTML = `
-    <header class="pr-head"><h1 class="pf-h1">Admin</h1><p class="info">How Chess Trainer is used, the last ${s.days} days. Visits from this computer's own test server are not counted.</p></header>
+    <header class="pr-head"><h1 class="pf-h1">Admin</h1><p class="info">How Chess Trainer is used, the last ${s.days} days. Your own visits are not counted: not while you are logged in, and never from a browser that has opened this page.</p></header>
     <dl class="pf-kpis">
       <div><dt>Visitors</dt><dd>${s.totals.visitors}</dd></div>
       <div><dt>Today</dt><dd>${s.totals.today}</dd></div>
@@ -62,6 +62,7 @@ async function start() {
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || `The stats service answered ${res.status}.`);
     $('#profile-msg').textContent = '';
+    try { localStorage.setItem('chess-trainer-no-track', '1'); } catch {} // this browser is the admin's: its visits stay out of the numbers
     render(body);
   } catch (err) {
     $('#profile-msg').innerHTML = `${esc(err.message)} <button type="button" class="link" data-retry>Try again</button>`;

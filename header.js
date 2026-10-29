@@ -8,8 +8,11 @@
   try { visitor = localStorage.getItem('chess-trainer-visitor') || crypto.randomUUID(); localStorage.setItem('chess-trainer-visitor', visitor); } catch {}
   const user = () => { try { return JSON.parse(localStorage.getItem('chess-trainer-lichess-login'))?.name || null; } catch { return null; } };
   const page = location.pathname.split('/').pop() || 'index.html';
+  // The admin's own visits are not counted: on any device where they are logged in, or where they have
+  // opened the admin page once (it marks the browser, so it stays out even when logged out).
+  const own = () => { try { return user()?.toLowerCase() === 'joelandersson' || localStorage.getItem('chess-trainer-no-track') === '1'; } catch { return false; } };
   window.track = (kind, target = null) => {
-    if (local) return;
+    if (local || own()) return;
     fetch(API, { method: 'POST', keepalive: true, headers: { apikey: KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({ kind, page, target: target && String(target).slice(0, 80), visitor, user_name: user() }) }).catch(() => {});
   };
