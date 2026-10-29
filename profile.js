@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029135951';
-import { STYLE_OF } from './styles.js?v=20261029135951';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029140431';
+import { STYLE_OF } from './styles.js?v=20261029140431';
 
 const MAX = 500;
-const PV = 28;
+const PV = 29;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -186,13 +186,13 @@ export function profileOf(games) {
 const TYPE_ABOUT = {
   Attacker: 'Goes after the king early, wants open lines and the initiative, and takes some risk for it. Dangerous when the attack lands, shaky when it does not.',
   'Solid builder': 'Builds a safe position first and strikes when the moment is right. Hard to beat quickly, but can let wins slip by being too careful.',
-  'Endgame player': 'Happy to trade pieces and win slowly with technique. Trusts long-term edges more than tactics.',
+  'Endgame artist': 'Happy to trade pieces and win slowly with technique. Trusts long-term edges more than tactics.',
   Fighter: 'Plays every game for a result and rarely settles for a draw. Wins and losses both come quickly.',
-  'Comeback player': 'Keeps finding chances in bad positions and turns lost games around. Stubborn defence is a real strength.',
+  Houdini: 'Keeps finding chances in bad positions and turns lost games around. Stubborn defence is a real strength.',
   'Time scrambler': 'Spends a lot of time early and plays the end on the clock. Strong in scrambles, but some games are lost on time.',
   'All-rounder': 'No style stands out: plays a bit of everything and adapts to the position.',
-  Finisher: 'Gets attacks going and finishes them: quick wins, clear advantages, and few slips once ahead.',
-  Defender: 'Hard to break down: solid openings, holds against attacks, saves bad positions and rarely lets the opponent get ahead.',
+  'Killer instinct': 'Gets attacks going and finishes them: quick wins, clear advantages, and few slips once ahead.',
+  Guardian: 'Hard to break down: solid openings, holds against attacks, saves bad positions and rarely lets the opponent get ahead.',
   'Fast starter': 'Comes out of the opening better than players at the same level: knows the lines and the plans behind them.',
   Grinder: 'Scores more in endgames than players at the same level: the long games are theirs.',
   'Sure hand': 'Blunders less than players at the same level: rarely throws a piece or a game away.',
@@ -272,21 +272,21 @@ const odds = (x) => (x == null ? 1 : Math.min(9, Math.max(1 / 9, x / (1 - x))));
 const usualDraws = (rating) => 0.02 + (rating || 1500) / 40000;
 // Games get longer with the level: about 36 moves at 1200 and 44 at 2800.
 const usualMoves = (rating) => Math.round(30 + (rating || 1500) / 200);
-const STRENGTH = { Attack: 'Finisher', 'Early game': 'Fast starter', 'Late game': 'Grinder', Accuracy: 'Sure hand', Speed: 'Speed demon' };
+const STRENGTH = { Attack: 'Killer instinct', 'Early game': 'Fast starter', 'Late game': 'Grinder', Accuracy: 'Sure hand', Speed: 'Speed demon' };
 // A strength on the same theme as the style says the same thing twice; then the next best skill is named.
-const SAME = { 'Endgame player': 'Late game', 'Comeback player': 'Defense', 'Time scrambler': 'Speed', Trickster: 'Attack', Defender: 'Defense', Marathoner: 'Late game' };
+const SAME = { 'Endgame artist': 'Late game', Houdini: 'Defense', 'Time scrambler': 'Speed', Trickster: 'Attack', Guardian: 'Defense', Marathoner: 'Late game' };
 // Every style with its weight (1 = clearly holds), most first, and every strength with its value (62 = clearly holds).
 function traitsOf(p) {
   const q = p.peer || {}, rating = p.speeds?.[0]?.rating, raw = rawSkills(p), def = raw.find((x) => x.label === 'Defense');
   const styles = [
     { name: 'Attacker', w: p.attacking / 0.4, why: `${pct(p.attacking)} of your games are in attacking openings or gambits: you like the initiative early.` },
     { name: 'Solid builder', w: (p.solid / 0.55) * (p.attacking < 0.25 ? 1 : 0.6), why: `${pct(p.solid)} of your games are in solid or positional openings: you build first and attack later.` },
-    { name: 'Endgame player', w: p.queensOff / 0.4, why: `The queens come off before move 25 in ${pct(p.queensOff)} of your games: you are happy to trade and play it out.` },
+    { name: 'Endgame artist', w: p.queensOff / 0.4, why: `The queens come off before move 25 in ${pct(p.queensOff)} of your games: you are happy to trade and play it out.` },
     { name: 'Fighter', w: (usualDraws(rating) / Math.max(p.draws, 0.005)) / 2 * Math.sqrt(35 / Math.max(p.moves, 15)),
       why: `Only ${pct(p.draws)} draws, where about ${pct(usualDraws(rating))} is usual at your level: your games are decided, one way or the other.` },
     // Saving lost games and ending short of time are common in fast games for everyone, so these two
     // count only when the player does it clearly more than their own opponents at their level.
-    { name: 'Comeback player', w: q.downs >= 5 && q.ups >= 5 && q.saved != null ? (q.saved / Math.max(q.oppSaved, 0.1)) / Math.sqrt(odds(q.score)) / 2.8 : 0, // about twice your opponents' rate is normal (checked on eight players), so the trait starts near three times
+    { name: 'Houdini', w: q.downs >= 5 && q.ups >= 5 && q.saved != null ? (q.saved / Math.max(q.oppSaved, 0.1)) / Math.sqrt(odds(q.score)) / 2.8 : 0, // about twice your opponents' rate is normal (checked on eight players), so the trait starts near three times
       why: `In ${pct(q.saved ?? 0)} of the games where you were clearly losing, you still won or drew; your opponents at your level, clearly losing against you, only ${pct(q.oppSaved ?? 0)}.` },
     { name: 'Time scrambler', w: Math.min(p.lowTime / 0.3, q.n >= 30 && q.myLow != null ? q.myLow / Math.max(q.oppLow, 0.05) / 1.4 : 0),
       why: `You end ${pct(p.lowTime)} of your games with under a tenth of your time left${q.oppLow != null ? `; your opponents at your level ${pct(q.oppLow)}` : ''}.` },
@@ -298,7 +298,7 @@ function traitsOf(p) {
     { name: 'Marathoner', w: (p.moves / usualMoves(rating)) / 1.2, why: `Your games last ${p.moves} moves on average, where about ${usualMoves(rating)} is usual at your level.` },
     // The counterpart of Attacker: a player whose Defense (solid openings, holding against attacks, saving
     // bad positions, rarely letting opponents get ahead) is clearly above their own opponents'.
-    { name: 'Defender', w: def.v !== null ? (def.v - 50) / 9 : 0, why: `You defend clearly better than your opponents at your level. ${def.why}` },
+    { name: 'Guardian', w: def.v !== null ? (def.v - 50) / 9 : 0, why: `You defend clearly better than your opponents at your level. ${def.why}` },
     { name: 'Peacemaker', w: (p.draws / usualDraws(rating)) / 1.8, why: `${pct(p.draws)} of your games are draws, where about ${pct(usualDraws(rating))} is usual at your level.` },
   ].sort((x, y) => y.w - x.w);
   // Giant killer needs a clear surplus: upsets are common in fast games. Speed counts winning on time half,
@@ -315,7 +315,7 @@ function typeOf(p) {
   const { styles, strengths } = traitsOf(p);
   const style = styles[0].w >= 0.8 ? styles[0] : { name: 'All-rounder', why: 'No style stands out: you play a bit of everything.' };
   // The strength: the one furthest above the player's own opponents (64 or more where 50 is even).
-  // Defense has no strength of its own: being best at it is the Defender style.
+  // Defense has no strength of its own: being best at it is the Guardian style.
   const best = strengths.filter((x) => x.label !== 'Defense' && x.v !== null && x.v >= 64 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v)[0];
   const second = best ? { name: STRENGTH[best.label] || best.label, why: STRENGTH[best.label] ? `${best.label} is where you beat your level most: ${best.why}` : best.why } : styles[1].w >= 0.8 && style === styles[0] ? styles[1] : null;
   return second ? [style, second] : [style];
