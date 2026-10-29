@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029121032';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029121032';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029121032';
-import { GUIDE } from './guide.js?v=20261029121032';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029121032';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029121032';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029121032';
-import { storedGames } from './profile.js?v=20261029121032';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029121943';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029121943';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029121943';
+import { GUIDE } from './guide.js?v=20261029121943';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029121943';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029121943';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029121943';
+import { storedGames } from './profile.js?v=20261029121943';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -826,6 +826,8 @@ function renderMoves() {
     html += `<li><span class="num">${i / 2 + 1}.</span>${cell(i)}${cell(i + 1)}</li>`;
   }
   movesEl.innerHTML = html;
+  const now = movesEl.querySelector('.mv.now'); // keep the move on the board in sight, inside the list only
+  if (now) movesEl.scrollTop = now.offsetTop - movesEl.offsetTop - movesEl.clientHeight / 2;
   if (mode === 'time') return; // the trial's clock owns the progress bar
   $('#progress').textContent = mode === 'explore' ? 'Exploring' : playing ? `Line done · playing it out${opponent ? ` · opponent: ${opponent}` : ''}` : line.length ? `${Math.min(ply, line.length)} of ${line.length} moves` : '';
   $('#bar').style.width = line.length ? `${Math.min(ply / line.length, 1) * 100}%` : '0';
@@ -1358,14 +1360,17 @@ const winPct = (cp) => 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
 function renderEval() {
   if (!cur) return;
   const el = $('#evalbar');
-  const fen = game.fen();
+  // Looking back, the bar follows the position on the board (a slip is shown before it is played).
+  let pos = game;
+  if (view !== null) { const n = betters[view - 1] ? view - 1 : view; pos = new Chess(); game.history().slice(0, n).forEach((m) => pos.move(m)); }
+  const fen = pos.fen();
   let r = EVALS.get(evalKey(fen));
-  if (game.isCheckmate()) r = { cp: 0, mate: 0 };
-  else if (game.isDraw()) r = { cp: 0, mate: null };
+  if (pos.isCheckmate()) r = { cp: 0, mate: 0 };
+  else if (pos.isDraw()) r = { cp: 0, mate: null };
   el.classList.toggle('stale', !r);
   el.classList.toggle('flip', cur.side === 'b');
   if (!r) { if (!$('#trainer').hidden) evaluate(fen); return; }
-  const white = (game.turn() === 'w' ? 1 : -1) * toCp(r);
+  const white = (pos.turn() === 'w' ? 1 : -1) * toCp(r);
   const share = r.mate !== null ? (white > 0 ? 100 : 0) : winPct(white);
   el.querySelector('.evalbar-white').style.height = `${share}%`;
   el.querySelector('.evalbar-num').textContent = r.mate !== null ? (r.mate === 0 ? '#' : `M${Math.abs(r.mate)}`) : (Math.min(Math.abs(white), 2000) / 100).toFixed(1);

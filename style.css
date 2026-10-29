@@ -1389,3 +1389,7 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .op-about .op-head .meta { margin: 0; }
 #op-about p { margin: 0 0 8px; line-height: 1.55; font-size: 15px; }
 #op-about .op-guide { margin-top: 4px; }
+
+/* Moves so far: at most about 15 rows, scrolling inside; the move on the board is marked */
+.moves-box .moves { max-height: calc(15 * 1.95rem); overflow-y: auto; overscroll-behavior: contain; }
+.moves button.mv.now { background: var(--data); color: #141414; font-weight: 700; }
