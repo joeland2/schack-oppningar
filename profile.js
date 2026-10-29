@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029205731';
-import { STYLE_OF } from './styles.js?v=20261029205731';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029210825';
+import { STYLE_OF } from './styles.js?v=20261029210825';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -775,7 +775,7 @@ function bindAnalyse(name) {
   if (!el) return;
   el.querySelectorAll('[data-analyse]').forEach((b) => b.addEventListener('click', async () => {
     const n = Number(b.dataset.analyse);
-    window.track?.('analyse', String(n));
+    window.track?.('analyse', `${name}: until ${n}`);
     analysing = { stop: false };
     el.outerHTML = analysePanel(name, {});
     $('#pf-analyse').querySelector('[data-stop]').addEventListener('click', () => { if (analysing) analysing.stop = true; });
@@ -939,7 +939,7 @@ function drawCard(ctx, x, y, name, p, t, skills, piece) {
 async function cardPng(name, p, t, skills, detail, btn) {
   const label = btn.textContent; btn.disabled = true; btn.textContent = 'Making the image…';
   CARD = CARDS[cardLook()];
-  window.track?.('card', detail ? 'card + style' : 'card');
+  window.track?.('card', `${name} · ${detail ? 'card + style' : 'card'} · ${cardLook()}`);
   try {
     await Promise.all(['400 40px Anton', '400 20px Geist', '600 20px Geist'].map((f) => document.fonts.load(f)));
     const piece = await new Promise((ok) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = `pieces/${CARD.piece}${(p.piece || 'n').toUpperCase()}.svg`; });

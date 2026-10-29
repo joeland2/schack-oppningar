@@ -1,6 +1,6 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029205731';
+import { account, login, finishLogin } from './lichess.js?v=20261029210825';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -10,7 +10,7 @@ const when = (iso) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', mo
 // A country code as a name: SE is Sweden; – for an unknown country.
 const NAMES = new Intl.DisplayNames(['en'], { type: 'region' });
 const land = (c) => { try { return c && c !== '–' ? `${NAMES.of(c)} (${c})` : 'Unknown'; } catch { return c || 'Unknown'; } };
-const KIND = { profile: 'Looked up a profile', compare: 'Comparisons', analyse: 'Analyses started', practise: 'Openings practised', card: 'Cards downloaded', login: 'Lichess logins' };
+const KIND = { profile: 'Looked up a profile', compare: 'Comparisons', analyse: 'Analysed', practise: 'Openings practised', card: 'Cards downloaded', login: 'Lichess logins' };
 
 // Visitors per day (each counted once that day) as a line, and unique visitors (their first visit
 // ever) as the shaded area under it, over the picked span; days without visits are zero. Moving the
@@ -98,6 +98,8 @@ function render(s) {
           <ol class="ad-events">${v.events.map((e) => `<li><span class="num">${when(e.at)}</span><span>${e.kind === 'view' ? `Opened ${esc(pageName(e.page))}` : `${esc(KIND[e.kind] || e.kind)}${e.target ? `: <b>${esc(e.target)}</b>` : ''}`}</span></li>`).join('')}</ol></details>`).join('')}</div>
       ${s.visitors.length > 10 ? `<button type="button" class="ghost ad-more" data-more aria-expanded="false">Show all ${s.visitors.length}</button>` : ''}`
       : '<p class="info">Nobody yet.</p>'}</section>
+    <section class="pf-card"><div class="ad-head"><h2>Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
+      ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${s.recentActions.slice(0, 15).map((r) => `<li><span><b>${esc(KIND[r.kind] || r.kind)}</b> · ${esc(r.target || '')}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${esc(r.device || '')} · ${when(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
     <section class="pf-card"><div class="ad-head"><h2>Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
       ${(s.recentProfiles || []).length ? `<ul class="pf-rows ad-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: r.target })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${esc(r.device || '')} · ${when(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
     <div class="pf-two">

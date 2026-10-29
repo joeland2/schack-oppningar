@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261029205731';
-import { account } from './lichess.js?v=20261029205731';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029205731';
+import { drawBoard } from './board.js?v=20261029210825';
+import { account } from './lichess.js?v=20261029210825';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029210825';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -248,6 +248,7 @@ async function impact() {
 function go(n) { focus = null; idx = Math.max(0, Math.min(moves.length, n)); drawPosition(); }
 
 async function analyse() {
+  window.track?.('analyse', `${name}: game ${g.id}`); // a profile's run says until N instead
   const btn = $('[data-analyse]');
   btn.disabled = true;
   const c = new Chess(), cps = [], best = [];
