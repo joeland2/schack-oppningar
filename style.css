@@ -746,7 +746,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
    analyse + skills, the players bar + hero, the small print + what next) */
 #profile { --flow: 40px; --tight: 12px; display: grid; gap: var(--flow); }
 @media (max-width: 560px) { #profile { --flow: 28px; --tight: 10px; } }
-#profile > .pf-chart + .pf-kpis, #profile > .pf-skills-card + .pf-analyse, #profile > .pf-players + .pf-hero, #profile > .pf-about-data + .pf-next { margin-top: calc(var(--tight) - var(--flow)); }
+#profile > .pf-chart + .pf-kpis, #profile > .pf-skills-card + .pf-analyse, #profile > .pf-players + .pf-hero, #profile > .pf-name-row + .pf-hero, #profile > .pf-about-data + .pf-next { margin-top: calc(var(--tight) - var(--flow)); }
 #profile-msg:empty { display: none; }
 .pf-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px 24px; flex-wrap: wrap; }
 .pf-bar .info { max-width: 60ch; font-size: 14px; }
@@ -868,7 +868,7 @@ h1, .picker h1 { font-family: var(--font-poster); font-weight: 400; text-transfo
 .seg { border-radius: var(--radius); }
 .seg button { border-radius: 2px; }
 .ghost, .controls button { color: var(--ink); }
-main a:not(.cta):not(.hero-p):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op):not(.lbd-name):not(.pf-star-strip):not(.gm-who), button.link { color: var(--hot); }
+main a:not(.cta):not(.pf-act):not(.hero-p):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op):not(.lbd-name):not(.pf-star-strip):not(.gm-who), button.link { color: var(--hot); }
 .cta { border-radius: var(--radius); }
 a.cta { color: var(--accent-ink); }
 @media (max-width: 560px) { /* five sections on a phone: one row that scrolls sideways if it must */
@@ -1827,7 +1827,16 @@ p, li, dd, small { text-wrap: pretty; }
 
 /* Profile: the player's name heads the page, the actions in a row under it */
 .pf-name { margin: 0 0 10px; font: 400 clamp(3rem, 9vw, 5.6rem)/.92 var(--font-poster); text-transform: uppercase; letter-spacing: .01em; overflow-wrap: anywhere; }
-#profile > .pf-name + .pf-players { margin-top: 0; }
+#profile > .pf-name-row + .pf-players { margin-top: 0; }
+#profile > .pf-players:empty { display: none; }
+/* Star, compare and Lichess as small icons in the profile's top-right corner */
+.pf-name-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pf-name-row .pf-name { margin: 0; }
+.pf-acts { display: flex; gap: 6px; flex: none; }
+.pf-act { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: var(--radius); color: var(--muted); text-decoration: none; }
+.pf-act:hover, .pf-act:focus-visible { color: var(--ink); }
+.pf-act[aria-pressed="true"] { color: var(--hot); border-color: var(--hot); }
+.pf-act .ico { width: 18px; height: 18px; }
 /* The name is the headline; the style under it a step smaller */
 .pf-hero .pf-h1 { font-size: clamp(2.2rem, 4.6vw, 3.6rem); }
 /* Phones: every control in the profile at least 44px tall, for a thumb */
@@ -1844,5 +1853,8 @@ p, li, dd, small { text-wrap: pretty; }
 @media (max-width: 640px) {
   #profile > .pf-players { order: 1; }
   .pf-name { text-align: center; }
+  .pf-name-row { flex-direction: column-reverse; align-items: stretch; gap: 0; }
+  .pf-acts { justify-content: flex-end; margin-bottom: -6px; }
+  .pf-act { width: 44px; height: 44px; }
   #profile > .pf-hero ~ :not(.pf-players) { order: 2; }
 }

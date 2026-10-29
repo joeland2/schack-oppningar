@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029183851';
-import { STYLE_OF } from './styles.js?v=20261029183851';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029184456';
+import { STYLE_OF } from './styles.js?v=20261029184456';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1027,7 +1027,7 @@ function render(name, at, full) {
   document.title = me ? 'Your Profile' : `${name} · Profile`;
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
-    <h1 class="pf-name">${esc(name)}</h1>
+    ${nameRow(name)}
     ${playerBar(name, at)}
     ${speedBar(name, full, sp, avail)}
     <section class="pf-hero">
@@ -1377,14 +1377,19 @@ function toggleFav(name) {
 }
 const profileLink = (n) => `profile.html?u=${encodeURIComponent(n)}`;
 const compareLink = (a, b) => `profile.html?u=${encodeURIComponent(a)}&vs=${encodeURIComponent(b)}`;
-// Above a profile: star this player, compare with them, and your starred players to jump to.
+// The name, with small icons in the corner: star this player, compare with them, them on Lichess.
+function nameRow(name) {
+  const me = isMe(name), mine = myName(), fav = isFav(name);
+  const icon = (d, solid = false) => `<svg class="ico${solid ? ' ico-solid' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+  return `<div class="pf-name-row"><h1 class="pf-name">${esc(name)}</h1>${me ? '' : `<div class="pf-acts">
+    <button type="button" class="ghost pf-act pf-star" data-fav aria-pressed="${fav}" aria-label="${fav ? 'Starred: unstar' : 'Star this player'}" title="${fav ? 'Starred (press to unstar)' : 'Star this player: one tap to them from the ★ menu'}">${icon(STAR_PATH, fav)}</button>
+    ${mine && mine.toLowerCase() !== name.toLowerCase() ? `<a class="ghost pf-act" href="${compareLink(mine, name)}" aria-label="Compare with me" title="Compare ${esc(name)} with you">${icon('M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4')}</a>` : ''}
+    <a class="ghost pf-act" href="https://lichess.org/@/${encodeURIComponent(name)}" target="_blank" rel="noopener" aria-label="${esc(name)} on Lichess" title="${esc(name)} on Lichess">${icon('M14 4h6v6M20 4l-9 9M18 14v6H4V6h6')}</a></div>`}</div>`;
+}
+// Your starred players to jump to.
 function playerBar(name, at) {
-  const me = isMe(name), mine = myName(), list = favs().filter((x) => x.toLowerCase() !== name.toLowerCase());
+  const me = isMe(name), list = favs().filter((x) => x.toLowerCase() !== name.toLowerCase());
   return `<div class="pf-players">
-    ${me ? '' : `<button type="button" class="ghost pf-star" data-fav aria-pressed="${isFav(name)}">${isFav(name) ? `<svg class="ico ico-solid" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg> Starred` : `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg> Star player`}</button>`}
-    ${!me && mine && mine.toLowerCase() !== name.toLowerCase() ? `<a class="ghost" href="${compareLink(mine, name)}">Compare with me</a>` : ''}
-    <a class="ghost pf-jump" href="#pf-games">Games ↓</a>
-    ${me ? '' : `<a class="link-out" href="https://lichess.org/@/${encodeURIComponent(name)}" target="_blank" rel="noopener">${esc(name)} on Lichess</a>`}
     ${list.length ? `<span class="pf-players-list"><small>${me ? 'Your players' : 'Starred'}</small>${list.map((x) => `<a class="pf-chip" href="${profileLink(x)}">${esc(x)}</a>${me ? `<a class="pf-chip pf-vs" href="${compareLink(name, x)}" title="Compare ${esc(name)} with ${esc(x)}">vs</a>` : ''}`).join('')}</span>` : ''}
   </div>`;
 }
@@ -1404,7 +1409,7 @@ function bindPlayerBar(name) {
   });
   $('[data-fav]')?.addEventListener('click', (e) => {
     toggleFav(name);
-    $('.pf-players').outerHTML = playerBar(name, shown?.[1]);
+    $('.pf-name-row').outerHTML = nameRow(name);
     bindPlayerBar(name);
   });
 }
