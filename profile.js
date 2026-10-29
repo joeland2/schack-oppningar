@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029092041';
-import { STYLE_OF } from './styles.js?v=20261029092041';
+import { account, login, finishLogin } from './lichess.js?v=20261029092254';
+import { STYLE_OF } from './styles.js?v=20261029092254';
 
 const MAX = 500;
 const PV = 19;
@@ -559,7 +559,8 @@ function analysePanel(name, p) {
   let prev = 0;
   const steps = tiers.map(([n, label]) => { const fill = Math.max(0, Math.min(1, (p.analysed - prev) / (n - prev))); prev = n;
     return `<li class="${p.analysed >= n ? 'done' : fill > 0 ? 'now' : ''}"><span class="pf-acc-bar"><i style="width:${fill * 100}%"></i></span><span class="pf-acc-label"><b>${label}</b> ${n}</span></li>`; }).join('');
-  const say = !reached ? `Analyse ${next[0]} games to unlock Defense, Early game, Accuracy and all of Attack.`
+  const locked = rawSkills(p).filter((x) => x.v === null && x.needs).map((x) => x.label);
+  const say = !reached ? `Analyse ${next[0]} games to unlock ${locked.length ? `${locked.join(' and ')}, and ` : ''}the parts of Attack and Defense that need analysis (mistakes and advantages).`
     : next ? `Skills can still move a few points. ${next[1]} at ${next[0]} analysed games.`
     : 'Every skill rests on all the games there are.';
   return `<div id="pf-analyse" class="pf-analyse pf-acc${reached ? '' : ' few'}">
