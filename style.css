@@ -986,6 +986,7 @@ a.cta { color: var(--accent-ink); }
 .gm-graph circle.Blunder { fill: var(--bad); }
 .gm-graph circle.Mistake { fill: var(--hot); }
 .gm-graph circle.Inaccuracy { fill: var(--hint); }
+.gm-side { width: 16px; height: 16px; vertical-align: -3px; margin-right: 3px; }
 .gm-graph circle.theirs { fill: var(--surface); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
 .gm-graph circle.theirs.Blunder { stroke: var(--bad); }
 .gm-graph circle.theirs.Mistake { stroke: var(--hot); }
