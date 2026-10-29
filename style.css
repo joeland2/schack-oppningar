@@ -462,7 +462,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 }
 /* Desktop: filters and search share one row, as before the filters got their own box */
 @media (min-width: 561px) {
-  .filters { display: inline-block; vertical-align: top; max-width: 100%; }
+  .filters { display: block; } /* full width, so the box never changes size with what its labels say */
   /* inline blocks keep their margins apart, so trim what used to collapse with the heading and the box below */
   .filters .choices { margin-top: 12px; margin-bottom: 4px; }
 }

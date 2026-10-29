@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029225159';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029225159';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029225159';
-import { GUIDE } from './guide.js?v=20261029225159';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029225159';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029225159';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029225159';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029225159';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029225403';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029225403';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029225403';
+import { GUIDE } from './guide.js?v=20261029225403';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029225403';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029225403';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029225403';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029225403';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -497,14 +497,21 @@ function renderList() {
   $('#side-tabs').innerHTML = `<div class="seg side-seg" role="group" aria-label="Your side">
       ${['w', 'b', 'r'].map((side) => `<button type="button" data-side="${side}" aria-pressed="${!q && side === listSide}">${side === 'r' ? '<span class="wide-only">My </span>Favorites' : `<span class="wide-only">You play </span>${sideName(side)}`} <span class="og-n">${count(side)}</span></button>`).join('')}
     </div>`;
+  // Where each card stood, so the cards still listed glide to their new places instead of being redrawn.
+  const was = new Map([...listEl.querySelectorAll('.ocard')].map((c) => [c.dataset.id, c.getBoundingClientRect()]));
   listEl.innerHTML = `${q ? '<h2 class="og-h">Search results</h2>' : `<h2 class="visually-hidden">${listSide === 'r' ? 'Your favorites' : `Openings for ${sideName(listSide)}`}</h2>`}${body}`; // the cards' h3 sit under an h2
   seen.disconnect();
   listEl.querySelectorAll('.ocard').forEach((c) => {
     const op = OPENINGS.find((o) => o.id === c.dataset.id);
     const go = (e) => { if (!e?.target.closest?.('.star')) start(op); };
     previewAt(c, op.root.split(' ').length);
+    const from = was.get(c.dataset.id);
+    if (!REDUCE_MOTION && from) {
+      const to = c.getBoundingClientRect();
+      if (from.left !== to.left || from.top !== to.top) c.animate([{ transform: `translate(${from.left - to.left}px, ${from.top - to.top}px)` }, { transform: 'none' }], { duration: 450, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+    } else if (!REDUCE_MOTION && was.size) c.animate([{ opacity: 0, transform: 'scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: 'ease-out' });
     if (!REDUCE_MOTION) {
-      seen.observe(c);
+      if (!from) seen.observe(c); // a card already on show keeps its board, without replaying the moves
       c.addEventListener('mouseenter', () => playPreview(c));
       c.addEventListener('focusin', (e) => { if (e.target.closest('.ocard-open')) playPreview(c); });
     }
@@ -3100,11 +3107,10 @@ async function showPicker() {
   cur = null; gameGen++; stopTrial(); trapRun = null; // stops an opponent reply (or a time trial) still on its way
   $('#trainer').hidden = true;
   $('#picker').hidden = false;
-  listEl.innerHTML = $('#side-tabs').innerHTML = '';
-  renderChoices();
+  renderChoices(); // the list stays until the new one replaces it, so its cards can glide into place
   $('#rating-step').hidden = !!rating;
   $('.choice-search').hidden = !rating;
-  if (!rating) return ($('#pick-msg').textContent = 'The openings you see depend on what players at your level actually play.');
+  if (!rating) return (listEl.innerHTML = $('#side-tabs').innerHTML = '', $('#pick-msg').textContent = 'The openings you see depend on what players at your level actually play.');
   $('#pick-msg').textContent = `Loading ${speed} games…`;
   try { OPENINGS = POPULAR[`${speed}:${myGroups().join()}`] ??= await popularFor(); } catch { return say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .'); }
   loadTree().catch(() => {}); // in the background, so an opening opens at once
