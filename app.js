@@ -1,12 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029235423';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029235423';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029235423';
-import { GUIDE } from './guide.js?v=20261029235423';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029235423';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029235423';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029235423';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029235423';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030000537';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030000537';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030000537';
+import { GUIDE } from './guide.js?v=20261030000537';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030000537';
+import { maia3Move } from './maia3.js?v=20261029234851';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030000537';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030000537';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261030000537';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1910,9 +1911,8 @@ function hintFor(m) {
 
 let opponent = null, saidOpponent = null; // who plays the opponent now (shown over the board), and who was announced
 // Where the saved real games run out: when you are logged in to Lichess, real games from its whole
-// database; then Maia, a net trained on Lichess games, which plays the move a player of your rating
-// would likely play (its own human mistakes included); above its range, or if it cannot load,
-// Stockfish at your rating.
+// database; then Maia 3, a net trained on Lichess games, playing the move a player of your rating most
+// often plays (human mistakes included); if it cannot load, Maia 1 (1100–1900), then Stockfish.
 async function engineReply(at) {
   const live = await liveGames(at, myGroups().map((i) => BUCKETS[i]), speed);
   const total = live ? live.white + live.draws + live.black : 0;
@@ -1920,6 +1920,12 @@ async function engineReply(at) {
     return { san: live.moves[0].san, label: `Lichess games ${levelText()}`,
       note: `The saved games run out here, so the moves now come from all ${total.toLocaleString('en')} Lichess games at your level in this position.` };
   }
+  // Maia 3 at any rating, told it plays someone of your rating; Maia 1 if it cannot load, then Stockfish.
+  try {
+    const { move } = await maia3Move(at, game.moves({ verbose: true }), rating, rating);
+    return { san: move.san, label: `Maia 3 · ${rating}`,
+      note: `Real games at your level run out here, so Maia 3 plays the opponent now: a computer trained on Lichess games to play the move a player rated ${rating} most often plays.` };
+  } catch (e) { console.warn(e); }
   if (rating < MAIA_MAX + 100) {
     try {
       const h = game.history({ verbose: true });
