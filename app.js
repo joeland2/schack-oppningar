@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029132128';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029132128';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029132128';
-import { GUIDE } from './guide.js?v=20261029132128';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029132128';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029132128';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029132128';
-import { storedGames } from './profile.js?v=20261029132128';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029132212';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029132212';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029132212';
+import { GUIDE } from './guide.js?v=20261029132212';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029132212';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029132212';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029132212';
+import { storedGames } from './profile.js?v=20261029132212';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -946,37 +946,30 @@ $('#line-done').addEventListener('click', (e) => {
   const go = e.target.closest('[data-go]')?.dataset.go;
   if (go) goOn(go);
 });
-// The same choice over the board, the moment a line is done, or simply the next line.
+// The same choice over the board, the moment a line is done.
 let goAsked = false;
 $('#go-ask').addEventListener('click', (e) => {
   const b = e.target.closest('[data-go]');
   if (!b) return;
   $('#go-ask').hidden = true;
-  if (b.dataset.go === 'next') $('#restart').click(); // the next line, in the mode you are in
-  else goOn(b.dataset.go);
+  goOn(b.dataset.go);
 });
+// Three ways on: this line again with arrows, this line from memory, or the next line with arrows.
+const GO = [['again', 'Learn this line again', 'The arrows show you every move'], ['try', 'Practise this line', 'Play it from memory, without arrows'], ['next', 'Next line', 'Learn the next line, with arrows']];
 function askGo() {
   goAsked = true;
-  const opt = (m, label, about) => `<button type="button" class="depth-opt${m === mode ? ' now' : ''}" data-go="${m}"><b>${label}</b><span>${about}</span></button>`;
   $('#go-ask').innerHTML = `<div class="depth-card"><p class="depth-k">Line done</p><p class="depth-q">${lineName(lines[lineIdx])}. How do you want to go on?</p>
-    ${opt('learn', 'Learn the next line', 'The arrows show you every move')}
-    ${opt('try', mode === 'learn' ? 'Practise this line' : 'Practise on', 'Play it from memory, without arrows')}
-    <button type="button" class="link go-on" data-go="next">Next line</button></div>`;
+    ${GO.map(([g, label, about]) => `<button type="button" class="depth-opt" data-go="${g}"><b>${label}</b><span>${about}</span></button>`).join('')}</div>`;
   $('#go-ask').hidden = false;
 }
 function goOn(go) {
-  const was = mode;
-  setMode(go, false);
-  // Practice straight after Learn tests the line you just learned, and a line with a slip comes again;
-  // otherwise each mode picks its next line.
-  play(go === 'try' && (was === 'learn' || misses) ? lineIdx : nextLine());
+  setMode(go === 'try' ? 'try' : 'learn', false);
+  play(go === 'next' ? nextLine() : lineIdx);
 }
-// How to go on once a line is done: Learn the next line or Practice, the mode you are in first.
+// How to go on once a line is done, beside the board: the same three ways (see GO).
 function doneNext() {
   if (trapRun || (mode !== 'learn' && mode !== 'try')) return `<button type="button" class="cta done-next">${$('#restart').textContent}</button>`;
-  const btn = (m, label, about) => `<button type="button" class="${m === mode ? 'cta' : 'ghost'}" data-go="${m}">${label}<small>${about}</small></button>`;
-  const opts = [btn('learn', 'Learn the next line', 'Arrows show every move'), btn('try', mode === 'learn' ? 'Practise this line' : 'Practise on', 'From memory, no arrows')];
-  return `<p class="done-k">Go on with</p><div class="done-go">${(mode === 'learn' ? opts : opts.reverse()).join('')}</div>`;
+  return `<p class="done-k">Go on with</p><div class="done-go">${GO.map(([g, label, about]) => `<button type="button" class="${g === 'next' ? 'cta' : 'ghost'}" data-go="${g}">${label}<small>${about}</small></button>`).join('')}</div>`;
 }
 let lineDone = '', lineMore = '', tipArrows = []; // the summary shown at the end of the line, and the current tips
 // The idea of the whole opening, its main variations and the trap to know (guide.js), folded under the plan.
