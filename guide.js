@@ -47,12 +47,12 @@ export const GUIDE = {
   'Three Knights Opening': {
     idea: 'White develops both knights and keeps the bishops flexible, waiting for Black to choose. It often turns into a Four Knights or a Scotch. A safe, piece-first opening with no forcing lines.',
     lines: [['Into the Four Knights', '3...Nf6: the most common answer.'], ['Steinitz Defense', '3...g6: Black fianchettoes and plays slowly.']],
-    watch: 'Black\'s centre on e5 can be hit fast with d4; Black should develop before going for ...d5.',
+    watch: '3...Bc5? looks natural but runs into the fork trick 4.Nxe5! Nxe5 5.d4: White wins the piece back and takes the centre.',
   },
   'Ponziani Opening': {
-    idea: 'White plays c3 to prepare d4 and a full pawn centre. It costs a tempo, so Black can strike at once with ...d5 or ...Nf6 at e4. Old and rare, with lots of tactics in the centre.',
+    idea: 'White plays c3 to make sure of d4 and a two-pawn centre, and opens the a4-square for the queen. The price: the knight can no longer go to c3, so e4 is loose. Black\'s best answers hit it at once with ...Nf6 or ...d5; slow moves let White build the centre for free.',
     lines: [['Jaenisch Counter-Attack', '3...Nf6 4.d4 Nxe4: Black hits the centre right away.'], ['Leonhardt Variation', '3...d5 4.Qa4: White pins the knight and keeps the pressure.']],
-    watch: 'After ...d5 the e4 pawn and the knight on c6 can both be hanging; tactics come fast.',
+    watch: '3...Bc5? is the common club mistake: 4.d4 hits the bishop and White gets the full centre with tempo.',
   },
   'Center Game': {
     idea: 'White opens the centre at once and takes back with the queen. It costs a tempo when ...Nc6 chases it, but White gets the half-open d-file, quick development and a clear plan: Qe3 (stopping ...d5, ready for Qg3 against g7), Nc3, Bd2, castle long, then push the kingside pawns. Think of it as a Scandinavian with the colours reversed and an extra pawn traded.',
@@ -61,8 +61,8 @@ export const GUIDE = {
   },
   "Petrov's Defense": {
     idea: 'Black attacks e4 instead of defending e5, giving a symmetrical, solid game. After the pawns are traded, both sides develop and the side that uses the e-file better gets the edge. Hard for White to break.',
-    lines: [['Classical', '3.Nxe5 d6 4.Nf3 Nxe4: the main symmetrical line.'], ['Steinitz', '3.d4: White opens the centre at once.']],
-    watch: 'Copying with 3...Nxe4? at once loses to 4.Qe2: the queen pins the knight to the king.',
+    lines: [['Classical', '3.Nxe5 d6 4.Nf3 Nxe4: the main symmetrical line.'], ['Modern Attack', '3.d4: White opens the centre at once.']],
+    watch: 'After 3.Nxe5 Black must chase the knight first with 3...d6. Copying with 3...Nxe4? meets 4.Qe2, and if the knight steps away (4...Nf6??), 5.Nc6+ uncovers check and wins the queen.',
   },
   'Philidor Defense': {
     idea: 'Black defends e5 with the pawn on d6 instead of a knight, for a solid set-up with a clear plan and little theory. The downsides are a cramped bishop on f8, which waits on e7, and a slightly better centre for White. After 3.d4 Black chooses: give up the centre with ...exd4 for quiet piece play, or hold e5 with ...Nd7, ...Ngf6, ...Be7 and ...c6.',
@@ -72,12 +72,12 @@ export const GUIDE = {
   'Elephant Gambit': {
     idea: 'Black answers 2.Nf3 with 2...d5, a gambit that opens the centre at once. If White plays accurately Black is just a pawn down, but against an unprepared opponent the open lines give quick play.',
     lines: [['Main line', '3.exd5 e4: Black gains space and hunts the knight.']],
-    watch: 'Black\'s king gets exposed if the attack stalls.',
+    watch: 'Taking back at once with 3...Qxd5?! lets 4.Nc3 gain time on the queen; that is why Black pushes 3...e4. After 4.Qe2 Nf6 5.d3! White breaks the pawn and stays a pawn up.',
   },
   'Latvian Gambit': {
     idea: 'Black plays ...f5 on move two, a wild King\'s Gambit with colours reversed and a tempo less. It leads to chaos around both kings. Objectively dubious but full of traps.',
     lines: [['Main line', '3.Nxe5 Qf6: Black attacks the knight and plans ...fxe4.']],
-    watch: 'Black\'s king is weak after ...f5; checks on h5 and the e-file come quickly.',
+    watch: 'After 3.Nxe5, grabbing 3...fxe4?? loses to 4.Qh5+: g6 drops the knight to Nxg6. Black first plays 3...Qf6, which covers g6.',
   },
   // ---------- 1.e4, other ----------
   'Sicilian Defense': {
@@ -117,7 +117,7 @@ export const GUIDE = {
   },
   'Nimzowitsch Defense': {
     idea: 'Black plays 1...Nc6 and lets White choose the centre, then attacks it with pieces and ...d5 or ...e5. Offbeat and light on theory.',
-    lines: [['Main line', '2.d4 d5: Black hits the centre at once.'], ['Williams', '2.Nf3 d6: Black plays it like a Pirc.']],
+    lines: [['Main line', '2.d4 d5 3.e5 Bf5 and ...e6: a French structure where the light bishop is already outside.'], ['Kennedy', '2.d4 e5: Black hits back with the e-pawn; 3.Nf3 gives a Scotch.'], ['Williams', '2.Nf3 d6: Black plays it like a Pirc.']],
     watch: 'The knight on c6 blocks the c-pawn, so Black has fewer pawn breaks than usual.',
   },
   'Owen Defense': {
@@ -139,7 +139,7 @@ export const GUIDE = {
   "Queen's Gambit Declined": {
     idea: 'Black holds d5 with ...e6, the most solid answer. White pressures d5 and develops; Black frees the game later with ...c5 or ...e5. The light bishop is Black\'s main problem piece.',
     lines: [['Orthodox', '...Be7, ...O-O and ...Nbd7: the classic set-up.'], ['Exchange', 'cxd5 exd5: White plays the minority attack with b4-b5.'], ['Tarrasch', '3...c5: Black accepts an isolated pawn for activity.']],
-    watch: 'Nxd5? tricks fail when the knight on d5 is pinned; know the Elephant trap.',
+    watch: 'The Elephant trap: after cxd5 exd5, Nxd5? to win a pawn fails because the f6 knight only looks pinned: ...Nxd5! Bxd8 Bb4+ and Black comes out a piece up.',
   },
   "Queen's Gambit Accepted": {
     idea: 'Black takes the c4 pawn, giving up the centre for a while, then gives the pawn back for free development and ...c5. White gets the centre and active pieces; Black gets a clear, sound position.',
@@ -153,7 +153,7 @@ export const GUIDE = {
   },
   'Semi-Slav Defense': {
     idea: 'Black combines ...c6 and ...e6 for a double support of d5. The light bishop stays at home, but the structure is very sound. The main lines (Meran, Botvinnik) are among the sharpest in chess.',
-    lines: [['Meran', '...dxc4 and ...b5: Black grabs queenside space.'], ['Botvinnik', '5.Bg5 dxc4: wild, double-edged play.']],
+    lines: [['Meran', '...dxc4 and ...b5: Black grabs queenside space.'], ['Botvinnik', '5.Bg5 dxc4: wild, double-edged play.'], ['Marshall Gambit', '4.e4: against the early ...c6 White gives a pawn to open the centre.']],
     watch: 'Long theory in the main lines; know where your pieces go.',
   },
   'London System': {
@@ -178,13 +178,13 @@ export const GUIDE = {
   },
   'Blackmar-Diemer Gambit': {
     idea: 'White gives a pawn with e4 and f3 to open the f-file and develop fast against the black king. All-in aggression: if the attack stalls, White is just a pawn down.',
-    lines: [['Main line', '3...dxe4 4.f3 exf3 5.Nxf3: White develops at full speed.'], ['Declined', 'Black keeps the pawn on e4 or refuses the gambit.']],
-    watch: 'Black should not grab more: return material to finish development.',
+    lines: [['Main line', '2...dxe4 3.Nc3 Nf6 4.f3 exf3 5.Nxf3: White develops at full speed.'], ['Declined', '2...e6, 2...c6 or 2...Nc6: Black turns it into a French, a Caro-Kann or a Nimzowitsch.']],
+    watch: 'The gambit is full of traps: Black should not grab more, and is happy to give material back to finish development.',
   },
   'Rapport-Jobava System': {
     idea: 'A sharper London: Nc3 and Bf4, aiming Nb5 at c7 and pushing e4 when possible. White often castles long and attacks with h4.',
-    lines: [['Main line', 'Nb5 against c7: Black must defend at once.']],
-    watch: 'Black can hit back fast with ...Bb4 and ...Ne4.',
+    lines: [['Main line', 'Nb5 against c7: Black must cover it at once.'], ['3...c5', 'Black hits the centre straight away, the most common answer.'], ['Anti-Jobava', '3...a6: Black takes b5 from the knight first.']],
+    watch: 'After 3...Bf5 White can push f3 and g4 with tempo on the bishop; Black also has to keep an eye on Nb5 and Nxc7.',
   },
   "King's Indian Attack": {
     idea: 'White uses the same set-up against everything: Nf3, g3, Bg2, castle, d3, Nbd2 and e4, then e5 and a kingside attack. Simple to learn and plays like a King\'s Indian Defense with an extra tempo.',
@@ -213,13 +213,13 @@ export const GUIDE = {
   },
   'Nimzo-Larsen Attack': {
     idea: 'White fianchettoes the queen\'s bishop at once to pressure e5 and the long diagonal. Flexible, with transpositions to the English or the Bird.',
-    lines: [['Classical', '1...d5: Black takes the centre.'], ['Modern', '1...e5: Black hits the diagonal with a pawn.']],
+    lines: [['Modern', '1...e5: the most common; Black blunts the bishop and builds a centre with ...Nc6 and ...d5.'], ['Classical', '1...d5: Black takes the centre.']],
     watch: 'Black can take a big centre; White must challenge it with c4 or f4.',
   },
   'Dutch Defense': {
     idea: 'Black plays ...f5 to control e4 from the kingside and later attack there. Unbalanced and ambitious; the king is a little weaker. Set-ups: Stonewall (pawns on d5, e6, f5), Leningrad (...g6) or Classical (...e6, ...d6).',
     lines: [['Leningrad', '...g6 and ...Bg7: a King\'s Indian with ...f5.'], ['Stonewall', '...d5, ...e6 and ...c6: a fortress and play on e4.'], ['Staunton Gambit', '2.e4: White gives a pawn to hit the weakened king.']],
-    watch: 'The e8-h5 diagonal is weak early: Qh5+ and Bg6 tricks.',
+    watch: 'The e8-h5 diagonal is weak early. The classic trap: 2.Bg5 h6 3.Bh4 g5 4.Bg3 f4 5.e3 fxg3?? 6.Qh5#.',
   },
   'Benoni Defense': {
     idea: 'Black plays ...c5 against d4 and lets White push d5, getting a queenside pawn majority and a fianchetto bishop. White has a central space edge and pushes e4-e5; Black plays ...b5 and ...Re8. Sharp and unbalanced.',
@@ -237,8 +237,8 @@ export const GUIDE = {
     watch: 'White\'s bishop pair gets strong if the position opens; Black should keep it closed.',
   },
   "Queen's Indian Defense": {
-    idea: 'Black fianchettoes the queen\'s bishop to control e4 from b7. Solid and positional, with play against the centre from a distance.',
-    lines: [['Petrosian', '4.a3: White stops ...Bb4.'], ['Fianchetto', '4.g3: White fights for the long diagonal.']],
+    idea: 'Black develops the queen\'s bishop at once: on b7 to control e4 and the long diagonal, or on a6 to hit the c4 pawn. Solid and positional, with play against the centre from a distance.',
+    lines: [['Petrosian', '4.a3: White stops ...Bb4.'], ['Fianchetto', '4.g3 Ba6: White fights for the long diagonal, Black answers by hitting c4.']],
     watch: 'The long diagonal is the battlefield; do not let it be blocked for free.',
   },
   'Bogo-Indian Defense': {
@@ -254,7 +254,7 @@ export const GUIDE = {
   'Englund Gambit': {
     idea: 'Black gives a pawn with 1...e5 against d4 for quick piece play and traps. Against good defence it is simply a pawn down.',
     lines: [['Main line', '2.dxe5 Nc6 3.Nf3 Qe7: Black hunts the e5 pawn and sets traps.']],
-    watch: 'White must avoid the trap Bf4? Qb4+ hitting the bishop and b2.',
+    watch: 'After 4.Bf4 Qb4+ 5.Bd2 Qxb2 the natural 6.Bc3?? loses to 6...Bb4 7.Qd2 Bxc3 8.Qxc3 Qc1#; 6.Nc3 keeps White clearly better.',
   },
   'Budapest Gambit': {
     idea: 'Black gives a pawn with ...e5 against d4 and c4, then wins it back on e5 with ...Ng4. Active and surprising, with quick piece play.',
