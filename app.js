@@ -1,16 +1,20 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029123308';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029123308';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029123308';
-import { GUIDE } from './guide.js?v=20261029123308';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029123308';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029123308';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029123308';
-import { storedGames } from './profile.js?v=20261029123308';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029124623';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029124623';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029124623';
+import { GUIDE } from './guide.js?v=20261029124623';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029124623';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029124623';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029124623';
+import { storedGames } from './profile.js?v=20261029124623';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
 const MAX_LINES = 20;
+// How deep to learn an opening, as a course does it: lines are in course order, so a depth is the first n.
+const DEPTHS = [['Essentials', 6, 'The main line and known theory'], ['Advanced', 12, 'Adds the traps and common sidelines'], ['Everything', MAX_LINES, 'Every line players at your level meet']];
+const depthName = (n) => (DEPTHS.find(([, d]) => d >= n) || DEPTHS.at(-1))[0];
+let allLines = 0; // how many lines the opening has at every depth
 const MIN_LINE = 0.03;   // a side line needs 3% of the opening's games to become a line of its own
 const THEORY = 0.15;     // a reply strong players choose this often is a main line, rare at your level or not
 const THEORY_GROUPS = [6, 7, 8]; // 2000+
@@ -831,6 +835,9 @@ function renderMoves() {
   if (mode === 'time') return; // the trial's clock owns the progress bar
   $('#progress').textContent = mode === 'explore' ? 'Exploring' : playing ? `Line done · playing it out${opponent ? ` · opponent: ${opponent}` : ''}` : line.length ? `${Math.min(ply, line.length)} of ${line.length} moves` : '';
   $('#bar').style.width = line.length ? `${Math.min(ply / line.length, 1) * 100}%` : '0';
+  $('#line-at').textContent = lines.length && mode !== 'explore' ? `Line ${lineIdx + 1} of ${lines.length}` : '';
+  $('#depth').textContent = `${depthName(load(STORE + '-depth', {})[cur?.id] || MAX_LINES)} ▾`;
+  $('#depth').hidden = allLines <= DEPTHS[0][1] || !!trapRun || mode === 'explore';
 }
 
 function say(text, tone = '') {
@@ -933,7 +940,7 @@ $('#line-done').addEventListener('pointerout', (e) => {
   renderBoard();
 });
 $('#line-done').addEventListener('click', (e) => { if (e.target.closest('.done-next')) $('#restart').click(); });
-let lineDone = '', tipArrows = []; // the summary shown at the end of the line, and the current tips
+let lineDone = '', lineMore = '', tipArrows = []; // the summary shown at the end of the line, and the current tips
 // The idea of the whole opening, its main variations and the trap to know (guide.js), folded under the plan.
 function guideOf(op) {
   const gd = GUIDE[op.family] || GUIDE[shortName(op.family)];
@@ -1000,7 +1007,7 @@ function renderWhy() {
     const t = lines[lineIdx]?.trap;
     if (t && n === t.ply && mode !== 'explore') { const w = t.kind === 'mistake' ? mistakeWhy(t) : null; parts.push(`<p class="trap-now"><b>That is the mistake: ${trapMove(t)}</b> ${w ? `${w.why} ` : ''}You score ${pct(1 - t.score)} after it at your level. ${mode === 'learn' ? punishText(t) : 'Find the move that punishes it.'}${w ? ` ${w.how}` : ''}</p>`); }
     const w = (mode === 'learn' || mode === 'explore') && view === null ? wikiFor(hist) : null;
-    if (w?.html) parts.push(`<details class="wiki" open><summary>From the opening book</summary>${w.html}<p class="wiki-src">From <a href="${w.url}" target="_blank" rel="noopener">Wikibooks, Chess Opening Theory</a>, CC BY-SA 4.0</p></details>`);
+    if (w?.html) parts.push(`<details class="wiki"><summary>Opening book</summary>${w.html}<p class="wiki-src">From <a href="${w.url}" target="_blank" rel="noopener">Wikibooks, Chess Opening Theory</a>, CC BY-SA 4.0</p></details>`);
     const reps = !yours && repliesText(before, san);
     if (reps) parts.push(`<details class="reps-box"><summary>What players at your level answer here</summary>${reps}</details>`);
   }
@@ -1020,7 +1027,8 @@ function renderWhy() {
   // The line-done summary is made at the line's end and stays while you play on from there. The tips
   // are about the move to play at the line's end, so they go once you have played on.
   if (ply >= line.length && hist.length === endLen) {
-    lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p>${lineWhy()}${lineFacts()}`;
+    lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p>${lineFacts()}`;
+    lineMore = `<details class="done-more"><summary>Why this is good for you</summary>${lineWhy()}</details>`;
   }
   // "How to go on" is for the moment you start playing on: shown at the line's end, gone once you move.
   let tips = '';
@@ -1028,11 +1036,11 @@ function renderWhy() {
     const t = lineTips();
     const arrows = t.slice(0, 1).map((x) => [x.move.from, x.move.to, x.engine ? '#1d5fbf' : '#15781b']); // the best only; pointing at a tip shows its own
     if (JSON.stringify(arrows) !== JSON.stringify(tipArrows)) { tipArrows = arrows; renderBoard(); }
-    tips = t.length ? `<p><b>How to go on</b></p><ul class="tips">${t.map((x, i) => `<li><button type="button" class="tip" data-from="${x.move.from}" data-to="${x.move.to}"><span class="tip-n">${i + 1}</span><span>${x.tag ? `<span class="tip-tag">${x.tag}</span> ` : ''}${x.html}</span></button></li>`).join('')}</ul>` : '';
+    tips = t.length ? `<p class="done-k">How to go on</p><ul class="tips">${t.map((x, i) => `<li><button type="button" class="tip" data-from="${x.move.from}" data-to="${x.move.to}"><span class="tip-n">${i + 1}</span><span>${x.tag ? `<span class="tip-tag">${x.tag}</span> ` : ''}${x.html}</span></button></li>`).join('')}</ul>` : '';
   }
   el.innerHTML = parts.join('');
   $('#line-done').innerHTML = ply >= line.length && lineDone && !momentOpen // the trap's card first
-    ? `<div class="summary">${lineDone}${tips}<button type="button" class="cta done-next">${$('#restart').textContent}</button></div>` : '';
+    ? `<div class="summary">${lineDone}${tips}${lineMore}<button type="button" class="cta done-next">${$('#restart').textContent}</button></div>` : '';
   $('#line-done').hidden = !$('#line-done').innerHTML;
 }
 
@@ -1136,7 +1144,7 @@ function lineWhy() {
   }
   const n0 = moves.length;
   const seq = next.map((san, i) => ((n0 + i) % 2 === 0 ? `${(n0 + i) / 2 + 1}.${san}` : i === 0 ? `${Math.floor((n0 + i) / 2) + 1}...${san}` : san)).join(' ');
-  return `${why.length ? `<p><b>Why this is good for you</b></p><ul class="done-why">${why.map((x) => `<li>${x}</li>`).join('')}</ul>` : ''}
+  return `${why.length ? `<ul class="done-why">${why.map((x) => `<li>${x}</li>`).join('')}</ul>` : ''}
     ${aims.length || seq ? `<p><b>Where to take the game</b> ${aims.length ? `${andList(aims).replace(/^./, (c) => c.toUpperCase())}.` : ''}${seq ? ` Stronger players usually go on <b>${seq}</b>.` : ''}</p>` : ''}`;
 }
 
@@ -1204,6 +1212,7 @@ function start(op, keepTraps = false) {
   cur = op;
   window.track?.('practise', `${op.side === 'b' ? 'Black' : 'White'}: ${(isVs(op) ? 'vs ' : '') + op.name}`);
   line = []; lines = []; game = new Chess();
+  $('#depth-ask').hidden = true;
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   misses = 0; missesHere = 0; busy = true;
   $('#op-title').textContent = (isVs(op) ? 'vs ' : '') + op.name;
@@ -1228,7 +1237,11 @@ function start(op, keepTraps = false) {
   $('#trainer').hidden = false;
   render();
   if (!rating) return say(`Enter your Lichess ${speed} rating at the top.`);
-  lines = buildLines(op);
+  const all = buildLines(op), depths = load(STORE + '-depth', {});
+  allLines = all.length;
+  // Trap training needs every line; otherwise ask once per opening how deep to go.
+  if (!trapRun && all.length > DEPTHS[0][1] && !depths[op.id]) return askDepth(all.length);
+  lines = trapRun ? all : all.slice(0, depths[op.id] || MAX_LINES);
   setTimeout(classifyTraps, 1500); // after the board's first evaluation
   if (!lines.length) return say('Not enough games at your rating for this opening.', 'bad');
   const s = stats[statKey(op.id)] = { done: [], played: [], ...stats[statKey(op.id)], total: lines.length };
@@ -1236,6 +1249,25 @@ function start(op, keepTraps = false) {
   store(STORE, stats);
   if (mode === 'time') startTrial(); else play(nextLine());
 }
+
+// The depth chooser over the board: one card per depth, with the lines it holds for this opening.
+function askDepth(n) {
+  const now = load(STORE + '-depth', {})[cur.id];
+  const opts = DEPTHS.filter(([, d], i) => i === 0 || DEPTHS[i - 1][1] < n);
+  $('#depth-ask').innerHTML = `<div class="depth-card"><p class="depth-k">How deep?</p><p class="depth-q">How much of the ${cur.name} do you want to learn?</p>
+    ${opts.map(([name, d, about]) => `<button type="button" class="depth-opt${now === d ? ' now' : ''}" data-depth="${d}"><b>${name}</b><span>${about}</span><span class="depth-n">${Math.min(d, n)} lines</span></button>`).join('')}
+    <p class="info">You can change it any time above the board.</p></div>`;
+  $('#depth-ask').hidden = false;
+  say('Choose how deep to go.');
+}
+$('#depth-ask').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-depth]');
+  if (!b) return;
+  store(STORE + '-depth', { ...load(STORE + '-depth', {}), [cur.id]: Number(b.dataset.depth) });
+  $('#depth-ask').hidden = true;
+  start(cur, true);
+});
+$('#depth').addEventListener('click', () => askDepth(allLines));
 
 // again: the same line once more after a slip in Practice, which keeps it from counting as cleared.
 function play(i, again = false) {
@@ -2716,7 +2748,7 @@ function setMode(m, restart = true, remember = true) {
   if (m !== 'time') stopTrial();
   if (remember && m !== 'explore' && m !== 'time') store(STORE + '-mode', m);
   for (const k of ['learn', 'try', 'explore', 'time']) $(`#mode-${k}`).setAttribute('aria-pressed', m === k);
-  $('#mode-about').textContent = {
+  $('#mode-about').closest('.choice').querySelector('.seg').title = $('#mode-about').textContent = {
     learn: 'Every move is shown, with the replies you can expect at your level. Nothing is scored.',
     try: `Practice: play lines from memory, ${COHORT} at a time in course order; a new line joins when you clear one. A cleared line comes back for review after 1, 3, 7, 14 and 30 days.`,
     time: `Time trial: ${TRIAL_S} seconds to play as many moves of this opening's lines as you can from memory. Right +${TRIAL_RIGHT} s, wrong −${TRIAL_WRONG} s.`,
