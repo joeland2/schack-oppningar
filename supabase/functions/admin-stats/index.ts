@@ -39,6 +39,10 @@ Deno.serve(async (req) => {
   // The admins' own visits stay out (every browser that was ever logged in as one), and so do the hidden ones.
   const own = new Set(rows.filter((r) => ADMINS.includes(r.user_name?.toLowerCase() ?? '')).map((r) => r.visitor).concat(HIDDEN_VISITORS));
   rows = rows.filter((r) => !own.has(r.visitor) && !BOT_IPS.includes(r.ip ?? ''));
+  // Only people: a visitor never seen with a country, device or IP is no browser a person used (the
+  // first tests, before those were recorded).
+  const seen = new Set(rows.filter((r) => r.country || r.device || r.ip).map((r) => r.visitor));
+  rows = rows.filter((r) => seen.has(r.visitor));
 
   const day = (iso: string) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }).format(new Date(iso)); // YYYY-MM-DD, Swedish days
   const views = rows.filter((r) => r.kind === 'view');
