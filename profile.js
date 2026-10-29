@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029164741';
-import { STYLE_OF } from './styles.js?v=20261029164741';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029165145';
+import { STYLE_OF } from './styles.js?v=20261029165145';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -334,6 +334,7 @@ function typeOf(p) {
 
 // Skill bars, 0-100, each read from one thing in the games; null when there are too few games to say.
 // The raw scales are rules of thumb (50 is a so-so result for the player); skillsOf puts them on the card's scale.
+let LIKE = null; // fineSkillsOf: whether the analysis parts count
 let FINE = false; // unrounded, for one game's tiny effect (fineSkillsOf)
 const clamp = (x) => { const c = Math.max(0, Math.min(100, x)); return FINE ? c : Math.round(c); };
 // The card's scale is set by the rating, so stronger players have higher cards (about 60 at 1200, 76 at
@@ -376,9 +377,11 @@ function skillsOf(p) {
 console.assert(typeOf({ attacking: 0.54, solid: 0.2, queensOff: 0.1, draws: 0.05, moves: 30, lowTime: 0.16, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, score: 0.5, downs: 30, ups: 30, saved: 0.47, oppSaved: 0.2, myLow: 0.05, oppLow: 0.25, timeWins: 0.15, timeLosses: 0.04 } }).map((t) => t.name).join() === 'Striker,Speed demon', 'typeOf');
 console.assert(typeOf({ attacking: 0.27, solid: 0.56, queensOff: 0.23, draws: 0.03, moves: 29, lowTime: 0.15, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, analysed: 120, after12: 96, n12: 120 } }).map((t) => t.name).join() === 'Solid builder,Well prepared', 'typeOf: the leaning style, and a strength');
 console.assert(levelOf(1200) === 60 && levelOf(2400) === 82 && levelOf(5000) === 92 && levelOf(100) === 35, 'levelOf');
-const fineSkillsOf = (p) => { FINE = true; try { return skillsOf(p); } finally { FINE = false; } };
+// like: read with the same parts as that profile, so one game that brings the analysed games to ENOUGH
+// does not switch the analysis parts on in one reading and off in the other.
+const fineSkillsOf = (p, like = p) => { FINE = true; LIKE = (like.peer?.analysed ?? 0) >= ENOUGH; try { return skillsOf(p); } finally { FINE = false; LIKE = null; } };
 function rawSkills(p) {
-  const q = p.peer || {}, an = (q.analysed ?? 0) >= ENOUGH, pawns = (cp) => { const r = Math.round(cp / 10) / 10; return r === 0 ? '0.0' : `${r > 0 ? '+' : '−'}${Math.abs(r).toFixed(1)}`; };
+  const q = p.peer || {}, an = LIKE ?? (q.analysed ?? 0) >= ENOUGH, pawns = (cp) => { const r = Math.round(cp / 10) / 10; return r === 0 ? '0.0' : `${r > 0 ? '+' : '−'}${Math.abs(r).toFixed(1)}`; };
   // a against b (yours against your opponents'): 50 when equal, 100 when only you; floor keeps rare things from swinging
   const vs = (a, b, floor) => (a == null || b == null ? null : 50 + (50 * (a - b)) / Math.max(floor, a + b));
   // each part is a value or [value, weight]; parts without a value are left out

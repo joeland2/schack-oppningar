@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261029164741';
-import { account } from './lichess.js?v=20261029164741';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029164741';
+import { drawBoard } from './board.js?v=20261029165145';
+import { account } from './lichess.js?v=20261029165145';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029165145';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -221,10 +221,12 @@ function render() {
 async function impact() {
   await gamesReady;
   const el = $('#gm-impact'), all = (storedGames(name) || []).filter((x) => x.speed === g.speed);
-  if (!el || !all.some((x) => x.id === g.id) || all.length < 50) return;
+  // Only once the game is analysed: without it, only the result and the clock count, and the analysis
+  // would then move the numbers again.
+  if (!el || !g.analysis || !all.some((x) => x.id === g.id) || all.length < 50) return;
   el.innerHTML = '<p class="info">Working out how this game affected your stats…</p>';
   const [withIt, without] = await Promise.all([profileFromRaw(name, all), profileFromRaw(name, all.filter((x) => x.id !== g.id))]);
-  const a = fineSkillsOf(withIt), b = fineSkillsOf(without);
+  const a = fineSkillsOf(withIt), b = fineSkillsOf(without, withIt);
   const known = (xs) => xs.filter((x) => x.v !== null), ovr = (xs) => (known(xs).length ? known(xs).reduce((t, x) => t + x.v, 0) / known(xs).length : null);
   // One game moves a skill by a fraction of a point, so unrounded and shown to one decimal: the card's
   // own numbers (your rating sets the card's level, so a won or lost game lifts or lowers them all).
@@ -234,8 +236,7 @@ async function impact() {
   // (it unlocks or locks with this game) does not swing it against the skills shown.
   const both = a.map((x, i) => i).filter((i) => a[i].v !== null && b[i].v !== null);
   const dOvr = both.length ? tenth(both.reduce((t, i) => t + a[i].v - b[i].v, 0) / both.length) : 0, style = withIt.type?.[0]?.name, was = without.type?.[0]?.name;
-  // Arrows, not numbers: one game's effect is small and the exact tenths read as more than they are.
-  const sign = (d) => { const [s, say] = d >= 1 ? ['▲▲', 'up a lot'] : d > 0 ? ['▲', 'up a little'] : d <= -1 ? ['▼▼', 'down a lot'] : d < 0 ? ['▼', 'down a little'] : ['–', 'no change']; return `<span aria-label="${say}" title="${say}">${s}</span>`; };
+  const sign = (d) => (d > 0 ? `+${d}` : d < 0 ? `${d}`.replace('-', '−') : '±0');
   const way = (d) => (d > 0 ? 'up' : d < 0 ? 'down' : 'same');
   el.innerHTML = `<h2>How this game affected your stats</h2>
     ${moved.length ? `<ul class="gm-moves-card">${ovr(a) !== null ? `<li class="${way(dOvr)}"><b>${sign(dOvr)}</b> overall <small>now ${Math.round(ovr(a))}</small></li>` : ''}
