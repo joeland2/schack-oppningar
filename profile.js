@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029104455';
-import { STYLE_OF } from './styles.js?v=20261029104455';
+import { account, login, finishLogin } from './lichess.js?v=20261029111420';
+import { STYLE_OF } from './styles.js?v=20261029111420';
 
 const MAX = 500;
-const PV = 23;
+const PV = 24;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -274,13 +274,14 @@ const usualMoves = (rating) => Math.round(30 + (rating || 1500) / 200);
 const STRENGTH = { Attack: 'Finisher', Defense: 'Guardian', 'Early game': 'Fast starter', 'Late game': 'Grinder', Accuracy: 'Sure hand', Speed: 'Speed demon' };
 // A strength on the same theme as the style says the same thing twice; then the next best skill is named.
 const SAME = { 'Endgame player': 'Late game', 'Comeback player': 'Defense', 'Time scrambler': 'Speed', Trickster: 'Attack', Punisher: 'Defense', Marathoner: 'Late game' };
-function typeOf(p) {
+// Every style with its weight (1 = clearly holds), most first, and every strength with its value (62 = clearly holds).
+function traitsOf(p) {
   const q = p.peer || {}, rating = p.speeds?.[0]?.rating;
   const styles = [
     { name: 'Attacker', w: p.attacking / 0.4, why: `${pct(p.attacking)} of your games are in attacking openings or gambits: you like the initiative early.` },
     { name: 'Solid builder', w: (p.solid / 0.55) * (p.attacking < 0.25 ? 1 : 0.6), why: `${pct(p.solid)} of your games are in solid or positional openings: you build first and attack later.` },
     { name: 'Endgame player', w: p.queensOff / 0.4, why: `The queens come off before move 25 in ${pct(p.queensOff)} of your games: you are happy to trade and play it out.` },
-    { name: 'Fighter', w: (usualDraws(rating) / Math.max(p.draws, 0.005)) / 1.6 * Math.sqrt(35 / Math.max(p.moves, 15)),
+    { name: 'Fighter', w: (usualDraws(rating) / Math.max(p.draws, 0.005)) / 2 * Math.sqrt(35 / Math.max(p.moves, 15)),
       why: `Only ${pct(p.draws)} draws, where about ${pct(usualDraws(rating))} is usual at your level: your games are decided, one way or the other.` },
     // Saving lost games and ending short of time are common in fast games for everyone, so these two
     // count only when the player does it clearly more than their own opponents at their level.
@@ -295,19 +296,25 @@ function typeOf(p) {
     { name: 'Specialist', w: (p.top2 ?? 0) / 0.9, why: `Your two main openings are ${pct(p.top2 ?? 0)} of the openings you choose: you know your lines deeply.` },
     { name: 'Explorer', w: (p.families ?? 0) / 18 * ((p.top2 ?? 1) < 0.3 ? 1 : 0.5), why: `You play ${p.families ?? 0} different openings at least three times each: you like variety.` },
     { name: 'Marathoner', w: (p.moves / usualMoves(rating)) / 1.2, why: `Your games last ${p.moves} moves on average, where about ${usualMoves(rating)} is usual at your level.` },
-    { name: 'Punisher', w: q.vsAttN >= 15 ? (q.vsAttScore - q.vsAttExp) / 0.07 : 0,
+    { name: 'Punisher', w: q.vsAttN >= 15 ? (q.vsAttScore - q.vsAttExp) / 0.085 : 0,
       why: `Against attacking openings and gambits you score ${pct(q.vsAttScore ?? 0)}, where about ${pct(q.vsAttExp ?? 0)} is usual at your level (${q.vsAttN} games).` },
     { name: 'Peacemaker', w: (p.draws / usualDraws(rating)) / 1.8, why: `${pct(p.draws)} of your games are draws, where about ${pct(usualDraws(rating))} is usual at your level.` },
   ].sort((x, y) => y.w - x.w);
-  // The strength: the skill clearly above the player's own opponents (62 or more where 50 is even).
-  const style = styles[0].w >= 0.8 ? styles[0] : { name: 'All-rounder', why: 'No style stands out: you play a bit of everything.' };
+  // Giant killer needs a clear surplus: upsets are common in fast games. Speed counts winning on time half,
+  // since much of it is the opponent's doing.
   const extra = [
-    { label: 'Giant killer', v: p.giantN >= 20 ? clamp(50 + p.giantGain * 150) : null, why: `Against players 100 or more above you, you score ${pct(p.giantGain ?? 0)} more per game than the rating gap predicts (${p.giantN} games).` },
+    { label: 'Giant killer', v: p.giantN >= 30 ? clamp(50 + p.giantGain * 100) : null, why: `Against players 100 or more above you, you score ${pct(p.giantGain ?? 0)} more per game than the rating gap predicts (${p.giantN} games).` },
     { label: p.winW >= p.winB ? 'White specialist' : 'Black specialist', v: p.nWhite >= 30 && p.n - p.nWhite >= 30 ? clamp(50 + Math.abs(p.winW - p.winB) * 100) : null,
       why: `You win ${pct(p.winW)} as White and ${pct(p.winB)} as Black.` },
     { label: 'Clutch player', v: p.clutchN >= 25 ? clamp(50 + (p.clutchScore - p.score) * 120) : null, why: `You score ${pct(p.clutchScore ?? 0)} in the ${p.clutchN} games where both players were short of time, against ${pct(p.score)} overall.` },
   ];
-  const best = [...rawSkills(p), ...extra].filter((x) => x.v !== null && x.v >= 62 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v)[0];
+  return { styles, strengths: [...rawSkills(p), ...extra] };
+}
+function typeOf(p) {
+  const { styles, strengths } = traitsOf(p);
+  const style = styles[0].w >= 0.8 ? styles[0] : { name: 'All-rounder', why: 'No style stands out: you play a bit of everything.' };
+  // The strength: the one furthest above the player's own opponents (64 or more where 50 is even).
+  const best = strengths.filter((x) => x.v !== null && x.v >= 64 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v)[0];
   const second = best ? { name: STRENGTH[best.label] || best.label, why: STRENGTH[best.label] ? `${best.label} is where you beat your level most: ${best.why}` : best.why } : styles[1].w >= 0.8 && style === styles[0] ? styles[1] : null;
   return second ? [style, second] : [style];
 }
@@ -367,7 +374,7 @@ function rawSkills(p) {
       means: 'How the position stands after move 12.',
       why: `${pawns(q.after12 ?? 0)} pawns on average after move 12.`,
       train: 'Practise the lines of the openings you play, and learn the plan behind them, not just the moves.', href: './' },
-    { label: 'Late game', v: q.endgames >= 10 ? clamp(50 + (q.endScore - 0.5) * 150) : null,
+    { label: 'Late game', v: q.endgames >= 10 ? clamp(50 + (q.endScore - 0.5) * 110) : null,
       means: 'Results once most pieces are gone (6 or fewer besides kings and pawns).',
       why: `${pct(q.endScore ?? 0)} in ${q.endgames} endgames (50% is even).`,
       train: 'Learn the basic endgames: king activity, passed pawns, and the key king-and-pawn positions.' },
@@ -375,7 +382,7 @@ function rawSkills(p) {
       means: 'How often a piece or the game is thrown away.',
       why: `${(q.myBl ?? 0).toFixed(1)} blunders a game (opponents ${(q.oppBl ?? 0).toFixed(1)}).`,
       train: 'Before every move, check every check, capture and threat your opponent has after it. Then solve the positions where you blundered.', href: './mistakes.html' },
-    { label: 'Speed', v: q.n >= 30 ? clamp(50 + (q.oppLow - q.myLow) * 100 + (q.timeWins - q.timeLosses) * 100) : null,
+    { label: 'Speed', v: q.n >= 30 ? clamp(50 + (q.oppLow - q.myLow) * 100 + (q.timeWins - q.timeLosses) * 50) : null,
       means: 'Handling the clock: who ends up short of time, and who wins or loses on it.',
       why: `Short of time ${pct(q.myLow ?? 0)} (opponents ${pct(q.oppLow ?? 0)}) · wins on time ${pct(q.timeWins ?? 0)}, losses ${pct(q.timeLosses ?? 0)}.`,
       train: 'Play the opening fast (you know it), and save your thinking time for the critical moments.' },
@@ -1084,7 +1091,9 @@ function failed(name, err) {
   $('[data-retry]').addEventListener('click', () => run(name));
 }
 
-export { build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV };
+// A profile from games already fetched (Lichess's shape), without fetching: for checking the types on many players.
+const profileFromRaw = async (name, raw) => (await loadScores(), profileOf(raw.map((g) => readGame(g, name.toLowerCase()))));
+export { build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
 // ---------- The games themselves ----------
 // The newest games as a list; each opens on game.html with the board, how it went and the key moves.
 const STATUS = { mate: 'mate', resign: 'resignation', outoftime: 'time', timeout: 'time', draw: 'agreement', stalemate: 'stalemate', aborted: 'abort' };
