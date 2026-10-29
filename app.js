@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029234851';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029234851';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029234851';
-import { GUIDE } from './guide.js?v=20261029234851';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029234851';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029234851';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029234851';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029234851';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029235423';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029235423';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029235423';
+import { GUIDE } from './guide.js?v=20261029235423';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029235423';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029235423';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029235423';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029235423';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1687,13 +1687,15 @@ const userTurn = () => (ply < line.length || playing) && !game.isGameOver() && g
 // Only used once you play a game out past the line: as the opponent where real games run out, and for hints.
 const ENGINE_SRC = 'engine/stockfish-18-lite-single.js';
 let engine = null, engineDone = null, engineQueue = Promise.resolve();
-// Above Maia's range Stockfish plays at your rating (its lowest setting is 1320).
-const opponentElo = () => Math.max(1320, Math.min(3190, rating));
+// Above Maia's range Stockfish plays the opponent, held back by how deep it looks, not by its rating
+// setting: that one weakens it by drawing moves at random, and the opponent never plays a drawn move.
+// Deeper for stronger players: about 5 at 2000, 9 at 2500, 12 at 3000.
+const opponentDepth = () => Math.max(3, Math.min(14, Math.round((rating - 1200) / 150)));
 // One search at a time: changing options while the WebAssembly engine searches crashes it.
 // Resolves { move, cp, mate } with the score from the side to move, or null. skip() is asked when the
 // search's turn comes: a search for a position you have already left is dropped.
 // multi: how many best moves to rank (MultiPV); their first moves come back as lines, best first.
-function search(fen, { elo = null, ms = 500, skip = null, multi = 1 } = {}) {
+function search(fen, { depth = null, ms = 500, skip = null, multi = 1 } = {}) {
   const run = () => new Promise((resolve) => {
     if (skip?.()) return resolve(null);
     const fresh = !engine; // a new engine first loads its WebAssembly, which is slow on a phone
@@ -1721,10 +1723,8 @@ function search(fen, { elo = null, ms = 500, skip = null, multi = 1 } = {}) {
       resolve({ move: toMove(e.data.split(' ')[1]), cp, mate, pv, lines: lines.filter(Boolean) });
     };
     engine.postMessage(`setoption name MultiPV value ${multi}`);
-    engine.postMessage(`setoption name UCI_LimitStrength value ${!!elo}`);
-    if (elo) engine.postMessage(`setoption name UCI_Elo value ${elo}`);
     engine.postMessage(`position fen ${fen}`);
-    engine.postMessage(`go movetime ${ms}`);
+    engine.postMessage(depth ? `go depth ${depth}` : `go movetime ${ms}`);
   });
   return (engineQueue = engineQueue.then(run, run));
 }
@@ -1928,8 +1928,8 @@ async function engineReply(at) {
         note: `Real games at your level run out here, so Maia plays the opponent now: a computer trained on Lichess games to play like people rated about ${maiaLevel(rating)}.` };
     } catch (e) { console.warn(e); }
   }
-  const best = await bestMove(at, { elo: opponentElo() });
-  return best && { ...best, label: `Stockfish ${opponentElo()}`, note: `Real games at your level run out here, so Stockfish plays the opponent now, set to about ${opponentElo()}.` };
+  const best = await bestMove(at, { depth: opponentDepth() });
+  return best && { ...best, label: `Stockfish depth ${opponentDepth()}`, note: `Real games at your level run out here, so Stockfish plays the opponent now, looking ${opponentDepth()} moves deep: always its best move at that depth.` };
 }
 async function opponentPlays() {
   busy = true;
@@ -1937,10 +1937,8 @@ async function opponentPlays() {
   // Follow the real games as long as any reach this position: the reply played most there.
   const real = gamesAt(game.history().map(clean)).moves[0];
   let m = real ? { san: real.san, label: `Real games ${levelText()}` } : await engineReply(at).catch((e) => (console.warn(e), null));
-  if (!m && gen === gameGen && game.fen() === at && !game.isGameOver()) { // no engine answered: the game goes on all the same
-    const all = game.moves();
-    m = { san: all[Math.floor(Math.random() * all.length)], label: 'Random move', note: 'The engines did not answer here, so the opponent played a random legal move.' };
-  }
+  // No engine answered: the opponent stops here rather than play a move nobody chose.
+  if (!m && gen === gameGen && game.fen() === at && !game.isGameOver()) say('The opponent could not find a move here (the engines did not answer). Restart, or go back a move and try again.', 'bad');
   await new Promise((x) => setTimeout(x, 450));
   if (gen !== gameGen || game.fen() !== at || !m) { if (gen === gameGen) busy = false; return; }
   lastMove = game.move(m.san ?? m); ply++; busy = false; hintSq = []; opponent = m.label;

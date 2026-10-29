@@ -165,13 +165,10 @@ export function loadMaia(level) {
   return NETS.get(level);
 }
 
-// The move a player of this rating would likely play: drawn by the net's chances among the moves it
-// gives at least 5%, so the same position does not always get the same reply but odd one-in-fifty
-// moves are left out. Resolves the ranked list too.
-export async function maiaMove(rating, fens, moves, rnd = Math.random()) {
+// The move a player of this rating would most likely play: always Maia's top move, never a draw among
+// the others (a draw let a 6% blunder through one game in seventeen). Resolves the ranked list too.
+export async function maiaMove(rating, fens, moves) {
   const net = await loadMaia(maiaLevel(rating));
   const ranked = policy(net, POLICY_AT, fens, moves);
-  const likely = ranked.filter((r, k) => k === 0 || r.p >= 0.05);
-  let left = rnd * likely.reduce((s, r) => s + r.p, 0);
-  return { move: (likely.find((r) => (left -= r.p) <= 0) || likely[0]).move, ranked };
+  return { move: ranked[0].move, ranked };
 }
