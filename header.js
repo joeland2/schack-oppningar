@@ -9,13 +9,20 @@
   try { visitor = localStorage.getItem('chess-trainer-visitor') || crypto.randomUUID(); localStorage.setItem('chess-trainer-visitor', visitor); } catch {}
   const user = () => { try { return JSON.parse(localStorage.getItem('chess-trainer-lichess-login'))?.name || null; } catch { return null; } };
   const page = location.pathname.split('/').pop() || 'index.html';
+  // Where this visit came from: the other site's name on the first page of a visit, else Direct; later pages send none.
+  const source = (() => { try {
+    if (sessionStorage.getItem('chess-trainer-source')) return null;
+    sessionStorage.setItem('chess-trainer-source', '1');
+    const host = document.referrer && new URL(document.referrer).hostname;
+    return host && host !== location.hostname ? host.replace(/^www\./, '') : 'Direct';
+  } catch { return null; } })();
   // The admin's own visits are not counted: on any device where they are logged in, or where they have
   // opened the admin page once (it marks the browser, so it stays out even when logged out).
   const own = () => { try { return user()?.toLowerCase() === 'joelandersson' || localStorage.getItem('chess-trainer-no-track') === '1'; } catch { return false; } };
   window.track = (kind, target = null) => {
     if (local || own()) return;
     fetch(API, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'text/plain' }, // plain text: no preflight, so it still goes as the page closes
-      body: JSON.stringify({ kind, page, target: target && String(target).slice(0, 80), visitor, user_name: user() }) }).catch(() => {});
+      body: JSON.stringify({ kind, page, target: target && String(target).slice(0, 80), visitor, user_name: user(), source: kind === 'view' ? source : null }) }).catch(() => {});
   };
   window.track('view');
   // The admin's own menu has an Admin link (the page itself checks the login with Lichess).

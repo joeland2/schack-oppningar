@@ -27,3 +27,8 @@ create policy "anyone can add an event" on public.events
 -- stores the IP address with its last part zeroed (83.250.12.0), never the whole address, and the country.
 alter table public.events add column if not exists ip text check (char_length(ip) <= 45);
 alter table public.events add column if not exists country text check (char_length(country) <= 2);
+
+-- Added 2026-10-29: the device (system and browser), the city, and where the visit came from.
+alter table public.events add column if not exists device text check (char_length(device) <= 40);
+alter table public.events add column if not exists city text check (char_length(city) <= 60);
+alter table public.events add column if not exists source text check (char_length(source) <= 80);

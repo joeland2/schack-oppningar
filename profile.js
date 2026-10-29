@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029094949';
-import { STYLE_OF } from './styles.js?v=20261029094949';
+import { account, login, finishLogin } from './lichess.js?v=20261029100213';
+import { STYLE_OF } from './styles.js?v=20261029100213';
 
 const MAX = 500;
 const PV = 19;
@@ -763,12 +763,33 @@ function cardNote(name, p, me) {
   if (!main) return '';
   return `<details class="pf-card-help"><summary>How the card works</summary><p class="pf-card-note"><b>The level comes from the ${main.speed} rating</b>: about 60 at 1200, 76 at 2000, 88 at 2800. Each skill sits above or below it by how ${me ? 'you do' : `${esc(name)} does`} against ${me ? 'your' : 'their'} own opponents rated ${main.rating - PEER}–${main.rating + PEER} in the same games; the gaps between the six are drawn twice as large, so the shape of the player shows. The big number is the average of the six.</p></details>`;
 }
-function render(name, at, p) {
+// One time control at a time: bullet and blitz games say different things about speed, endgames and
+// the level, so the profile reads the player's main time control unless another (or All) is picked.
+let pfSpeed = null, shown = null; // the picked time control ('all' or a speed); the last render's arguments
+// Time controls with enough games; only when the games themselves are kept here (the last few players looked up).
+function speedsOf(name, full) {
+  return storedGames(name) ? SPEEDS.map((sp) => [sp, full.speeds.find((x) => x.speed === sp)?.n || 0]).filter(([, n]) => n >= MIN_GAMES) : [];
+}
+function forSpeed(name, full, sp) {
+  return sp === 'all' ? full : profileOf(recordsOf(name, storedGames(name)).filter((g) => g.speed === sp));
+}
+function speedBar(name, full, sp, avail) {
+  if (avail.length < 2 && sp !== 'all') return '';
+  return `<div class="pf-seg pf-speeds" role="group" aria-label="Time control">${[['all', full.n], ...avail].map(([k, n]) =>
+    `<button type="button" data-pf-speed="${k}" aria-pressed="${k === sp}">${k === 'all' ? 'All games' : k[0].toUpperCase() + k.slice(1)} <small>${n}</small></button>`).join('')}</div>`;
+}
+function render(name, at, full) {
+  shown = [name, at, full];
+  const avail = speedsOf(name, full), main = full.speeds[0]?.speed;
+  const sp = pfSpeed && (pfSpeed === 'all' || avail.some(([k]) => k === pfSpeed)) ? pfSpeed : avail.some(([k]) => k === main) ? main : 'all';
+  const p = forSpeed(name, full, sp);
+  if (sp !== 'all') chartState.speed = sp;
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
   document.title = me ? 'Your Profile' : `${name} · Profile`;
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
     ${playerBar(name)}
+    ${speedBar(name, full, sp, avail)}
     <section class="pf-hero">
       <div class="pf-card-col">${playerCard(name, p, t, skills)}<div class="pf-card-actions"><span>Download</span><button type="button" class="link" data-card-png="card">Card</button><button type="button" class="link" data-card-png="style">Card + style</button></div>${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
@@ -784,7 +805,7 @@ function render(name, at, p) {
     <section class="pf-card pf-chart" id="pf-chart"></section>
     <dl class="pf-kpis">${kpis.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
     ${leadStory(name, p, skills, me)}
-    ${analysePanel(name, p)}
+    ${analysePanel(name, full)}
     <section class="pf-card pf-skills-card${showSkillText ? ' open' : ''}">
       ${p.n < MIN_GAMES ? `<p class="pf-an-few">Only ${p.n} rated games: skills need at least ${MIN_GAMES}.</p>` : ''}
       <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
@@ -792,7 +813,7 @@ function render(name, at, p) {
       ${skillBars(skills, say, me)}
       <p class="pf-skill-more pf-skill-scale">The level comes from the rating (about 60 at 1200, 76 at 2000, 88 at 2800). Each skill sits above or below it by how ${me ? 'you do' : 'the player does'} against ${me ? 'your' : 'their'} own opponents rated within ${PEER} points, in the same games; the gaps between the six are drawn twice as large, so ${me ? 'your' : 'their'} shape shows. The mark on each bar, ${skills[0]?.level ?? 50}, is as good as them.</p>
     </section>
-    <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From all ${p.n} games</span></div>
+    <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From ${sp === 'all' ? `all ${p.n} games` : `${p.n} ${sp} games`}</span></div>
       <div class="pf-two pf-more-body">
         <section><h3>By colour and time control</h3>
           <dl class="pf-stats">
@@ -822,6 +843,7 @@ function render(name, at, p) {
   document.querySelectorAll('[data-card-png]').forEach((b) => b.addEventListener('click', () => cardPng(name, p, t, skills, b.dataset.cardPng === 'style', b)));
   bindSearch();
   bindAnalyse(name);
+  document.querySelectorAll('[data-pf-speed]').forEach((b) => b.addEventListener('click', () => { pfSpeed = b.dataset.pfSpeed; const y = scrollY; render(...shown); scrollTo(0, y); }));
   bindPlayerBar(name);
   gamesList(name, 8);
   $('[data-skill-text]').addEventListener('click', (e) => {
@@ -987,15 +1009,17 @@ function ask() {
 let runs = 0; // a newer look-up wins over one still reading games
 async function run(name) {
   const mine = ++runs, c = cache()[name.toLowerCase()];
+  await loadScores(); // a saved profile is drawn without reading the games, but its time controls are read again
+  if (shown && shown[0].toLowerCase() !== name.toLowerCase()) pfSpeed = null; // another player starts on their own main time control
   window.track?.('profile', name);
   // Seen before: show the saved profile at once, then fetch new games quietly and redraw only if there were any.
   if (c && c.v === PV) {
     try { render(c.name || name, c.at, c.p); } catch (err) { console.warn('saved profile could not be shown, reading it again', err); }
-    const before = storedGames(name) || [], top = before[0]?.id;
+    const before = storedGames(name) || [], top = before[0]?.id; // no games kept here yet: redraw once they are, with their time controls
     quiet = true;
     try {
       const p = await build(name), after = storedGames(name);
-      if (mine === runs && (after[0]?.id !== top || after.length !== before.length)) { const y = scrollY; render(name, Date.now(), p); scrollTo(0, y); }
+      if (mine === runs && (after[0]?.id !== top || after.length !== before.length || !before.length)) { const y = scrollY; render(name, Date.now(), p); scrollTo(0, y); }
     } catch {} finally { quiet = false; }
     return;
   }

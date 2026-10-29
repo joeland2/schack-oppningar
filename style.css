@@ -1335,3 +1335,30 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .pf-acc-say { margin: 0; font-size: 14px; color: var(--ink); text-wrap: pretty; }
 .pf-acc-src { margin: -4px 0 0; font-size: 13px; color: var(--muted); text-wrap: pretty; }
 
+
+/* Profile: which time control the page reads, under the players bar */
+.pf-speeds { justify-self: start; flex-wrap: wrap; }
+.pf-speeds small { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.pf-speeds [aria-pressed="true"] small { color: inherit; opacity: .7; }
+#profile > .pf-speeds + .pf-hero { margin-top: calc(var(--tight) - var(--flow)); }
+
+/* Admin: lists with a bar under each name, three narrow charts in a row, and the visitors table */
+#admin .pf-card h2 small { font: 500 11px var(--font-body); letter-spacing: .06em; text-transform: none; color: var(--muted); margin-left: 6px; }
+#admin .pf-kpis small { display: block; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+.ad-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ad-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; font-size: 14px; }
+.ad-list li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ad-list li b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.ad-list li b small { font-weight: 400; color: var(--muted); margin-left: 4px; }
+.ad-list li i { grid-column: 1 / -1; display: block; height: 4px; border-radius: 2px; background: var(--data); min-width: 4px; }
+.ad-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .ad-three { grid-template-columns: minmax(0, 1fr); } }
+.ad-cols text { font-size: 11px; }
+.ad-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; }
+.ad-head small { font-size: 12.5px; color: var(--muted); }
+.ad-table-wrap { overflow-x: auto; max-height: 520px; overflow-y: auto; margin-top: 12px; }
+.ad-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.ad-table th { position: sticky; top: 0; background: var(--surface); text-align: left; font: 600 11px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding: 8px 12px 8px 0; border-bottom: 2px solid var(--rule); white-space: nowrap; }
+.ad-table td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ad-table td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ad-table td small { color: var(--muted); }
