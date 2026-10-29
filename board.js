@@ -43,7 +43,7 @@ export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint 
 // ---------- Move animation, as on Lichess (chessground's anim.ts) ----------
 // Each piece that appears on a square flies in from the nearest square that lost the same piece;
 // a piece that disappears (a capture) stays half-faded on its square until the move lands.
-const ANIM_MS = 250; // Lichess's "normal" animation speed
+const ANIM_MS = 170; // quick and calm, as on Chessreps (about 150-180 ms); Lichess uses 250
 const REDUCE = matchMedia('(prefers-reduced-motion: reduce)');
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1);
 const xyOf = (sq, side) => {
