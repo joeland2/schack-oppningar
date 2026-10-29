@@ -5,6 +5,6 @@
 set -e
 cd "$(dirname "$0")/.."
 v=$(date +%Y%m%d%H%M%S)
-perl -pi -e "s/(href|src)=\"(style\.css|[a-z-]+\.js)(\?v=\d+)?\"/\$1=\"\$2?v=$v\"/g" ./*.html
-perl -pi -e "s/from '\.\/([a-z-]+\.js)(\?v=\d+)?'/from '.\/\$1?v=$v'/g" ./*.js
+perl -pi -e "s/(href|src)=\"(style\.css|[a-z0-9-]+\.js)(\?v=\d+)?\"/\$1=\"\$2?v=$v\"/g" ./*.html
+perl -pi -e "s/from '\.\/([a-z0-9-]+\.js)(\?v=\d+)?'/from '.\/\$1?v=$v'/g" ./*.js
 echo "stamped $v"
