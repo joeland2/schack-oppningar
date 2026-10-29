@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029232820';
-import { STYLE_OF } from './styles.js?v=20261029232820';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029234615';
+import { STYLE_OF } from './styles.js?v=20261029234615';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1220,6 +1220,7 @@ function render(name, at, full) {
   quickLook(name);
   $('.pf-card-help a[href="#pf-skills"]')?.addEventListener('click', (e) => { e.preventDefault(); $('#pf-skills').scrollIntoView({ behavior: 'smooth' }); });
   document.querySelectorAll('[data-pf-speed]').forEach((b) => b.addEventListener('click', () => { pfSpeed = b.dataset.pfSpeed; const y = scrollY; render(...shown); scrollTo(0, y); }));
+  placeActs();
   bindPlayerBar(name);
   gamesList(name, 8);
   $('[data-skill-text]').addEventListener('click', (e) => {
@@ -1529,9 +1530,17 @@ function bindPlayerBar(name) {
   });
   $('[data-fav]')?.addEventListener('click', (e) => {
     toggleFav(name);
+    $('.pf-hero .pf-acts')?.remove();
     $('.pf-name-row').outerHTML = nameRow(name);
+    placeActs();
     bindPlayerBar(name);
   });
+}
+// On a phone the star, compare and Lichess buttons go beside the card, under the opening taste, so the
+// name and the card get the width.
+function placeActs() {
+  const a = $('.pf-name-row .pf-acts');
+  if (a && matchMedia('(max-width: 640px)').matches) $('.pf-hero .pf-type-row')?.append(a);
 }
 // A profile ready to show: kept here, else read from the player's games.
 async function profileFor(name) {

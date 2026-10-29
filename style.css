@@ -1191,7 +1191,9 @@ a { text-underline-offset: .18em; }
 @media (max-width: 640px) {
   .pf-hero { grid-template-columns: auto minmax(0, 1fr); gap: 12px 14px; justify-items: stretch; align-items: start; text-align: left; }
   .pf-hero .pf-card-col, .pf-hero .pf-hero-text, .pf-hero .pf-type-row { display: contents; }
-  .pf-hero .pf-pcard { zoom: .5; grid-area: 1 / 1 / 3 / 2; }
+  .pf-hero .pf-pcard { zoom: .6; grid-area: 1 / 1 / 4 / 2; }
+  #profile .pf-hero .pf-type-row > .pf-acts { grid-area: 3 / 2; position: static; flex-direction: row; gap: 6px; align-self: start; } /* under the opening taste */
+  .pf-name-row:not(:has(.pf-acts)) .pf-name { padding-inline: 0; font-size: min(3rem, calc((100vw - 32px) / var(--n, 10) * 2)); }
   .pf-hero .pf-type-row > div:first-child { grid-area: 1 / 2; align-self: start; }
   #profile .pf-hero .pf-h1 { font-size: clamp(1.4rem, 7vw, 2.1rem); }
   .pf-hero .pf-sub { font-size: clamp(1rem, 4.6vw, 1.3rem); }
@@ -1206,7 +1208,7 @@ a { text-underline-offset: .18em; }
   .pf-hero .pf-taste-tile b { display: block; font-size: 19px; }
   .pf-hero .pf-taste-tile small:last-child { letter-spacing: 0; font-size: 11.5px; text-transform: none; }
   .pf-hero .pf-portrait { order: 2; margin: 0; } .pf-hero .pf-why-type { order: 3; }
-  .pf-hero .pf-star-strip { order: 4; } .pf-hero .pf-card-col > .pf-dl { grid-area: 3 / 1; justify-self: center; margin: 0; } .pf-hero .pf-dl-menu { right: auto; left: 0; } /* straight under the card */ .pf-hero .pf-card-help { order: 6; max-width: none; }
+  .pf-hero .pf-star-strip { order: 4; } .pf-hero .pf-card-col > .pf-dl { grid-area: 4 / 1; justify-self: center; margin: 0; } .pf-hero .pf-dl-menu { right: auto; left: 0; } /* straight under the card */ .pf-hero .pf-card-help { order: 6; max-width: none; }
 }
 /* Skeleton while the games are read */
 .pf-skeleton .pf-pcard { min-height: 380px; opacity: .55; }
