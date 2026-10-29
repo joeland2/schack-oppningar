@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261029165407';
-import { account } from './lichess.js?v=20261029165407';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029165407';
+import { drawBoard } from './board.js?v=20261029165636';
+import { account } from './lichess.js?v=20261029165636';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029165636';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -198,8 +198,8 @@ function render() {
       : `<p class="gm-noan">This game has no computer analysis yet, so there is no read on what went well or badly. <button type="button" class="cta" data-analyse>Analyse it now</button> <small>About ${Math.max(2, Math.round(moves.length * 0.035))} seconds, with Stockfish in your browser.</small></p>`}
     </section>
     ${graph()}
-    ${list.length ? `<section class="gm-moments"><h2>The moves that decided it</h2><ul>${list.map((x) => `<li><button type="button" class="gm-moment ${x.mine ? 'mine' : 'theirs'}" data-moment="${x.i}">
-      <span class="gm-j j-${x.j}">${GLYPHS[x.j]}</span><span><b>${moveNo(x.i)} ${x.m.san}</b> <img class="gm-side" src="pieces/${x.i % 2 ? 'b' : 'w'}K.svg" alt="${x.i % 2 ? 'Black' : 'White'}" title="${x.i % 2 ? 'Black' : 'White'}">${x.mine ? 'by you' : 'by your opponent'}${x.best ? `: <b>${x.best.san}</b> was better` : ''}<br><small>${x.mine ? `cost you ${x.swing}% of your winning chances` : `gave you ${x.swing}%`}</small>${answer(x) ? `<br><small>${answer(x)}</small>` : ''}</span></button></li>`).join('')}</ul></section>` : ''}
+    ${list.length ? `<section class="gm-moments"><h2>The moves that decided it</h2><ul>${list.map((x) => `<li><button type="button" class="gm-moment ${x.mine ? 'mine' : 'theirs'} side-${x.i % 2 ? 'b' : 'w'}" title="Played by ${x.i % 2 ? 'Black' : 'White'}" data-moment="${x.i}">
+      <span class="gm-j j-${x.j}">${GLYPHS[x.j]}</span><span><b>${moveNo(x.i)} ${x.m.san}</b> ${x.mine ? 'by you' : 'by your opponent'}${x.best ? `: <b>${x.best.san}</b> was better` : ''}<br><small>${x.mine ? `cost you ${x.swing}% of your winning chances` : `gave you ${x.swing}%`}</small>${answer(x) ? `<br><small>${answer(x)}</small>` : ''}</span></button></li>`).join('')}</ul></section>` : ''}
     <section class="gm-moves"><h2>Moves</h2><ol>${pairs.map((i) => `<li><span class="n">${i / 2 + 1}.</span>${[i, i + 1].filter((k) => k < moves.length).map((k) => {
       const j = g.analysis?.[k]?.judgment?.name;
       return `<button type="button" class="gm-move${j ? ` j-${j}` : ''}" data-i="${k}">${moves[k].san}${j ? GLYPHS[j] : ''}</button>`;

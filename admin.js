@@ -1,6 +1,6 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029165407';
+import { account, login, finishLogin } from './lichess.js?v=20261029165636';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -76,7 +76,8 @@ function render(s) {
   const link = (x) => `<a href="profile.html?u=${encodeURIComponent(x.name)}">${esc(x.name)}</a>`, t = s.totals;
   $('#admin').innerHTML = `
     <header class="pr-head"><h1 class="pf-h1">Admin</h1><p class="info">How Chess Trainer is used. A visitor is a browser, counted once: on the day they first came. The admins' own visits and automated browsers are not counted.</p>
-      <p class="ad-demo-row">${s.demo ? '<b class="ad-demo-tag">Demo data</b> Made up, to see how the page looks with many visitors. <button type="button" class="link" data-real>Show the real numbers</button>' : '<button type="button" class="link" data-demo>Show demo data</button>'}</p></header>
+      <p class="ad-demo-row"><span class="seg" role="group" aria-label="Which numbers"><button type="button" data-real aria-pressed="${!s.demo}">Real</button><button type="button" data-demo aria-pressed="${!!s.demo}">Demo</button></span>
+        ${s.demo ? '<b class="ad-demo-tag">Demo data</b> Made up test visitors, to see how the page looks with many.' : ''}</p></header>
     <dl class="pf-kpis ad-kpis">
       <div><dt>Visitors today</dt><dd>${t.today}</dd><small>${t.newToday} unique (first visit)</small></div>
       <div><dt>Visitors, 7 days</dt><dd>${t.week}</dd><small>${t.new7} unique</small></div>
@@ -131,8 +132,8 @@ function show(body) {
   bindLine(body.perDay);
   $('#ad-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = Number(b.dataset.span);
     $('#ad-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body.perDay); });
-  $('[data-demo]')?.addEventListener('click', () => { real = body; show(demoData()); });
-  $('[data-real]')?.addEventListener('click', () => show(real));
+  $('[data-demo]').addEventListener('click', () => { if (!body.demo) { real = body; show(demoData()); } });
+  $('[data-real]').addEventListener('click', () => { if (body.demo) show(real); });
 }
 let real = null;
 // Made-up numbers in the real shape: a year of growth, a few hundred visitors from many places with
