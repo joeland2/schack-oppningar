@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029152349';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029152349';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029152349';
-import { GUIDE } from './guide.js?v=20261029152349';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029152349';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029152349';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029152349';
-import { storedGames } from './profile.js?v=20261029152349';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029153816';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029153816';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029153816';
+import { GUIDE } from './guide.js?v=20261029153816';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029153816';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029153816';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029153816';
+import { storedGames } from './profile.js?v=20261029153816';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1050,10 +1050,6 @@ $('#go-ask').addEventListener('click', (e) => {
   showGo(false);
   goOn(b.dataset.go);
 });
-// Four ways on, Learn (arrows) or Practice (from memory), each either playing on from here or starting
-// the line again. Playing on keeps the line-done card beside the board, with its own Next line.
-const GO = [['learn-on', 'Play on in Learn', 'Carry on from here; the arrows show good moves'], ['learn', 'Learn this line again', 'From the start, with arrows'],
-  ['try-on', 'Play on in Practice', 'Carry on from here, without arrows'], ['try', 'Practise this line', 'From the start, from memory']];
 // While the choice is up nothing else in the trainer can be used: the game waits for the choice.
 function showGo(on) {
   $('#go-ask').hidden = !on;
@@ -1065,8 +1061,12 @@ function askGo() {
   // Every way on is here, Next line first, so nothing outside the card is needed.
   const done = mode === 'try' && !misses && !assisted ? 'Line cleared' : mode === 'try' ? 'Line done' : 'Line learned';
   $('#go-ask').innerHTML = `<div class="depth-card" role="dialog" aria-labelledby="go-title"><p class="depth-k">${done}</p><p class="depth-q" id="go-title">${lineName(lines[lineIdx])}. How do you want to go on?</p>
-    <button type="button" class="depth-opt next" data-go="next"><b>${$('#restart').textContent}</b><span>${mode === 'try' ? 'The next line to practise' : 'Learn the next line, with arrows'}</span></button>
-    ${GO.map(([g, label, about]) => `<button type="button" class="depth-opt" data-go="${g}"><b>${label}</b><span>${about}</span></button>`).join('')}</div>`;
+    <button type="button" class="cta go-next" data-go="next">${$('#restart').textContent}<small>${mode === 'try' ? 'the next line to practise' : 'learn the next line, with arrows'}</small></button>
+    <div class="go-grid" role="group" aria-label="Or this line again">
+      <span></span><span class="go-col">Learn<small>arrows</small></span><span class="go-col">Practice<small>from memory</small></span>
+      <span class="go-row">Play on from here</span><button type="button" data-go="learn-on">Learn on</button><button type="button" data-go="try-on">Practise on</button>
+      <span class="go-row">From the start</span><button type="button" data-go="learn">Learn again</button><button type="button" data-go="try">Practise it</button>
+    </div></div>`;
   showGo(true);
   say('Choose how to go on.', 'good');
   $('#go-ask button')?.focus();
@@ -1082,7 +1082,7 @@ function goOn(go) {
   }
   else play(lineIdx);
 }
-// Beside the board, once a line is done: Next line (the ways on are asked over the board, see GO).
+// Beside the board, once a line is done: Next line (the ways on are asked over the board, see askGo).
 function doneNext() {
   return `<button type="button" class="cta done-next">${$('#restart').textContent}</button>`;
 }
@@ -1173,7 +1173,7 @@ function renderWhy() {
   // The line-done summary is made at the line's end and stays while you play on from there. The tips
   // are about the move to play at the line's end, so they go once you have played on.
   if (ply >= line.length && hist.length === endLen) {
-    lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p>${lineFacts()}`;
+    lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p>${learnedFacts()}`;
     lineMore = `<details class="done-more"><summary>Why this is good for you</summary>${lineWhy()}</details>`;
   }
   // "How to go on" is for the moment you start playing on: shown at the line's end, gone once you move.
@@ -1224,6 +1224,11 @@ function endResults() {
   return r;
 }
 const scoresWell = () => { const r = endResults(); return !!r && r.win > r.loss; };
+// What finishing the line gave you: its moves, and the slip you can now punish.
+function learnedFacts() {
+  const l = lines[lineIdx], mine = Math.ceil(l.moves.length / 2), t = l.trap;
+  return `<p class="done-learned">You know ${plural(mine, 'move')} of this line${t ? `, and how to punish ${trapMove(t)}` : ''}.</p>`;
+}
 function lineFacts() {
   const r = endResults();
   if (!r) return '';
@@ -1345,7 +1350,7 @@ function lineTips() {
   const risk = (t) => (t.move.flags.includes('k') || t.move.flags.includes('q') ? -1 : after(t).moves({ verbose: true }).filter((x) => x.captured || x.san.includes('+')).length);
   const free = () => out.filter((t) => !t.tag);
   const give = (tag, pick) => { const c = free(); const t = c.length > 1 || out.length === 1 ? pick(c) : null; if (t) t.tag = tag; };
-  give('Best evaluation', (c) => c.find((t) => engine[0]?.san === t.move.san));
+  give('Strongest', (c) => c.find((t) => engine[0]?.san === t.move.san));
   give('Most played', (c) => c.filter((t) => t.n >= MIN_GAMES).sort((a, b) => b.n - a.n)[0]);
   give('Most aggressive', (c) => c.filter((t) => force(t) >= 2).sort((a, b) => force(b) - force(a))[0]);
   give('Safest', (c) => [...c].sort((a, b) => risk(a) - risk(b))[0]);
@@ -2293,7 +2298,7 @@ $('#line-box').addEventListener('click', (e) => { const b = e.target.closest('[d
 function renderLines() {
   const s = stats[statKey(cur.id)] || {}, done = s.done || [], learned = s.played || [];
   const all = allLines.length >= lines.length ? allLines : lines;
-  $('#lines-sum').textContent = `All ${all.length} lines`; // the line box above already counts the cleared ones
+  $('#lines-sum').textContent = all.length > lines.length ? `All ${all.length} lines · ${lines.length} in ${depthName(lines.length)}` : `All ${all.length} lines`;
   // Green once you have played a line through (Learn), stronger with a tick once cleared (Practice).
   const state = (l) => (done.includes(lineKey(l.moves)) ? ' cleared' : learned.includes(lineKey(l.moves)) ? ' learned' : '');
   // One star per line, its best: green when played through in Learn, gold when cleared in Practice,
