@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029124623';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029124623';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029124623';
-import { GUIDE } from './guide.js?v=20261029124623';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029124623';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029124623';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029124623';
-import { storedGames } from './profile.js?v=20261029124623';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029125219';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029125219';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029125219';
+import { GUIDE } from './guide.js?v=20261029125219';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029125219';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029125219';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029125219';
+import { storedGames } from './profile.js?v=20261029125219';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -799,6 +799,12 @@ function renderBoard() {
     // the move played in red and the better one in green
     const hist = game.history({ verbose: true }), g = new Chess();
     const m = hist[view - 1], better = betters[view - 1];
+    // Their slip is played on the board, like any move, with the better move as a green arrow; yours is
+    // shown before it, to try again.
+    if (better && m.color !== cur.side) {
+      hist.slice(0, view).forEach((x) => g.move(x.san));
+      return drawBoard(boardEl, g, { side: cur.side, last: m, mark: notes[view - 1] && { sq: m.to, kind: notes[view - 1] }, arrows: [[better.from, better.to, GREEN]] });
+    }
     hist.slice(0, better ? view - 1 : view).forEach((x) => g.move(x.san));
     if (better) {
       const after = new Chess(m.before);
@@ -1444,9 +1450,9 @@ const winPct = (cp) => 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
 function renderEval() {
   if (!cur) return;
   const el = $('#evalbar');
-  // Looking back, the bar follows the position on the board (a slip is shown before it is played).
+  // Looking back, the bar follows the position on the board (your slip is shown before it is played).
   let pos = game;
-  if (view !== null) { const n = betters[view - 1] ? view - 1 : view; pos = new Chess(); game.history().slice(0, n).forEach((m) => pos.move(m)); }
+  if (view !== null) { const n = shownAt(view); pos = new Chess(); game.history().slice(0, n).forEach((m) => pos.move(m)); }
   const fen = pos.fen();
   let r = EVALS.get(evalKey(fen));
   if (pos.isCheckmate()) r = { cp: 0, mate: 0 };
@@ -2559,6 +2565,8 @@ let redo = [];
 // view is how many moves the board shows (null: the game as it is now). Playing a move from an earlier
 // position of yours takes the moves after it back.
 let view = null;
+// How many moves the board shows while looking back at move v: your slip is shown before it is played.
+const shownAt = (v) => (betters[v - 1] && game.history({ verbose: true })[v - 1].color === cur.side ? v - 1 : v);
 function showMove(n) {
   closeMoment(); // looking through the moves leaves the moment behind; the board is yours again
   view = n >= game.history().length ? null : Math.max(0, n);
@@ -2581,7 +2589,7 @@ function chanceAgain(i) {
 // own earlier move, the moves after it are taken back and you play on from there.
 function leaveView(sq) {
   if (view === null) return true;
-  const n = betters[view - 1] ? view - 1 : view, g = new Chess(); // a slip is shown before it is played (see renderBoard)
+  const n = shownAt(view), g = new Chess(); // your slip is shown before it is played (see renderBoard)
   game.history().slice(0, n).forEach((m) => g.move(m));
   if (g.get(sq)?.color !== g.turn()) { showMove(Infinity); return false; }
   if (n < line.length || g.turn() !== cur.side) { exploreFrom(n, 'Explore from here: move any piece, for either side. '); return true; }
