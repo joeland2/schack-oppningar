@@ -1479,3 +1479,5 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .op-head .op-line { margin: 4px 0 0; font-size: 15px; color: var(--ink); }
 .op-head .op-line:empty { display: none; }
 .line-done .done-go { display: flex; flex-wrap: wrap; gap: 8px; }
+.line-done .done-go button { display: grid; gap: 2px; text-align: left; }
+.line-done .done-go button small { font-size: 12px; font-weight: 400; opacity: .75; }

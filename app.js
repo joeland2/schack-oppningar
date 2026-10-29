@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029131850';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029131850';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029131850';
-import { GUIDE } from './guide.js?v=20261029131850';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029131850';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029131850';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029131850';
-import { storedGames } from './profile.js?v=20261029131850';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029131902';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029131902';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029131902';
+import { GUIDE } from './guide.js?v=20261029131902';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029131902';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029131902';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029131902';
+import { storedGames } from './profile.js?v=20261029131902';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -954,8 +954,8 @@ $('#line-done').addEventListener('click', (e) => {
 // How to go on once a line is done: Learn the next line or Practice, the mode you are in first.
 function doneNext() {
   if (trapRun || (mode !== 'learn' && mode !== 'try')) return `<button type="button" class="cta done-next">${$('#restart').textContent}</button>`;
-  const btn = (m, label) => `<button type="button" class="${m === mode ? 'cta' : 'ghost'}" data-go="${m}">${label}</button>`;
-  const opts = [btn('learn', 'Learn the next line'), btn('try', mode === 'learn' ? 'Practise this line' : 'Practise on')];
+  const btn = (m, label, about) => `<button type="button" class="${m === mode ? 'cta' : 'ghost'}" data-go="${m}">${label}<small>${about}</small></button>`;
+  const opts = [btn('learn', 'Learn the next line', 'Arrows show every move'), btn('try', mode === 'learn' ? 'Practise this line' : 'Practise on', 'From memory, no arrows')];
   return `<p class="done-k">Go on with</p><div class="done-go">${(mode === 'learn' ? opts : opts.reverse()).join('')}</div>`;
 }
 let lineDone = '', lineMore = '', tipArrows = []; // the summary shown at the end of the line, and the current tips
