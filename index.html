@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261029144252">
-  <script src="header.js?v=20261029144252" defer></script>
-  <script src="theme.js?v=20261029144252"></script>
+  <link rel="stylesheet" href="style.css?v=20261029144415">
+  <script src="header.js?v=20261029144415" defer></script>
+  <script src="theme.js?v=20261029144415"></script>
 </head>
 <body>
   <header class="top">
@@ -120,7 +120,7 @@
           <span class="evalbar-num"></span>
         </div>
         <div class="board-frame">
-          <div id="board" class="board" role="grid" aria-label="Chessboard"></div>
+          <div id="board" class="board" role="group" aria-label="Chessboard: the arrow keys move between squares, Enter picks a piece and its square"></div>
           <div id="depth-ask" class="depth-ask" hidden></div>
           <div id="go-ask" class="depth-ask" hidden></div>
         </div>
@@ -133,6 +133,7 @@
         <button id="show" type="button">Show move</button>
         <button id="restart" type="button" class="primary">Restart</button>
       </div>
+      <form id="move-form" class="move-type"><label for="move-in">Type a move</label><input id="move-in" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. Nf3, e4, O-O" aria-describedby="move-msg"><span id="move-msg" class="info" aria-live="polite"></span></form>
     </section>
 
     <aside class="panel">
@@ -195,7 +196,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261029144252"></script>
+  <script type="module" src="app.js?v=20261029144415"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>

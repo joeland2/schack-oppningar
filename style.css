@@ -1576,3 +1576,13 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .path-extra .link { font-size: 13px; color: var(--muted); }
 .path-extra .link[aria-pressed="true"] { color: var(--hot); }
 #trainer #mode-about { margin: 6px 0 0; font-size: 13px; }
+/* An opening card opens from its name (a real button), and anywhere on the card with the mouse */
+.ocard-open { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.ocard:focus-within { border-color: var(--ink); }
+.ocard-open:focus-visible { outline: 2px solid var(--hot); outline-offset: 3px; border-radius: 2px; }
+/* The board's focus, and the move field: out of the way until the keyboard reaches it */
+.board .sq:focus-visible { outline: 3px solid var(--hot); outline-offset: -3px; z-index: 9; }
+.move-type { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.move-type:focus-within { position: static; width: auto; height: auto; overflow: visible; clip-path: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.move-type label { font-size: 13px; color: var(--muted); }
+.move-type input { width: 12em; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: 15px var(--font-mono); }

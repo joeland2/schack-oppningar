@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029144252';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029144252';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029144252';
-import { GUIDE } from './guide.js?v=20261029144252';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029144252';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029144252';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029144252';
-import { storedGames } from './profile.js?v=20261029144252';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029144415';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029144415';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029144415';
+import { GUIDE } from './guide.js?v=20261029144415';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029144415';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029144415';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029144415';
+import { storedGames } from './profile.js?v=20261029144415';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -394,10 +394,10 @@ function card(o) {
   const tags = stylesOf(o).map((t) => `<span class="tag">${STYLES[t].label}</span>`).join('');
   const about = aboutOf(o);
   const win = o.side === 'w' ? o.win : 1 - o.win - o.draw;
-  return `<article class="ocard side-${o.side}" role="button" tabindex="0" data-id="${o.id}" aria-label="${isVs(o) ? 'vs ' : ''}${o.name}">
+  return `<article class="ocard side-${o.side}" data-id="${o.id}">
     <div class="board mini" data-mini="${o.id}" inert></div>
     <div class="ocard-body">
-      <div class="ocard-top"><h3>${isVs(o) ? 'vs ' : ''}${o.name}</h3><span class="ocard-tags">${tags}<span class="chip ${level}">${levelTxt}</span>
+      <div class="ocard-top"><h3><button type="button" class="ocard-open">${isVs(o) ? 'vs ' : ''}${o.name}</button></h3><span class="ocard-tags">${tags}<span class="chip ${level}">${levelTxt}</span>
         <button type="button" class="star" data-star="${o.id}" aria-pressed="${repertoire.has(o.id)}" title="${repertoire.has(o.id) ? 'In your favorites' : 'Add to your favorites'}" aria-label="${repertoire.has(o.id) ? 'Remove from' : 'Add to'} my favorites">★</button></span></div>
       ${about ? `<p class="odesc">${about}</p>` : ''}
       <div class="ostats">
@@ -477,10 +477,9 @@ function renderList() {
     if (!REDUCE_MOTION) {
       seen.observe(c);
       c.addEventListener('mouseenter', () => playPreview(c));
-      c.addEventListener('focus', () => playPreview(c));
+      c.addEventListener('focusin', (e) => { if (e.target.closest('.ocard-open')) playPreview(c); });
     }
     c.addEventListener('click', go);
-    c.addEventListener('keydown', (e) => { if (e.target === c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go(); } });
   });
 }
 
@@ -2907,6 +2906,18 @@ document.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('clic
 }));
 $('#back').addEventListener('click', showPicker);
 $('#m-back').addEventListener('click', showPicker);
+// Typing a move: the keyboard's way to play, as if the piece and then its square were clicked.
+$('#move-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const v = $('#move-in').value.trim();
+  let m = null;
+  try { m = new Chess(game.fen()).move(v); } catch {}
+  if (!m) return ($('#move-msg').textContent = v ? `${v} is not a legal move here.` : '');
+  $('#move-msg').textContent = ''; $('#move-in').value = '';
+  sel = null;
+  for (const sq of [m.from, m.to]) boardEl.querySelector(`[data-sq="${sq}"]`)?.click();
+  $('#move-in').focus();
+});
 $('#m-mode').addEventListener('change', (e) => $(`#mode-${e.target.value}`).click());
 function setMode(m, restart = true, remember = true) {
   const was = mode;
