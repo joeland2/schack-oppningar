@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029190015';
-import { STYLE_OF } from './styles.js?v=20261029190015';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029193752';
+import { STYLE_OF } from './styles.js?v=20261029193752';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -514,6 +514,7 @@ function pull(name) {
   return PULLS.get(me);
 }
 // Puts what other devices did into these games (in place); true when something was added.
+let merged = false; // the last build took in analyses from another device: the shown profile is out of date
 async function mergeRemote(name, games) {
   const m = await pull(name);
   let added = false;
@@ -586,7 +587,7 @@ async function build(name) {
   const ids = new Set(fresh.map((g) => g.id));
   const raw = [...fresh, ...have.filter((g) => !ids.has(g.id))].slice(0, MAX);
   if (!raw.length) throw new Error(`${name} has no rated games on Lichess yet.`);
-  await mergeRemote(name, raw);
+  merged = await mergeRemote(name, raw);
   saveGames(name, raw);
   RAW = raw; RAW_NAME = name;
   return readAll(name, raw);
@@ -1314,7 +1315,7 @@ async function run(name) {
     quiet = true;
     try {
       const p = await build(name), after = storedGames(name);
-      if (mine === runs && (after[0]?.id !== top || after.length !== before.length || !before.length)) { const y = scrollY; render(name, Date.now(), p); scrollTo(0, y); }
+      if (mine === runs && (merged || after[0]?.id !== top || after.length !== before.length || !before.length)) { const y = scrollY; render(name, Date.now(), p); scrollTo(0, y); }
     } catch {} finally { quiet = false; }
     return;
   }
