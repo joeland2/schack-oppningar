@@ -1831,7 +1831,7 @@ p, li, dd, small { text-wrap: pretty; }
 #profile > .pf-players:empty { display: none; }
 /* Star, compare and Lichess as small icons in the profile's top-right corner */
 .pf-name-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.pf-name-row .pf-name { margin: 0; }
+.pf-name-row .pf-name { margin: 0; white-space: nowrap; overflow-wrap: normal; min-width: 0; font-size: min(clamp(3rem, 9vw, 5.6rem), calc((min(100vw, 1240px) - 240px) / var(--n, 10) * 2)); } /* one line always: long names get smaller (Anton is about half an em a letter) */
 .pf-acts { display: flex; gap: 6px; flex: none; }
 .pf-act { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: var(--radius); color: var(--muted); text-decoration: none; }
 .pf-act:hover, .pf-act:focus-visible { color: var(--ink); }
@@ -1855,7 +1855,7 @@ p, li, dd, small { text-wrap: pretty; }
   .pf-name { text-align: center; }
   /* The icons stacked down the right edge beside the name and the style, taking no row of their own */
   .pf-name-row { display: block; position: relative; }
-  .pf-name-row .pf-name { padding-inline: 46px; font-size: clamp(1.8rem, 10.5vw, 3rem); }
+  .pf-name-row .pf-name { padding-inline: 46px; font-size: min(3rem, calc((100vw - 124px) / var(--n, 10) * 2)); }
   .pf-acts { position: absolute; top: 0; right: 0; z-index: 2; flex-direction: column; gap: 4px; }
   .pf-act { width: 40px; height: 40px; background: var(--bg); }
   #profile .pf-hero .pf-type-row > div:first-child { padding-right: 46px; }

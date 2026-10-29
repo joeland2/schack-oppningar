@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029185940';
-import { STYLE_OF } from './styles.js?v=20261029185940';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029190015';
+import { STYLE_OF } from './styles.js?v=20261029190015';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1381,7 +1381,7 @@ const compareLink = (a, b) => `profile.html?u=${encodeURIComponent(a)}&vs=${enco
 function nameRow(name) {
   const me = isMe(name), mine = myName(), fav = isFav(name);
   const icon = (d, solid = false) => `<svg class="ico${solid ? ' ico-solid' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
-  return `<div class="pf-name-row"><h1 class="pf-name">${esc(name)}</h1>${me ? '' : `<div class="pf-acts">
+  return `<div class="pf-name-row"><h1 class="pf-name" style="--n:${name.length}">${esc(name)}</h1>${me ? '' : `<div class="pf-acts">
     <button type="button" class="ghost pf-act pf-star" data-fav aria-pressed="${fav}" aria-label="${fav ? 'Starred: unstar' : 'Star this player'}" title="${fav ? 'Starred (press to unstar)' : 'Star this player: one tap to them from the ★ menu'}">${icon(STAR_PATH, fav)}</button>
     ${mine && mine.toLowerCase() !== name.toLowerCase() ? `<a class="ghost pf-act" href="${compareLink(mine, name)}" aria-label="Compare with me" title="Compare ${esc(name)} with you">${icon('M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4')}</a>` : ''}
     <a class="ghost pf-act" href="https://lichess.org/@/${encodeURIComponent(name)}" target="_blank" rel="noopener" aria-label="${esc(name)} on Lichess" title="${esc(name)} on Lichess">${icon('M14 4h6v6M20 4l-9 9M18 14v6H4V6h6')}</a></div>`}</div>`;
