@@ -1,11 +1,11 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029113936';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029113936';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261029113936';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029113936';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029113936';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029113936';
-import { storedGames } from './profile.js?v=20261029113936';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029114215';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029114215';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261029114215';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029114215';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029114215';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029114215';
+import { storedGames } from './profile.js?v=20261029114215';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -955,6 +955,9 @@ function renderWhy() {
   if (game.isGameOver()) parts.unshift(gameStats());
   if (view !== null) { // looking back: what the move was, and what was better
     const n = view - 1, k = notes[n];
+    // Back on the line's slip: the mistake and how to punish it, as when it was played.
+    const t = lines[lineIdx]?.trap;
+    if (t && n === t.ply) { const w = t.kind === 'mistake' ? mistakeWhy(t) : null; parts.unshift(`<p class="trap-now"><b>${trapWord(t)}: ${trapMove(t)}</b> ${t.kind === 'trap' && t.win ? `It loses ${t.win}. ` : w ? `${w.why} ` : ''}You score ${pct(1 - t.score)} after it at your level. ${punishText(t)}${w ? ` ${w.how}` : ''}</p>`); }
     parts.unshift(`<p class="verdict${k ? ` k-${k}` : ''}">${n < 0 ? 'The start position.' : `<b>${label(n, hist[n])}${k && k !== 'book' ? ` was ${NOTE_WORD[k]}` : ''}.</b>${betters[n] ? ` ${slipWhy(n)}` : ''}`} Use → or click the last move to go back to the game.</p>`);
   }
   // Your last own move, when it was a slip: what it was and what was better (play-out only).
@@ -2048,8 +2051,16 @@ function showTrap(t, m) {
         if (ply >= line.length) return finish();
         if (!playPremove()) prompt('Your move: punish it.');
       };
+      // In Learn the button plays the punishing move (the line's next move, else Stockfish's best).
+      const punish = () => {
+        go();
+        if (gen !== gameGen || !userTurn()) return;
+        const san = line[t.ply + 1], mv = san && new Chess(game.fen()).move(san);
+        if (mv) return tryMove(mv.from, mv.to);
+        goodMove().then((x) => { if (x && gen === gameGen && userTurn()) tryMove(x.from, x.to); });
+      };
       moment('trap', `${trapWord(t)}!`, `${sideName(m.color)} played <b>${trapMove(t)}</b>, the move this line is about. ${t.kind === 'trap' && t.win ? `It loses ${t.win}.` : t.kind === 'mistake' ? (mistakeWhy(t) ? `${mistakeWhy(t).why} ${mistakeWhy(t).how}` : 'No blunder, but it costs time and hands you the easier game.') : 'It looks natural, but it lets you win.'} Players at your level score ${pct(1 - t.score)} after it. ${mode === 'learn' ? punishText(t) || 'The green arrow shows how to punish it.' : 'This is the moment: find the move that punishes it.'}`,
-        [{ label: 'Punish it', run: go }], was === null ? null : [was, 1 - t.score], [[m.from, m.to, RED], ...punishArrow(t)], go);
+        [mode === 'learn' ? { label: 'Punish it', run: punish } : { label: 'Find the answer', run: go }], was === null ? null : [was, 1 - t.score], [[m.from, m.to, RED], ...punishArrow(t)], go);
       // Where the line stops at the slip, Stockfish's best move is the punishment to show.
       if (mode === 'learn' && momentArrows.length === 1) {
         const at = game.fen();
