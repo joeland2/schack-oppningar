@@ -55,9 +55,9 @@ export const GUIDE = {
     watch: 'After ...d5 the e4 pawn and the knight on c6 can both be hanging; tactics come fast.',
   },
   'Center Game': {
-    idea: 'White takes on d4 with the queen at once. The queen gets chased by ...Nc6, so White often castles long and attacks the kingside with pawns, while Black develops with tempo and breaks with ...d5.',
-    lines: [['Main line', '3...Nc6 4.Qe3 Nf6 5.Nc3: White plans Bd2 and O-O-O.'], ['Kupreichik', 'Black plays ...Bb4 and ...O-O for fast counterplay.']],
-    watch: 'The white queen gets chased; each tempo Black gains brings ...d5 closer.',
+    idea: 'White opens the centre at once and takes back with the queen. It costs a tempo when ...Nc6 chases it, but White gets the half-open d-file, quick development and a clear plan: Qe3 (stopping ...d5, ready for Qg3 against g7), Nc3, Bd2, castle long, then push the kingside pawns. Think of it as a Scandinavian with the colours reversed and an extra pawn traded.',
+    lines: [['Paulsen Attack', '4.Qe3 Nf6 5.Nc3 Bb4 6.Bd2 O-O 7.O-O-O Re8: opposite castling and a race.'], ['Three tries', 'From there 8.Qg3 (giving e4 for play), 8.Qf4 with f3 and g4, or 8.Bc4.'], ['Black\'s solid set-ups', '4...Be7 with ...d5 soon, or 4...g6 and 4...Bb4+: fine for Black, so no free attack.']],
+    watch: 'With castling on opposite wings, every tempo counts: the side whose pawns arrive first usually wins.',
   },
   "Petrov's Defense": {
     idea: 'Black attacks e4 instead of defending e5, giving a symmetrical, solid game. After the pawns are traded, both sides develop and the side that uses the e-file better gets the edge. Hard for White to break.',
@@ -65,9 +65,9 @@ export const GUIDE = {
     watch: 'Copying with 3...Nxe4? at once loses to 4.Qe2: the queen pins the knight to the king.',
   },
   'Philidor Defense': {
-    idea: 'Black defends e5 with ...d6, a solid but passive set-up. White gets more space and an easy game; Black waits behind a firm centre and looks for ...exd4 or ...f5 breaks.',
-    lines: [['Exchange', '3.d4 exd4: Black gives up the centre for free pieces.'], ['Hanham', '...Nd7, ...Be7, ...c6: Black keeps e5 at all cost.']],
-    watch: 'Bc4 and Ng5 against f7 are dangerous while Black is still developing.',
+    idea: 'Black defends e5 with the pawn on d6 instead of a knight, for a solid set-up with a clear plan and little theory. The downsides are a cramped bishop on f8, which waits on e7, and a slightly better centre for White. After 3.d4 Black chooses: give up the centre with ...exd4 for quiet piece play, or hold e5 with ...Nd7, ...Ngf6, ...Be7 and ...c6.',
+    lines: [['Exchange (Antoshin)', '3.d4 exd4 4.Nxd4 Nf6 5.Nc3 Be7: calm, positional play.'], ['Hanham / Lion set-up', '...Nd7, ...Ngf6, ...Be7, ...c6: Black keeps e5 and often expands later.'], ['Main 3.d4 test', 'White hits the centre at once and forces Black to decide.']],
+    watch: 'Move order matters: an early Bc4 with Ng5 or Bxf7+ punishes careless development against f7.',
   },
   'Elephant Gambit': {
     idea: 'Black answers 2.Nf3 with 2...d5, a gambit that opens the centre at once. If White plays accurately Black is just a pawn down, but against an unprepared opponent the open lines give quick play.',
@@ -86,9 +86,9 @@ export const GUIDE = {
     watch: 'In the open lines White\'s attack can be very fast; Black must not fall behind in development.',
   },
   'French Defense': {
-    idea: 'Black plays ...e6 and ...d5 for a solid pawn chain. White usually gains space with e5, and the whole game turns on attacking that chain: Black hits d4 with ...c5 and e5 with ...f6, White attacks on the kingside. Black\'s light bishop is often the problem piece.',
-    lines: [['Advance', '3.e5: White grabs space; Black answers ...c5 and ...Qb6 against d4.'], ['Winawer', '3.Nc3 Bb4: Black pins and damages White\'s pawns.'], ['Tarrasch', '3.Nd2: White avoids the pin and keeps flexible.'], ['Exchange', '3.exd5 exd5: symmetrical and calm.']],
-    watch: 'Black\'s kingside is short of defenders after White plays e5; Bxh7+ sacrifices are common.',
+    idea: 'Black plays ...e6 so that ...d5 can be taken back with a pawn, not the queen. The price is the light bishop on c8, shut in behind e6: freeing or trading it is Black\'s lasting task. White usually takes space with e5; Black then attacks the d4-e5 chain from the side with ...c5 (and later ...f6), so d4 becomes the key square. Played actively, it is a counter-attacking opening, not a passive one.',
+    lines: [['Exchange', '3.exd5 exd5: the most common at club level and harmless; Black frees the c8 bishop and can even castle long and push the kingside pawns.'], ['Advance', '3.e5 c5 4.c3: Black hits d4 with ...Nc6, ...Qb6 and ...Nge7-f5; or ...Bd7-b5 to trade the problem bishop.'], ['Winawer', '3.Nc3 Bb4: Black pins and doubles White\'s pawns, but the dark squares round the king get weak; Qg4 against g7 is White\'s idea.'], ['Classical and Rubinstein', '3.Nc3 Nf6 (4.e5 Nfd7 or 4.Bg5), or 3...dxe4 with ...Nd7, ...Ngf6 and ...c5.']],
+    watch: 'Black must not just sit: without ...c5 against d4, White\'s space and a Bxh7+ sacrifice can decide quickly.',
   },
   'Caro-Kann Defense': {
     idea: 'Black prepares ...d5 with ...c6, so the light bishop can come out before ...e6 shuts it in. Black gets a very solid structure with few weaknesses; White usually gets more space and plays for a slow edge or a kingside push.',
@@ -262,9 +262,9 @@ export const GUIDE = {
     watch: 'White can keep the pawn with Bf4 and Nf3; then Black needs fast activity.',
   },
   'Benko Gambit': {
-    idea: 'Black gives a queenside pawn with ...b5 to open the a- and b-files. The pressure on the queenside lasts into the endgame, which makes the gambit unusual: Black is often happy to trade queens.',
-    lines: [['Accepted', 'cxb5 a6 bxa6: the main line, long pressure.'], ['Declined', 'Nf3 or a4: White refuses the pawn.']],
-    watch: 'Black must keep the files open; if the queenside closes, the pawn is just lost.',
+    idea: 'Black gives a queenside pawn with ...b5 and gets something that does not fade: open a- and b-files for the rooks, the bishop on g7 down the long diagonal, and steady queenside pressure. Unlike most gambits, Black is often glad to trade queens, because the pressure lasts into the endgame. Every game is decided on the queenside.',
+    lines: [['Main line', '4.cxb5 a6 5.bxa6 Bxa6: rooks to a8 and b8, bishop to g7, pressure on a2 and b2.'], ['White returns the pawn', '5.b6, 5.f3, 5.e3 or 5.Nc3: White avoids the main fight.'], ['Declined', 'White does not take on b5 and plays for the centre.']],
+    watch: 'Black must keep the files open: if the queenside closes, the pawn is simply lost.',
   },
   'Indian Defense': {
     idea: 'Black develops the knight first and keeps the choice between the many Indian set-ups (King\'s Indian, Nimzo, Queen\'s Indian, Grünfeld) open.',
