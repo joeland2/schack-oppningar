@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029100504';
-import { STYLE_OF } from './styles.js?v=20261029100504';
+import { account, login, finishLogin } from './lichess.js?v=20261029103950';
+import { STYLE_OF } from './styles.js?v=20261029103950';
 
 const MAX = 500;
-const PV = 19;
+const PV = 22;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -142,6 +142,19 @@ export function profileOf(games) {
     draws: share(games, (g) => g.result === 0.5),
     moves: Math.round(sum(games, (g) => g.plies) / Math.max(1, n) / 2),
     quickLosses: share(losses, (g) => g.plies <= 50),
+    // How narrow the openings this player chose are: the top two families' share, and how many
+    // families they play at least three times.
+    ...(() => {
+      const own = games.filter((g) => g.chosen), fams = Object.values(own.reduce((m, g) => ({ ...m, [g.family]: (m[g.family] || 0) + 1 }), {})).sort((a, b) => b - a);
+      return { top2: own.length ? ((fams[0] || 0) + (fams[1] || 0)) / own.length : 0, families: fams.filter((k) => k >= 3).length };
+    })(),
+    // Against stronger players (100 or more above): points per game above what the rating gap predicts.
+    ...(() => {
+      const up = games.filter((g) => g.them && g.them - g.rating >= 100);
+      return { giantN: up.length, giantGain: up.length ? sum(up, (g) => g.result - 1 / (1 + 10 ** ((g.them - g.rating) / 400))) / up.length : null };
+    })(),
+    // Games where both players ended short of time: the score in those scrambles.
+    ...(() => { const sc = games.filter((g) => g.lowTime && g.oppLowTime); return { clutchN: sc.length, clutchScore: score(sc) }; })(),
     attacking: share(games, (g) => styleOf(g.family).includes('attacking')),
     solid: share(games, (g) => styleOf(g.family).some((s) => s === 'solid' || s === 'positional')),
     castled: share(games, (g) => g.castled !== null && g.castled < 30), noCastle: share(games.filter((g) => g.plies > 40), (g) => g.castled === null),
@@ -183,6 +196,15 @@ const TYPE_ABOUT = {
   'Fast starter': 'Comes out of the opening better than players at the same level: knows the lines and the plans behind them.',
   Grinder: 'Scores more in endgames than players at the same level: the long games are theirs.',
   'Sure hand': 'Blunders less than players at the same level: rarely throws a piece or a game away.',
+  Trickster: 'Sets traps and wins fast. Many games are over before move 25.',
+  Specialist: 'Plays a narrow repertoire and knows it deeply. Rarely surprised in the opening.',
+  Explorer: 'Tries many different openings. Hard to prepare against, but each line is known less deeply.',
+  Marathoner: 'Plays long games and keeps going. Patient, and comfortable deep into the endgame.',
+  Peacemaker: 'Draws more than most players at the same level. Solid and hard to beat, but leaves wins on the table.',
+  'Giant killer': 'Beats stronger players more often than the rating gap predicts.',
+  'White specialist': 'Much stronger with the white pieces.',
+  'Black specialist': 'Much stronger with the black pieces.',
+  'Clutch player': 'Wins the scrambles: when both players are short of time, comes out on top.',
   'Speed demon': 'Handles the clock better than players at the same level: rarely short of time, and wins on it.',
 };
 // You against players at your level: your own opponents rated within 200 of you, in the same games.
@@ -236,7 +258,7 @@ function pieceOf(games, analysed) {
     .map(([k, n]) => [k, n / ({ n: 2, b: 2, r: 2, q: 1 }[k] ** 0.5)]).sort((a, b) => b[1] - a[1]);
   return { piece: act[0]?.[0] || 'n', pieceWhy: 'active' };
 }
-console.assert(pieceOf([{ played: { n: [40, 8], b: [40, 1], r: [10, 0], q: [40, 6] } }], 20).piece === 'b', 'pieceOf');
+console.assert(pieceOf([{ played: { n: [40, 8], b: [40, 1], r: [10, 0], q: [40, 6] } }], ENOUGH).piece === 'b', 'pieceOf');
 
 // What kind of player the games show, in two parts: how they play (the style that stands out most,
 // each measured against what is normal at their level) and what they do best (the skill furthest
@@ -246,9 +268,11 @@ console.assert(pieceOf([{ played: { n: [40, 8], b: [40, 1], r: [10, 0], q: [40, 
 const odds = (x) => (x == null ? 1 : Math.min(9, Math.max(1 / 9, x / (1 - x))));
 // Draws grow with the level: about 5% at 1200 and 9% at 2800 in Lichess blitz.
 const usualDraws = (rating) => 0.02 + (rating || 1500) / 40000;
+// Games get longer with the level: about 36 moves at 1200 and 44 at 2800.
+const usualMoves = (rating) => Math.round(30 + (rating || 1500) / 200);
 const STRENGTH = { Attack: 'Finisher', Defense: 'Wall', 'Early game': 'Fast starter', 'Late game': 'Grinder', Accuracy: 'Sure hand', Speed: 'Speed demon' };
 // A strength on the same theme as the style says the same thing twice; then the next best skill is named.
-const SAME = { 'Endgame player': 'Late game', 'Comeback player': 'Defense', 'Time scrambler': 'Speed' };
+const SAME = { 'Endgame player': 'Late game', 'Comeback player': 'Defense', 'Time scrambler': 'Speed', Trickster: 'Attack', Marathoner: 'Late game' };
 function typeOf(p) {
   const q = p.peer || {}, rating = p.speeds?.[0]?.rating;
   const styles = [
@@ -264,11 +288,24 @@ function typeOf(p) {
     { name: 'Time scrambler', w: Math.min(p.lowTime / 0.3, q.n >= 30 && q.myLow != null ? q.myLow / Math.max(q.oppLow, 0.05) / 1.4 : 0),
       why: `You end ${pct(p.lowTime)} of your games with under a tenth of your time left${q.oppLow != null ? `; your opponents at your level ${pct(q.oppLow)}` : ''}.` },
     { name: 'King walker', w: p.noCastle / 0.3, why: `Your king stays in the centre in ${pct(p.noCastle)} of your longer games.` },
+    { name: 'Trickster', w: q.n >= 30 && (q.quickW ?? 0) >= 0.1 ? (q.quickW / Math.max(q.quickL, 0.03)) / 1.6 : 0,
+      why: `You win ${pct(q.quickW ?? 0)} of your games within 25 moves, your opponents at your level ${pct(q.quickL ?? 0)}: your traps and tricks land.` },
+    // most club players lean on two openings (about 0.75 in 25 checked), so Specialist needs nearly all
+    { name: 'Specialist', w: (p.top2 ?? 0) / 0.9, why: `Your two main openings are ${pct(p.top2 ?? 0)} of the openings you choose: you know your lines deeply.` },
+    { name: 'Explorer', w: (p.families ?? 0) / 18 * ((p.top2 ?? 1) < 0.3 ? 1 : 0.5), why: `You play ${p.families ?? 0} different openings at least three times each: you like variety.` },
+    { name: 'Marathoner', w: (p.moves / usualMoves(rating)) / 1.2, why: `Your games last ${p.moves} moves on average, where about ${usualMoves(rating)} is usual at your level.` },
+    { name: 'Peacemaker', w: (p.draws / usualDraws(rating)) / 1.8, why: `${pct(p.draws)} of your games are draws, where about ${pct(usualDraws(rating))} is usual at your level.` },
   ].sort((x, y) => y.w - x.w);
   // The strength: the skill clearly above the player's own opponents (62 or more where 50 is even).
   const style = styles[0].w >= 0.8 ? styles[0] : { name: 'All-rounder', why: 'No style stands out: you play a bit of everything.' };
-  const best = rawSkills(p).filter((x) => x.v !== null && x.v >= 62 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v)[0];
-  const second = best ? { name: STRENGTH[best.label], why: `${best.label} is where you beat your level most: ${best.why}` } : styles[1].w >= 0.8 && style === styles[0] ? styles[1] : null;
+  const extra = [
+    { label: 'Giant killer', v: p.giantN >= 20 ? clamp(50 + p.giantGain * 150) : null, why: `Against players 100 or more above you, you score ${pct(p.giantGain ?? 0)} more per game than the rating gap predicts (${p.giantN} games).` },
+    { label: p.winW >= p.winB ? 'White specialist' : 'Black specialist', v: p.nWhite >= 30 && p.n - p.nWhite >= 30 ? clamp(50 + Math.abs(p.winW - p.winB) * 100) : null,
+      why: `You win ${pct(p.winW)} as White and ${pct(p.winB)} as Black.` },
+    { label: 'Clutch player', v: p.clutchN >= 25 ? clamp(50 + (p.clutchScore - p.score) * 120) : null, why: `You score ${pct(p.clutchScore ?? 0)} in the ${p.clutchN} games where both players were short of time, against ${pct(p.score)} overall.` },
+  ];
+  const best = [...rawSkills(p), ...extra].filter((x) => x.v !== null && x.v >= 62 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v)[0];
+  const second = best ? { name: STRENGTH[best.label] || best.label, why: STRENGTH[best.label] ? `${best.label} is where you beat your level most: ${best.why}` : best.why } : styles[1].w >= 0.8 && style === styles[0] ? styles[1] : null;
   return second ? [style, second] : [style];
 }
 
@@ -298,12 +335,12 @@ function skillsOf(p) {
   return raw.map((x) => ({ ...x, raw: x.v, level: clamp(card(50)), v: x.v === null ? null : Math.min(99, clamp(card(x.v))) }));
 }
 { // the shape is stretched, the overall (the mean of the card's skills) stays at base + half the mean gap
-  const s = skillsOf({ speeds: [{ rating: 1200 }], peer: { analysed: 30, ups: 9, downs: 8, saved: 0.5, quickW: 0.2, quickL: 0.15, after12: 40, myBl: 2.8, oppBl: 3, meUp: 2.7, oppUp: 3.6, meDown: 1.5, oppDown: 1.4, endgames: 300, endScore: 0.57, n: 400, myLow: 0.15, oppLow: 0.22, timeWins: 0.15, timeLosses: 0.04 } });
+  const s = skillsOf({ speeds: [{ rating: 1200 }], peer: { analysed: 120, ups: 36, downs: 32, saved: 0.5, quickW: 0.2, quickL: 0.15, after12: 40, myBl: 2.8, oppBl: 3, meUp: 2.7, oppUp: 3.6, meDown: 1.5, oppDown: 1.4, endgames: 300, endScore: 0.57, n: 400, myLow: 0.15, oppLow: 0.22, timeWins: 0.15, timeLosses: 0.04 } });
   const m = sum(s, (x) => x.raw) / 6, o = sum(s, (x) => x.v) / 6;
   console.assert(Math.abs(o - (60 + (m - 50) / 2)) < 1 && Math.abs((s[5].v - s[3].v) - (s[5].raw - s[3].raw)) <= 1, 'skillsOf shape'); // SHAPE 2 at half size: a gap of 10 between two skills stays 10
 }
 console.assert(typeOf({ attacking: 0.54, solid: 0.2, queensOff: 0.1, draws: 0.05, moves: 30, lowTime: 0.16, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, score: 0.5, downs: 30, ups: 30, saved: 0.47, oppSaved: 0.2, myLow: 0.15, oppLow: 0.22, timeWins: 0.15, timeLosses: 0.04 } }).map((t) => t.name).join() === 'Attacker,Speed demon', 'typeOf');
-console.assert(typeOf({ attacking: 0.27, solid: 0.56, queensOff: 0.23, draws: 0.03, moves: 29, lowTime: 0.15, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, analysed: 30, after12: 96 } }).map((t) => t.name).join() === 'Fighter,Fast starter', 'typeOf: same level, other strength');
+console.assert(typeOf({ attacking: 0.27, solid: 0.56, queensOff: 0.23, draws: 0.03, moves: 29, lowTime: 0.15, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, analysed: 120, after12: 96 } }).map((t) => t.name).join() === 'Fighter,Fast starter', 'typeOf: same level, other strength');
 console.assert(levelOf(1200) === 60 && levelOf(2400) === 82 && levelOf(5000) === 92 && levelOf(100) === 35, 'levelOf');
 function rawSkills(p) {
   const q = p.peer || {}, an = (q.analysed ?? 0) >= ENOUGH, pawns = (cp) => { const r = Math.round(cp / 10) / 10; return r === 0 ? '0.0' : `${r > 0 ? '+' : '−'}${Math.abs(r).toFixed(1)}`; };
@@ -341,7 +378,7 @@ function rawSkills(p) {
       train: 'Play the opening fast (you know it), and save your thinking time for the critical moments.' },
   ];
 }
-console.assert(rawSkills({ peer: { analysed: 30, ups: 9, downs: 3, after12: 100, myBl: 1, oppBl: 1, meUp: 1, oppUp: 3, endgames: 0, n: 10 } }).map((x) => x.v).slice(0, 3).join() === '75,75,75', 'rawSkills');
+console.assert(rawSkills({ peer: { analysed: 120, ups: 36, downs: 12, after12: 100, myBl: 1, oppBl: 1, meUp: 1, oppUp: 3, endgames: 0, n: 10 } }).map((x) => x.v).slice(0, 3).join() === '75,75,75', 'rawSkills');
 {
   const g = (o) => ({ side: 'w', speed: 'blitz', status: 'resign', plies: 60, result: 1, family: 'Italian Game', rating: 1500, diff: 5, castled: 8, queensOff: null, endgame: false, analysed: false, acc: null, blunders: null, best: null, worst: null, after12: null, slips: { opening: 0, middlegame: 0, endgame: 0 }, lowTime: false, ...o });
   const p = profileOf([g({}), g({ result: 0 }), g({ side: 'b', result: 0 }), g({ side: 'b', result: 0.5 })]);
