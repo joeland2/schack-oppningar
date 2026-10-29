@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261030001534';
-import { cardImage } from './profile.js?v=20261030001534';
+import { account, login, finishLogin } from './lichess.js?v=20261030002133';
+import { cardImage } from './profile.js?v=20261030002133';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -46,7 +46,10 @@ function actionRows(list) {
     const where = `<small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small>`, by = r.name ? ` <small>by ${esc(r.name)}</small>` : '';
     if (r.kind !== 'card') {
       const [name, rest] = t.split(': ');
-      out.push(`<li><span class="ad-act">${ICON.analyse}<span><b>Analysis</b> ${plink(name)} <span class="ad-what">${esc((rest || '').replace(/^until (\d+)$/, 'up to $1 games'))}</span>${by}</span></span>${where}</li>`);
+      // The same analysis started again (stopped and restarted, or a second device): one row, with how often.
+      let n = 1;
+      while (list[i + 1]?.kind === r.kind && list[i + 1].target === r.target) { n++; i++; }
+      out.push(`<li><span class="ad-act">${ICON.analyse}<span><b>Analysis</b> ${plink(name)} <span class="ad-what">${esc((rest || '').replace(/^until (\d+)$/, 'up to $1 games'))}${n > 1 ? ` · started ${n} times` : ''}</span>${by}</span></span>${where}</li>`);
       continue;
     }
     let [name, what, look] = parts, own = r.target || '';

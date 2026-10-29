@@ -2009,3 +2009,9 @@ main.profile:has(#admin) { max-width: 1320px; }
 .filters > summary::before { content: ''; flex: none; align-self: center; width: 0; height: 0; margin-right: -4px; border-left: 6px solid currentColor; border-block: 5px solid transparent; transition: transform .15s; }
 .filters[open] > summary::before { transform: rotate(90deg); }
 @media (prefers-reduced-motion: reduce) { .filters > summary::before { transition: none; } }
+/* Phones: a latest-action row wraps, so where and when always shows under what was done */
+@media (max-width: 640px) {
+  .ad-recent li { flex-wrap: wrap; row-gap: 2px; }
+  .ad-recent li > span { white-space: normal; }
+  .ad-recent li > small { margin-left: auto; }
+}
