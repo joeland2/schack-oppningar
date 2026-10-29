@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029145707';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029145707';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029145707';
-import { GUIDE } from './guide.js?v=20261029145707';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029145707';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029145707';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029145707';
-import { storedGames } from './profile.js?v=20261029145707';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029145732';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029145732';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029145732';
+import { GUIDE } from './guide.js?v=20261029145732';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029145732';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029145732';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029145732';
+import { storedGames } from './profile.js?v=20261029145732';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2425,10 +2425,22 @@ function startTrial() {
   play(Math.floor(Math.random() * lines.length));
   say('Go! Play the lines from memory.');
 }
-function stopTrial() { if (trial) clearInterval(trial.timer); trial = trial && { ...trial, timer: null }; }
+function stopTrial() { if (trial) clearInterval(trial.timer); trial = trial && { ...trial, timer: null }; if (mode !== 'time') $('#trial-clock').hidden = true; }
+// The seconds a move won or cost, flashed beside the clock.
+function trialFlash(text, good) {
+  const el = $('#tc-flash');
+  el.textContent = text; el.className = `tc-flash ${good ? 'up' : 'down'}`;
+  void el.offsetWidth; el.classList.add('show');
+}
 function tickTrial() {
-  const left = trial.end - Date.now();
-  $('#progress').textContent = `${Math.max(0, Math.ceil(left / 1000))} s · ${plural(trial.score, 'move')} right`;
+  const left = trial.end - Date.now(), sec = Math.max(0, Math.ceil(left / 1000));
+  $('#progress').textContent = '';
+  // The clock above the board: big minutes and seconds, red in the last ten seconds, and the score.
+  $('#trial-clock').hidden = false;
+  $('#tc-time').textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  $('#trial-clock').classList.toggle('low', sec <= 10);
+  $('#tc-score').textContent = trial.score;
+  $('#tc-best').textContent = stats[statKey(cur.id)]?.timeBest ? ` · best ${stats[statKey(cur.id)].timeBest}` : '';
   $('#bar').style.width = `${Math.max(0, Math.min(1, left / (TRIAL_S * 1000))) * 100}%`;
   if (left > 0) return;
   clearInterval(trial.timer);
@@ -2459,6 +2471,7 @@ function tryMove(from, to) {
   if (mode === 'time' && clean(m.san) !== line[ply]) {
     game.undo();
     trial.end -= TRIAL_WRONG * 1000; misses++; // a slip costs the line its diamond
+    trialFlash(`−${TRIAL_WRONG} s`, false);
     wrongSq = to; sel = null; shake(boardEl);
     setTimeout(() => { wrongSq = null; renderBoard(); }, 500);
     lastMove = game.move(line[ply]); ply++;
@@ -2467,7 +2480,7 @@ function tryMove(from, to) {
     if (ply >= line.length) finish(); else reply();
     return true;
   }
-  if (mode === 'time') { trial.end += TRIAL_RIGHT * 1000; trial.score++; }
+  if (mode === 'time') { trial.end += TRIAL_RIGHT * 1000; trial.score++; trialFlash(`+${TRIAL_RIGHT} s`, true); }
   const moved = clean(m.san) !== line[ply] && transpose(); // another move order to a line's position counts as that line's move
   if (clean(m.san) !== line[ply] && !moved) {
     game.undo();
