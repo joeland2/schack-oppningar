@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029145326';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029145326';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029145326';
-import { GUIDE } from './guide.js?v=20261029145326';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029145326';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029145326';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029145326';
-import { storedGames } from './profile.js?v=20261029145326';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029145336';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029145336';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029145336';
+import { GUIDE } from './guide.js?v=20261029145336';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029145336';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029145336';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029145336';
+import { storedGames } from './profile.js?v=20261029145336';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -461,11 +461,7 @@ function renderList() {
     const pinned = mineList.filter((o) => o.side === listSide);
     const ops = [...pinned, ...list.filter((o) => o.side === listSide && !repertoire.has(o.id))];
     const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for White at your level. Try another style.</p>`;
-    // Start here: the most played opening of this side that you have not learned a line of yet.
-    const fresh = [...ops].sort((a, b) => b.share - a.share).find((o) => !(stats[statKey(o.id)]?.played?.length)) || null;
-    const start = fresh ? `<div class="start-here"><p><b>Start here:</b> ${isVs(fresh) ? 'vs ' : ''}${fresh.name}, ${popularity(fresh).replace(/^The/, 'the')} at your level, and new to you.</p>
-      <button type="button" class="cta" data-start="${fresh.id}">Learn it</button></div>` : '';
-    body = `${start}<p class="og-about">${about[listSide](ops.length)}</p>${ops.length ? '' : empty}
+    body = `<p class="og-about">${about[listSide](ops.length)}</p>${ops.length ? '' : empty}
       <div class="olist">${ops.map(card).join('')}</div>`;
   }
   // The side tabs sit beside the search box, outside the list, so typing a search keeps its focus.
@@ -474,7 +470,6 @@ function renderList() {
     </div>`;
   listEl.innerHTML = `${q ? '<h2 class="og-h">Search results</h2>' : `<h2 class="visually-hidden">${listSide === 'r' ? 'Your favorites' : `Openings for ${sideName(listSide)}`}</h2>`}${body}`; // the cards' h3 sit under an h2
   seen.disconnect();
-  listEl.querySelector('[data-start]')?.addEventListener('click', (e) => start(OPENINGS.find((o) => o.id === e.currentTarget.dataset.start)));
   listEl.querySelectorAll('.ocard').forEach((c) => {
     const op = OPENINGS.find((o) => o.id === c.dataset.id);
     const go = (e) => { if (!e?.target.closest?.('.star')) start(op); };

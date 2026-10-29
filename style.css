@@ -1588,10 +1588,6 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .move-type label { font-size: 13px; color: var(--muted); }
 .move-type input { width: 12em; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: 15px var(--font-mono); }
 
-/* Start here: one suggestion above the list, the most played opening you have not learned yet */
-.start-here { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin: 4px 0 14px; padding: 14px 16px; border: 1px solid var(--hot); border-radius: var(--radius); background: color-mix(in srgb, var(--hot) 7%, transparent); }
-.start-here p { margin: 0; flex: 1 1 22em; }
-.start-here b { font-weight: 700; }
 /* The move symbols matter only where moves are judged: the trainer */
 body:has(#trainer[hidden]) .legend-mini { display: none; }
 /* Hint is the helpful button, so it reads clearly; Restart stays quiet until it means going on */
