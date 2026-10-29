@@ -1891,4 +1891,6 @@ p, li, dd, small { text-wrap: pretty; }
 .ad-cv-style b { font: 400 34px/1 var(--font-poster); text-transform: uppercase; }
 .ad-cv-style span { font: 400 18px/1.1 var(--font-poster); opacity: .75; }
 /* Compare: the download icon under the heading, its menu opening to the right */
-.cmp-dl { display: inline-block; margin: 10px 0 0; } .cmp-dl .pf-dl-menu { right: auto; left: 0; }
+.cmp-cards { position: relative; }
+.cmp-dl { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); margin: 0; } /* between the two cards, at their foot */
+.cmp-dl .pf-dl-menu { right: auto; left: 50%; transform: translateX(-50%); }
