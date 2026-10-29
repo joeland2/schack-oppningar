@@ -232,7 +232,7 @@ export const PLAN = {
   "King's Pawn Game: Leonardis Variation": 'A King\'s Indian Attack set-up: Nf3, g3, Bg2, castle, then Nbd2, Re1 and a kingside push with h4 or Nh4-f5.',
   'Mieses Opening': 'Keep it flexible with d3, Nf3, g3 and Bg2; castle and push e4 for a King\'s Indian Attack.',
   'Polish Opening': 'Bishop on b2, a3 to support b4, then e3, Nf3 and c4: press on the queenside and the long diagonal.',
-  'Danish Gambit': 'Give the pawns, then develop at full speed: Bc4, Nf3 or Ne2, castle and put the queen and rooks on the open centre files against f7.',
+  'Danish Gambit': 'Develop at full speed instead of winning the pawns back: Bc4 at f7, Nf3 (or Nxc3 for one pawn), Qb3 against f7 and b7, castle, then rooks to c1 and d1 and e4-e5 to open the king.',
   'Blackmar-Diemer Gambit': 'After f3 and fxf3, develop Bd3, castle and use the open f-file with Qe1-h4 or Ng5 against the black king.',
   'Van Geet Opening': 'Nc3 and e4 or d4 depending on Black; develop quickly and use the knight to support a central break.',
   'Ponziani Opening': 'Push d4 to build a big centre after c3; if Black hits e4, keep the centre with Qa4 or d5.',

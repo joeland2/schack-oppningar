@@ -30,9 +30,9 @@ export const GUIDE = {
     watch: 'Qh4+ against the open king is Black\'s main trick; White must watch the e1-h4 diagonal.',
   },
   'Danish Gambit': {
-    idea: 'White gives one or two pawns for two bishops raking the board and a huge lead in development. Black should give some material back with ...d5 to catch up. If Black grabs everything, White\'s attack on f7 and the king usually crashes through.',
-    lines: [['Accepted', '3.c3 dxc3 4.Bc4 cxb2 5.Bxb2: the full gambit, two pawns for the bishops.'], ['Declined with 3...d5', 'Black returns the pawn at once and frees the game.'], ['Schlechter Defense', '4...d5 5.Bxd5 Nf6: Black gives back material for easy development.']],
-    watch: 'Greedy Black gets mated along the diagonals: Bxf7+ and Qb3 are the typical blows.',
+    idea: 'Time over material: White gives one or two pawns so every piece gets into play before Black is developed. The targets are f7 (the bishop on c4, later the queen on b3, which also hits b7) and, after the second pawn, the long diagonal to g7 with a bishop on b2. Black\'s best answer is to give a pawn back with ...d5 at the right moment and finish developing; if Black just grabs, the attack usually crashes through.',
+    lines: [['Two-pawn gambit', '3...dxc3 4.Bc4 cxb2 5.Bxb2: both bishops rake the board; Qb3 hits f7 and b7 at once.'], ['Schlechter Defense', '5...d5!: Black returns a pawn, trades on f7 and d8 and reaches an equal endgame. The main reason strong players avoid the two-pawn line.'], ['Modern Danish', '4.Nxc3: White takes one pawn back, keeps the e4 pawn and plays Bc4, Nf3, Qb3, castles and puts the rooks on c1 and d1. Calmer, and there is no easy ...d5 equaliser.'], ['Declined', '3...d5 (Sørensen) 4.exd5 Qxd5 5.cxd4: White gets a normal game with the centre; 3...d6 or 3...Qe7 are slower.']],
+    watch: 'Greedy Black gets mated: Bxf7+ followed by Ng5+, Qh5+ or Qb3 is the pattern; and ...Qg5 grabbing g2 runs into Rg1 and Bxf7+.',
   },
   "Bishop's Opening": {
     idea: 'White develops the bishop to c4 first and keeps the knight and the f-pawn flexible, often heading for a Vienna or an Italian with f4 in reserve. Black usually hits e4 with ...Nf6. Few forcing lines, many chances to transpose.',
