@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029160407';
-import { STYLE_OF } from './styles.js?v=20261029160407';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029160455';
+import { STYLE_OF } from './styles.js?v=20261029160455';
 
 const MAX = 500;
 const PV = 33;
@@ -772,7 +772,7 @@ function playerCard(name, p, t, skills) {
   const main = p.speeds[0];
   return `<div class="pf-pcard" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span></div>
-      <div class="pf-pcard-side"><img class="pf-pcard-piece" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title="${esc(name)}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
+      <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title="${esc(name)}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
         ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
     <p class="pf-pcard-name">${esc(name)}</p>
     <div class="pf-pcard-stats">${skills.map((x) => `<span><b>${x.v ?? '–'}</b>${ABBR[x.label]}</span>`).join('')}</div>
@@ -928,7 +928,8 @@ function render(name, at, full) {
     ${playerBar(name)}
     ${speedBar(name, full, sp, avail)}
     <section class="pf-hero">
-      <div class="pf-card-col">${playerCard(name, p, t, skills)}<div class="pf-card-actions"><span>Download</span><button type="button" class="link" data-card-png="card">Card</button><button type="button" class="link" data-card-png="style">Card + style</button></div>${cardNote(name, p, me)}</div>
+      <div class="pf-card-col">${playerCard(name, p, t, skills)}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
+        <div class="pf-dl-menu" role="group" aria-label="Download"><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h1 class="pf-h1">${esc(t[0].name)}</h1>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}</div>${tasteLine(p.styleMix, me)}</div>
@@ -981,7 +982,12 @@ function render(name, at, full) {
   if (me) {
     sendCard(name, full, sp);
   }
-  document.querySelectorAll('[data-card-png]').forEach((b) => b.addEventListener('click', () => cardPng(name, p, t, skills, b.dataset.cardPng === 'style', b)));
+  document.querySelectorAll('[data-card-png]').forEach((b) => b.addEventListener('click', async () => {
+    b.closest('details').open = false;
+    const k = b.dataset.cardPng;
+    if (k !== 'style') await cardPng(name, p, t, skills, false, b);
+    if (k !== 'card') await cardPng(name, p, t, skills, true, b);
+  }));
   bindSearch();
   bindAnalyse(name);
   quickLook(name);

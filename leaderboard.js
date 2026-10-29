@@ -17,7 +17,7 @@ function row(r, i, value) {
   const w = top('w'), bl = top('b'), href = `profile.html?u=${encodeURIComponent(r.name)}`;
   return `<li class="lb-row"><span class="lb-rank">${i + 1}</span>
     <a class="lb-card" href="${href}" aria-label="${esc(r.name)}'s profile"><div class="pf-pcard"><div class="pf-pcard-top"><div><b class="pf-ovr">${r.overall ?? '–'}</b><span class="pf-pos">${esc(r.style || '')}</span></div>
-      <div class="pf-pcard-side"><img class="pf-pcard-piece" src="pieces/w${(r.piece || 'n').toUpperCase()}.svg" alt="" title="Most important piece: the ${PIECE[r.piece || 'n']}"><span class="pf-pcard-rating">${r.rating} <small>${esc(r.speed)}</small></span></div></div>
+      <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(r.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(r.piece || 'n').toUpperCase()}.svg" alt="" title="Most important piece: the ${PIECE[r.piece || 'n']}"><span class="pf-pcard-rating">${r.rating} <small>${esc(r.speed)}</small></span></div></div>
       <p class="pf-pcard-name">${esc(r.name)}</p>
       <div class="pf-pcard-stats">${Object.entries(ABBR).map(([k, a]) => `<span${state.by === k ? ' class="lb-by"' : ''}><b>${r.skills?.[k] ?? '–'}</b>${a}</span>`).join('')}</div></div></a>
     <div class="lb-info"><a class="lbd-name" href="${href}">${esc(r.name)}</a>

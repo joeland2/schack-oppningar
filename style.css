@@ -1027,8 +1027,6 @@ a.cta { color: var(--accent-ink); }
 .pf-pcard-piece { width: 58px; height: 58px; }
 .pf-pcard-rating { font: 400 20px/1 var(--font-poster); letter-spacing: .02em; }
 .pf-pcard-rating small { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pf-pcard-piece { filter: invert(1); } }
-:root[data-theme="dark"] .pf-pcard-piece { filter: invert(1); }
 /* Game review: who is White and who is Black */
 .gm-player { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 15px; }
 .gm-player img, .gm-sides img { width: 22px; height: 22px; }
@@ -1652,3 +1650,19 @@ p, li, dd, small { text-wrap: pretty; }
 .pf-star-ops .line-star { width: 14px; height: 14px; margin-left: 6px; }
 .pf-stars .info { margin: 10px 0 0; font-size: 12px; }
 .message .trial-again { display: block; margin-top: 8px; padding: 8px 16px; font-size: 14px; }
+/* Download: one small icon at the card's corner, with a menu (the card, the card + style, or both) */
+.pf-card-col { position: relative; }
+.pf-dl { position: relative; justify-self: end; margin-top: -6px; }
+.pf-dl > summary { list-style: none; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); cursor: pointer; }
+.pf-dl > summary::-webkit-details-marker { display: none; }
+.pf-dl > summary:hover, .pf-dl[open] > summary { color: var(--ink); border-color: var(--ink); }
+.pf-dl-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: grid; min-width: 150px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+.pf-dl-menu button { padding: 8px 12px; border: 0; border-radius: 6px; background: none; color: var(--ink); font: 500 14px var(--font-body); text-align: left; cursor: pointer; }
+.pf-dl-menu button:hover, .pf-dl-menu button:focus-visible { background: var(--raised); }
+
+/* The card's piece: the real black piece on the light card (dark theme), the white piece on the dark card
+   (light theme); inverting the white one gave it a white outline */
+.pf-pcard-piece.ink-on-light { display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pf-pcard-piece.ink-on-light { display: block; } :root:not([data-theme="light"]) .pf-pcard-piece.ink-on-dark { display: none; } }
+:root[data-theme="dark"] .pf-pcard-piece.ink-on-light { display: block; }
+:root[data-theme="dark"] .pf-pcard-piece.ink-on-dark { display: none; }
