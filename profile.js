@@ -3,12 +3,13 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029084659';
-import { STYLE_OF } from './styles.js?v=20261029084659';
+import { account, login, finishLogin } from './lichess.js?v=20261029090531';
+import { STYLE_OF } from './styles.js?v=20261029090531';
 
 const MAX = 500;
 const PV = 19;
-const ENOUGH = 20;
+const ENOUGH = 50; // analysed games before the skills that need analysis are shown
+const FULL = 250; // analysed games before they count as reliable; until then they are marked provisional
 const WHY_ANALYSE = 'Lichess only analyses games you ask it to. Analysed games give your blunders, accuracy and four of the skills, and become puzzles in My practice. Stockfish runs in your browser; no game is done twice.'; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
 const $ = (s) => document.querySelector(s);
@@ -545,16 +546,18 @@ function analysePanel(name, p) {
   if (analysing) return `<div id="pf-analyse" class="pf-analyse running"><span class="pf-an-progress">Analysing…</span><div class="pf-an-bar"><i></i></div><button type="button" class="link" data-stop>Stop</button></div>`;
   if (!p.todo) return '';
   const opts = [100, 250, 500].filter((n) => n <= Math.max(100, p.n)).map((n) => ({ n, ...costOf(p, n) }));
-  const few = p.analysed < ENOUGH;
-  const todo = opts.filter((o) => o.games), main = todo[0], rest = todo.slice(1);
+  const few = p.analysed < ENOUGH, partial = !few && p.analysed < FULL;
+  // short of FULL, the main button is the one that gets there (the newest 250)
+  const todo = opts.filter((o) => o.games), main = (partial && todo.find((o) => o.n === FULL)) || todo[0], rest = todo.filter((o) => o !== main);
   if (!main) return '';
   const btn = (o, cls) => `<button type="button" class="${cls}" data-analyse="${o.n}" title="${games(o.games)} without analysis among your newest ${o.n}, ${minutes(o.sec)}, with Stockfish in your browser">Analyse ${o.games} more <small>~${minutes(o.sec).replace('about ', '')}</small></button>`;
-  return `<div id="pf-analyse" class="pf-analyse${few ? ' few' : ''}">
+  return `<div id="pf-analyse" class="pf-analyse${few || partial ? ' few' : ''}">
     <div class="pf-an-row"><span><b>${p.analysed}/${p.n}</b> games analysed${p.ours ? ` (${p.ours} here)` : ''}
       <details class="pf-help"><summary title="${WHY_ANALYSE}" aria-label="Why analyse?">?</summary><p>${WHY_ANALYSE}</p></details></span>
     ${btn(main, 'cta pf-an-go')}
     ${rest.length ? `<details class="pf-an-menu"><summary>More</summary><div>${rest.map((o) => btn(o, 'pf-an-opt')).join('')}</div></details>` : ''}</div>
-    ${few ? `<p class="pf-an-few">Analyse at least ${ENOUGH} games to unlock Defense, Early game, Accuracy and all of Attack, and the accuracy and blunder numbers.</p>` : ''}
+    ${few ? `<p class="pf-an-few">Analyse at least ${ENOUGH} games to unlock Defense, Early game, Accuracy and all of Attack, and the accuracy and blunder numbers.</p>`
+      : partial ? `<p class="pf-an-few">The skills are provisional: they rest on ${p.analysed} analysed games, and a few games can move them several points. Analyse ${FULL} for numbers you can trust.</p>` : ''}
   </div>`;
 }
 function bindAnalyse(name) {
@@ -653,7 +656,7 @@ function playerCard(name, p, t, skills) {
         ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
     <p class="pf-pcard-name">${esc(name)}</p>
     <div class="pf-pcard-stats">${skills.map((x) => `<span><b>${x.v ?? '–'}</b>${ABBR[x.label]}</span>`).join('')}</div>
-    <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
+    <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES${p.analysed < FULL ? ' · PROVISIONAL' : ''}</p>
   </div>`;
 }
 // Where a rating ranks among all Lichess players of that time control this week: "Top 27%".
@@ -697,7 +700,7 @@ function drawCard(ctx, x, y, name, p, t, skills, piece) {
     ctx.fillStyle = CARD.muted; ctx.font = '400 34px Anton'; ctx.fillText(ABBR[k.label], cx + ctx.measureText('00').width * 72 / 34 + 18, cy);
   });
   ctx.fillStyle = CARD.muted; ctx.textAlign = 'center'; ctx.font = '600 20px Geist'; ctx.letterSpacing = '4px';
-  ctx.fillText(`${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} GAMES`, 300, 742);
+  ctx.fillText(`${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} GAMES${p.analysed < FULL ? ' · PROVISIONAL' : ''}`, 300, 742);
   ctx.restore();
 }
 async function cardPng(name, p, t, skills, detail, btn) {
