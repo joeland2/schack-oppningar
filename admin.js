@@ -1,6 +1,6 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029224533';
+import { account, login, finishLogin } from './lichess.js?v=20261029224737';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -130,19 +130,21 @@ function render(s) {
       ${s.visitors.length > 10 ? `<button type="button" class="ghost ad-more" data-more aria-expanded="false">Show all ${s.visitors.length}</button>` : ''}`
       : '<p class="info">Nobody yet.</p>'}</section>
     <div class="pf-two">
-    <section class="pf-card"><div class="ad-head"><h2>Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
+      <section class="pf-card"><div class="ad-head"><h2>Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
       ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${s.recentActions.slice(0, 15).map((r) => {
         return `<li><span><b>${r.kind === 'card' ? 'Card' : 'Analysis'}</b> ${targetHtml(r.kind, (r.target || '').replace(/ · $/, '')).replace('<a ', r.kind === 'card' ? `<a data-card="${esc(r.target || '')}" ` : '<a ')}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`; }).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
-    <section class="pf-card"><div class="ad-head"><h2>Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
+      <section class="pf-card"><div class="ad-head"><h2>Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
       ${(s.recentProfiles || []).length ? `<ul class="pf-rows ad-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: (r.target || '').split(' #')[0] })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
     </div>
     <div class="pf-two">
-      <section class="pf-card"><h2>Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="ad-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
       <section class="pf-card"><h2>Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>
+      <section class="pf-card"><h2>Logged-in players · ${s.days} days</h2>${s.users.length
+        ? `<ul class="pf-rows ad-rows">${s.users.map((u) => `<li><span>${link(u)}</span><small>${u.n} actions · last ${when(u.last)}</small></li>`).join('')}</ul>` : '<p class="info">Nobody yet.</p>'}</section>
     </div>
-    <div class="pf-two">
+    <div class="ad-three">
       <section class="pf-card"><h2>Most visited pages</h2>${bars(s.pages, (x) => esc(pageName(x.name)), (x) => ` <small>${x.unique} unique</small>`)}</section>
       <section class="pf-card"><h2>Where visitors come from</h2>${bars(s.sources || [])}</section>
+      <section class="pf-card"><h2>Devices <small>unique visitors</small></h2>${bars(s.devices || [])}</section>
     </div>
     <div class="pf-two">
       <section class="pf-card"><h2>Countries <small>unique visitors</small></h2>${bars(s.countries || [], (x) => flag(x.name) + esc(land(x.name)))}</section>
@@ -151,14 +153,10 @@ function render(s) {
     <div class="ad-three">
       <section class="pf-card"><h2>Time of day <small>Swedish time</small></h2>${cols(s.hours, s.hours.map((_, i) => String(i).padStart(2, '0')), 3)}</section>
       <section class="pf-card"><h2>Weekday</h2>${cols(s.weekdays, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])}</section>
-      <section class="pf-card"><h2>Devices <small>unique visitors</small></h2>${bars(s.devices || [])}</section>
-    </div>
-    <div class="pf-two">
       <section class="pf-card"><h2>What people do</h2>${rows(s.usage, (x) => KIND[x.name] || esc(x.name))}</section>
-      <section class="pf-card"><h2>Logged-in players · ${s.days} days</h2>${s.users.length
-        ? `<ul class="pf-rows ad-rows">${s.users.map((u) => `<li><span>${link(u)}</span><small>${u.n} actions · last ${when(u.last)}</small></li>`).join('')}</ul>` : '<p class="info">Nobody yet.</p>'}</section>
     </div>
-    <div class="pf-two">
+    <div class="ad-three">
+      <section class="pf-card"><h2>Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="ad-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
       <section class="pf-card"><h2>Comparisons</h2>${rows(s.compares, (x) => targetHtml('compare', x.name))}</section>
       <section class="pf-card"><h2>Openings <small>opened, and lines played through</small></h2>
         ${(s.openings || []).length ? `<ul class="pf-rows ad-recent">${s.openings.map((o) => `<li><span>${esc(o.name)}</span><small>opened ${o.opened} · ${o.people} ${o.people === 1 ? 'person' : 'people'} · done <b title="Learn">${o.learn}</b> L · <b title="Practice">${o.try}</b> P · <b title="Time challenge">${o.time}</b> T</small></li>`).join('')}</ul>` : rows(s.practised)}</section>

@@ -1954,3 +1954,8 @@ main .learn-from a.lf-link { font-size: 14px; }
 .gm-vs { display: grid; gap: 4px; margin-bottom: 6px; color: var(--ink); }
 .gm-vs .bad { border-left: 3px solid var(--bad); padding-left: 8px; }
 .gm-vs .good { border-left: 3px solid var(--good); padding-left: 8px; }
+
+/* Admin: wider, cards in a row keep their own height, and long lists scroll inside their card. */
+main.profile:has(#admin) { max-width: 1320px; }
+#admin .pf-two, #admin .ad-three { align-items: start; }
+#admin .ad-rows, #admin .ad-recent, #admin .ad-list { max-height: 400px; overflow-y: auto; overscroll-behavior: contain; }
