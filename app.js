@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029115836';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029115836';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029115836';
-import { GUIDE } from './guide.js?v=20261029115836';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029115836';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029115836';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029115836';
-import { storedGames } from './profile.js?v=20261029115836';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029120040';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029120040';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029120040';
+import { GUIDE } from './guide.js?v=20261029120040';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029120040';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029120040';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029120040';
+import { storedGames } from './profile.js?v=20261029120040';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -932,6 +932,13 @@ $('#line-done').addEventListener('pointerout', (e) => {
 });
 $('#line-done').addEventListener('click', (e) => { if (e.target.closest('.done-next')) $('#restart').click(); });
 let lineDone = '', tipArrows = []; // the summary shown at the end of the line, and the current tips
+// The idea of the whole opening, its main variations and the trap to know (guide.js), folded under the plan.
+function guideOf(op) {
+  const gd = GUIDE[op.family] || GUIDE[shortName(op.family)];
+  return gd ? `<details class="op-guide"><summary>The idea of the ${op.family}</summary><p>${gd.idea}</p>
+    <p class="op-guide-k">Main variations</p><ul>${gd.lines.map(([n, t]) => `<li><b>${n}:</b> ${t}</li>`).join('')}</ul>
+    <p><b>Watch out:</b> ${gd.watch}</p></details>` : '';
+}
 function renderWhy() {
   const el = $('#why');
   if (!cur || !line.length || mode === 'explore' || mode === 'time') { $('#line-done').hidden = true; return (el.innerHTML = ''); } // Explore explains in the message
@@ -943,7 +950,7 @@ function renderWhy() {
   if (!hist.length && lines[lineIdx]) {
     const l = lines[lineIdx], about = aboutOf(cur);
     const plan = planOf(cur);
-    parts.push(`<p class="intro"><b>${isVs(cur) ? 'vs ' : ''}${cur.name}.</b> ${about} This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level${bigShare(l.share) ? ` (${bigShare(l.share)})` : ''}. It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap ? ` <b>${l.trap.kind === 'mistake' ? 'A common mistake' : 'A trap'}.</b> ${trapStory(l)}` : ''}</p>${plan ? `<p class="intro plan"><b>Your plan:</b> ${plan}</p>` : ''}`);
+    parts.push(`<p class="intro"><b>${isVs(cur) ? 'vs ' : ''}${cur.name}.</b> ${about} This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level${bigShare(l.share) ? ` (${bigShare(l.share)})` : ''}. It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap ? ` <b>${l.trap.kind === 'mistake' ? 'A common mistake' : 'A trap'}.</b> ${trapStory(l)}` : ''}</p>${plan ? `<p class="intro plan"><b>Your plan:</b> ${plan}</p>` : ''}${guideOf(cur)}`);
   }
   // First what to play and why (Learn), then a quiet line on the last move, then the other replies
   // folded away: the board and the move to make come first.
@@ -1158,12 +1165,6 @@ function start(op, keepTraps = false) {
   $('#op-title').textContent = (isVs(op) ? 'vs ' : '') + op.name;
   $('#op-eco').textContent = op.eco;
   $('#op-info').textContent = `Starts ${numbered(op.root)}. ${popularity(op)} in ${speed} at your level; ${sideName(op.side)} wins ${pct(op.side === 'w' ? op.win : 1 - op.win - op.draw)}.`;
-  // The idea of the whole opening, its main variations and the trap to know (guide.js), open on first visit.
-  const gd = GUIDE[op.family] || GUIDE[shortName(op.family)];
-  $('#op-guide').hidden = !gd;
-  if (gd) $('#op-guide').innerHTML = `<summary>The idea of the ${op.family}</summary><p>${gd.idea}</p>
-    <p class="op-guide-k">Main variations</p><ul>${gd.lines.map(([n, t]) => `<li><b>${n}:</b> ${t}</li>`).join('')}</ul>
-    <p><b>Watch out:</b> ${gd.watch}</p>`;
   $('#op-side').textContent = op.side === 'w' ? 'You play White' : 'You play Black';
   $('#restart').textContent = 'Restart';
   $('#picker').hidden = true;
