@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029140748';
-import { STYLE_OF } from './styles.js?v=20261029140748';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029140838';
+import { STYLE_OF } from './styles.js?v=20261029140838';
 
 const MAX = 500;
-const PV = 30;
+const PV = 31;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -190,10 +190,9 @@ const TYPE_ABOUT = {
   Fighter: 'Plays every game for a result and rarely settles for a draw. Wins and losses both come quickly.',
   Houdini: 'Keeps finding chances in bad positions and turns lost games around. Stubborn defence is a real strength.',
   'Time scrambler': 'Spends a lot of time early and plays the end on the clock. Strong in scrambles, but some games are lost on time.',
-  'All-rounder': 'No style stands out: plays a bit of everything and adapts to the position.',
   'Killer instinct': 'Gets attacks going and finishes them: quick wins, clear advantages, and few slips once ahead.',
   Guardian: 'Hard to break down: solid openings, holds against attacks, saves bad positions and rarely lets the opponent get ahead.',
-  'Fast starter': 'Comes out of the opening better than players at the same level: knows the lines and the plans behind them.',
+  'Well prepared': 'Comes out of the opening better than players at the same level: knows the lines and the plans behind them.',
   Grinder: 'Scores more in endgames than players at the same level: the long games are theirs.',
   'Sure hand': 'Blunders less than players at the same level: rarely throws a piece or a game away.',
   Trickster: 'Sets traps and wins fast. Many games are over before move 25.',
@@ -272,7 +271,7 @@ const odds = (x) => (x == null ? 1 : Math.min(9, Math.max(1 / 9, x / (1 - x))));
 const usualDraws = (rating) => 0.02 + (rating || 1500) / 40000;
 // Games get longer with the level: about 36 moves at 1200 and 44 at 2800.
 const usualMoves = (rating) => Math.round(30 + (rating || 1500) / 200);
-const STRENGTH = { Attack: 'Killer instinct', 'Early game': 'Fast starter', 'Late game': 'Grinder', Accuracy: 'Sure hand', Speed: 'Speed demon' };
+const STRENGTH = { Attack: 'Killer instinct', 'Early game': 'Well prepared', 'Late game': 'Grinder', Accuracy: 'Sure hand', Speed: 'Speed demon' };
 // A strength on the same theme as the style says the same thing twice; then the next best skill is named.
 const SAME = { 'Endgame artist': 'Late game', Houdini: 'Defense', 'Time scrambler': 'Speed', Trickster: 'Attack', Guardian: 'Defense', Marathoner: 'Late game' };
 // Every style with its weight (1 = clearly holds), most first, and every strength with its value (62 = clearly holds).
@@ -316,7 +315,7 @@ function traitsOf(p) {
 }
 function typeOf(p) {
   const { styles, strengths } = traitsOf(p);
-  const style = styles[0].w >= 0.8 ? styles[0] : { name: 'All-rounder', why: 'No style stands out: you play a bit of everything.' };
+  const style = styles[0]; // the style that leans furthest, even when none stands out clearly
   // The strength: the one furthest above the player's own opponents (64 or more where 50 is even).
   // Defense has no strength of its own: being best at it is the Guardian style.
   const best = strengths.filter((x) => x.label !== 'Defense' && x.v !== null && x.v >= 64 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v)[0];
@@ -365,7 +364,7 @@ function skillsOf(p) {
   console.assert(Math.abs(o - (60 + (m - 50) / 2)) < 1 && Math.abs((s[5].v - s[3].v) - (s[5].raw - s[3].raw)) <= 1, 'skillsOf shape'); // SHAPE 2 at half size: a gap of 10 between two skills stays 10
 }
 console.assert(typeOf({ attacking: 0.54, solid: 0.2, queensOff: 0.1, draws: 0.05, moves: 30, lowTime: 0.16, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, score: 0.5, downs: 30, ups: 30, saved: 0.47, oppSaved: 0.2, myLow: 0.05, oppLow: 0.25, timeWins: 0.15, timeLosses: 0.04 } }).map((t) => t.name).join() === 'Striker,Speed demon', 'typeOf');
-console.assert(typeOf({ attacking: 0.27, solid: 0.56, queensOff: 0.23, draws: 0.03, moves: 29, lowTime: 0.15, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, analysed: 120, after12: 96, n12: 120 } }).map((t) => t.name).join() === 'All-rounder,Fast starter', 'typeOf: no style stands out, a strength does');
+console.assert(typeOf({ attacking: 0.27, solid: 0.56, queensOff: 0.23, draws: 0.03, moves: 29, lowTime: 0.15, noCastle: 0.1, speeds: [{ rating: 1200 }], peer: { n: 100, analysed: 120, after12: 96, n12: 120 } }).map((t) => t.name).join() === 'Striker,Well prepared', 'typeOf: the leaning style, and a strength');
 console.assert(levelOf(1200) === 60 && levelOf(2400) === 82 && levelOf(5000) === 92 && levelOf(100) === 35, 'levelOf');
 function rawSkills(p) {
   const q = p.peer || {}, an = (q.analysed ?? 0) >= ENOUGH, pawns = (cp) => { const r = Math.round(cp / 10) / 10; return r === 0 ? '0.0' : `${r > 0 ? '+' : '−'}${Math.abs(r).toFixed(1)}`; };
