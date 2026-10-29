@@ -39,9 +39,10 @@ export function ideaAt(g, san) {
   const h = asMover(g, m.color);
   const reach = h ? h.moves({ square: m.to, verbose: true }) : [];
   // pawns only count in the centre, where hitting them matters early on
-  const hits = reach.filter((x) => x.captured && x.captured !== 'k' && (x.captured !== 'p' || CENTRE.includes(x.to)))
-    .map((x) => `${PIECE[x.captured]} on ${x.to}`);
-  if (hits.length) out.push(`Attacks the ${hits.join(' and the ')}`);
+  // once per target: a pawn about to promote reaches the same piece with four moves (to a queen, rook…)
+  const hits = [...new Set(reach.filter((x) => x.captured && x.captured !== 'k' && (x.captured !== 'p' || CENTRE.includes(x.to)))
+    .map((x) => `${PIECE[x.captured]} on ${x.to}`))];
+  if (hits.length) out.push(`Attacks the ${hits.length > 1 ? `${hits.slice(0, -1).join(', the ')} and the ${hits.at(-1)}` : hits[0]}`);
   // Centre squares it now covers (a pawn covers the squares diagonally ahead of it).
   const fwd = m.color === 'w' ? 1 : -1;
   const covers = m.piece === 'p'

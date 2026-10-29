@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029150007';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029150007';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029150007';
-import { GUIDE } from './guide.js?v=20261029150007';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029150007';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029150007';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029150007';
-import { storedGames } from './profile.js?v=20261029150007';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029152349';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029152349';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029152349';
+import { GUIDE } from './guide.js?v=20261029152349';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029152349';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029152349';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029152349';
+import { storedGames } from './profile.js?v=20261029152349';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -914,9 +914,6 @@ function renderMoves() {
   movesEl.innerHTML = html;
   const now = movesEl.querySelector('.mv.now'); // keep the move on the board in sight, inside the list only
   if (now) movesEl.scrollTop = now.offsetTop - movesEl.offsetTop - movesEl.clientHeight / 2;
-  if (mode === 'time') return; // the trial's clock owns the progress bar
-  $('#progress').textContent = mode === 'explore' ? 'Exploring' : playing ? `Line done · playing it out${opponent ? ` · opponent: ${opponent}` : ''}` : line.length ? `${Math.min(ply, line.length)} of ${line.length} moves` : '';
-  $('#bar').style.width = line.length ? `${Math.min(ply / line.length, 1) * 100}%` : '0';
   $('#line-at').textContent = lines[lineIdx] && mode !== 'explore' ? `Line ${lineIdx + 1} of ${lines.length}` : '';
   $('#op-line').textContent = lines[lineIdx] && mode !== 'explore' ? lineName(lines[lineIdx]) : '';
   // The phone's bar above the board: the opening, the line and the mode, which the panel shows lower down.
@@ -929,6 +926,9 @@ function renderMoves() {
   $('#mode-about').hidden = (mode === 'learn' || mode === 'try') && (st?.played?.length ?? 0) > 0;
   $('#depth').textContent = `${depthName(load(STORE + '-depth', {})[cur?.id] || MAX_LINES)} ▾`;
   $('#depth').hidden = allLines.length <= DEPTHS[0][1] || !!trapRun || mode === 'explore';
+  if (mode === 'time') return; // the trial's clock owns the progress bar
+  $('#progress').textContent = mode === 'explore' ? 'Exploring' : playing ? `Line done · playing it out${opponent ? ` · opponent: ${opponent}` : ''}` : line.length ? `${Math.min(ply, line.length)} of ${line.length} moves` : '';
+  $('#bar').style.width = line.length ? `${Math.min(ply / line.length, 1) * 100}%` : '0';
 }
 
 function say(text, tone = '') {
@@ -955,7 +955,7 @@ function renderMaterial() {
   const row = (taken, ahead, who) => {
     const pieces = lead ? lost(taken) : []; // even trades are noise: only an imbalance is shown
     const el = $(who === 'you' ? '#cap-bottom' : '#cap-top');
-    el.innerHTML = pieces.map((t) => `<img src="pieces/${taken}${t.toUpperCase()}.svg" alt="">`).join('') + (ahead > 0 ? `<b>+${ahead}</b>` : '');
+    el.innerHTML = pieces.map((t) => `<img src="pieces/${taken}${t.toUpperCase()}.svg" alt="">`).join('') + (ahead > 0 ? `<b title="Ahead in material: pawn 1, knight and bishop 3, rook 5, queen 9">+${ahead}</b><small class="cap-k">material</small>` : '');
     el.setAttribute('aria-label', `${who === 'you' ? 'You have' : 'Your opponent has'} taken ${pieces.length ? pieces.map((t) => PIECE[t]).join(', ') : 'nothing'}${ahead > 0 ? `, ${ahead} ahead in material` : ''}`);
   };
   row(opp, lead, 'you');
@@ -1057,18 +1057,29 @@ const GO = [['learn-on', 'Play on in Learn', 'Carry on from here; the arrows sho
 // While the choice is up nothing else in the trainer can be used: the game waits for the choice.
 function showGo(on) {
   $('#go-ask').hidden = !on;
+  if (on) $('#line-done').hidden = true; // the line's summary and its tips come back once you play on
   for (const el of [$('#trainer .panel'), $('#trainer .side'), $('#trainer .controls'), $('#trainer .progress'), $('.m-bar'), boardEl, $('#move-form')]) if (el) el.inert = on;
 }
 function askGo() {
   goAsked = true;
-  $('#go-ask').innerHTML = `<div class="depth-card"><p class="depth-k">Line done</p><p class="depth-q">${lineName(lines[lineIdx])}. How do you want to go on?</p>
+  // Every way on is here, Next line first, so nothing outside the card is needed.
+  const done = mode === 'try' && !misses && !assisted ? 'Line cleared' : mode === 'try' ? 'Line done' : 'Line learned';
+  $('#go-ask').innerHTML = `<div class="depth-card" role="dialog" aria-labelledby="go-title"><p class="depth-k">${done}</p><p class="depth-q" id="go-title">${lineName(lines[lineIdx])}. How do you want to go on?</p>
+    <button type="button" class="depth-opt next" data-go="next"><b>${$('#restart').textContent}</b><span>${mode === 'try' ? 'The next line to practise' : 'Learn the next line, with arrows'}</span></button>
     ${GO.map(([g, label, about]) => `<button type="button" class="depth-opt" data-go="${g}"><b>${label}</b><span>${about}</span></button>`).join('')}</div>`;
   showGo(true);
+  say('Choose how to go on.', 'good');
+  $('#go-ask button')?.focus();
 }
 function goOn(go) {
+  if (go === 'next') return $('#restart').click(); // the next line, in the mode you are in
   const [m, on] = go.split('-');
   setMode(m, false);
-  if (on) { if (m === 'try') { hintSq = []; tipArrows = []; } render(); if (m === 'learn') guide(); } // play on: the board stays, the arrows follow the mode
+  if (on) { // play on: the board stays, the arrows follow the mode
+    if (m === 'try') { hintSq = []; tipArrows = []; }
+    say(m === 'learn' ? 'Play on: the arrow shows a good move, and the tips are beside the board.' : 'Play on from memory, without arrows.', 'good');
+    render(); if (m === 'learn') guide();
+  }
   else play(lineIdx);
 }
 // Beside the board, once a line is done: Next line (the ways on are asked over the board, see GO).
@@ -1176,7 +1187,7 @@ function renderWhy() {
   el.innerHTML = parts.join('');
   $('#line-done').innerHTML = ply >= line.length && lineDone && !momentOpen // the trap's card first
     ? `<div class="summary">${lineDone}${tips}${lineMore}${doneNext()}</div>` : '';
-  $('#line-done').hidden = !$('#line-done').innerHTML;
+  $('#line-done').hidden = !$('#line-done').innerHTML || !$('#go-ask').hidden; // waits behind the choice
   if (lineDone && !goAsked && !momentOpen && !trapRun && (mode === 'learn' || mode === 'try') && hist.length === endLen) askGo();
 }
 
@@ -1348,6 +1359,7 @@ function start(op, keepTraps = false) {
   cur = op;
   window.track?.('practise', `${op.side === 'b' ? 'Black' : 'White'}: ${(isVs(op) ? 'vs ' : '') + op.name}`);
   line = []; lines = []; game = new Chess();
+  $('#op-line').textContent = $('#m-line').textContent = '';
   $('#depth-ask').hidden = true;
   showGo(false);
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
@@ -2460,7 +2472,7 @@ function tickTrial() {
   gameGen++; busy = true; // the trial is over: no more moves
   const s = stats[statKey(cur.id)];
   const best = Math.max(s.timeBest || 0, trial.score);
-  const record = trial.score > (s.timeBest || 0);
+  const record = (s.timeBest || 0) > 0 && trial.score > s.timeBest; // a best only counts once there is one to beat
   s.timeBest = best; store(STORE, stats);
   say(`Time! ${plural(trial.score, 'move')} right, ${plural(trial.done, 'line')} finished. ${record ? 'A new best!' : `Your best: ${best}.`}`, record ? 'good' : '');
   // Time's up: the board waits for a choice, as at the end of a line: again, practise or learn the lines, or another opening.
@@ -2494,7 +2506,7 @@ function tryMove(from, to) {
     // A wrong move ends the run: the score so far counts for your best, then everything starts again
     // and the clock waits for your first move.
     game.undo();
-    const want = new Chess(game.fen()).move(line[ply]).san, st = stats[statKey(cur.id)], record = trial.score > (st.timeBest || 0);
+    const want = new Chess(game.fen()).move(line[ply]).san, st = stats[statKey(cur.id)], record = (st.timeBest || 0) > 0 && trial.score > st.timeBest;
     st.timeBest = Math.max(st.timeBest || 0, trial.score); store(STORE, stats);
     trialFlash('Wrong', false);
     wrongSq = to; sel = null; shake(boardEl); renderBoard();
@@ -2656,7 +2668,8 @@ function finish() {
     const back = `It comes back for review in ${plural(INTERVALS[r.box], 'day')}.`;
     say(`${cleared() === lines.length ? 'Line cleared. Every common line at your level is cleared.' : `Line cleared, ${cleared()} of ${lines.length}.`} ${back} ${on}`, 'good');
   }
-  flash(mode === 'try' && misses ? 'Line done' : mode === 'try' ? 'Line cleared' : 'Line learned');
+  // Learn and Practice say it in the choice over the board (askGo); the flash would cover it.
+  if (trapRun || (mode !== 'learn' && mode !== 'try')) flash(mode === 'try' && misses ? 'Line done' : mode === 'try' ? 'Line cleared' : 'Line learned');
   // From here the game simply goes on: any move you make plays it out.
   playing = true;
   renderWhy(); // How to go on needs playing set
