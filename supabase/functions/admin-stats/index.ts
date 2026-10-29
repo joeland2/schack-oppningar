@@ -10,6 +10,9 @@ const TZ = 'Europe/Stockholm'; // hours and weekdays are the admin's
 // (Santa Clara, a fresh id every time) seen before the track function started dropping cloud visits.
 const HIDDEN_VISITORS = ['claude-setup-test', 'dee060a2-46e4-4e44-b494-db238f21c17a'];
 const BOT_IPS = ['13.57.148.0', '54.183.149.0'];
+// The site went public with a Reddit post at 20:49 Swedish time on 29 Oct 2026. Every browser seen before
+// that was a bot, the owner or the assistant testing, so visitors whose first visit is earlier are left out.
+const LAUNCH = '2026-10-29T19:45:00Z';
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'x-lichess-token, content-type, apikey, authorization',
@@ -43,6 +46,8 @@ Deno.serve(async (req) => {
   // first tests, before those were recorded).
   const seen = new Set(rows.filter((r) => r.country || r.device || r.ip).map((r) => r.visitor));
   rows = rows.filter((r) => seen.has(r.visitor));
+  const early = new Set(rows.filter((r) => r.at < LAUNCH).map((r) => r.visitor));
+  rows = rows.filter((r) => !early.has(r.visitor));
 
   const day = (iso: string) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }).format(new Date(iso)); // YYYY-MM-DD, Swedish days
   const views = rows.filter((r) => r.kind === 'view');
