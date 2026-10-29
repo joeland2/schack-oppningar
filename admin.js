@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029231305';
-import { cardImage } from './profile.js?v=20261029231305';
+import { account, login, finishLogin } from './lichess.js?v=20261029231432';
+import { cardImage } from './profile.js?v=20261029231432';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -32,6 +32,34 @@ const cardHtml = (c, look = 'dark', style = false) => `<div class="ad-cv ad-cv-$
 let BOARD = [];
 // An event's target with the player names as links to their profiles (looked up, card, analysis, comparison).
 const plink = (n) => `<a href="profile.html?u=${encodeURIComponent(n)}">${esc(n)}</a>`;
+// The latest downloads and analyses, one row each: an icon for an image or an analysis, the player, what
+// was downloaded (card only, card + style, or both: the two images of one click a moment apart) and the look.
+const ICON = {
+  card: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l5-5 4 4 3-3 4 4"/></svg>',
+  analyse: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M5 15l4-5 4 3 6-7"/></svg>',
+};
+const WHAT = { card: 'Card only', style: 'Card + style', compare: 'Comparison', 'compare + text': 'Comparison + text' };
+function actionRows(list) {
+  const out = [];
+  for (let i = 0; i < list.length; i++) {
+    const r = list[i], t = (r.target || '').replace(/ · $/, ''), parts = t.split(' #')[0].split(' · ');
+    const where = `<small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small>`, by = r.name ? ` <small>by ${esc(r.name)}</small>` : '';
+    if (r.kind !== 'card') {
+      const [name, rest] = t.split(': ');
+      out.push(`<li><span class="ad-act">${ICON.analyse}<span><b>Analysis</b> ${plink(name)} <span class="ad-what">${esc((rest || '').replace(/^until (\d+)$/, 'up to $1 games'))}</span>${by}</span></span>${where}</li>`);
+      continue;
+    }
+    let [name, what, look] = parts, own = r.target || '';
+    // Both: the style image's event comes a moment after the card's, from the same click.
+    const o = list[i + 1], op = o?.kind === 'card' && (o.target || '').split(' #')[0].split(' · ');
+    if (op && op[0] === name && op[2] === look && new Set([what, op[1]]).size === 2 && [what, op[1]].every((x) => x === 'card' || x === 'style')
+      && Math.abs(new Date(r.at) - new Date(o.at)) < 60000) { what = 'both'; if (op[1] === 'style') own = o.target; i++; }
+    const label = what === 'both' ? 'Both: card, and card + style' : WHAT[what] || esc(what || '');
+    const who = name.includes(' vs ') ? name.split(' vs ').map(plink).join(' vs ') : plink(name).replace('<a ', `<a data-card="${esc(own)}" `);
+    out.push(`<li><span class="ad-act">${ICON.card}<span><b>Image</b> ${who} <span class="ad-what">${label}</span>${look ? ` <span class="ad-look ${look === 'light' ? 'light' : 'dark'}">${look === 'light' ? 'Light' : 'Dark'}</span>` : ''}${by}</span></span>${where}</li>`);
+  }
+  return out;
+}
 function targetHtml(kind, target) {
   const t = (target || '').split(' #')[0];
   if (kind === 'compare') return t.split(' vs ').map(plink).join(' vs ');
@@ -135,8 +163,7 @@ function render(s) {
       : '<p class="info">Nobody yet.</p>'}</section>
     <div class="pf-two">
       <section class="pf-card"><div class="ad-head"><h2>Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
-      ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${s.recentActions.slice(0, 15).map((r) => {
-        return `<li><span><b>${r.kind === 'card' ? 'Card' : 'Analysis'}</b> ${targetHtml(r.kind, (r.target || '').replace(/ · $/, '')).replace('<a ', r.kind === 'card' ? `<a data-card="${esc(r.target || '')}" ` : '<a ')}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`; }).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
+      ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${actionRows(s.recentActions).slice(0, 15).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
       <section class="pf-card"><div class="ad-head"><h2>Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
       ${(s.recentProfiles || []).length ? `<ul class="pf-rows ad-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: (r.target || '').split(' #')[0] })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
     </div>

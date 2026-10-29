@@ -1994,3 +1994,10 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-under-name > :only-child:not(.pf-speeds) { margin-left: auto; }
 #profile > .pf-under-name { margin-top: -26px; } /* close under the name, and the card close under it */
 #profile > .pf-under-name + .pf-hero { margin-top: -20px; }
+/* Admin's latest downloads and analyses: an icon for the kind, what was made and its look */
+.ad-act { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ad-act > .ico { flex: none; width: 18px; height: 18px; color: var(--hot); }
+.ad-what { color: var(--muted); }
+.ad-look { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 700; vertical-align: 1px; border: 1px solid var(--line); }
+.ad-look.dark { background: #141414; color: #f4efe6; }
+.ad-look.light { background: #f4efe6; color: #141414; }
