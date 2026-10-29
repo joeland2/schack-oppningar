@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029091845';
-import { STYLE_OF } from './styles.js?v=20261029091845';
+import { account, login, finishLogin } from './lichess.js?v=20261029092041';
+import { STYLE_OF } from './styles.js?v=20261029092041';
 
 const MAX = 500;
 const PV = 19;
@@ -12,6 +12,7 @@ const ENOUGH = 100; // analysed games before the skills that need analysis are s
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
 const MIN_GAMES = 50; // rated games before a player gets any skills at all
+const KPI_MIN = 20; // analysed games before the plain accuracy and blunder averages are shown
 const WHY_ANALYSE = 'Lichess only analyses games you ask it to. Analysed games give your blunders, accuracy and four of the skills, and become puzzles in My practice. Stockfish runs in your browser; no game is done twice.'; // analysed games needed before the numbers that come from analysis are shown // bumped when the profile gains something new: older saved profiles are read again
 const KEY = 'opening-book-v2-profiles';  // { [lower-case name]: { name, at, p } }, the 10 last looked up
 const $ = (s) => document.querySelector(s);
@@ -762,7 +763,7 @@ function cardNote(name, p, me) {
 function render(name, at, p) {
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
   document.title = me ? 'Your Profile' : `${name} · Profile`;
-  const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= ENOUGH ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= ENOUGH ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
+  const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
     ${playerBar(name)}
     <section class="pf-hero">
@@ -915,9 +916,10 @@ async function ratingChart(name, p) {
       <div class="pf-seg" role="group" aria-label="Time control">${speeds.map((k) => `<button type="button" data-speed="${k}" aria-pressed="${k === chartState.speed}">${k[0].toUpperCase() + k.slice(1)}</button>`).join('')}</div>
       <div class="pf-seg" role="group" aria-label="Period">${RANGES.map(([k]) => `<button type="button" data-range="${k}" aria-pressed="${k === chartState.range}">${k}</button>`).join('')}</div></div>
       ${pts.length < 2 ? '<p class="info">No rated games in this period.</p>' : lineChart(pts, from, end)}
-      ${covers ? '' : `<p class="info pf-note">The graph starts at ${new Date(first).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}, the oldest of the games read here. Log in with Lichess for the full history.</p>`}`;
+      ${covers ? '' : `<p class="info pf-note">The graph starts at ${new Date(first).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}, the oldest of the games read here. ${account() ? '' : 'Lichess gives the full history only to someone logged in. <button type="button" class="link" data-chart-login>Log in with Lichess</button>'}</p>`}`;
     el.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('click', () => { chartState.speed = b.dataset.speed; draw(); }));
     el.querySelectorAll('[data-range]').forEach((b) => b.addEventListener('click', () => { chartState.range = b.dataset.range; chartState.picked = true; draw(); }));
+    el.querySelector('[data-chart-login]')?.addEventListener('click', login);
     hover(el);
   };
   draw();
@@ -1181,7 +1183,7 @@ function compareStory(A, B, sa, sb) {
   const ds = Math.round((A.p.winRate - B.p.winRate) * 100);
   out.push(Math.abs(ds) < 3 ? `They win about as often against their own opponents (${pct(A.p.winRate)} and ${pct(B.p.winRate)} of games).`
     : `${ds > 0 ? a : b} ${v(ds > 0 ? a : b, 'wins', 'win')} more often against ${their(ds > 0 ? a : b)} own opponents (${pct(Math.max(A.p.winRate, B.p.winRate))} of games against ${pct(Math.min(A.p.winRate, B.p.winRate))}).`);
-  if (A.p.blunders !== null && B.p.blunders !== null && A.p.analysed >= ENOUGH && B.p.analysed >= ENOUGH && Math.abs(A.p.blunders - B.p.blunders) >= 0.3) {
+  if (A.p.blunders !== null && B.p.blunders !== null && A.p.analysed >= KPI_MIN && B.p.analysed >= KPI_MIN && Math.abs(A.p.blunders - B.p.blunders) >= 0.3) {
     const fewer = A.p.blunders < B.p.blunders ? a : b;
     out.push(`${fewer} ${v(fewer, 'blunders', 'blunder')} less (${Math.min(A.p.blunders, B.p.blunders).toFixed(1)} a game against ${Math.max(A.p.blunders, B.p.blunders).toFixed(1)}).`);
   }
