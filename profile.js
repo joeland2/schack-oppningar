@@ -3,12 +3,12 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029201116';
-import { STYLE_OF } from './styles.js?v=20261029201116';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029202246';
+import { STYLE_OF } from './styles.js?v=20261029202246';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
-const PV = 34;
+const PV = 35;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -202,7 +202,7 @@ const TYPE_ABOUT = {
   Specialist: 'Plays a narrow repertoire and knows it deeply. Rarely surprised in the opening.',
   Explorer: 'Tries many different openings. Hard to prepare against, but each line is known less deeply.',
   Marathoner: 'Plays long games and keeps going. Patient, and comfortable deep into the endgame.',
-  Peacemaker: 'Draws more than most players at the same level. Solid and hard to beat, but leaves wins on the table.',
+  Finisher: 'Wins the won positions: turns a clear advantage into a win more often than players at the same level.',
   'Giant killer': 'Beats stronger players more often than the rating gap predicts.',
   'White specialist': 'Much stronger with the white pieces.',
   'Black specialist': 'Much stronger with the black pieces.',
@@ -276,12 +276,12 @@ const usualDraws = (rating) => 0.02 + (rating || 1500) / 40000;
 const usualMoves = (rating) => Math.round(30 + (rating || 1500) / 200);
 const STRENGTH = { Attack: 'Killer instinct', 'Early game': 'Well prepared', 'Late game': 'Grinder', Accuracy: 'Sure hand', Speed: 'Speed demon' };
 // A strength on the same theme as the style says the same thing twice; then the next best skill is named.
-const SAME = { 'Endgame artist': 'Late game', Houdini: 'Defense', 'Time scrambler': 'Speed', Trickster: 'Attack', Guardian: 'Defense', Marathoner: 'Late game' };
+const SAME = { 'Endgame artist': 'Late game', 'Time scrambler': 'Speed', Trickster: 'Attack', Guardian: 'Defense', Marathoner: 'Late game' };
 // Every style with its weight (1 = clearly holds), most first, and every strength with its value (62 = clearly holds).
 // Where each style's weight lies for an ordinary player: the median and the top tenth among 42 players
 // checked (their main time control). A style counts by how far above the median a player is, against
 // that spread, so a style the player is below the usual on (29 moves where 36 is usual) never wins.
-const PAR = { Striker: [0.74, 1.3], 'Solid builder': [0.66, 1.4], 'Endgame artist': [0.76, 0.92], Houdini: [0.41, 1.13], 'Time scrambler': [0.63, 1.07],
+const PAR = { Striker: [0.74, 1.3], 'Solid builder': [0.66, 1.4], 'Endgame artist': [0.76, 0.92], 'Time scrambler': [0.63, 1.07],
   Trickster: [0.53, 1.15], Specialist: [0.72, 0.98], Explorer: [0.22, 0.39], Marathoner: [0.75, 0.87], Guardian: [0.11, 1.33] };
 function traitsOf(p) {
   const q = p.peer || {}, rating = p.speeds?.[0]?.rating, raw = rawSkills(p), def = raw.find((x) => x.label === 'Defense');
@@ -289,10 +289,8 @@ function traitsOf(p) {
     { name: 'Striker', w: p.attacking / 0.4, why: `${pct(p.attacking)} of your games are in attacking openings or gambits: you like the initiative early.` },
     { name: 'Solid builder', w: (p.solid / 0.55) * (p.attacking < 0.25 ? 1 : 0.6), why: `${pct(p.solid)} of your games are in solid or positional openings: you build first and attack later.` },
     { name: 'Endgame artist', w: p.queensOff / 0.4, why: `The queens come off before move 25 in ${pct(p.queensOff)} of your games: you are happy to trade and play it out.` },
-    // Saving lost games and ending short of time are common in fast games for everyone, so these two
-    // count only when the player does it clearly more than their own opponents at their level.
-    { name: 'Houdini', w: q.downs >= 5 && q.ups >= 5 && q.saved != null ? (q.saved / Math.max(q.oppSaved, 0.1)) / Math.sqrt(odds(q.score)) / 2.8 : 0, // about twice your opponents' rate is normal (checked on eight players), so the trait starts near three times
-      why: `In ${pct(q.saved ?? 0)} of the games where you were clearly losing, you still won or drew; your opponents at your level, clearly losing against you, only ${pct(q.oppSaved ?? 0)}.` },
+    // Ending short of time is common in fast games for everyone, so it counts only when the player does
+    // it clearly more than their own opponents at their level.
     { name: 'Time scrambler', w: Math.min(p.lowTime / 0.3, q.n >= 30 && q.myLow != null ? q.myLow / Math.max(q.oppLow, 0.05) / 1.4 : 0),
       why: `You end ${pct(p.lowTime)} of your games with under a tenth of your time left${q.oppLow != null ? `; your opponents at your level ${pct(q.oppLow)}` : ''}.` },
     { name: 'Trickster', w: q.n >= 30 && (q.quickW ?? 0) >= 0.1 ? (q.quickW / Math.max(q.quickL, 0.03)) / 1.6 : 0,
@@ -315,8 +313,13 @@ function traitsOf(p) {
     // strengths (on the same scale: 64 or more stands out) rather than styles.
     { label: 'Fighter', v: clamp(50 + ((usualDraws(rating) / Math.max(p.draws, 0.005)) / 2 * Math.sqrt(35 / Math.max(p.moves, 15)) - 0.6) * 35),
       why: `Only ${pct(p.draws)} draws, where about ${pct(usualDraws(rating))} is usual at your level: your games are decided, one way or the other.` },
-    { label: 'Peacemaker', v: clamp(50 + ((p.draws / usualDraws(rating)) / 1.8 - 0.6) * 35),
-      why: `${pct(p.draws)} of your games are draws, where about ${pct(usualDraws(rating))} is usual at your level: you are hard to beat.` },
+    // What happens once a game is clearly decided (±3 pawns, analysed games): saving the lost ones and
+    // winning the won ones. Among 42 players checked the median saves 33% (top tenth 54%) and wins 70%
+    // of won positions (top tenth 84%); the median is 50 here and the top tenth 64, as for every strength.
+    { label: 'Houdini', v: q.downs >= 8 && q.saved != null ? clamp(50 + (q.saved - 0.33) * 67) : null,
+      why: `In ${pct(q.saved ?? 0)} of the games where you were clearly losing, you still won or drew (about a third is usual).` },
+    { label: 'Finisher', v: q.ups >= 8 && q.oppSaved != null ? clamp(50 + (0.3 - q.oppSaved) * 100) : null,
+      why: `You won ${pct(1 - (q.oppSaved ?? 0))} of the games where you were clearly winning (about 70% is usual).` },
     { label: 'Clutch player', v: p.clutchN >= 25 ? clamp(50 + (p.clutchScore - p.score) * 120) : null, why: `You score ${pct(p.clutchScore ?? 0)} in the ${p.clutchN} games where both players were short of time, against ${pct(p.score)} overall.` },
   ];
   return { styles, strengths: [...raw, ...extra] };
