@@ -1637,3 +1637,5 @@ p, li, dd, small { text-wrap: pretty; }
 .go-grid button:hover, .go-grid button:focus-visible { border-color: var(--ink); }
 /* While the line's summary is up, its own Next line is the one: the control under the board steps aside */
 #trainer:has(#line-done:not([hidden])) #restart { visibility: hidden; }
+.line-ok { display: inline-flex; gap: 2px; }
+.line-ok .line-star { width: 15px; height: 15px; }

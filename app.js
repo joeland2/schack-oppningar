@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029154307';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029154307';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029154307';
-import { GUIDE } from './guide.js?v=20261029154307';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029154307';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029154307';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029154307';
-import { storedGames } from './profile.js?v=20261029154307';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029155253';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029155253';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029155253';
+import { GUIDE } from './guide.js?v=20261029155253';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029155253';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029155253';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029155253';
+import { storedGames } from './profile.js?v=20261029155253';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2127,6 +2127,21 @@ function review(ok) {
 // Cleared lines whose review date has come, across all of an opening's saved lines.
 const dueCount = (s) => Object.values(s?.rep || {}).filter((r) => r.box > 0 && r.due <= Date.now()).length;
 
+// Learn's Next line: the first line not yet learned; when every line of your depth is learned, the
+// next depth's first line (it goes one depth deeper), and when every line is learned, Practice.
+function learnNext() {
+  const s = stats[statKey(cur.id)], unlearned = (l) => !s.played.includes(lineKey(l.moves));
+  if (lines.some(unlearned)) return play(nextLine());
+  if (allLines.length > lines.length) {
+    const was = depthName(lines.length), d = DEPTHS.find(([, n]) => n > lines.length)[1];
+    store(STORE + '-depth', { ...load(STORE + '-depth', {}), [cur.id]: d });
+    start(cur, true);
+    return say(`Every ${was} line is learned, so you go on to ${depthName(d)}: line ${lineIdx + 1}. ${$('#message').textContent}`, 'good');
+  }
+  setMode('try', false);
+  play(nextLine());
+  say(`Every line is learned. Now play them from memory. ${$('#message').textContent}`, 'good');
+}
 // Learn: the first line not yet played through. Practice: lines due for review first, then lines you
 // have learned but not cleared, then any line not cleared.
 function nextLine() {
@@ -2305,8 +2320,10 @@ function renderLines() {
   // One star per line, its best: green when played through in Learn, gold when cleared in Practice,
   // diamond when played without a slip in Time.
   const timed = s.timed || [];
-  const star = (l) => { const k = lineKey(l.moves), t = timed.includes(k) ? ['diamond', 'Played without a slip in Time'] : done.includes(k) ? ['gold', 'Cleared in Practice'] : learned.includes(k) ? ['green', 'Played through in Learn'] : null;
-    return t ? `<svg class="line-star ${t[0]}" viewBox="0 0 24 24" role="img" aria-label="${t[1]}"><title>${t[1]}</title><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>` : ''; };
+  // Every star the line has earned, side by side: green (Learn), gold (Practice), diamond (Time).
+  const star = (l) => { const k = lineKey(l.moves);
+    return [[learned.includes(k) || done.includes(k), 'green', 'Played through in Learn'], [done.includes(k), 'gold', 'Cleared in Practice'], [timed.includes(k), 'diamond', 'Played without a slip in Time']]
+      .filter(([on]) => on).map(([, c, t]) => `<svg class="line-star ${c}" viewBox="0 0 24 24" role="img" aria-label="${t}"><title>${t}</title><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>`).join(''); };
   // Every line, in course order, under the depth it belongs to; those past your depth are paler.
   const group = (i) => (all.length > DEPTHS[0][1] ? DEPTHS.find(([, d], k) => i === (k ? DEPTHS[k - 1][1] : 0)) : null);
   $('#lines-list').innerHTML = all.map((l, i) => `${group(i) ? `<li class="line-group">${group(i)[0]}</li>` : ''}<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}${i >= lines.length ? ' beyond' : ''}" data-i="${i}">
@@ -2890,7 +2907,7 @@ $('#restart').addEventListener('click', () => {
   if (trapRun) return nextTrap();
   if (!lines.length) return start(cur);
   if (mode === 'time') return startTrial();
-  if (mode === 'learn') return play(ply >= line.length ? nextLine() : lineIdx);
+  if (mode === 'learn') return ply >= line.length ? learnNext() : play(lineIdx);
   play(ply >= line.length && misses === 0 ? nextLine() : lineIdx);
 });
 // Hint in three steps, one per press: the piece, then what kind of move it is, then the move itself
