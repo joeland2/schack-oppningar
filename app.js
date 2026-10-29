@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029131052';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029131052';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029131052';
-import { GUIDE } from './guide.js?v=20261029131052';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029131052';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029131052';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029131052';
-import { storedGames } from './profile.js?v=20261029131052';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029131417';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029131417';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029131417';
+import { GUIDE } from './guide.js?v=20261029131417';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029131417';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029131417';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029131417';
+import { storedGames } from './profile.js?v=20261029131417';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -14,7 +14,7 @@ const MAX_LINES = 20;
 // How deep to learn an opening, as a course does it: lines are in course order, so a depth is the first n.
 const DEPTHS = [['Essentials', 6, 'The main line and known theory'], ['Advanced', 12, 'Adds the traps and common sidelines'], ['Everything', MAX_LINES, 'Every line players at your level meet']];
 const depthName = (n) => (DEPTHS.find(([, d]) => d >= n) || DEPTHS.at(-1))[0];
-let allLines = 0; // how many lines the opening has at every depth
+let allLines = []; // the opening's lines at every depth (lines is the first n of them)
 const MIN_LINE = 0.03;   // a side line needs 3% of the opening's games to become a line of its own
 const THEORY = 0.15;     // a reply strong players choose this often is a main line, rare at your level or not
 const THEORY_GROUPS = [6, 7, 8]; // 2000+
@@ -836,9 +836,9 @@ function renderMoves() {
   if (mode === 'time') return; // the trial's clock owns the progress bar
   $('#progress').textContent = mode === 'explore' ? 'Exploring' : playing ? `Line done · playing it out${opponent ? ` · opponent: ${opponent}` : ''}` : line.length ? `${Math.min(ply, line.length)} of ${line.length} moves` : '';
   $('#bar').style.width = line.length ? `${Math.min(ply / line.length, 1) * 100}%` : '0';
-  $('#line-at').textContent = lines.length && mode !== 'explore' ? `Line ${lineIdx + 1} of ${lines.length}` : '';
+  $('#line-at').textContent = lines[lineIdx] && mode !== 'explore' ? `Line ${lineIdx + 1} of ${lines.length}: ${lineName(lines[lineIdx])}` : '';
   $('#depth').textContent = `${depthName(load(STORE + '-depth', {})[cur?.id] || MAX_LINES)} ▾`;
-  $('#depth').hidden = allLines <= DEPTHS[0][1] || !!trapRun || mode === 'explore';
+  $('#depth').hidden = allLines.length <= DEPTHS[0][1] || !!trapRun || mode === 'explore';
 }
 
 function say(text, tone = '') {
@@ -1239,7 +1239,7 @@ function start(op, keepTraps = false) {
   render();
   if (!rating) return say(`Enter your Lichess ${speed} rating at the top.`);
   const all = buildLines(op), depths = load(STORE + '-depth', {});
-  allLines = all.length;
+  allLines = all;
   // Trap training needs every line; otherwise ask once per opening how deep to go.
   if (!trapRun && all.length > DEPTHS[0][1] && !depths[op.id]) return askDepth(all.length);
   lines = trapRun ? all : all.slice(0, depths[op.id] || MAX_LINES);
@@ -1268,7 +1268,7 @@ $('#depth-ask').addEventListener('click', (e) => {
   $('#depth-ask').hidden = true;
   start(cur, true);
 });
-$('#depth').addEventListener('click', () => askDepth(allLines));
+$('#depth').addEventListener('click', () => askDepth(allLines.length));
 
 // again: the same line once more after a slip in Practice, which keeps it from counting as cleared.
 function play(i, again = false) {
@@ -2135,10 +2135,13 @@ $('#line-box').addEventListener('click', (e) => { const b = e.target.closest('[d
 
 function renderLines() {
   const s = stats[statKey(cur.id)] || {}, done = s.done || [], learned = s.played || [];
-  $('#lines-sum').textContent = `All ${lines.length} lines`; // the line box above already counts the cleared ones
+  const all = allLines.length >= lines.length ? allLines : lines;
+  $('#lines-sum').textContent = `All ${all.length} lines`; // the line box above already counts the cleared ones
   // Green once you have played a line through (Learn), stronger with a tick once cleared (Practice).
   const state = (l) => (done.includes(lineKey(l.moves)) ? ' cleared' : learned.includes(lineKey(l.moves)) ? ' learned' : '');
-  $('#lines-list').innerHTML = lines.map((l, i) => `<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}" data-i="${i}">
+  // Every line, in course order, under the depth it belongs to; those past your depth are paler.
+  const group = (i) => (all.length > DEPTHS[0][1] ? DEPTHS.find(([, d], k) => i === (k ? DEPTHS[k - 1][1] : 0)) : null);
+  $('#lines-list').innerHTML = all.map((l, i) => `${group(i) ? `<li class="line-group">${group(i)[0]}</li>` : ''}<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}${i >= lines.length ? ' beyond' : ''}" data-i="${i}">
       <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? `<span class="trap-tag${l.trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(l.trap)}</span> ` : l.theory ? '<span class="trap-tag theory">Theory</span> ' : ''}${lineName(l)}<small>${lineTag(l)}</small></span>
       <span class="line-share">${bigShare(l.share)}</span><span class="line-ok">${state(l) ? `<span class="done-tag"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${state(l) === ' cleared' ? 'Cleared' : 'Learned'}</span>` : ''}</span>
     </button></li>`).join('');
@@ -2146,7 +2149,13 @@ function renderLines() {
 }
 $('#lines-list').addEventListener('click', (e) => {
   const b = e.target.closest('.line-btn');
-  if (b) play(Number(b.dataset.i));
+  if (!b) return;
+  const i = Number(b.dataset.i);
+  if (i >= lines.length) { // a line past your depth: go as deep as it is, then play it
+    store(STORE + '-depth', { ...load(STORE + '-depth', {}), [cur.id]: DEPTHS.find(([, d]) => i < d)[1] });
+    start(cur, true);
+  }
+  play(i);
 });
 
 // The lines as a tree, as a course's overview: the moves they share once, a branch where they part,
