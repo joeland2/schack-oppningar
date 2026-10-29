@@ -1,11 +1,11 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029114215';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029114215';
-import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261029114215';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029114215';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029114215';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029114215';
-import { storedGames } from './profile.js?v=20261029114215';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029114514';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029114514';
+import { ideaAt, CENTRE, hanging, dangerAfter } from './ideas.js?v=20261029114514';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029114514';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029114514';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029114514';
+import { storedGames } from './profile.js?v=20261029114514';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -946,7 +946,10 @@ function renderWhy() {
     const before = hist.slice(0, n).map(clean), san = clean(hist[n]);
     const yours = (n % 2 === 0) === (cur.side === 'w');
     const text = yours ? why(before, san) : idea(before, san);
-    parts.push(`<p class="prev">${yours ? 'You' : sideName(n % 2 ? 'b' : 'w')} played <b>${label(n, hist[n])}</b>${text ? `: ${lower(text)}` : ''}</p>`);
+    const k = notes[n], good = k === 'best' || k === 'brilliant';
+    parts.push(`<p class="prev${good ? ` verdict k-${k}` : ''}">${yours ? 'You' : sideName(n % 2 ? 'b' : 'w')} played <b>${label(n, hist[n])}</b>${good ? `, ${NOTE_WORD[k]}` : ''}${text ? `: ${lower(text)}` : '.'}${k === 'brilliant' ? ` ${brilliantWhy(n)}` : ''}</p>`);
+    // Their slip: what goes wrong for them and what they should have played (yours is below).
+    if (!yours && betters[n] && ['inaccuracy', 'mistake', 'blunder'].includes(k)) parts.push(`<p class="verdict k-${k}"><b>That was ${NOTE_WORD[k]}.</b> ${slipWhy(n, false)}</p>`);
     const t = lines[lineIdx]?.trap;
     if (t && n === t.ply && mode !== 'explore') { const w = t.kind === 'mistake' ? mistakeWhy(t) : null; parts.push(`<p class="trap-now"><b>That is the mistake: ${trapMove(t)}</b> ${w ? `${w.why} ` : ''}You score ${pct(1 - t.score)} after it at your level. ${mode === 'learn' ? punishText(t) : 'Find the move that punishes it.'}${w ? ` ${w.how}` : ''}</p>`); }
     const reps = !yours && repliesText(before, san);
@@ -963,7 +966,7 @@ function renderWhy() {
   // Your last own move, when it was a slip: what it was and what was better (play-out only).
   const mine = hist.length - ((hist.length - 1) % 2 === (cur.side === 'w' ? 0 : 1) ? 1 : 2);
   if (view === null && playing && mine >= line.length && betters[mine]) {
-    parts.push(`<p class="verdict k-${notes[mine]}"><b>${label(mine, hist[mine])} was ${NOTE_WORD[notes[mine]]}.</b> Better was ${moveWords(betters[mine])}.</p>`);
+    parts.push(`<p class="verdict k-${notes[mine]}"><b>${label(mine, hist[mine])} was ${NOTE_WORD[notes[mine]]}.</b> ${slipWhy(mine, false)}</p>`);
   }
   // The line-done summary is made at the line's end and stays while you play on from there. The tips
   // are about the move to play at the line's end, so they go once you have played on.
@@ -1353,6 +1356,15 @@ function slipWhy(n, arrows = true) {
   const wrong = danger || (reply ? `${sideName(after.turn())} answers ${reply.san}${replyIdea ? `: ${replyIdea.replace(/^./, (c) => c.toLowerCase())}` : '.'}` : '');
   const bestIdea = ideaAt(new Chess(m.before), better.san);
   return `${wrong ? `Why: ${wrong} ` : ''}Better was <b>${better.san}</b>${bestIdea ? `: ${bestIdea.replace(/^./, (c) => c.toLowerCase())}` : '.'}${arrows ? ' (Green arrow; the move played is red.)' : ''}`;
+}
+// What makes a brilliant move work: the piece it leaves to be taken, and why taking it is no good.
+function brilliantWhy(n) {
+  const m = game.history({ verbose: true })[n], after = new Chess(m.before);
+  after.move(m.san);
+  const r = EVALS.get(evalKey(after.fen())), reply = r?.move && new Chess(after.fen()).move(r.move);
+  const them = sideName(after.turn());
+  const takes = reply && reply.to === m.to && reply.captured;
+  return `It leaves the ${PIECE[m.piece]} on ${m.to} to be taken${takes ? `, and even after ${reply.san} you come out ahead` : `, but taking it is worse for ${them}${reply ? `: their best is ${reply.san} instead` : ''}`}.`;
 }
 const NOTE_WORD = { brilliant: 'brilliant', best: 'the best move', good: 'good', inaccuracy: 'an inaccuracy', mistake: 'a mistake', blunder: 'a blunder' };
 const VALUE_OF = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
