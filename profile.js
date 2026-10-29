@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029202246';
-import { STYLE_OF } from './styles.js?v=20261029202246';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029203955';
+import { STYLE_OF } from './styles.js?v=20261029203955';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -883,7 +883,14 @@ function playerCard(name, p, t, skills) {
 // The card explained in one go, under it.
 // The player card as an image to save or share, drawn from the numbers at a fixed size so it looks
 // the same from a phone or a computer. "Card + style" adds the player type, the openings and the portrait.
-const CARD = { bg: '#141414', ink: '#f4efe6', muted: '#a8a093', line: '#3d3730', hot: '#ff5a1f', paper: '#e6dfd1', paperInk: '#141414', paperMuted: '#62594c' };
+// Two looks to download, picked in the menu: dark (black card on cream) and light (cream card on black).
+// On the cream card the rating colours are a shade darker, as on the page (BAND).
+const CARDS = {
+  dark: { bg: '#141414', ink: '#f4efe6', muted: '#a8a093', line: '#3d3730', hot: '#ff5a1f', paper: '#e6dfd1', paperInk: '#141414', paperMuted: '#62594c', piece: 'w', band: BAND },
+  light: { bg: '#f4efe6', ink: '#141414', muted: '#62594c', line: '#d3c8b3', hot: '#c2410c', paper: '#1b1815', paperInk: '#f4efe6', paperMuted: '#a8a093', piece: 'b', band: ['#2f5c45', '#21507a', '#b8400f', '#9c1f32', '#5e36ad'] },
+};
+let CARD = CARDS.dark;
+const cardLook = () => { try { return localStorage.getItem('chess-trainer-card-look') === 'light' ? 'light' : 'dark'; } catch { return 'dark'; } };
 const fit = (ctx, text, font, size, max) => { let z = size; do { ctx.font = font.replace('#', z); } while (ctx.measureText(text).width > max && --z > 10); return z; };
 // Text in lines of at most max wide; the first line can start indented (after a bold lead-in).
 function wrap(ctx, text, x, y, max, lh, lines = 99, indent = 0) {
@@ -902,7 +909,7 @@ function wrap(ctx, text, x, y, max, lh, lines = 99, indent = 0) {
 // One card, 600 x 780 units, top left at (x, y).
 function drawCard(ctx, x, y, name, p, t, skills, piece) {
   const known = skills.filter((k) => k.v !== null), ovr = known.length ? String(Math.round(sum(known, (k) => k.v) / known.length)) : '–', main = p.speeds[0];
-  const band = BAND[bandOf(main?.rating)];
+  const band = CARD.band[bandOf(main?.rating)];
   ctx.save(); ctx.translate(x, y);
   ctx.fillStyle = CARD.bg; ctx.beginPath(); ctx.roundRect(0, 0, 600, 780, 10); ctx.fill();
   ctx.fillStyle = band; ctx.beginPath(); ctx.roundRect(0, 0, 600, 14, [10, 10, 0, 0]); ctx.fill();
@@ -931,10 +938,11 @@ function drawCard(ctx, x, y, name, p, t, skills, piece) {
 }
 async function cardPng(name, p, t, skills, detail, btn) {
   const label = btn.textContent; btn.disabled = true; btn.textContent = 'Making the image…';
+  CARD = CARDS[cardLook()];
   window.track?.('card', detail ? 'card + style' : 'card');
   try {
     await Promise.all(['400 40px Anton', '400 20px Geist', '600 20px Geist'].map((f) => document.fonts.load(f)));
-    const piece = await new Promise((ok) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = `pieces/w${(p.piece || 'n').toUpperCase()}.svg`; });
+    const piece = await new Promise((ok) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = `pieces/${CARD.piece}${(p.piece || 'n').toUpperCase()}.svg`; });
     const S = 2, W = detail ? 1080 : 680, H = detail ? 1350 : 860;
     const canvas = Object.assign(document.createElement('canvas'), { width: W * S, height: H * S }), ctx = canvas.getContext('2d');
     ctx.scale(S, S);
@@ -963,7 +971,7 @@ async function cardPng(name, p, t, skills, detail, btn) {
       ctx.fillStyle = CARD.paperInk; ctx.font = '400 30px Anton'; ctx.fillText('CHESS TRAINER', 60, H - 50);
       ctx.fillStyle = CARD.paperMuted; ctx.font = '400 20px Geist'; ctx.textAlign = 'right'; ctx.fillText(`From ${name}'s last ${p.n} rated Lichess games`, W - 60, H - 52); ctx.textAlign = 'left';
     }
-    const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${name}-chess-${detail ? 'profile' : 'card'}.png`, { type: 'image/png' });
+    const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${name}-chess-${detail ? 'profile' : 'card'}-${cardLook()}.png`, { type: 'image/png' });
     if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) await navigator.share({ files: [file], title: `${name}'s chess card` }).catch(() => {});
     else { const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: file.name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
   } catch (err) { $('#profile-msg').textContent = `The image could not be made: ${err.message}`; }
@@ -1036,7 +1044,7 @@ function render(name, at, full) {
     ${speedBar(name, full, sp, avail)}
     <section class="pf-hero">
       <div class="pf-card-col">${playerCard(name, p, t, skills)}${me ? starsStrip() : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
-        <div class="pf-dl-menu" role="group" aria-label="Download"><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
+        <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h2 class="pf-h1">${esc(t[0].name)}</h2>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}</div>${tasteLine(p.styleMix, me)}</div>
@@ -1089,6 +1097,11 @@ function render(name, at, full) {
   if (me) {
     sendCard(name, full, sp);
   }
+  // Dark or light: remembered, and the menu stays open to pick what to download.
+  document.querySelectorAll('[data-card-look]').forEach((b) => b.addEventListener('click', () => {
+    try { localStorage.setItem('chess-trainer-card-look', b.dataset.cardLook); } catch {}
+    document.querySelectorAll('[data-card-look]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+  }));
   document.querySelectorAll('[data-card-png]').forEach((b) => b.addEventListener('click', async () => {
     b.closest('details').open = false;
     const k = b.dataset.cardPng;

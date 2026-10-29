@@ -1864,3 +1864,7 @@ p, li, dd, small { text-wrap: pretty; }
   #profile .pf-hero .pf-h1 { overflow-wrap: normal; } /* a style is never split mid-word ("Marathone-r") */
   #profile > .pf-hero ~ :not(.pf-players) { order: 2; }
 }
+/* The download menu's Dark / Light choice, above what to download */
+.pf-dl-look { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 2px; margin-bottom: 4px; border: 1px solid var(--line); border-radius: 6px; }
+.pf-dl-look button { padding: 6px 8px; border: 0; border-radius: 4px; background: none; color: var(--muted); font: 600 13px var(--font-body); cursor: pointer; }
+.pf-dl-look button[aria-pressed="true"] { background: var(--raised); color: var(--ink); }
