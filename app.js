@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029125834';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029125834';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029125834';
-import { GUIDE } from './guide.js?v=20261029125834';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029125834';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029125834';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029125834';
-import { storedGames } from './profile.js?v=20261029125834';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029130117';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029130117';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029130117';
+import { GUIDE } from './guide.js?v=20261029130117';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029130117';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029130117';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029130117';
+import { storedGames } from './profile.js?v=20261029130117';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -868,7 +868,7 @@ function renderMaterial() {
   const opp = cur.side === 'w' ? 'b' : 'w';
   const lead = points(cur.side) - points(opp);
   const row = (taken, ahead, who) => {
-    const pieces = lost(taken);
+    const pieces = lead ? lost(taken) : []; // even trades are noise: only an imbalance is shown
     const el = $(who === 'you' ? '#cap-bottom' : '#cap-top');
     el.innerHTML = pieces.map((t) => `<img src="pieces/${taken}${t.toUpperCase()}.svg" alt="">`).join('') + (ahead > 0 ? `<b>+${ahead}</b>` : '');
     el.setAttribute('aria-label', `${who === 'you' ? 'You have' : 'Your opponent has'} taken ${pieces.length ? pieces.map((t) => PIECE[t]).join(', ') : 'nothing'}${ahead > 0 ? `, ${ahead} ahead in material` : ''}`);
@@ -1285,6 +1285,7 @@ function play(i, again = false) {
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   punish = 0; punishDone = false; endLen = 0; assisted = false;
   closeMoment();
+  $('#op-more').open = mode === 'learn' && i === 0; // the opening's story goes with its first line
   misses = again ? misses : 0; missesHere = 0; busy = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
   playing = false; opponent = saidOpponent = null;
@@ -1450,6 +1451,8 @@ const winPct = (cp) => 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
 function renderEval() {
   if (!cur) return;
   const el = $('#evalbar');
+  // In the line itself the evaluation is noise; it shows when you explore or play on.
+  el.style.visibility = mode === 'explore' || playing ? '' : 'hidden';
   // Looking back, the bar follows the position on the board (your slip is shown before it is played).
   let pos = game;
   if (view !== null) { const n = shownAt(view); pos = new Chess(); game.history().slice(0, n).forEach((m) => pos.move(m)); }

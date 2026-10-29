@@ -1432,3 +1432,15 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .line-done .done-more summary { cursor: pointer; font-size: 14px; color: var(--muted); padding: 4px 0; }
 .line-done .done-more[open] summary { color: var(--ink); }
 .lines .line-box { margin: 8px 0; }
+
+/* A quiet board: no frame, the opening's story folded in the panel, light controls */
+#trainer .board-frame { padding: 0; border: 0; background: none; }
+.p-head .op-head { margin-top: 10px; }
+.p-head .op-head .meta { margin: 0; }
+#trainer .p-head .op-head h1 { font-size: clamp(1.4rem, 2.4vw, 1.9rem); margin: 2px 0 0; }
+.op-more { border-top: 1px solid var(--line); padding-top: 12px; }
+.op-more summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--muted); }
+.op-more[open] summary { color: var(--ink); margin-bottom: 10px; }
+.op-more #op-info { margin-bottom: 12px; }
+#trainer .controls button:not(.primary) { background: none; border-color: transparent; color: var(--muted); }
+#trainer .controls button:not(.primary):hover:not(:disabled) { color: var(--ink); border-color: var(--line); }
