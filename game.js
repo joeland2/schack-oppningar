@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261029163219';
-import { account } from './lichess.js?v=20261029163219';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf } from './profile.js?v=20261029163219';
+import { drawBoard } from './board.js?v=20261029163330';
+import { account } from './lichess.js?v=20261029163330';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029163330';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -208,12 +208,12 @@ async function impact() {
   if (!el || !all.some((x) => x.id === g.id) || all.length < 50) return;
   el.innerHTML = '<p class="info">Working out how this game affected your stats…</p>';
   const [withIt, without] = await Promise.all([profileFromRaw(name, all), profileFromRaw(name, all.filter((x) => x.id !== g.id))]);
-  const a = skillsOf(withIt), b = skillsOf(without);
+  const a = fineSkillsOf(withIt), b = fineSkillsOf(without);
   const known = (xs) => xs.filter((x) => x.v !== null), ovr = (xs) => (known(xs).length ? known(xs).reduce((t, x) => t + x.v, 0) / known(xs).length : null);
-  // One game moves a skill by a fraction of a point, so to one decimal. A skill's own reading (raw),
-  // so a change elsewhere does not pull it along on the card's scale.
+  // One game moves a skill by a fraction of a point, so unrounded and shown to one decimal: the card's
+  // own numbers (your rating sets the card's level, so a won or lost game lifts or lowers them all).
   const tenth = (d) => Math.round(d * 10) / 10;
-  const moved = a.map((x, i) => ({ label: x.label, now: x.v, d: x.raw !== null && b[i].raw !== null ? tenth(x.raw - b[i].raw) : 0 })).filter((x) => x.d);
+  const moved = a.map((x, i) => ({ label: x.label, now: Math.round(x.v), d: x.v !== null && b[i].v !== null ? tenth(x.v - b[i].v) : 0 })).filter((x) => x.d);
   const dOvr = ovr(a) !== null && ovr(b) !== null ? tenth(ovr(a) - ovr(b)) : 0, style = withIt.type?.[0]?.name, was = without.type?.[0]?.name;
   const sign = (d) => (d > 0 ? `+${d}` : `${d}`.replace('-', '−'));
   el.innerHTML = `<h2>How this game affected your stats</h2>
