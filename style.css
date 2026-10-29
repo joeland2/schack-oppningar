@@ -1879,3 +1879,14 @@ p, li, dd, small { text-wrap: pretty; }
 .ad-card-tip { position: fixed; z-index: 60; pointer-events: none; }
 .ad-card-tip[hidden] { display: none; }
 .ad-card-tip .pf-pcard { zoom: .7; box-shadow: 0 18px 40px rgb(0 0 0 / .45); }
+/* The hover card as it was downloaded: dark (black card) or light (cream card), and with the style beside it */
+.ad-cv { display: flex; align-items: flex-start; gap: 14px; padding: 10px; border-radius: 8px; }
+.ad-cv.with-style { background: #e6dfd1; color: #141414; }
+.ad-cv-light.with-style { background: #1b1815; color: #f4efe6; }
+:root .ad-cv-dark .pf-pcard { --card: #141414; --card-ink: #f4efe6; --band-ink: var(--band); }
+:root .ad-cv-light .pf-pcard { --card: #f4efe6; --card-ink: #141414; --band-ink: color-mix(in srgb, var(--band) 78%, #000); }
+:root .ad-cv-dark .pf-pcard-piece.ink-on-dark, :root .ad-cv-light .pf-pcard-piece.ink-on-light { display: block; }
+:root .ad-cv-dark .pf-pcard-piece.ink-on-light, :root .ad-cv-light .pf-pcard-piece.ink-on-dark { display: none; }
+.ad-cv-style { display: grid; gap: 4px; padding-top: 8px; max-width: 180px; }
+.ad-cv-style b { font: 400 34px/1 var(--font-poster); text-transform: uppercase; }
+.ad-cv-style span { font: 400 18px/1.1 var(--font-poster); opacity: .75; }

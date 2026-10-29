@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029214027';
-import { STYLE_OF } from './styles.js?v=20261029214027';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029214610';
+import { STYLE_OF } from './styles.js?v=20261029214610';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1039,6 +1039,7 @@ function speedBar(name, full, sp, avail) {
   return `<div class="pf-seg pf-speeds" role="group" aria-label="Time control">${[['all', full.n], ...avail].map(([k, n]) =>
     `<button type="button" data-pf-speed="${k}" aria-pressed="${k === sp}">${k === 'all' ? 'All games' : k[0].toUpperCase() + k.slice(1)} <small>${n}</small></button>`).join('')}</div>`;
 }
+let shownCode = ''; // render: the card on screen as a short code (cardCode)
 function render(name, at, full) {
   shown = [name, at, full];
   const avail = speedsOf(name, full), main = full.speeds[0]?.speed;
@@ -1046,6 +1047,7 @@ function render(name, at, full) {
   const p = forSpeed(name, full, sp);
   if (sp !== 'all') chartState.speed = sp;
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
+  shownCode = cardCode(p, t, skills); // the card as drawn, for the lookup's event
   document.title = me ? 'Your Profile' : `${name} · Profile`;
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
@@ -1337,8 +1339,8 @@ async function run(name) {
   if (shown && shown[0].toLowerCase() !== name.toLowerCase()) pfSpeed = null; // another player starts on their own main time control
   // Seen before: show the saved profile at once, then fetch new games quietly and redraw only if there were any.
   if (c && c.v === PV) {
-    window.track?.('profile', c.name || name); // counted only for a player that was found
     try { render(c.name || name, c.at, c.p); } catch (err) { console.warn('saved profile could not be shown, reading it again', err); }
+    window.track?.('profile', `${c.name || name} #${shownCode}`); // counted only for a player that was found, with their card for the admin page
     const before = storedGames(name) || [], top = before[0]?.id; // no games kept here yet: redraw once they are, with their time controls
     quiet = true;
     try {
@@ -1355,8 +1357,8 @@ async function run(name) {
   const slow = setTimeout(() => { if (mine === runs && /Looking up|Fetching/.test($('#profile-msg').textContent)) $('#profile-msg').textContent += ' Lichess is slow right now; still waiting.'; }, 12000);
   try {
     const p = await build(name);
-    window.track?.('profile', cache()[name.toLowerCase()]?.name || name);
     if (mine === runs) render(name, Date.now(), p);
+    window.track?.('profile', `${cache()[name.toLowerCase()]?.name || name} #${shownCode}`);
   } catch (err) {
     if (mine === runs) failed(name, err);
   } finally { clearTimeout(slow); }

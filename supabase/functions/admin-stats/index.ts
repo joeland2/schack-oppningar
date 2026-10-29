@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     cities: count(recentVisitors.filter((w) => w.city).map((w) => `${w.city}, ${w.country ?? ''}`)),
     devices: count(recentVisitors.map((w) => w.device ?? 'Unknown')),
     hours, weekdays,
-    profiles: count(rows.filter((r) => r.kind === 'profile').map((r) => r.target)), // all time
+    profiles: count(rows.filter((r) => r.kind === 'profile').map((r) => r.target?.split(' #')[0] ?? null)), // all time; ' #…' is the card shown
     // The latest profiles looked up, newest first, with where the visitor was.
     recentProfiles: rows.filter((r) => r.kind === 'profile').slice(-40).reverse().map((r) => ({ at: r.at, target: r.target, name: r.user_name, country: r.country, city: r.city, device: r.device })),
     // The latest cards downloaded and analyses started (a profile's games, or one game), newest first.
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
     recentActions: (() => {
       const last: Record<string, string> = {}, out = [];
       for (const r of rows) {
-        if (r.kind === 'profile' && r.target) last[r.visitor] = r.target;
+        if (r.kind === 'profile' && r.target) last[r.visitor] = r.target.split(' #')[0];
         else if (r.kind === 'card' || r.kind === 'analyse') {
           const named = /[:·]/.test(r.target ?? '');
           out.push({ at: r.at, kind: r.kind, target: named ? r.target : `${last[r.visitor] ?? 'unknown profile'} · ${r.target ?? ''}`, name: r.user_name, country: r.country, city: r.city, device: r.device });

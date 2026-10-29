@@ -1,6 +1,6 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261029214027';
+import { account, login, finishLogin } from './lichess.js?v=20261029214610';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -22,9 +22,9 @@ function cardOf(target, board) {
   const r = board.find((x) => x.name.toLowerCase() === name.toLowerCase());
   return r && { name: r.name, overall: r.overall, style: r.style, strength: r.strength, skills: ['Attack', 'Defense', 'Early game', 'Late game', 'Accuracy', 'Speed'].map((k) => r.skills?.[k] ?? null), rating: r.rating, speed: r.speed, piece: r.piece };
 }
-const cardHtml = (c) => `<div class="pf-pcard" data-band="${bandOf(c.rating)}"><div class="pf-pcard-top"><div><b class="pf-ovr">${esc(c.overall ?? '–')}</b><span class="pf-pos">${esc(c.style || '')}</span>${c.strength ? `<span class="pf-str">+ ${esc(c.strength)}</span>` : ''}</div>
+const cardHtml = (c, look = 'dark', style = false) => `<div class="ad-cv ad-cv-${look}${style ? ' with-style' : ''}"><div class="pf-pcard" data-band="${bandOf(c.rating)}"><div class="pf-pcard-top"><div><b class="pf-ovr">${esc(c.overall ?? '–')}</b><span class="pf-pos">${esc(c.style || '')}</span>${c.strength ? `<span class="pf-str">+ ${esc(c.strength)}</span>` : ''}</div>
   <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(c.piece || 'n').toUpperCase()}.svg" alt=""><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(c.piece || 'n').toUpperCase()}.svg" alt="">${c.rating ? `<span class="pf-pcard-rating">${c.rating} <small>${esc(c.speed || '')}</small></span>` : ''}</div></div>
-  <p class="pf-pcard-name">${esc(c.name)}</p><div class="pf-pcard-bars">${SKILL_KEYS.map((k, i) => `<div><span>${k}</span><i style="--v:${c.skills[i] ?? 0}%"></i><b>${c.skills[i] ?? '–'}</b></div>`).join('')}</div></div>`;
+  <p class="pf-pcard-name">${esc(c.name)}</p><div class="pf-pcard-bars">${SKILL_KEYS.map((k, i) => `<div><span>${k}</span><i style="--v:${c.skills[i] ?? 0}%"></i><b>${c.skills[i] ?? '–'}</b></div>`).join('')}</div></div>${style ? `<div class="ad-cv-style"><b>${esc(c.style || '')}</b>${c.strength ? `<span>+ ${esc(c.strength)}</span>` : ''}</div>` : ''}</div>`;
 let BOARD = [];
 // An event's target with the player names as links to their profiles (looked up, card, analysis, comparison).
 const plink = (n) => `<a href="profile.html?u=${encodeURIComponent(n)}">${esc(n)}</a>`;
@@ -131,9 +131,9 @@ function render(s) {
       : '<p class="info">Nobody yet.</p>'}</section>
     <section class="pf-card"><div class="ad-head"><h2>Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
       ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${s.recentActions.slice(0, 15).map((r) => {
-        return `<li><span><b>${r.kind === 'card' ? 'Card' : 'Analysis'}</b> ${targetHtml(r.kind, (r.target || '').replace(/ · $/, ''))}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`; }).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
+        return `<li><span><b>${r.kind === 'card' ? 'Card' : 'Analysis'}</b> ${targetHtml(r.kind, (r.target || '').replace(/ · $/, '')).replace('<a ', r.kind === 'card' ? `<a data-card="${esc(r.target || '')}" ` : '<a ')}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`; }).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
     <section class="pf-card"><div class="ad-head"><h2>Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
-      ${(s.recentProfiles || []).length ? `<ul class="pf-rows ad-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: r.target })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
+      ${(s.recentProfiles || []).length ? `<ul class="pf-rows ad-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: (r.target || '').split(' #')[0] })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
     <div class="pf-two">
       <section class="pf-card"><h2>Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="ad-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
       <section class="pf-card"><h2>Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>
@@ -169,7 +169,8 @@ function render(s) {
 // newest one a download event carried, else the leaderboard's; a name with neither shows nothing.
 function cardsOf(body) {
   const out = new Map(BOARD.map((r) => [r.name.toLowerCase(), cardOf(r.name, BOARD)]));
-  const events = [...(body.visitors || []).flatMap((v) => v.events), ...(body.recentActions || [])].filter((e) => e.kind === 'card' && e.target?.includes(' #'));
+  const events = [...(body.visitors || []).flatMap((v) => v.events), ...(body.recentActions || []), ...(body.recentProfiles || []).map((r) => ({ ...r, kind: 'profile' }))]
+    .filter((e) => (e.kind === 'card' || e.kind === 'profile') && e.target?.includes(' #'));
   events.sort((a, b) => a.at.localeCompare(b.at)).forEach((e) => { const c = cardOf(e.target, []); if (c) out.set(c.name.toLowerCase(), c); });
   return out;
 }
@@ -181,9 +182,10 @@ function bindCards(body) {
     tip.style.left = `${Math.min(e.clientX + 16, innerWidth - w - 8)}px`; tip.style.top = `${Math.min(e.clientY + 16, innerHeight - h - 8)}px`; };
   box.onmouseover = (e) => {
     const a = e.target.closest?.('a[href*="profile.html?u="]');
-    const c = a && cards.get(new URL(a.href).searchParams.get('u').toLowerCase());
+    // A download row shows that download as it was: dark or light, with the style beside it or not.
+    const own = a?.dataset.card, c = a && ((own && cardOf(own, BOARD)) || cards.get(new URL(a.href).searchParams.get('u').toLowerCase()));
     if (!c) { tip.hidden = true; return; }
-    tip.innerHTML = cardHtml(c); tip.hidden = false; place(e);
+    tip.innerHTML = cardHtml(c, own && / · light\b/.test(own) ? 'light' : 'dark', !!own && / · (style|card \+ style)\b/.test(own)); tip.hidden = false; place(e);
   };
   box.onmousemove = (e) => { if (!tip.hidden) place(e); };
   box.onmouseout = (e) => { if (e.target.closest?.('a[href*="profile.html?u="]')) tip.hidden = true; };
