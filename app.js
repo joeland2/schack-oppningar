@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029234615';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029234615';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029234615';
-import { GUIDE } from './guide.js?v=20261029234615';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029234615';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029234615';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029234615';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029234615';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029234851';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029234851';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029234851';
+import { GUIDE } from './guide.js?v=20261029234851';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029234851';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029234851';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029234851';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029234851';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1224,7 +1224,8 @@ function askGo() {
   showGo(true);
   confetti(done === 'Line cleared' ? 110 : done === 'Line learned' ? 60 : 0);
   say('Choose how to go on.', 'good');
-  $('#go-ask button')?.focus();
+  $('#go-ask button')?.focus({ preventScroll: true }); // the card opens at its top, on what the line gave you
+  $('#go-ask .depth-card').scrollTop = 0;
 }
 function goOn(go) {
   if (go === 'next') return $('#restart').click(); // the next line, in the mode you are in

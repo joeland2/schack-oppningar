@@ -1192,7 +1192,7 @@ a { text-underline-offset: .18em; }
   .pf-hero { grid-template-columns: auto minmax(0, 1fr); gap: 12px 14px; justify-items: stretch; align-items: start; text-align: left; }
   .pf-hero .pf-card-col, .pf-hero .pf-hero-text, .pf-hero .pf-type-row { display: contents; }
   .pf-hero .pf-pcard { zoom: .6; grid-area: 1 / 1 / 4 / 2; }
-  #profile .pf-hero .pf-type-row > .pf-acts { grid-area: 3 / 2; position: static; flex-direction: row; gap: 6px; align-self: start; } /* under the opening taste */
+  #profile .pf-hero .pf-type-row > .pf-acts { grid-area: 4 / 2; position: static; flex-direction: row; gap: 6px; align-self: center; } /* level with the download button under the card */
   .pf-name-row:not(:has(.pf-acts)) .pf-name { padding-inline: 0; font-size: min(3rem, calc((100vw - 32px) / var(--n, 10) * 2)); }
   .pf-hero .pf-type-row > div:first-child { grid-area: 1 / 2; align-self: start; }
   #profile .pf-hero .pf-h1 { font-size: clamp(1.4rem, 7vw, 2.1rem); }
@@ -1999,3 +1999,8 @@ main.profile:has(#admin) { max-width: 1320px; }
 .ad-look.light { background: #f4efe6; color: #141414; }
 
 .pf-card-col .pf-speeds { justify-self: center; } /* the time control right under the card it switches */
+/* Phones: the line's end card over the whole screen, so it has room and opens at its top */
+@media (max-width: 640px) {
+  #go-ask { position: fixed; inset: 0; z-index: 60; padding: 12px; background: rgb(0 0 0 / .6); }
+  #go-ask .depth-card.go-card { max-height: calc(100dvh - 24px); }
+}
