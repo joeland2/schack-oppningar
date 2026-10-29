@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261029165145';
-import { account } from './lichess.js?v=20261029165145';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029165145';
+import { drawBoard } from './board.js?v=20261029165238';
+import { account } from './lichess.js?v=20261029165238';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261029165238';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -165,13 +165,14 @@ function graph() {
   const yy = (c) => H - (c / 100) * H;
   const line = pts.map(([x, c], k) => `${k ? 'L' : 'M'}${x.toFixed(1)},${yy(c).toFixed(1)}`).join('');
   const area = `${line}L${W},${H}L0,${H}Z`;
-  // Your slips as dots, in the move list's colours: red blunders, orange mistakes, yellow inaccuracies.
-  const dots = moves.map((_, i) => [i, g.analysis[i]?.judgment?.name]).filter(([i, j]) => j && mine(i))
-    .map(([i, j]) => `<circle class="${j}" cx="${gx(i).toFixed(1)}" cy="${yy(chanceAt(i)).toFixed(1)}" r="${j === 'Inaccuracy' ? 2.5 : 3}"/>`).join('');
+  // The slips as dots, in the move list's colours: red blunders, orange mistakes, yellow inaccuracies;
+  // yours filled, your opponent's as rings.
+  const dots = moves.map((_, i) => [i, g.analysis[i]?.judgment?.name]).filter(([, j]) => j)
+    .map(([i, j]) => `<circle class="${j}${mine(i) ? '' : ' theirs'}" cx="${gx(i).toFixed(1)}" cy="${yy(chanceAt(i)).toFixed(1)}" r="${j === 'Inaccuracy' ? 2.5 : 3}"/>`).join('');
   return `<figure class="gm-graph"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Your winning chances move by move">
       <path class="area" d="${area}"/><line class="mid" x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}"/><path class="ln" d="${line}"/>${dots}
       <line class="now" x1="0" x2="0" y1="0" y2="${H}"/><rect class="hit" width="${W}" height="${H}"/></svg>
-    <figcaption>Your winning chances, move by move. Above the middle line you were better. The dots are your slips: red blunders, orange mistakes, yellow inaccuracies.</figcaption></figure>`;
+    <figcaption>Your winning chances, move by move. Above the middle line you were better. The dots are the slips: red blunders, orange mistakes, yellow inaccuracies. Filled are yours, rings your opponent's.</figcaption></figure>`;
 }
 // A player's name as a link to their profile here (anonymous players have none).
 function who(colour, fallback = 'anonymous') {

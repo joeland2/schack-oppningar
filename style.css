@@ -986,6 +986,10 @@ a.cta { color: var(--accent-ink); }
 .gm-graph circle.Blunder { fill: var(--bad); }
 .gm-graph circle.Mistake { fill: var(--hot); }
 .gm-graph circle.Inaccuracy { fill: var(--hint); }
+.gm-graph circle.theirs { fill: var(--surface); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.gm-graph circle.theirs.Blunder { stroke: var(--bad); }
+.gm-graph circle.theirs.Mistake { stroke: var(--hot); }
+.gm-graph circle.theirs.Inaccuracy { stroke: var(--hint); }
 .gm-graph .hit { fill: transparent; }
 .gm-graph figcaption { margin-top: 6px; font-size: 12px; color: var(--muted); }
 .gm-moments ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
