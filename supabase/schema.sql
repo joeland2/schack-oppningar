@@ -14,6 +14,7 @@ create table if not exists public.events (
 create index if not exists events_at on public.events (at desc);
 
 alter table public.events enable row level security;
+grant insert on public.events to anon; -- newer projects no longer grant this by default
 
 drop policy if exists "anyone can add an event" on public.events;
 create policy "anyone can add an event" on public.events
