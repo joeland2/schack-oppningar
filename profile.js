@@ -3,10 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029162131';
-import { STYLE_OF } from './styles.js?v=20261029162131';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029162211';
+import { STYLE_OF } from './styles.js?v=20261029162211';
 
 const MAX = 500;
+const EARLY = 120; // games before a first look-up draws the profile, while the rest still come in
 const PV = 33;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
@@ -435,7 +436,7 @@ async function fetchGames(name, onGame, since = null) {
     rest = lines.pop();
     for (const l of lines) {
       const g = l.trim() && JSON.parse(l);
-      if (g?.variant === 'standard' && games.length < MAX) { games.push(g); onGame(games.length); }
+      if (g?.variant === 'standard' && games.length < MAX) { games.push(g); onGame(games.length, games); }
     }
   }
   reader.cancel().catch(() => {});
@@ -494,7 +495,17 @@ const msgEl = () => (quiet ? { textContent: '' } : $('#profile-msg'));
 async function build(name) {
   const msg = msgEl(), have = storedGames(name) || [];
   msg.textContent = have.length ? `Fetching ${name}'s new games from Lichess…` : `Fetching ${name}'s last ${MAX} rated games from Lichess…`;
-  const fresh = await fetchGames(name, (k) => { msg.textContent = `Fetching ${name}'s games from Lichess… ${k}`; }, have.length ? have[0].createdAt + 1 : null);
+  // Lichess sends about 20-30 games a second, so a first look-up takes a while: the profile is drawn
+  // from the first EARLY games as soon as they are in, then drawn again from all of them.
+  const mine = runs;
+  let early = false;
+  const fresh = await fetchGames(name, (k, gs) => {
+    msg.textContent = `Fetching ${name}'s games from Lichess… ${k}${early ? ` of ${MAX}: the profile fills in as they come` : ''}`;
+    if (!have.length && k === EARLY && !early && !quiet) {
+      early = true;
+      loadScores().then(() => { if (mine === runs) render(name, Date.now(), profileOf(gs.slice().map((g) => readGame(g, name.toLowerCase())))); }).catch(() => {});
+    }
+  }, have.length ? have[0].createdAt + 1 : null);
   const ids = new Set(fresh.map((g) => g.id));
   const raw = [...fresh, ...have.filter((g) => !ids.has(g.id))].slice(0, MAX);
   if (!raw.length) throw new Error(`${name} has no rated games on Lichess yet.`);
