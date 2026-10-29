@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029122020';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029122020';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029122020';
-import { GUIDE } from './guide.js?v=20261029122020';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029122020';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029122020';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029122020';
-import { storedGames } from './profile.js?v=20261029122020';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029122226';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029122226';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029122226';
+import { GUIDE } from './guide.js?v=20261029122226';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029122226';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029122226';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029122226';
+import { storedGames } from './profile.js?v=20261029122226';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1420,7 +1420,24 @@ function slipWhy(n, arrows = true) {
   const replyIdea = reply && ideaAt(new Chess(after.fen()), reply.san);
   const wrong = danger || (reply ? `${sideName(after.turn())} answers ${reply.san}${replyIdea ? `: ${replyIdea.replace(/^./, (c) => c.toLowerCase())}` : '.'}` : '');
   const bestIdea = ideaAt(new Chess(m.before), better.san);
-  return `${wrong ? `Why: ${wrong} ` : ''}Better was <b>${better.san}</b>${bestIdea ? `: ${bestIdea.replace(/^./, (c) => c.toLowerCase())}` : '.'}${arrows ? ' (Green arrow; the move played is red.)' : ''}`;
+  const cost = reply ? tradeAfter(m, reply) : '';
+  return `${wrong ? `Why: ${wrong} ` : ''}${cost ? `${cost} ` : ''}Better was <b>${better.san}</b>${bestIdea ? `: ${bestIdea.replace(/^./, (c) => c.toLowerCase())}` : '.'}${arrows ? ' (Green arrow; the move played is red.)' : ''}`;
+}
+// What the slip costs in material once the dust settles: the slip, the best answer, and the mover's
+// best move after that when it takes something back (e.g. ...Bxh3 gxh3 Qxh3: a bishop for two pawns).
+const MAT = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+const PLURAL = { p: 'pawns', n: 'knights', b: 'bishops', r: 'rooks', q: 'queens' };
+function tradeAfter(m, reply) {
+  const g = new Chess(m.before), seq = [m.san, reply.san];
+  g.move(m.san); g.move(reply.san);
+  const back = EVALS.get(evalKey(g.fen()))?.move, b = back && new Chess(g.fen()).move(back);
+  if (b?.captured) seq.push(b.san);
+  const run = new Chess(m.before), lost = [], won = [];
+  for (const san of seq) { const x = run.move(san); if (x.captured) (x.color === m.color ? won : lost).push(x.captured); }
+  const net = won.reduce((t, k) => t + MAT[k], 0) - lost.reduce((t, k) => t + MAT[k], 0);
+  if (net > -2 || !lost.length) return '';
+  const list = (ks) => Object.entries(ks.reduce((o, k) => ({ ...o, [k]: (o[k] || 0) + 1 }), {})).map(([k, n]) => (n > 1 ? `${n === 2 ? 'two' : n} ${PLURAL[k]}` : `a ${PIECE[k]}`)).join(' and ');
+  return `After ${seq.join(' ')}, ${sideName(m.color)} has given ${list(lost)}${won.length ? ` for ${list(won)}` : ' for nothing'}.`;
 }
 // What makes a brilliant move work: the piece it leaves to be taken, and why taking it is no good.
 function brilliantWhy(n) {
