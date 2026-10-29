@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029224919';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029224919';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029224919';
-import { GUIDE } from './guide.js?v=20261029224919';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029224919';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029224919';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029224919';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029224919';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029225057';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029225057';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029225057';
+import { GUIDE } from './guide.js?v=20261029225057';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029225057';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029225057';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261029225057';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261029225057';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -50,6 +50,7 @@ const ratingKey = () => `${STORE}-${speed}-rating`;
 const statKey = (id) => `${speed}:${id}`;
 let rating = load(ratingKey(), null);
 let style = load(STORE + '-style', 'any');
+let pinFavs = load(STORE + '-pin-favs', true); // starred openings first, or in their place in the sort
 let sort = load(STORE + '-sort', 'score'); // score: best results for your side first; played: most played first
 let OPENINGS = [];   // most played openings at your level
 let cur = null;      // current opening
@@ -486,8 +487,8 @@ function renderList() {
       <div class="olist">${favs.map((o) => (played.includes(o) ? card(o).replace('<span class="chip ', '<span class="tag played">Played most</span><span class="chip ') : card(o))).join('')}</div>`;
   } else {
     // Your starred openings of this side come first, pinned, even ones the style or the cut would hide.
-    const pinned = mineList.filter((o) => o.side === listSide);
-    const ops = [...pinned, ...list.filter((o) => o.side === listSide && !repertoire.has(o.id))];
+    const pinned = pinFavs ? mineList.filter((o) => o.side === listSide) : [];
+    const ops = [...pinned, ...list.filter((o) => o.side === listSide && !(pinFavs && repertoire.has(o.id)))];
     const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for White at your level. Try another style.</p>`;
     body = `<p class="og-about">${about[listSide](ops.length)}</p>${ops.length ? '' : empty}
       <div class="olist">${ops.map(card).join('')}</div>`;
@@ -976,6 +977,13 @@ $('#rating-user-form').addEventListener('submit', async (e) => {
 });
 $('#rating-user').value = load(STORE + '-lichess-name', '');
 $('#search').addEventListener('input', (e) => { query = e.target.value; if (OPENINGS.length) renderList(); });
+$('#pin-favs').setAttribute('aria-pressed', pinFavs);
+$('#pin-favs').addEventListener('click', (e) => {
+  pinFavs = !pinFavs; store(STORE + '-pin-favs', pinFavs);
+  e.currentTarget.setAttribute('aria-pressed', pinFavs);
+  e.currentTarget.title = pinFavs ? 'Starred openings first. Click to sort them in with the rest' : 'Starred openings in their place. Click to put them first';
+  if (OPENINGS.length) renderList();
+});
 
 // ---------- Board ----------
 function renderBoard() {
