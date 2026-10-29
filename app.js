@@ -1,12 +1,12 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029132633';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029132633';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029132633';
-import { GUIDE } from './guide.js?v=20261029132633';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029132633';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029132633';
-import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029132633';
-import { storedGames } from './profile.js?v=20261029132633';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261029132745';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261029132745';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261029132745';
+import { GUIDE } from './guide.js?v=20261029132745';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261029132745';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261029132745';
+import { login, logout, finishLogin, account, liveGames } from './lichess.js?v=20261029132745';
+import { storedGames } from './profile.js?v=20261029132745';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -965,7 +965,7 @@ function askGo() {
 function goOn(go) {
   const [m, on] = go.split('-');
   setMode(m, false);
-  if (on) { render(); if (m === 'learn') guide(); } // play on: the board stays, the arrows follow the mode
+  if (on) { if (m === 'try') { hintSq = []; tipArrows = []; } render(); if (m === 'learn') guide(); } // play on: the board stays, the arrows follow the mode
   else play(lineIdx);
 }
 // Beside the board, once a line is done: Next line (the ways on are asked over the board, see GO).
