@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261029092254';
-import { STYLE_OF } from './styles.js?v=20261029092254';
+import { account, login, finishLogin } from './lichess.js?v=20261029092452';
+import { STYLE_OF } from './styles.js?v=20261029092452';
 
 const MAX = 500;
 const PV = 19;
@@ -506,16 +506,18 @@ function engineEval(fen) {
   });
 }
 const minutes = (sec) => (sec < 90 ? `about ${Math.max(1, Math.round(sec / 60))} min` : `about ${Math.round(sec / 60)} min`);
-// What analysing the newest n games here would take: the games without analysis, and the time.
-function costOf(p, n) {
-  const todo = (p.todo || []).slice(0, n).filter(Boolean);
+// What reaching `target` analysed games would take: just enough of the newest games without analysis
+// (those analysed on Lichess already count), and the time.
+function costOf(p, target) {
+  const todo = (p.todo || []).filter(Boolean).slice(0, Math.max(0, target - p.analysed));
   return { games: todo.length, sec: sum(todo, (x) => x) * PER_POS };
 }
 let analysing = null; // { stop } while a run is going
-async function analyse(name, n) {
+async function analyse(name, target) {
   const el = $('#pf-analyse');
   await build(name); // the games played since are fetched first, so they are analysed too
-  const todo = RAW.slice(0, n).filter((g) => !g.analysis && g.moves);
+  const have = RAW.filter((g) => g.analysis).length;
+  const todo = RAW.filter((g) => !g.analysis && g.moves).slice(0, Math.max(0, target - have)); // the newest first, up to the target
   const total = sum(todo, (g) => g.moves.split(' ').length), t0 = Date.now();
   let done = 0;
   analysing = { stop: false };
@@ -555,7 +557,7 @@ function analysePanel(name, p) {
   const opts = tiers.map(([n]) => ({ n, ...costOf(p, n) })).filter((o) => o.games);
   // the steps not reached yet, nearest first; at Best, the newest games played since
   const ahead = opts.filter((o) => !next || o.n >= next[0]), main = ahead[0] || opts[0], rest = ahead.slice(1);
-  const btn = (o, cls) => `<button type="button" class="${cls}" data-analyse="${o.n}" title="${games(o.games)} without analysis among your newest ${o.n}, ${minutes(o.sec)}, with Stockfish in your browser">Analyse ${o.games} more <small>${next ? `for ${tiers.find(([n]) => n === o.n)?.[1] || ''} · ` : ''}~${minutes(o.sec).replace('about ', '')}</small></button>`;
+  const btn = (o, cls) => `<button type="button" class="${cls}" data-analyse="${o.n}" title="The newest ${games(o.games)} without analysis, until ${o.n} are analysed: ${minutes(o.sec)}, with Stockfish in your browser">Analyse until ${o.n} <small>${o.games} games${next ? ` · ${tiers.find(([n]) => n === o.n)?.[1] || ''}` : ''} · ~${minutes(o.sec).replace('about ', '')}</small></button>`;
   let prev = 0;
   const steps = tiers.map(([n, label]) => { const fill = Math.max(0, Math.min(1, (p.analysed - prev) / (n - prev))); prev = n;
     return `<li class="${p.analysed >= n ? 'done' : fill > 0 ? 'now' : ''}"><span class="pf-acc-bar"><i style="width:${fill * 100}%"></i></span><span class="pf-acc-label"><b>${label}</b> ${n}</span></li>`; }).join('');
