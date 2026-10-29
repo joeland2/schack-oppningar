@@ -845,7 +845,7 @@ h1, .picker h1 { font-family: var(--font-poster); font-weight: 400; text-transfo
 .seg { border-radius: var(--radius); }
 .seg button { border-radius: 2px; }
 .ghost, .controls button { color: var(--ink); }
-main a:not(.cta):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op):not(.lbd-name), button.link { color: var(--hot); }
+main a:not(.cta):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op):not(.lbd-name):not(.pf-star-strip), button.link { color: var(--hot); }
 .cta { border-radius: var(--radius); }
 a.cta { color: var(--accent-ink); }
 @media (max-width: 560px) { /* five sections on a phone: one row that scrolls sideways if it must */
@@ -1668,3 +1668,11 @@ p, li, dd, small { text-wrap: pretty; }
 :root[data-theme="dark"] .pf-pcard-piece.ink-on-dark { display: none; }
 .ad-demo-row { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
 .ad-demo-tag { display: inline-block; margin-right: 6px; padding: 2px 8px; border-radius: 99px; background: var(--hot); color: #141414; font-size: 12px; }
+.pf-fetch { display: inline-flex; align-items: center; gap: 6px; }
+.pf-fetched { color: var(--muted); font-size: 12px; }
+/* Your stars in one row under the card */
+.pf-star-strip { display: flex; align-items: center; justify-content: center; gap: 8px; width: min(300px, 100%); padding: 10px 14px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); text-decoration: none; font: 600 16px var(--font-body); font-variant-numeric: tabular-nums; }
+.pf-star-strip b { margin-right: 8px; }
+.pf-star-strip span { color: var(--muted); font-weight: 400; font-size: 13px; }
+.pf-star-strip .line-star { width: 20px; height: 20px; }
+.pf-star-strip:hover { border-color: var(--ink); }

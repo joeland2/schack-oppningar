@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261029160607';
-import { STYLE_OF } from './styles.js?v=20261029160607';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261029161313';
+import { STYLE_OF } from './styles.js?v=20261029161313';
 
 const MAX = 500;
 const PV = 33;
@@ -925,10 +925,10 @@ function render(name, at, full) {
   document.title = me ? 'Your Profile' : `${name} · Profile`;
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
-    ${playerBar(name)}
+    ${playerBar(name, at)}
     ${speedBar(name, full, sp, avail)}
     <section class="pf-hero">
-      <div class="pf-card-col">${playerCard(name, p, t, skills)}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
+      <div class="pf-card-col">${playerCard(name, p, t, skills)}${me ? starsStrip() : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
         <div class="pf-dl-menu" role="group" aria-label="Download"><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h1 class="pf-h1">${esc(t[0].name)}</h1>
@@ -1051,11 +1051,18 @@ function starsCard() {
   if (!ops.length) return `<section class="pf-card pf-stars"><h2>Your stars</h2><p class="info">Learn a line in the <a href="./">Openings trainer</a> for your first green star; clear it in Practice for gold, and play it without a slip in the time trial for a diamond.</p></section>`;
   const nameOf = (id) => id.replace(/^b:/, '').replace(/^vs:/, 'vs ');
   const sideOf = (id) => (/^(b|vs):/.test(id) ? 'b' : 'w');
-  return `<section class="pf-card pf-stars"><h2>Your stars</h2>
+  return `<section class="pf-card pf-stars" id="pf-stars"><h2>Your stars</h2>
     <div class="pf-star-totals">${[['green', 'learned'], ['gold', 'cleared'], ['diamond', 'perfect in Time']].map(([k, w]) => `<div>${starIcon(k)}<b>${sum(k)}</b><span>${w}</span></div>`).join('')}</div>
     <ul class="pf-star-ops">${ops.slice(0, 6).map((o) => `<li><a class="pf-op-link" href="${practiseLink(sideOf(o.id), nameOf(o.id))}">${esc(nameOf(o.id))}</a>
       <span>${['green', 'gold', 'diamond'].filter((k) => o[k].size).map((k) => `${starIcon(k)}${o[k].size}`).join(' ')}</span></li>`).join('')}</ul>
     <p class="info">Saved in this browser. A line counts once, in every time control.</p></section>`;
+}
+// The same stars in one row under the card; it leads to the full list further down.
+function starsStrip() {
+  const { ops, sum } = starCounts();
+  return `<a class="pf-star-strip" href="#pf-stars" title="Your stars from the Openings trainer">${ops.length
+    ? `${starIcon('green')}<b>${sum('green')}</b>${starIcon('gold')}<b>${sum('gold')}</b>${starIcon('diamond')}<b>${sum('diamond')}</b><span>stars</span>`
+    : `${starIcon('green')}<span>No stars yet: learn a line in the trainer</span>`}</a>`;
 }
 // The stars in this browser, per opening and in all (see starsCard).
 function starCounts() {
@@ -1264,9 +1271,11 @@ function toggleFav(name) {
 const profileLink = (n) => `profile.html?u=${encodeURIComponent(n)}`;
 const compareLink = (a, b) => `profile.html?u=${encodeURIComponent(a)}&vs=${encodeURIComponent(b)}`;
 // Above a profile: star this player, compare with them, and your starred players to jump to.
-function playerBar(name) {
+function playerBar(name, at) {
   const me = isMe(name), mine = myName(), list = favs().filter((x) => x.toLowerCase() !== name.toLowerCase());
   return `<div class="pf-players">
+    <button type="button" class="ghost pf-fetch" data-fetch title="Fetch the games played on Lichess since this profile was read"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg> New games</button>
+    ${at ? `<small class="pf-fetched" id="pf-fetched">Updated ${ago(at)}</small>` : ''}
     ${me ? '' : `<button type="button" class="ghost pf-star" data-fav aria-pressed="${isFav(name)}">${isFav(name) ? `<svg class="ico ico-solid" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg> Starred` : `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg> Star player`}</button>`}
     ${!me && mine ? `<a class="ghost" href="${compareLink(mine, name)}">Compare with me</a>` : ''}
     ${me ? '' : `<a class="link-out" href="https://lichess.org/@/${encodeURIComponent(name)}" target="_blank" rel="noopener">${esc(name)} on Lichess</a>`}
@@ -1274,9 +1283,20 @@ function playerBar(name) {
   </div>`;
 }
 function bindPlayerBar(name) {
+  // New games: only the games played since the last read are fetched, then the whole profile is read again.
+  $('[data-fetch]')?.addEventListener('click', async (e) => {
+    const b = e.currentTarget, top = (storedGames(name) || [])[0]?.id, mine = runs;
+    b.disabled = true; b.lastChild.textContent = ' Fetching…';
+    try {
+      const p = await build(name), after = storedGames(name) || [], i = after.findIndex((g) => g.id === top), added = top ? (i < 0 ? after.length : i) : after.length;
+      if (mine !== runs) return;
+      render(name, Date.now(), p);
+      $('#pf-fetched').textContent = added > 0 ? `${added} new game${added === 1 ? '' : 's'} added just now` : 'No new games: up to date';
+    } catch (err) { b.disabled = false; b.lastChild.textContent = ' New games'; $('#profile-msg').textContent = err.message; }
+  });
   $('[data-fav]')?.addEventListener('click', (e) => {
     toggleFav(name);
-    $('.pf-players').outerHTML = playerBar(name);
+    $('.pf-players').outerHTML = playerBar(name, shown?.[1]);
     bindPlayerBar(name);
   });
 }
