@@ -1455,3 +1455,5 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .foot-row label.link { font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .foot-row .privacy summary { cursor: pointer; }
 .foot-row .privacy p { margin: 6px 0 0; max-width: 70ch; }
+/* A starred opening wears the star's yellow round its card */
+.ocard.ocard:has(.star[aria-pressed="true"]), .ocard.ocard:has(.star[aria-pressed="true"]):hover { border-color: #e0b23a; box-shadow: inset 0 0 0 1px #e0b23a; }
