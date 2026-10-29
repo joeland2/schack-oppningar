@@ -1457,3 +1457,16 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .foot-row .privacy p { margin: 6px 0 0; max-width: 70ch; }
 /* A starred opening wears the star's yellow round its card */
 .ocard.ocard:has(.star[aria-pressed="true"]), .ocard.ocard:has(.star[aria-pressed="true"]):hover { border-color: #e0b23a; box-shadow: inset 0 0 0 1px #e0b23a; }
+
+/* One surface beside the board: no boxes inside boxes. The coach and the line lists sit flat on the
+   page, split by thin rules; right and wrong show as a bar beside the coach. */
+#trainer .panel { background: none; border: 0; padding: 0; gap: 18px; }
+#trainer .coach { background: none; border: 0; border-left: 3px solid transparent; border-radius: 0; padding: 2px 0 2px 0; }
+#trainer .coach:has(.message.good) { border-left-color: var(--good); padding-left: 12px; }
+#trainer .coach:has(.message.bad) { border-left-color: var(--bad); padding-left: 12px; }
+#trainer .back { border: 0; padding: 0; background: none; color: var(--muted); font-size: 14px; }
+#trainer .back:hover { color: var(--ink); }
+#trainer .p-head .op-head { margin-top: 6px; }
+#trainer .side { background: none; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 12px 0 0; }
+#trainer .line-box { background: none; border: 0; padding: 0; }
+@media (min-width: 821px) and (max-width: 1399px) { #trainer.layout { grid-template-rows: auto 1fr; } }
