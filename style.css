@@ -844,7 +844,7 @@ h1, .picker h1 { font-family: var(--font-poster); font-weight: 400; text-transfo
 .seg { border-radius: var(--radius); }
 .seg button { border-radius: 2px; }
 .ghost, .controls button { color: var(--ink); }
-main a:not(.cta):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op):not(.lb-name), button.link { color: var(--hot); }
+main a:not(.cta):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op):not(.lbd-name), button.link { color: var(--hot); }
 .cta { border-radius: var(--radius); }
 a.cta { color: var(--accent-ink); }
 @media (max-width: 560px) { /* five sections on a phone: one row that scrolls sideways if it must */
@@ -1506,14 +1506,16 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .lb-card .pf-pcard-stats .lb-by { opacity: 1; color: var(--card-hot); }
 .lb-info { display: grid; gap: 4px; min-width: 0; }
 .lb-info p { margin: 0; }
-.lb-name { font: 400 26px var(--font-poster); letter-spacing: .02em; text-transform: uppercase; color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+.lbd-name { font: 400 26px var(--font-poster); letter-spacing: .02em; text-transform: uppercase; color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
 .lb-type { font-weight: 600; }
 .lb-type span { color: var(--muted); font-weight: 500; }
 .lb-ops { display: flex; flex-wrap: wrap; gap: 2px 16px; font-size: 14px; }
 .lb-ops small, .lb-value small { color: var(--muted); }
 .lb-ops small { margin-right: 4px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
 .lb-value { font-size: 14px; }
-@media (max-width: 560px) { .lb-row { grid-template-columns: 1.4em auto minmax(0, 1fr); gap: 10px; } .lb-card .pf-pcard { zoom: .34; } .lb-name { font-size: 20px; } .lb-rank { font-size: 22px; } }
+@media (max-width: 560px) { .lb-row { grid-template-columns: 1.4em auto minmax(0, 1fr); gap: 10px; } .lb-card .pf-pcard { zoom: .34; } .lbd-name { font-size: 20px; } .lb-rank { font-size: 22px; } }
 @media (prefers-reduced-motion: reduce) { .lb-card .pf-pcard { transition: none; } }
 .pf-op-link, .lb-op { color: var(--ink); font-weight: 600; text-decoration: none; }
 .pf-op-link:hover, .lb-op:hover { text-decoration: underline; text-underline-offset: 2px; }
+/* The opening's name beside the board: the poster face, a little larger and more open so it reads */
+#trainer .p-head .op-head h1 { font-size: clamp(1.6rem, 2.6vw, 2.1rem); letter-spacing: .03em; line-height: 1.05; }
