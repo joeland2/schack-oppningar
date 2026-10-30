@@ -3,12 +3,12 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030102902';
-import { STYLE_OF } from './styles.js?v=20261030102902';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030103406';
+import { STYLE_OF } from './styles.js?v=20261030103406';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
-const PV = 35;
+const PV = 36;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -38,15 +38,23 @@ function expectOf(family, side, rating, speed) {
 
 // ---------- One game, from your side ----------
 const cpOf = (a) => (!a ? null : a.mate !== undefined ? Math.sign(a.mate) * 1000 : Math.max(-1000, Math.min(1000, a.eval)));
-// Whose choice an opening is (Lichess names it after the move that made it): a Defense, a Countergambit,
-// or a gambit accepted or declined is Black's, the rest White's; except Black's own gambits (1.d4 e5 is
-// the Englund Gambit), where accepting or declining is White's.
+// Whose choice an opening is, by its name (before any ", with …"): a Defense or Countergambit is Black's,
+// and so is accepting or declining White's gambit or opening (King's Gambit Accepted, Center Game Accepted);
+// Black's own gambits (1.d4 e5 is the Englund) are Black's, and accepting or declining them White's, as is
+// accepting a countergambit; and a few Black openings without such a word (Slav Indian, Marienbad System).
 const BLACK_GAMBIT = /^(Englund|Elephant|Latvian|Benko|Duras) Gambit/;
-const blacksName = (f) => (BLACK_GAMBIT.test(f) ? !/(Accepted|Declined)$/.test(f) : /(Defen[cs]e|Countergambit|Gambit Accepted|Gambit Declined)$/.test(f));
+const BLACK_NAMED = /^(Queen's Indian Accelerated|Slav Indian|Marienbad System|Lasker Simul Special)$/;
+const blacksName = (fam) => { const f = String(fam).split(',')[0];
+  return BLACK_GAMBIT.test(f) ? !/(Accepted|Declined)$/.test(f) : /Countergambit (Accepted|Declined)$/.test(f) ? false : BLACK_NAMED.test(f) || /(Defen[cs]e|Countergambit|Accepted|Declined)$/.test(f); };
 console.assert(blacksName('Englund Gambit') && !blacksName('Englund Gambit Declined') && !blacksName('Latvian Gambit Accepted') && blacksName('Sicilian Defense')
-  && blacksName("Queen's Gambit Declined") && !blacksName("King's Gambit") && !blacksName('Italian Game'), 'blacksName');
-// Black's own answer when White's moves name the game: 1...e5 (the Open Game) or 1...d5 (the Closed Game).
-const answerOf = (moves, fam) => (blacksName(fam) ? null : moves[0] === 'e4' && moves[1] === 'e5' ? 'Open Game' : moves[0] === 'd4' && moves[1] === 'd5' ? 'Closed Game' : null);
+  && blacksName("Queen's Gambit Declined") && !blacksName("King's Gambit") && !blacksName('Italian Game') && blacksName('Center Game Accepted') && blacksName('Semi-Slav Defense Accepted')
+  && blacksName("Queen's Indian Defense, with e3") && !blacksName("King's Indian Attack, with e6") && !blacksName('Blumenfeld Countergambit Accepted') && blacksName('Slav Indian'), 'blacksName');
+// A player's own choice when the other side's moves name the game: Black's 1...e5 (the Open Game) or 1...d5
+// (the Closed Game) against White's opening; White's 1.e4 or 1.d4 against Black's defence.
+const ANSWERS = ['Open Game', 'Closed Game', "King's Pawn Opening", "Queen's Pawn Opening"];
+const answerOf = (moves, fam, side) => (side === 'b'
+  ? (blacksName(fam) ? null : moves[0] === 'e4' && moves[1] === 'e5' ? 'Open Game' : moves[0] === 'd4' && moves[1] === 'd5' ? 'Closed Game' : null)
+  : (!blacksName(fam) ? null : moves[0] === 'e4' ? "King's Pawn Opening" : moves[0] === 'd4' ? "Queen's Pawn Opening" : null));
 function readGame(g, me) {
   const side = g.players.white.user?.id === me ? 'w' : 'b';
   const mine = g.players[side === 'w' ? 'white' : 'black'], theirs = g.players[side === 'w' ? 'black' : 'white'];
@@ -83,7 +91,7 @@ function readGame(g, me) {
     family: (g.opening?.name || 'Unknown').split(':')[0], rating: mine.rating,
     // chosen: this player picked the opening (blacksName); answer: Black's 1...e5 or 1...d5 against White's opening.
     chosen: blacksName((g.opening?.name || '').split(':')[0]) === (side === 'b'),
-    answer: side === 'b' ? answerOf(moves, (g.opening?.name || 'Unknown').split(':')[0]) : null,
+    answer: answerOf(moves, (g.opening?.name || 'Unknown').split(':')[0], side),
     expect: expectOf((g.opening?.name || 'Unknown').split(':')[0], side, mine.rating, g.speed), diff: mine.ratingDiff || 0, them: theirs.rating,
     castled, queensOff, endgame: endgameAt !== null, pieces, played,
     analysed: v.length > 0, ours: !!g.ours, acc: mine.analysis?.accuracy ?? null, blunders: mine.analysis?.blunder ?? null, mistakes: mine.analysis?.mistake ?? null,
@@ -135,7 +143,7 @@ export function profileOf(games) {
     // answer (1...e5, 1...d5), so a player who always meets 1.e4 with e5 is seen to.
     for (const g of games.filter((x) => x.side === side)) for (const k of [g.family, g.answer].filter(Boolean)) m.set(k, [...(m.get(k) || []), g]);
     // "vs" marks the other side's choice.
-    const vs = (fam) => (fam === 'Open Game' || fam === 'Closed Game' ? fam : blacksName(fam) === (side === 'w') ? `vs ${fam}` : fam);
+    const vs = (fam) => (ANSWERS.includes(fam) ? fam : blacksName(fam) === (side === 'w') ? `vs ${fam}` : fam);
     return [...m].filter(([, gs]) => gs.length >= 5).map(([fam, gs]) => ({ fam: vs(fam), n: gs.length, score: score(gs), win: gs.filter((g) => g.result === 1).length / gs.length })).sort((a, b) => b.n - a.n);
   };
   const ups = an.filter((g) => g.best >= 300), downs = an.filter((g) => g.worst <= -300);
@@ -865,7 +873,9 @@ const leakOf = (skills) => skills.filter((x) => x.raw !== null && x.raw <= 45).s
 function portrait(name, p, skills, me, part = 'lead') {
   const you = me ? 'You' : esc(name), your = me ? 'your' : 'their', are = me ? 'are' : 'is';
   // The openings chosen, by family: the King's Gambit Accepted and Declined are one King's Gambit.
-  const own = (list, side) => [...new Set(list.filter((o) => !o.fam.startsWith('vs ')).map((o) => o.fam.replace(/ (Accepted|Declined)$/, '')))].slice(0, 2).map((f) => opLink(side, f));
+  // At least a tenth of the games with that colour: an opening played now and then is no choice of theirs.
+  const sideN = { w: p.nWhite ?? p.n / 2, b: p.n - (p.nWhite ?? p.n / 2) };
+  const own = (list, side) => [...new Set(list.filter((o) => !o.fam.startsWith('vs ') && o.n >= sideN[side] / 10).map((o) => o.fam.replace(/ (Accepted|Declined)$/, '')))].slice(0, 2).map((f) => opLink(side, f));
   const w = own(p.openings.w, 'w'), b = own(p.openings.b, 'b');
   const and = (xs) => xs.join(' and ');
   const out = [];
