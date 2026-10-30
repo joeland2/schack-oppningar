@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261030130409';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261030130409';
+import { account, login, finishLogin } from './lichess.js?v=20261030131517';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261030131517';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -78,10 +78,11 @@ const land = (c) => { try { return c && c !== '–' ? `${NAMES.of(c)} (${c})` : 
 const KIND = { profile: 'Looked up a profile', compare: 'Comparisons', analyse: 'Analysed', practise: 'Openings practised', card: 'Cards downloaded', login: 'Lichess logins' };
 
 // Visitors per day (each counted once that day) as a line, and unique visitors (their first visit
-// ever) as the shaded area under it, over the picked span; Today is per hour, from midnight to now.
+// ever) as the shaded area under it, over the picked span; Today (from midnight) and 1W are per hour.
 // Days without visits are zero. Moving the mouse along the graph shows that point's numbers and notes.
 const SPANS = [['Today', 'today'], ['1W', 7], ['1M', 30], ['6M', 182], ['1Y', 365], ['All', Infinity]];
 let span = 30;
+const hourly = () => span === 'today' || span === 7; // these spans are drawn per hour
 const W = 760, H = 180;
 const TZ = 'Europe/Stockholm';
 const dayKey = (t) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }).format(new Date(t));
@@ -89,10 +90,11 @@ const hourKey = (t) => `${dayKey(t)} ${new Intl.DateTimeFormat('en-GB', { timeZo
 // The span's points, oldest first: { key, label, fresh, visitors, views }.
 function spanPoints(body) {
   const zero = { fresh: 0, visitors: 0, views: 0 };
-  if (span === 'today') {
-    const by = new Map((body.perHour || []).map((d) => [d.hour, d])), today = dayKey(Date.now()), now = Number(hourKey(Date.now()).slice(-2));
-    return Array.from({ length: Math.max(now + 1, 2) }, (_, h) => { const key = `${today} ${String(h).padStart(2, '0')}`;
-      return { ...zero, ...by.get(key), key, label: `${String(h).padStart(2, '0')}:00–${String(h + 1).padStart(2, '0')}:00` }; });
+  if (hourly()) {
+    // Per hour: Today from midnight, 1W the last 168 hours.
+    const by = new Map((body.perHour || []).map((d) => [d.hour, d])), n = span === 'today' ? Math.max(Number(hourKey(Date.now()).slice(-2)) + 1, 2) : 168;
+    return Array.from({ length: n }, (_, k) => { const t = Date.now() - (n - 1 - k) * 36e5, key = hourKey(t), h = Number(key.slice(-2));
+      return { ...zero, ...by.get(key), key, label: `${span === 'today' ? '' : `${new Date(t).toLocaleDateString('en-GB', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short' })}, `}${String(h).padStart(2, '0')}:00–${String(h + 1).padStart(2, '0')}:00` }; });
   }
   const by = new Map(body.perDay.map((d) => [d.day, d])), n = Number.isFinite(span) ? span : Math.max(body.perDay.length, 2), out = [];
   for (let i = n - 1; i >= 0; i--) { const key = dayKey(Date.now() - i * 864e5); out.push({ ...zero, ...by.get(key), key, label: day(key) }); }
@@ -102,18 +104,19 @@ function spanPoints(body) {
 const NOTES_KEY = 'chess-trainer-admin-notes';
 const notes = () => { try { return JSON.parse(localStorage.getItem(NOTES_KEY)) || []; } catch { return []; } };
 const saveNotes = (xs) => { try { localStorage.setItem(NOTES_KEY, JSON.stringify(xs.sort((a, b) => a.t - b.t))); } catch {} };
-const noteKey = (t) => (span === 'today' ? hourKey(t) : dayKey(t));
+const noteKey = (t) => (hourly() ? hourKey(t) : dayKey(t));
 function visitorLine(ds) {
   const top = Math.max(1, ...ds.map((d) => d.visitors)), x = (i) => (i / (ds.length - 1)) * W, y = (v) => H - (v / top) * (H - 10);
   const line = (k) => ds.map((d, i) => `${x(i).toFixed(1)},${y(d[k]).toFixed(1)}`).join(' ');
   const at = new Map(ds.map((d, i) => [d.key, i]));
   const marks = notes().map((nt, k) => [nt, at.get(noteKey(nt.t)), k]).filter(([, i]) => i !== undefined);
-  return `<svg class="ad-line" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Visitors ${span === 'today' ? 'per hour today' : `per day over ${ds.length} days`}: ${ds.reduce((t, d) => t + d.fresh, 0)} unique">
+  return `<svg class="ad-line" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Visitors ${hourly() ? `per hour over ${ds.length} hours` : `per day over ${ds.length} days`}: ${ds.reduce((t, d) => t + d.fresh, 0)} unique">
     <line class="ad-axis" x1="0" y1="${H}" x2="${W}" y2="${H}"></line>
+    ${span === 7 ? ds.map((d, i) => (i && d.key.endsWith(' 00') && x(i) < W - 60 ? `<line class="ad-midnight" x1="${x(i)}" y1="0" x2="${x(i)}" y2="${H}"></line><text x="${x(i) + 4}" y="${H + 16}">${new Date(d.key.slice(0, 10)).toLocaleDateString('en-GB', { weekday: 'short' })}</text>` : '')).join('') : ''}
     ${marks.map(([nt, i]) => `<g class="ad-note"><line x1="${x(i)}" y1="6" x2="${x(i)}" y2="${H}"></line><circle cx="${x(i)}" cy="6" r="4"></circle></g>`).join('')}
     <polygon class="ad-area" points="0,${H} ${line('fresh')} ${W},${H}"></polygon><polyline points="${line('visitors')}"></polyline>
     <line class="ad-cross" x1="0" y1="0" x2="0" y2="${H}" visibility="hidden"></line><circle class="ad-dot" r="4" visibility="hidden"></circle>
-    <text x="0" y="${H + 16}">${span === 'today' ? '00:00' : day(ds[0].key)}</text><text x="${W}" y="${H + 16}" text-anchor="end">${span === 'today' ? 'Now' : 'Today'}</text><text x="4" y="12">${top}</text></svg>
+    <text x="0" y="${H + 16}">${span === 'today' ? '00:00' : day(ds[0].key.slice(0, 10))}</text><text x="${W}" y="${H + 16}" text-anchor="end">${hourly() ? 'Now' : 'Today'}</text><text x="4" y="12">${top}</text></svg>
     <div class="ad-tip" hidden></div>
     <p class="ad-key"><span class="ad-k-line"></span>Visitors <span class="ad-k-area"></span>Unique (first visit) <span class="ad-k-note"></span>Note</p>`;
 }
@@ -314,7 +317,7 @@ function demoData() {
   const count = (xs) => Object.entries(xs.reduce((m, x) => ({ ...m, [x]: (m[x] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([name, n]) => ({ name, n }));
   const sum = (n, k) => perDay.slice(-n).reduce((t, d) => t + d[k], 0), events = visitors.flatMap((v) => v.events);
   const registered = [...new Set(visitors.map((v) => v.name).filter(Boolean))];
-  const perHour = Array.from({ length: 48 }, (_, k) => { const t = now - k * 36e5, f = Math.round(4 * Math.max(0, Math.sin(((Number(hourKey(t).slice(-2)) - 7) / 16) * Math.PI)) * (0.5 + rnd()));
+  const perHour = Array.from({ length: 168 }, (_, k) => { const t = now - k * 36e5, f = Math.round(4 * Math.max(0, Math.sin(((Number(hourKey(t).slice(-2)) - 7) / 16) * Math.PI)) * (0.5 + rnd()));
     return { hour: hourKey(t), fresh: f, visitors: Math.round(f * (1.5 + rnd())), views: Math.round(f * (5 + rnd() * 3)) }; });
   const hours = Array.from({ length: 24 }, (_, h) => Math.round(40 + 120 * Math.max(0, Math.sin(((h - 7) / 16) * Math.PI)) * (0.8 + rnd() * 0.4)));
   return {

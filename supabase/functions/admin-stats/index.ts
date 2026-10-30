@@ -74,10 +74,10 @@ Deno.serve(async (req) => {
   for (const r of views) { const d = days[day(r.at)]; if (d) { d.views++; d.visitors.add(r.visitor); } }
   for (const w of visitors) { const d = days[day(w.first)]; if (d) d.fresh++; }
   const today = day(new Date().toISOString());
-  // The last two days per hour (Swedish time, keys 'YYYY-MM-DD HH'), for the graph's Today.
+  // The last week per hour (Swedish time, keys 'YYYY-MM-DD HH'), for the graph's Today and 1W.
   const hourOf = (iso: string) => `${day(iso)} ${new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', hourCycle: 'h23' }).format(new Date(iso))}`;
   const hours48: Record<string, { fresh: number; visitors: Set<string>; views: number }> = {};
-  const lately = (iso: string) => Date.now() - Date.parse(iso) < 2 * 864e5;
+  const lately = (iso: string) => Date.now() - Date.parse(iso) < 7 * 864e5;
   for (const r of views) if (lately(r.at)) { const h = hours48[hourOf(r.at)] ??= { fresh: 0, visitors: new Set(), views: 0 }; h.views++; h.visitors.add(r.visitor); }
   for (const w of visitors) if (lately(w.first)) (hours48[hourOf(w.first)] ??= { fresh: 0, visitors: new Set(), views: 0 }).fresh++;
   // Visitors in the last n days: each counted once (seen at all), and unique ones (their very first visit).

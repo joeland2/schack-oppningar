@@ -2164,3 +2164,4 @@ main.profile:has(#admin) { max-width: 1320px; }
 .ad-note-list li b { flex: 1; min-width: 0; font-weight: 600; }
 .ad-note-list button { border: 0; background: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 4px; }
 .ad-note-list button:hover { color: var(--bad); }
+.ad-line .ad-midnight { stroke: var(--line); stroke-width: 1; }
