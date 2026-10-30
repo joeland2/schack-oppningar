@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030133405';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030133405';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030133405';
-import { GUIDE } from './guide.js?v=20261030133405';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030133405';
-import { maia3Move } from './maia3.js?v=20261030133405';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030133405';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030133405';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030133405';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030133856';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030133856';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030133856';
+import { GUIDE } from './guide.js?v=20261030133856';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030133856';
+import { maia3Move } from './maia3.js?v=20261030133856';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030133856';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030133856';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030133856';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1631,7 +1631,7 @@ function play(i, again = false) {
   punish = 0; punishDone = false; endLen = 0; assisted = false;
   closeMoment();
   $('#op-more').open = mode === 'learn' && i === 0; // the opening's story goes with its first line
-  misses = again ? misses : 0; missesHere = 0; busy = false; hintUsed = false;
+  misses = again ? misses : 0; missesHere = 0; busy = false; hintUsed = false; ideaAsked = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
   playing = false; opponent = saidOpponent = null;
   premove = null; notes = []; betters = []; lineDone = ''; view = null;
@@ -2052,10 +2052,10 @@ function moment(kind, title, html, actions, swing = null, arrows = null, onBoard
   });
   el.querySelector('[data-act]').focus({ preventScroll: true });
   renderBoard();
-  // On a phone the moment sits under the board: scroll just enough that its buttons are in view
+  // On a phone the moment sits under the board: scroll just enough that its buttons are in view (not for idea questions)
   // (the header goes first, so the board stays on screen).
   const r = el.getBoundingClientRect();
-  if (PHONE.matches && r.bottom > innerHeight) scrollBy({ top: r.bottom - innerHeight + 12, behavior: 'smooth' });
+  if (kind !== 'quiz' && PHONE.matches && r.bottom > innerHeight) scrollBy({ top: r.bottom - innerHeight + 12, behavior: 'smooth' });
 }
 // Arrows for the moment on the board: [from, to, colour]; red for the move it is about.
 let momentArrows = null, momentOnBoard, momentAt = '';
@@ -2232,10 +2232,10 @@ function setupTrap(t) {
 // Now and then in Practice, before your move: what should it do? Three answers in words, from the
 // line's move and two other moves people play here (or other legal ones), so you think of the idea
 // first and then find the move. Answering is optional: just play your move.
-const IDEA_EVERY = 3; // about one of your moves in three, after the first two
+let ideaAsked = false; // once per run of a line, at your first move past the opening two where it can be asked
 const short = (t) => t.split('. ').slice(0, 2).join('. ').replace(/\.?$/, '.');
 function askIdea() {
-  if (drill || momentOpen || ply < 4 || !userTurn() || Math.random() * IDEA_EVERY >= 1) return;
+  if (drill || momentOpen || ideaAsked || ply < 4 || !userTurn()) return;
   const g = () => new Chess(game.fen());
   const right = ideaAt(g(), line[ply]);
   if (!right) return;
@@ -2246,6 +2246,7 @@ function askIdea() {
     .filter((t) => t.length > 1 && !seen.has(t) && seen.add(t))
     .slice(0, 2);
   if (others.length < 2) return;
+  ideaAsked = true;
   const answers = [{ text: short(right), ok: true }, ...others.map((text) => ({ text, ok: false }))].sort(() => Math.random() - 0.5);
   moment('quiz', 'What should your move do?', 'Pick the idea first, then play the move. Or just play it.',
     answers.map((a) => ({ label: a.text, run: () => say(a.ok ? `Yes: ${a.text} Now find the move that does it.` : `Not that one. Your move here: ${short(right).replace(/^./, (c) => c.toLowerCase())} Now find it.`, a.ok ? 'good' : 'bad') })),
