@@ -15,7 +15,7 @@ export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint 
   for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
     const sq = FILES[side === 'w' ? f : 7 - f] + (side === 'w' ? 8 - r : r + 1);
     const p = game.get(sq);
-    const dark = (FILES.indexOf(sq[0]) + Number(sq[1])) % 2 === 0;
+    const dark = (FILES.indexOf(sq[0]) + Number(sq[1])) % 2 === 1; // a1 is dark, h1 light
     const cls = ['sq', dark ? 'dark' : 'light'];
     if (sq === sel) cls.push('sel');
     if (last && (sq === last.from || sq === last.to)) cls.push('last');
