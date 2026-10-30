@@ -1,19 +1,19 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030231340';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030231340';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030231340';
-import { GUIDE } from './guide.js?v=20261030231340';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030231340';
-import { maia3Move } from './maia3.js?v=20261030231340';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030231340';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030231340';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030231340';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030231646';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030231646';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030231646';
+import { GUIDE } from './guide.js?v=20261030231646';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030231646';
+import { maia3Move } from './maia3.js?v=20261030231646';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030231646';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030231646';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030231646';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
 const MAX_LINES = 20;
 // How deep to learn an opening, as a course does it: lines are in course order, so a depth is the first n.
-const DEPTHS = [['Essentials', 6, 'The main line and known theory'], ['Advanced', 12, 'Adds the common blunders to punish, and sidelines'], ['Everything', MAX_LINES, 'Every line players at your level meet']];
+const DEPTHS = [['Essentials', 6, 'Known theory first: the lines strong players play'], ['Advanced', 12, 'Adds how players at your level most often answer, blunders included'], ['Everything', MAX_LINES, 'Every line players at your level meet']];
 const depthName = (n) => (DEPTHS.find(([, d]) => d >= n) || DEPTHS.at(-1))[0];
 let allLines = []; // the opening's lines at every depth (lines is the first n of them)
 const MIN_LINE = 0.03;   // a side line needs 3% of the opening's games to become a line of its own
@@ -308,9 +308,10 @@ function buildLines(op) {
     return { ...l, moves: reply ? [...l.moves, reply.san] : l.moves.slice(0, -1) };
   }).filter((l) => l.moves.length && !seen.has(lineKey(l.moves)) && seen.add(lineKey(l.moves)))
     .map((l) => ({ ...l, theory: isTheory(l.moves, op.side) }))
-    // As a course does it: the main line first, then the known theory (every reply one strong players
-    // make), then the traps to punish, then the other lines, the most common first.
-    .sort((a, b) => (b.branch === 1) - (a.branch === 1) || b.theory - a.theory || !!b.trap - !!a.trap || b.branch - a.branch || b.share - a.share);
+    // Known theory first (every reply one strong players make), then how players at your level most
+    // often answer; each group by how many games at your level reach the point where the line branches
+    // off (the end's share would put short lines before long common ones).
+    .sort((a, b) => b.theory - a.theory || b.branch - a.branch || b.share - a.share);
 }
 
 // The most played White openings at your level, found by walking real games from the start position,
@@ -1300,7 +1301,7 @@ function renderWhy() {
   // Before the first move, an introduction: what the opening is about and which line this is.
   if (!hist.length && lines[lineIdx]) {
     const l = lines[lineIdx];
-    parts.push(`<p class="intro">This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level${bigShare(l.share) ? ` (${bigShare(l.share)})` : ''}. It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap ? ` <b>${l.trap.kind === 'mistake' ? 'A common mistake' : 'A blunder to punish'}.</b> ${trapStory(l)}` : ''}</p>`);
+    parts.push(`<p class="intro">This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${l.theory ? 'known theory: the replies strong players choose' : 'a way players at your level often answer'}${bigShare(l.share) ? ` (${bigShare(l.share)} of games at your level go this way)` : ''}. It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap ? ` <b>${l.trap.kind === 'mistake' ? 'A common mistake' : 'A blunder to punish'}.</b> ${trapStory(l)}` : ''}</p>`);
   }
   // First what to play and why (Learn), then a quiet line on the last move, then the other replies
   // folded away: the board and the move to make come first.
@@ -2372,7 +2373,7 @@ const practiceSet = () => {
 // Lines of the current list that are cleared (progress saved for other ratings may hold other lines).
 const cleared = () => lines.filter((l) => stats[statKey(cur.id)]?.done.includes(lineKey(l.moves))).length;
 // The main line is called that, as in a course; the other lines by their opening name.
-const lineName = (l) => (l.branch === 1 ? 'Main line' : l.name ? l.name.split(' · ').at(-1).split(': ').at(-1) : 'Side line');
+const lineName = (l) => (l.branch === 1 ? (l.theory ? 'Main line' : 'Most played at your level') : l.name ? l.name.split(' · ').at(-1).split(': ').at(-1) : 'Side line');
 const moveLabel = (i, san) => `${Math.floor(i / 2) + 1}${i % 2 ? '...' : '.'}${san}`;
 // What tells a line apart: the trap it punishes, or the move where it leaves the main line (the main
 // line itself: its last moves).
