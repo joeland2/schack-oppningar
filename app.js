@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030133108';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030133108';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030133108';
-import { GUIDE } from './guide.js?v=20261030133108';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030133108';
-import { maia3Move } from './maia3.js?v=20261030133108';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030133108';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030133108';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030133108';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030133405';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030133405';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030133405';
+import { GUIDE } from './guide.js?v=20261030133405';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030133405';
+import { maia3Move } from './maia3.js?v=20261030133405';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030133405';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030133405';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030133405';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1566,9 +1566,9 @@ function start(op, keepTraps = false) {
   if (!trapRun && !load(STORE + '-intro', {})[op.id] && !stats[statKey(op.id)]?.played?.length) return askIntro(); // not for openings already practised
   const all = buildLines(op), depths = load(STORE + '-depth', {});
   allLines = all;
-  // Trap training needs every line; otherwise ask once per opening how deep to go.
-  if (!trapRun && all.length > DEPTHS[0][1] && !depths[op.id]) return askDepth(all.length);
-  lines = trapRun ? all : all.slice(0, depths[op.id] || MAX_LINES);
+  // Trap training needs every line; otherwise the depth picked for the opening, Essentials until one is
+  // picked (the Essentials button above the board changes it).
+  lines = trapRun ? all : all.slice(0, depths[op.id] || DEPTHS[0][1]);
   setTimeout(classifyTraps, 1500); // after the board's first evaluation
   if (!lines.length) return say('Not enough games at your rating for this opening.', 'bad');
   const s = stats[statKey(op.id)] = { done: [], played: [], ...stats[statKey(op.id)], total: lines.length };
