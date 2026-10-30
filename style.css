@@ -367,9 +367,9 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .coach .why b { color: var(--ink); }
 .moves-box summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
 .moves-box .moves { margin-top: 8px; }
-/* Desktop: the board stays in view while the panel scrolls */
+/* Desktop: the board stays in view while the panel scrolls (not where a list sits under it) */
 @media (min-width: 821px) {
-  .play { position: sticky; top: 84px; align-self: start; }
+  .layout:has(.side) .play { position: sticky; top: 84px; align-self: start; }
 }
 
 /* Drawn icons */
