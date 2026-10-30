@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030134751';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030134751';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030134751';
-import { GUIDE } from './guide.js?v=20261030134751';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030134751';
-import { maia3Move } from './maia3.js?v=20261030134751';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030134751';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030134751';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030134751';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030135519';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030135519';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030135519';
+import { GUIDE } from './guide.js?v=20261030135519';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030135519';
+import { maia3Move } from './maia3.js?v=20261030135519';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030135519';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030135519';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030135519';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2876,13 +2876,13 @@ function guide() {
 const trackDone = () => cur && window.track?.('practise', `done ${mode} · ${cur.side === 'b' ? 'Black' : 'White'}: ${(isVs(cur) ? 'vs ' : '') + cur.name}`);
 // A star a line has just earned (green in Learn, gold in Practice, diamond in Time): shown big in the
 // middle of the screen, then it flies into its place in the lines list (hidden there until it lands).
-// With reduced motion, no show.
+// With reduced motion it only fades in and out in the middle.
 const STAR_WORD = { green: 'Green star', gold: 'Gold star', diamond: 'Diamond star' };
 let flying = null; // the star on its way: the end card waits for it
 function starFly(i, kind) {
   const to = $(`#lines-list .line-btn[data-i="${i}"] .line-star.${kind}`);
-  if (!to || REDUCE_MOTION) return Promise.resolve();
-  to.scrollIntoView({ block: 'nearest' });
+  if (!to) return Promise.resolve();
+  if (!to.closest('details:not([open])')) to.scrollIntoView({ block: 'nearest' }); // a folded list (a phone) stays put
   const r = to.getBoundingClientRect(), size = Math.min(240, innerWidth * .55), cx = innerWidth / 2, cy = innerHeight / 2;
   const seen = r.width > 0 && r.bottom > 0 && r.top < innerHeight;
   const big = document.createElement('div');
@@ -2892,6 +2892,8 @@ function starFly(i, kind) {
   document.body.append(big);
   to.style.visibility = 'hidden';
   const end = seen ? `translate(${r.left + r.width / 2 - cx}px, ${r.top + r.height / 2 - cy}px) scale(${r.width / size})` : 'translateY(-40px) scale(.6)';
+  // Reduced motion: the star still shows, only fading in and out where it stands.
+  if (REDUCE_MOTION) return big.animate([{ opacity: 0 }, { opacity: 1, offset: .15 }, { opacity: 1, offset: .8 }, { opacity: 0 }], { duration: 1600, fill: 'forwards' }).finished.then(() => { big.remove(); to.style.visibility = ''; });
   for (const el of big.querySelectorAll('b, i')) el.animate([{ opacity: 0 }, { opacity: 1, offset: .2 }, { opacity: 1, offset: .5 }, { opacity: 0, offset: .6 }, { opacity: 0 }], { duration: 1800, fill: 'forwards' });
   return big.animate([
     { transform: 'scale(.2) rotate(-40deg)', opacity: 0, easing: 'cubic-bezier(.2,.9,.3,1.3)' },
