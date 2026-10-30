@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261030112247';
-import { account } from './lichess.js?v=20261030112247';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261030112247';
+import { drawBoard } from './board.js?v=20261030112626';
+import { account } from './lichess.js?v=20261030112626';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261030112626';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -228,7 +228,8 @@ async function impact() {
   // The games the profile card of this time control reads: its own last 500 when fetched, the analyses of
   // the player's games laid over them, so the "now" numbers match the card.
   const mixed = storedGames(name) || [], own = storedGames(`${name}~${g.speed}`), done = new Map(mixed.filter((x) => x.analysis).map((x) => [x.id, x]));
-  const el = $('#gm-impact'), all = own ? own.map((x) => (x.id === g.id ? g : (!x.analysis && done.get(x.id)) || x)) : mixed.filter((x) => x.speed === g.speed);
+  const newer = own ? mixed.filter((x) => x.speed === g.speed && x.createdAt > (own[0]?.createdAt || 0)) : []; // played since, as the card has them
+  const el = $('#gm-impact'), all = own ? [...newer, ...own].slice(0, 500).map((x) => (x.id === g.id ? g : (!x.analysis && done.get(x.id)) || x)) : mixed.filter((x) => x.speed === g.speed);
   // Only once the game is analysed: without it, only the result and the clock count, and the analysis
   // would then move the numbers again.
   if (!el || !g.analysis || !all.some((x) => x.id === g.id) || all.length < 50) return;

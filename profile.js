@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030112247';
-import { STYLE_OF } from './styles.js?v=20261030112247';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030112626';
+import { STYLE_OF } from './styles.js?v=20261030112626';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1287,7 +1287,10 @@ function forSpeed(name, full, sp) {
   if (sp === 'all') { full.type = stableType(name, 'all', full); return full; }
   const own = storedGames(speedKey(name, sp)), mixed = storedGames(name);
   const done = new Map(mixed.filter((g) => g.analysis).map((g) => [g.id, g])); // analysed among all the player's games
-  const games = own ? own.map((g) => (!g.analysis && done.get(g.id)) || g) : mixed;
+  // Games played since the time control's own were fetched come in with the player's newest (Refresh and
+  // every visit fetch those), so the card always ends on the latest game and rating.
+  const newer = own ? mixed.filter((g) => g.speed === sp && g.createdAt > (own[0]?.createdAt || 0)) : [];
+  const games = own ? [...newer, ...own].slice(0, MAX).map((g) => (!g.analysis && done.get(g.id)) || g) : mixed;
   const p = profileOf(recordsOf(name, games).filter((g) => g.speed === sp));
   p.type = stableType(name, sp, p);
   return p;
