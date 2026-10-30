@@ -1822,8 +1822,7 @@ p, li, dd, small { text-wrap: pretty; }
 /* The player card with bars: a rule and the overall in the rating's colour (the leaderboard's bands),
    the style with its strength under it, and the six skills as bars. */
 .pf-pcard { --band: #e2561c; border-top: 5px solid var(--band-ink, var(--band)); }
-.pf-pcard[data-band="0"] { --band: #8a9a32; } .pf-pcard[data-band="1"] { --band: #3f9a6e; } .pf-pcard[data-band="2"] { --band: #1a9aa3; } .pf-pcard[data-band="3"] { --band: #3a86c8; }
-.pf-pcard[data-band="4"] { --band: #e2561c; } .pf-pcard[data-band="5"] { --band: #d63a4f; } .pf-pcard[data-band="6"] { --band: #8a5ae0; } .pf-pcard[data-band="7"] { --band: #d4a017; }
+/* --band is set on each card from its rating (profile.js bandColor) */
 .pf-pcard { --band-ink: var(--band); }
 /* Dark mode turns the card cream: the colour a shade darker there, so it still reads */
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pf-pcard { --band-ink: color-mix(in srgb, var(--band) 78%, #000); } }

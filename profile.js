@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030095407';
-import { STYLE_OF } from './styles.js?v=20261030095407';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030095609';
+import { STYLE_OF } from './styles.js?v=20261030095609';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -872,11 +872,30 @@ function portrait(name, p, skills, me, part = 'lead') {
 // The piece is drawn white for the black card; in dark mode, where the card is cream, CSS inverts it.
 const CARD_INK = 'w';
 const PIECE_NAME = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
-// The card's picture is coloured by rating, in bands of 300 points: under 800, 800–1099, 1100–1399 …
-// 2600+ (CSS [data-band], and BAND for the downloaded image).
-const bandOf = (r) => (!r ? 3 : r < 800 ? 0 : r < 1100 ? 1 : r < 1400 ? 2 : r < 1700 ? 3 : r < 2000 ? 4 : r < 2300 ? 5 : r < 2600 ? 6 : 7);
-// Eight bands of 300 points, each its own colour: olive, green, teal, blue, orange, red, violet, gold.
-const BAND = ['#6b7a2a', '#2e8a55', '#13808a', '#2c6b9e', '#e2561c', '#c4283f', '#7a4ad6', '#b8860b'];
+// The card's picture is coloured by rating (bandColor, below), on the page and in the downloaded image.
+// The colour glides with the rating through eight colours spread from 650 to 3170 (olive, green, teal,
+// blue, orange, red, violet, gold), so every rating has its own shade, the world's best included.
+const BAND_AT = [[650, '#8a9a32'], [1010, '#3f9a6e'], [1370, '#1a9aa3'], [1730, '#3a86c8'], [2090, '#e2561c'], [2450, '#d63a4f'], [2810, '#8a5ae0'], [3170, '#d4a017']];
+// Mixed along the colour wheel (hue, saturation, lightness), not straight through RGB, which turns muddy
+// between far-apart colours (orange to red went brown).
+const hsl = (hex) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  const h = !d ? 0 : mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h * 60, d ? d / (1 - Math.abs(2 * l - 1)) : 0, l];
+};
+const hex = ([h, s, l]) => {
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return `#${[r, g, b].map((v) => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join('')}`;
+};
+function bandColor(r) {
+  const x = Math.max(BAND_AT[0][0], Math.min(BAND_AT.at(-1)[0], r || 1550)), k = Math.max(0, BAND_AT.findIndex(([at]) => at >= x) - 1);
+  const [[a, ca], [b, cb]] = [BAND_AT[k], BAND_AT[k + 1] || BAND_AT[k]], f = b > a ? (x - a) / (b - a) : 0;
+  if (f === 0) return ca;
+  const [h1, s1, l1] = hsl(ca), [h2, s2, l2] = hsl(cb), dh = ((h2 - h1 + 540) % 360) - 180; // the short way round
+  return hex([(h1 + dh * f + 360) % 360, s1 + (s2 - s1) * f, l1 + (l2 - l1) * f]);
+}
+console.assert(bandColor(1730) === '#3a86c8' && hex(hsl('#e2561c')) === '#e2561c' && bandColor(100) === '#8a9a32' && bandColor(3500) === '#d4a017' && bandColor(1700) !== bandColor(1600), 'bandColor');
 const darker = (hex) => `#${[1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.78).toString(16).padStart(2, '0')).join('')}`; // as CSS's 78% mix with black
 // The six skills as bars, so a player's shape reads before the numbers; [label, value] pairs.
 const cardBars = (xs, on = null) => `<div class="pf-pcard-bars">${xs.map(([k, v]) => `<div${k === on ? ' class="on"' : ''}><span>${k}</span><i style="--v:${v ?? 0}%"></i><b>${v ?? '–'}</b></div>`).join('')}</div>`;
@@ -915,7 +934,7 @@ function playerCard(name, p, t, skills) {
   const known = skills.filter((x) => x.v !== null);
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
   const main = p.speeds[0];
-  return `<div class="pf-pcard" data-band="${bandOf(main?.rating)}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}
+  return `<div class="pf-pcard" style="--band:${bandColor(main?.rating)}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span>${t[1] ? `<span class="pf-str">+ ${esc(t[1].name)}</span>` : ''}</div>
       <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title=""${esc(name)}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
         ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
@@ -931,8 +950,8 @@ function playerCard(name, p, t, skills) {
 // Two looks to download, picked in the menu: dark (black card on cream) and light (cream card on black).
 // On the cream card the rating colours are a shade darker, as on the page (BAND).
 const CARDS = {
-  dark: { bg: '#141414', ink: '#f4efe6', muted: '#a8a093', line: '#3d3730', hot: '#ff5a1f', paper: '#e6dfd1', paperInk: '#141414', paperMuted: '#62594c', piece: 'w', band: BAND },
-  light: { bg: '#f4efe6', ink: '#141414', muted: '#62594c', line: '#d3c8b3', hot: '#c2410c', paper: '#1b1815', paperInk: '#f4efe6', paperMuted: '#a8a093', piece: 'b', band: BAND.map(darker) },
+  dark: { bg: '#141414', ink: '#f4efe6', muted: '#a8a093', line: '#3d3730', hot: '#ff5a1f', paper: '#e6dfd1', paperInk: '#141414', paperMuted: '#62594c', piece: 'w', band: (r) => bandColor(r) },
+  light: { bg: '#f4efe6', ink: '#141414', muted: '#62594c', line: '#d3c8b3', hot: '#c2410c', paper: '#1b1815', paperInk: '#f4efe6', paperMuted: '#a8a093', piece: 'b', band: (r) => darker(bandColor(r)) },
 };
 let CARD = CARDS.dark;
 const cardLook = () => { try { return localStorage.getItem('chess-trainer-card-look') === 'light' ? 'light' : 'dark'; } catch { return 'dark'; } };
@@ -954,7 +973,7 @@ function wrap(ctx, text, x, y, max, lh, lines = 99, indent = 0) {
 // One card, 600 x 780 units, top left at (x, y).
 function drawCard(ctx, x, y, name, p, t, skills, piece, flag = null) {
   const known = skills.filter((k) => k.v !== null), ovr = known.length ? String(Math.round(sum(known, (k) => k.v) / known.length)) : '–', main = p.speeds[0];
-  const band = CARD.band[bandOf(main?.rating)];
+  const band = CARD.band(main?.rating);
   ctx.save(); ctx.translate(x, y);
   ctx.fillStyle = CARD.bg; ctx.beginPath(); ctx.roundRect(0, 0, 600, 780, 10); ctx.fill();
   ctx.fillStyle = band; ctx.beginPath(); ctx.roundRect(0, 0, 600, 14, [10, 10, 0, 0]); ctx.fill();
@@ -1557,7 +1576,7 @@ function failed(name, err) {
 
 // A profile from games already fetched (Lichess's shape), without fetching: for checking the types on many players.
 const profileFromRaw = async (name, raw) => (await loadScores(), profileOf(raw.map((g) => readGame(g, name.toLowerCase()))));
-export { cardImage, playerCard, flagHtml, loadFlags, fineSkillsOf, gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
+export { cardImage, playerCard, flagHtml, loadFlags, bandColor, fineSkillsOf, gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
 // ---------- The games themselves ----------
 // The newest games as a list; each opens on game.html with the board, how it went and the key moves.
 const STATUS = { mate: 'mate', resign: 'resignation', outoftime: 'time', timeout: 'time', draw: 'agreement', stalemate: 'stalemate', aborted: 'abort' };

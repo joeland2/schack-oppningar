@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261030095407';
-import { cardImage, flagHtml, loadFlags } from './profile.js?v=20261030095407';
+import { account, login, finishLogin } from './lichess.js?v=20261030095609';
+import { cardImage, flagHtml, loadFlags, bandColor } from './profile.js?v=20261030095609';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -13,7 +13,6 @@ const TYPE_CODES = ['Striker', 'Guardian', 'Solid builder', 'Endgame artist', 'T
   'Killer instinct', 'Well prepared', 'Grinder', 'Sure hand', 'Speed demon', 'Clutch player', 'Giant killer', 'White specialist', 'Black specialist', 'Fighter', 'Finisher'];
 const SPEED_OF = { bu: 'bullet', bl: 'blitz', ra: 'rapid', cl: 'classical', co: 'correspondence' };
 const SKILL_KEYS = ['ATK', 'DEF', 'EARLY', 'LATE', 'ACC', 'SPD'];
-const bandOf = (r) => (!r ? 3 : r < 800 ? 0 : r < 1100 ? 1 : r < 1400 ? 2 : r < 1700 ? 3 : r < 2000 ? 4 : r < 2300 ? 5 : r < 2600 ? 6 : 7); // the card's colour, as in profile.js
 function cardOf(target, board) {
   const [head, rest] = (target || '').split(' #'), name = head.split(/ · |: /)[0];
   const [code, extra] = (rest || '').split(' ~'); // newer downloads also carry what the image needs (profile.js cardExtra)
@@ -26,7 +25,7 @@ function cardOf(target, board) {
   const r = board.filter((x) => x.name.toLowerCase() === name.toLowerCase()).sort((x, y) => y.games - x.games)[0]; // their main time control
   return r && { name: r.name, overall: r.overall, style: r.style, strength: r.strength, skills: ['Attack', 'Defense', 'Early game', 'Late game', 'Accuracy', 'Speed'].map((k) => r.skills?.[k] ?? null), rating: r.rating, speed: r.speed, piece: r.piece };
 }
-const cardHtml = (c, look = 'dark', style = false) => `<div class="ad-cv ad-cv-${look}${style ? ' with-style' : ''}"><div class="pf-pcard" data-band="${bandOf(c.rating)}">${flagHtml(c.name)}<div class="pf-pcard-top"><div><b class="pf-ovr">${esc(c.overall ?? '–')}</b><span class="pf-pos">${esc(c.style || '')}</span>${c.strength ? `<span class="pf-str">+ ${esc(c.strength)}</span>` : ''}</div>
+const cardHtml = (c, look = 'dark', style = false) => `<div class="ad-cv ad-cv-${look}${style ? ' with-style' : ''}"><div class="pf-pcard" style="--band:${bandColor(c.rating)}">${flagHtml(c.name)}<div class="pf-pcard-top"><div><b class="pf-ovr">${esc(c.overall ?? '–')}</b><span class="pf-pos">${esc(c.style || '')}</span>${c.strength ? `<span class="pf-str">+ ${esc(c.strength)}</span>` : ''}</div>
   <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(c.piece || 'n').toUpperCase()}.svg" alt=""><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(c.piece || 'n').toUpperCase()}.svg" alt="">${c.rating ? `<span class="pf-pcard-rating">${c.rating} <small>${esc(c.speed || '')}</small></span>` : ''}</div></div>
   <p class="pf-pcard-name">${esc(c.name)}</p><div class="pf-pcard-bars">${SKILL_KEYS.map((k, i) => `<div><span>${k}</span><i style="--v:${c.skills[i] ?? 0}%"></i><b>${c.skills[i] ?? '–'}</b></div>`).join('')}</div></div>${style ? `<div class="ad-cv-style"><b>${esc(c.style || '')}</b>${c.strength ? `<span>+ ${esc(c.strength)}</span>` : ''}</div>` : ''}</div>`;
 let BOARD = [];
