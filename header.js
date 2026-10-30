@@ -161,15 +161,19 @@ addEventListener('DOMContentLoaded', () => {
     let items = [], at = -1, seq = 0;
     const draw = () => {
       list.hidden = !items.length;
-      list.innerHTML = items.map((x, i) => `${!i || x.kind !== items[i - 1].kind ? `<li class="top-suggest-k" role="presentation">${x.kind === 'recent' ? 'Opened before' : 'On Lichess'}</li>` : ''}
-        <li role="option" id="${id}-${i}" data-i="${i}" aria-selected="${i === at}">${x.title ? `<b class="ts-title">${esc(x.title)}</b> ` : ''}${esc(x.name)}${x.online ? '<i class="ts-on" title="Online"></i>' : ''}</li>`).join('');
+      list.innerHTML = items.map((x, i) => `${!i || x.kind !== items[i - 1].kind ? `<li class="top-suggest-k" role="presentation">${{ recent: 'Opened before', known: 'Pros and streamers' }[x.kind] || 'On Lichess'}</li>` : ''}
+        <li role="option" id="${id}-${i}" data-i="${i}" aria-selected="${i === at}">${x.title ? `<b class="ts-title">${esc(x.title)}</b> ` : ''}${esc(x.name)}${x.who ? `<small class="ts-who">${esc(x.who)}</small><span class="ts-tag ${x.tag.toLowerCase()}">${x.tag}</span>` : ''}${x.online ? '<i class="ts-on" title="Online"></i>' : ''}</li>`).join('');
       input.setAttribute('aria-expanded', String(!list.hidden));
       if (at >= 0) input.setAttribute('aria-activedescendant', `${id}-${at}`); else input.removeAttribute('aria-activedescendant');
     };
     let timer = 0;
     const update = () => {
       const t = input.value.trim().toLowerCase(), mine = ++seq;
-      const old = recent().filter((x) => !t || x.toLowerCase().includes(t)).slice(0, 3).map((name) => ({ name, kind: 'recent' }));
+      // Known pros and streamers whose account or own name matches, word by word: "magnus" finds DrNykterstein.
+      const known = t.length < 3 ? [] : (window.knownPlayers || []).filter((k) => k.id.includes(t) || k.who.toLowerCase().split(/\s+/).some((w) => w.startsWith(t)) || k.who.toLowerCase().startsWith(t))
+        .slice(0, 3).map((k) => ({ name: k.id, who: k.who, title: k.title, kind: 'known', tag: k.kind.toUpperCase() }));
+      const old = [...recent().filter((x) => !t || x.toLowerCase().includes(t)).slice(0, 3).map((name) => ({ name, kind: 'recent' })),
+        ...known].filter((x, i, a) => a.findIndex((y) => y.name.toLowerCase() === x.name.toLowerCase()) === i);
       items = old; at = -1; draw();
       clearTimeout(timer);
       if (t.length < 3) return;

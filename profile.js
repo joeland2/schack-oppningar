@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030121655';
-import { STYLE_OF } from './styles.js?v=20261030121655';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030121757';
+import { STYLE_OF } from './styles.js?v=20261030121757';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -992,6 +992,8 @@ const VIPS = new Map(Object.entries({ agadmator: 'Antonio Radić', tigerlilov: '
 const proOf = (name) => PROS.get(String(name).toLowerCase()) || VIPS.get(String(name).toLowerCase()) || null;
 const proKind = (name) => (PROS.has(String(name).toLowerCase()) ? 'pro' : VIPS.has(String(name).toLowerCase()) ? 'vip' : '');
 const proClass = (name) => (proKind(name) ? ` ${proKind(name)}` : '');
+// For the player search's suggestions (header.js): the known accounts, found by the person's name too.
+window.knownPlayers = [...PROS, ...VIPS].map(([id, who]) => ({ id, who: who.replace(/^(GM|IM) /, ''), title: /^(GM|IM) /.exec(who)?.[1] || null, kind: proKind(id) }));
 // ---------- Flags ----------
 // A player's country flag from their Lichess profile, as a sticker on the card's corner; none without
 // one. Lichess's other flags (_earth, _rainbow…) get no sticker. Images from flag-icons (MIT).
