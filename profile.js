@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030234747';
-import { STYLE_OF } from './styles.js?v=20261030234747';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030234853';
+import { STYLE_OF } from './styles.js?v=20261030234853';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1666,6 +1666,7 @@ async function run(name) {
       const p = await build(name), after = storedGames(name);
       if (mine === runs && (merged || after[0]?.id !== top || after.length !== before.length || !before.length)) { const y = scrollY; render(name, Date.now(), p); scrollTo(0, y); }
     } catch {} finally { quiet = false; }
+    if (mine === runs) await ownSpeed(name);
     return;
   }
   // A skeleton of the page while the games are read, so it is never blank.
@@ -1678,9 +1679,17 @@ async function run(name) {
     const p = await build(name);
     if (mine === runs) render(name, Date.now(), p);
     window.track?.('profile', `${cache()[name.toLowerCase()]?.name || name} #${shownCode}`);
+    if (mine === runs) await ownSpeed(name);
   } catch (err) {
     if (mine === runs) failed(name, err);
   } finally { clearTimeout(slow); }
+}
+// The time control the card opens on reads its own last 500 games, fetched once after the player's
+// games are in, as picking it does: not just its share of the last 500 of all.
+async function ownSpeed(name) {
+  const sp = document.querySelector('[data-pf-speed][aria-pressed="true"]')?.dataset.pfSpeed;
+  if (!sp || sp === 'all' || storedGames(speedKey(name, sp))) return;
+  if (await fetchSpeed(name, sp).catch(() => false) && shown?.[0].toLowerCase() === name.toLowerCase()) { const y = scrollY; render(...shown); scrollTo(0, y); }
 }
 // Something went wrong: say what, and offer to try again (reading the games afresh).
 function failed(name, err) {
