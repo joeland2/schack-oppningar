@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030100822';
-import { STYLE_OF } from './styles.js?v=20261030100822';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030101045';
+import { STYLE_OF } from './styles.js?v=20261030101045';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -873,13 +873,13 @@ function portrait(name, p, skills, me, part = 'lead') {
 const CARD_INK = 'w';
 const PIECE_NAME = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
 // The card's picture is coloured by rating (bandColor, below), on the page and in the downloaded image.
-// The card's colour is the rating's rank, as in games: iron, bronze, silver, gold, platinum, emerald,
-// diamond, master and grandmaster, every 300 points from 800.
-const TIERS_AT = [[0, 'Iron', '#6b6e73'], [800, 'Bronze', '#b06a35'], [1100, 'Silver', '#9aa5b1'], [1400, 'Gold', '#d4a017'], [1700, 'Platinum', '#2bb3a3'],
-  [2000, 'Emerald', '#1f9d55'], [2300, 'Diamond', '#5b7cf0'], [2600, 'Master', '#9b4dca'], [2900, 'Grandmaster', '#d63a4f']];
+// The card's colour goes from cold to warm as the rating rises, as rating colours usually do (grey,
+// green, teal, blue, violet, orange, red, deep red), every 300 points from 800, with gold for the elite.
+const TIERS_AT = [[0, 'Grey', '#858a91'], [800, 'Green', '#3f9a4e'], [1100, 'Teal', '#1aa3a8'], [1400, 'Blue', '#3a74d0'], [1700, 'Violet', '#8a4fd0'],
+  [2000, 'Orange', '#e2711c'], [2300, 'Red', '#d63a3a'], [2600, 'Deep red', '#a8122a'], [2900, 'Elite', '#d4a017']];
 const tierOf = (r) => TIERS_AT.findLastIndex(([at]) => (r || 1500) >= at);
 const bandColor = (r) => TIERS_AT[tierOf(r)][2];
-console.assert(bandColor(1226) === '#9aa5b1' && bandColor(3263) === '#d63a4f' && bandColor(500) === '#6b6e73' && tierOf(1400) === 3, 'bandColor');
+console.assert(bandColor(1226) === '#1aa3a8' && bandColor(3263) === '#d4a017' && bandColor(500) === '#858a91' && tierOf(1400) === 3, 'bandColor');
 const darker = (hex) => `#${[1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.78).toString(16).padStart(2, '0')).join('')}`; // as CSS's 78% mix with black
 // The six skills as bars, so a player's shape reads before the numbers; [label, value] pairs.
 const cardBars = (xs, on = null) => `<div class="pf-pcard-bars">${xs.map(([k, v]) => `<div${k === on ? ' class="on"' : ''}><span>${k}</span><i style="--v:${v ?? 0}%"></i><b>${v ?? '–'}</b></div>`).join('')}</div>`;
