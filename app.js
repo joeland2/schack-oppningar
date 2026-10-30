@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030232053';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030232053';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030232053';
-import { GUIDE } from './guide.js?v=20261030232053';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030232053';
-import { maia3Move } from './maia3.js?v=20261030232053';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030232053';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030232053';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030232053';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030234747';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030234747';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030234747';
+import { GUIDE } from './guide.js?v=20261030234747';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030234747';
+import { maia3Move } from './maia3.js?v=20261030234747';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030234747';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030234747';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030234747';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -21,7 +21,7 @@ const THEORY = 0.15;     // a reply strong players choose this often is a main l
 const THEORY_GROUPS = [6, 7, 8]; // 2000+
 // A trap: a reply players at your level make in at least TRAP_SHARE of games (and MIN_GAMES), after which
 // they score TRAP_SCORE or less (in TRAP_GAMES games or more). It gets a line of its own, so you learn how to punish it.
-const TRAP_SHARE = 0.015, TRAP_SCORE = 0.38, TRAP_GAMES = 30;
+const TRAP_SHARE = 0.05, TRAP_SCORE = 0.38, TRAP_GAMES = 30;
 const MIN_GAMES = 20;     // below this, real-game data is too thin to trust
 const MAX_PLY = 20;       // data/explorer-*.json goes this deep
 const DATA = '2026-10-28-k8c'; // version of data/explorer-*.json
@@ -296,7 +296,7 @@ function buildLines(op) {
       open.push({ moves: [...moves, m.san], share, name: nameOf([...moves, m.san], name), branch: i ? share : l.branch,
         // a trap is the line where the mistake is made (never the main reply); the line keeps it as it
         // goes on, but lines branching off it later are lines of their own
-        trap: i === 0 ? l.trap : trap(m) ? { ply: moves.length, san: m.san, score: scoreFor(m, opp) } : null });
+        trap: i === 0 ? l.trap : trap(m) ? { ply: moves.length, san: m.san, score: scoreFor(m, opp), share: m.n / x.total } : null });
     }
   }
   // Every line ends on the opponent's move: you see their answer, then play on from there. A line that
@@ -2441,7 +2441,9 @@ function mistakeWhy(t) {
   if (m.piece === 'p' && 'abgh'.includes(m.from[0]) && early) return { why: `It spends a move on a flank pawn while ${who}'s pieces wait at home.`, how: `Use the time: develop, castle, and strike in the centre.` };
   return { why: `It costs ${who} time: the move does not help development or the centre.`, how: `Use the time: develop with threats and take the initiative.` };
 }
-const trapStory = (l) => `At your level your opponent often plays <b>${trapMove(l.trap)}</b>. ${l.trap.kind === 'trap' && l.trap.win
+// How often it happens, from the games: "1 in 12 opponents at your level" (an older saved line has no share).
+const howOften = (t) => (t.share ? `About 1 in ${Math.round(1 / t.share)} opponents at your level play` : 'At your level your opponent often plays');
+const trapStory = (l) => `${howOften(l.trap)} <b>${trapMove(l.trap)}</b> here. ${l.trap.kind === 'trap' && l.trap.win
   ? `It loses ${l.trap.win}` : l.trap.kind === 'mistake' ? `It is no blunder, but it hands you the easier game. ${mistakeWhy(l.trap)?.why.replace(/\.$/, '') || 'It costs time'}` : 'It lets you win'}: you score ${pct(1 - l.trap.score)} after it. This line shows how to punish it.`;
 const TRAPS_KEY = STORE + '-traps'; // { [fen before | move]: { kind, win } }, so Stockfish looks once
 // What a run of moves wins for the side to move at its start: the pieces each side loses, as words.
