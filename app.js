@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030234853';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030234853';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030234853';
-import { GUIDE } from './guide.js?v=20261030234853';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030234853';
-import { maia3Move } from './maia3.js?v=20261030234853';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030234853';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030234853';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030234853';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030234931';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030234931';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030234931';
+import { GUIDE } from './guide.js?v=20261030234931';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030234931';
+import { maia3Move } from './maia3.js?v=20261030234931';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030234931';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030234931';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030234931';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position

@@ -1656,11 +1656,12 @@ button.depth-btn:hover { border-color: var(--ink); }
   .m-lines-pop .line-btn { min-height: 44px; }
   .m-lines-pop .line-group { margin: 10px 6px 2px; font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
   #trainer .p-head, #trainer #line-at { display: none; }
-  /* One row on a 375px phone: the arrows, Hint, the modes and Restart squeezed a little */
+  /* A phone: the arrows, Hint and Show move, then the modes on the left and Restart on the right
+     (one row once there is room); squeezed a little, but every button still easy to tap */
   #trainer .controls { gap: 4px; }
   #trainer .controls > button { padding-inline: 6px; }
   #trainer #step-back, #trainer #step-fwd { min-width: 32px; padding-inline: 4px; }
-  #trainer .controls .m-modes { display: flex; margin-left: auto; border: 1px solid var(--line); border-radius: 10px; padding: 1px; gap: 1px; }
+  #trainer .controls .m-modes { display: flex; border: 1px solid var(--line); border-radius: 10px; padding: 1px; gap: 1px; }
   #trainer .controls .m-modes button { min-height: 40px; padding: 4px 5px; border: 0; border-radius: 7px; font-size: 13px; color: var(--muted); }
   #trainer .controls .m-modes button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 }
