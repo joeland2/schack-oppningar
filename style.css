@@ -2021,4 +2021,7 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-card-col .pf-speeds { display: flex; width: 300px; max-width: 100%; }
 .pf-card-col .pf-speeds button { flex: 1 1 0; min-width: 0; display: grid; justify-items: center; gap: 1px; padding: 6px 2px; font-size: 12.5px; line-height: 1.15; }
 .pf-card-col .pf-speeds small { font-size: 11px; }
-.pf-speed-star { font-style: normal; color: var(--hint); margin-right: 3px; font-size: 10px; vertical-align: 1px; }
+/* The star on the time control played most: a sticker on the button's top right corner */
+.pf-card-col .pf-speeds { overflow: visible; }
+.pf-card-col .pf-speeds button { position: relative; overflow: visible; }
+.pf-speed-star { position: absolute; top: -9px; right: -5px; z-index: 1; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--hint); color: #141414; font-style: normal; font-size: 13px; line-height: 1; box-shadow: 0 1px 3px rgb(0 0 0 / .4); transform: rotate(12deg); }

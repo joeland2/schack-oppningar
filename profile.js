@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030093021';
-import { STYLE_OF } from './styles.js?v=20261030093021';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030093445';
+import { STYLE_OF } from './styles.js?v=20261030093445';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -546,7 +546,7 @@ let pushing = null;
 function saveGames(name, games) {
   const me = name.toLowerCase(), value = { at: Date.now(), games: games.map(pack) };
   MEM.set(me, value); persist(me, value);
-  clearTimeout(pushing); pushing = setTimeout(() => push(name, games), 3000); // a run saves often
+  clearTimeout(pushing); pushing = setTimeout(() => push(name.split('~')[0], games), 3000); // a run saves often; a time control's games are the player's
   const own = (myName() || '').toLowerCase(), precious = (k, v) => k === own || v.games.some((g) => g.ours);
   // A time control's own games (name~speed) go with their player: they neither count nor stay on alone.
   const base = me.split('~')[0];
@@ -614,7 +614,7 @@ async function readAll(name, raw) {
     games.push(readGame(raw[i], me));
     if (i % 25 === 24) { msg.textContent = `Reading the games… ${i + 1} of ${raw.length}`; await new Promise((r) => setTimeout(r)); }
   }
-  RECORDS.set(`${me}:${raw.length}:${raw[0]?.id}`, games); // compare's per-time-control reading reuses these
+  RECORDS.set(`${me}:${raw.length}:${raw[0]?.id}:${raw.at(-1)?.id}:${raw.filter((g) => g.analysis).length}`, games); // compare's per-time-control reading reuses these
   const p = profileOf(games);
   const keep = Object.entries(cache()).sort((a, b) => b[1].at - a[1].at).slice(0, 9);
   try { localStorage.setItem(KEY, JSON.stringify(Object.fromEntries([[me, { name, at: Date.now(), p, v: PV }], ...keep.filter(([k]) => k !== me)]))); } catch {}
@@ -708,11 +708,15 @@ async function quickLook(name) {
   const p = await readAll(name, raw);
   render(name, Date.now(), p);
 }
-async function analyse(name, target) {
+// sp: analyse the games the card of that time control reads (its own last 500 when fetched), so the
+// panel's counts and the card agree; an analysis is kept in both the player's games and the time control's.
+async function analyse(name, target, sp = null) {
   const el = $('#pf-analyse');
   await build(name); // the games played since are fetched first, so they are analysed too
-  const have = RAW.filter((g) => g.analysis).length;
-  const todo = RAW.filter((g) => !g.analysis && g.moves).slice(0, Math.max(0, target - have)); // the newest first, up to the target
+  if (sp) await fetchSpeed(name, sp).catch(() => {});
+  const own = sp && storedGames(speedKey(name, sp)), list = own || (sp ? RAW.filter((g) => g.speed === sp) : RAW);
+  const have = list.filter((g) => g.analysis).length;
+  const todo = list.filter((g) => !g.analysis && g.moves).slice(0, Math.max(0, target - have)); // the newest first, up to the target
   const total = sum(todo, (g) => g.moves.split(' ').length), t0 = Date.now();
   let done = 0;
   analysing = { stop: false };
@@ -733,7 +737,10 @@ async function analyse(name, target) {
     }
     if (analysing.stop) break;
     applyEvals(g, cps, best);
+    const m = own && RAW.find((x) => x.id === g.id);
+    if (m) Object.assign(m, { analysis: g.analysis, ours: g.ours, players: g.players });
     saveGames(name, RAW); // a finished game is kept even if the run stops
+    if (own) saveGames(speedKey(name, sp), own);
   }
   analysing = null;
   const mine = runs;
@@ -744,7 +751,7 @@ async function analyse(name, target) {
 // in all. New games are fetched first; games already analysed are always skipped.
 // Stat accuracy: how many games are analysed, as three steps (Fair, Good, Best), with the button that
 // reaches the next step first. A player with fewer games than a step reaches it by analysing them all.
-function analysePanel(name, p, shown = p) {
+function analysePanel(name, p, shown = p, sp = null) {
   if (analysing) return `<div id="pf-analyse" class="pf-analyse running"><span class="pf-an-progress">Analysing…</span><div class="pf-an-bar"><i></i></div><button type="button" class="link" data-stop>Stop</button></div>`;
   if (!p.todo || p.n < MIN_GAMES) return '';
   const tiers = TIERS.map(([n, label]) => [Math.min(n, p.n), label]).filter(([n], i, a) => i === a.findIndex(([m]) => m === n));
@@ -759,13 +766,15 @@ function analysePanel(name, p, shown = p) {
   // The skills count only analysed games against opponents near your rating, in the time control shown,
   // so they can stay locked after the panel's total (all games) has reached a tier.
   const locked = rawSkills(shown).filter((x) => x.v === null && x.needs).map((x) => x.label), have = shown.peer?.analysed ?? 0;
-  const lockedNote = reached && locked.length ? ` ${locked.join(' and ')} unlock${locked.length > 1 ? '' : 's'} at ${unlockAt(shown).at} analysed games: ${ENOUGH} of them must be against opponents within ${PEER} of your rating${shown.speeds?.[0] && shown !== p ? ` in ${shown.speeds[0].speed}` : ''}, and ${have} are so far.` : '';
+  const tooFew = unlockAt(shown).at > shown.n; // more analysed games needed than there are games to analyse
+  const lockedNote = reached && locked.length && tooFew ? ` ${locked.join(' and ')} need${locked.length > 1 ? '' : 's'} ${ENOUGH} analysed games against opponents within ${PEER} of your rating${sp ? ` in ${sp}` : ''}, and there are only ${shown.n} games: ${locked.length > 1 ? 'they stay' : 'it stays'} locked until more are played.`
+    : reached && locked.length ? ` ${locked.join(' and ')} unlock${locked.length > 1 ? '' : 's'} at ${unlockAt(shown).at} analysed games: ${ENOUGH} of them must be against opponents within ${PEER} of your rating${shown.speeds?.[0] && shown !== p ? ` in ${shown.speeds[0].speed}` : ''}, and ${have} are so far.` : '';
   const say = !reached ? `Analyse ${next[0]} games to unlock ${locked.length ? `${locked.join(' and ')}, and ` : ''}the parts of Attack and Defense that need analysis (mistakes and advantages).`
     : next ? `Skills can still move a few points. ${next[1]} at ${next[0]} analysed games.${lockedNote}`
     : `Every skill rests on all the games there are.${lockedNote}`;
   return `<div id="pf-analyse" class="pf-analyse pf-acc${reached ? '' : ' few'}">
     <div class="pf-acc-head"><span class="pf-acc-k">Stat accuracy</span><b class="pf-acc-v">${reached ? reached[1] : 'Locked'}</b>
-      <span class="pf-acc-n">${p.analysed} of ${shown !== p ? 'all ' : ''}${p.n} games analysed${shown !== p && shown.speeds?.[0] ? ` (${shown.analysed} in ${shown.speeds[0].speed})` : ''}</span>
+      <span class="pf-acc-n">${p.analysed} of ${shown !== p ? 'all ' : ''}${p.n}${sp ? ` ${sp}` : ''} games analysed${shown !== p && shown.speeds?.[0] ? ` (${shown.analysed} in ${shown.speeds[0].speed})` : ''}</span>
       <details class="pf-help"><summary title="${WHY_ANALYSE}" aria-label="Why analyse?">?</summary><p>${WHY_ANALYSE}</p></details></div>
     <ol class="pf-acc-steps" aria-label="Stat accuracy: ${reached ? reached[1] : 'locked'}">${steps}</ol>
     <p class="pf-acc-src">Counts the games analysed on lichess.org (${p.analysed - (p.ours || 0)}) and here (${p.ours || 0}). The buttons analyse more of the Lichess games with Stockfish in your browser; each game is done once and kept.</p>
@@ -778,11 +787,11 @@ function bindAnalyse(name) {
   if (!el) return;
   el.querySelectorAll('[data-analyse]').forEach((b) => b.addEventListener('click', async () => {
     const n = Number(b.dataset.analyse);
-    window.track?.('analyse', `${name}: until ${n}`);
+    window.track?.('analyse', `${name}: until ${n}${pfSpeed && pfSpeed !== 'all' ? ` ${pfSpeed}` : ''}`);
     analysing = { stop: false };
     el.outerHTML = analysePanel(name, {});
     $('#pf-analyse').querySelector('[data-stop]').addEventListener('click', () => { if (analysing) analysing.stop = true; });
-    try { await analyse(name, n); } catch (err) { analysing = null; $('#profile-msg').textContent = err.message; }
+    try { await analyse(name, n, pfSpeed && pfSpeed !== 'all' ? pfSpeed : null); } catch (err) { analysing = null; $('#profile-msg').textContent = err.message; }
   }));
 }
 
@@ -1150,7 +1159,9 @@ function speedsOf(name, full) {
 }
 function forSpeed(name, full, sp) {
   if (sp === 'all') return full;
-  const games = storedGames(speedKey(name, sp)) || storedGames(name);
+  const own = storedGames(speedKey(name, sp)), mixed = storedGames(name);
+  const done = new Map(mixed.filter((g) => g.analysis).map((g) => [g.id, g])); // analysed among all the player's games
+  const games = own ? own.map((g) => (!g.analysis && done.get(g.id)) || g) : mixed;
   return profileOf(recordsOf(name, games).filter((g) => g.speed === sp));
 }
 // A time control's own last 500 games, fetched when it is picked and the last 500 of all hold fewer
@@ -1173,7 +1184,7 @@ function speedBar(name, full, sp, avail) {
   if (avail.length < 2 && sp !== 'all') return '';
   // A time control with more games on Lichess than the card reads says so: picking it fetches them.
   return `<div class="pf-seg pf-speeds" role="group" aria-label="Time control">${[['all', full.n], ...avail].map(([k, n, all = 0]) =>
-    `<button type="button" data-pf-speed="${k}" aria-pressed="${k === sp}"${all > n && n < MAX ? ` title="${n} of ${all} ${k} games read: pick it to fetch the last ${Math.min(MAX, all)}"` : k === full.speeds[0]?.speed ? ' title="Played most"' : ''}><span>${k === full.speeds[0]?.speed ? '<i class="pf-speed-star" aria-label="played most">★</i>' : ''}${k === 'all' ? 'All' : k[0].toUpperCase() + k.slice(1)}</span><small>${n}</small></button>`).join('')}</div>`;
+    `<button type="button" data-pf-speed="${k}" aria-pressed="${k === sp}"${all > n && n < MAX ? ` title="${n} of ${all} ${k} games read: pick it to fetch the last ${Math.min(MAX, all)}"` : k === full.speeds[0]?.speed ? ' title="Played most"' : ''}>${k === full.speeds[0]?.speed ? '<i class="pf-speed-star" aria-label="played most">★</i>' : ''}<span>${k === 'all' ? 'All' : k[0].toUpperCase() + k.slice(1)}</span><small>${n}</small></button>`).join('')}</div>`;
 }
 let shownCode = ''; // render: the card on screen as a short code (cardCode)
 function render(name, at, full) {
@@ -1211,7 +1222,7 @@ function render(name, at, full) {
       ${skillBars(skills, say, me)}
       <p class="pf-skill-scale">All against opponents within ${PEER} of ${me ? 'your' : 'their'} rating; the mark on each bar is as good as them.</p>
     </section>
-    ${analysePanel(name, full, p)}
+    ${sp === 'all' ? analysePanel(name, full, p) : analysePanel(name, p, p, sp)}
     <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From ${sp === 'all' ? `all ${p.n} games` : `${p.n} ${sp} games`}</span></div>
       <div class="pf-two pf-more-body">
         <section><h3>By colour and time control</h3>
@@ -1600,7 +1611,7 @@ const SPEEDS = ['bullet', 'blitz', 'rapid', 'classical'];
 // Each player's games read once (replaying them is the slow part), so switching time control is quick.
 const RECORDS = new Map();
 function recordsOf(name, games) {
-  const k = `${name.toLowerCase()}:${games.length}:${games[0]?.id}`;
+  const k = `${name.toLowerCase()}:${games.length}:${games[0]?.id}:${games.at(-1)?.id}:${games.filter((g) => g.analysis).length}`; // the first and last game tell a time control's own 500 from the 500 of all; read again once more are analysed
   if (!RECORDS.has(k)) RECORDS.set(k, games.map((g) => readGame(g, name.toLowerCase())));
   return RECORDS.get(k);
 }
