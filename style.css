@@ -2139,3 +2139,4 @@ main.profile:has(#admin) { max-width: 1320px; }
 #trainer .controls { position: relative; }
 .star-fly.green .line-star { filter: drop-shadow(0 0 18px rgb(95 196 138 / .8)); } .star-fly.green b { color: #8fe0b0; }
 .star-fly.gold .line-star { filter: drop-shadow(0 0 18px rgb(232 194 90 / .85)); } .star-fly.gold b { color: #f3d27a; }
+#tc-best.up { color: var(--good); font-weight: 700; }

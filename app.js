@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030122943';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030122943';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030122943';
-import { GUIDE } from './guide.js?v=20261030122943';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030122943';
-import { maia3Move } from './maia3.js?v=20261030122943';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030122943';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030122943';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030122943';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030124039';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030124039';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030124039';
+import { GUIDE } from './guide.js?v=20261030124039';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030124039';
+import { maia3Move } from './maia3.js?v=20261030124039';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030124039';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030124039';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030124039';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2676,7 +2676,10 @@ function tickTrial() {
   $('#trial-clock').classList.toggle('low', sec <= 10);
   $('#trial-clock').classList.toggle('waiting', !trial.end && left > 0); // paused until your first move
   $('#tc-score').textContent = trial.score;
-  $('#tc-best').textContent = stats[statKey(cur.id)]?.timeBest ? ` · best ${stats[statKey(cur.id)].timeBest}` : '';
+  // Your record for this opening, the most right moves in one run: passed live, as you play.
+  const rec = stats[statKey(cur.id)]?.timeBest || 0;
+  $('#tc-best').textContent = !rec ? '' : trial.score > rec ? ' · a new record' : ` · record ${rec}`;
+  $('#tc-best').classList.toggle('up', rec > 0 && trial.score > rec);
   $('#bar').style.width = `${Math.max(0, Math.min(1, left / trial.full)) * 100}%`;
   if (left > 0) return;
   clearInterval(trial.timer);

@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261030122943">
-  <script src="header.js?v=20261030122943" defer></script>
-  <script src="theme.js?v=20261030122943"></script>
+  <link rel="stylesheet" href="style.css?v=20261030124039">
+  <script src="header.js?v=20261030124039" defer></script>
+  <script src="theme.js?v=20261030124039"></script>
 </head>
 <body>
   <header class="top">
@@ -129,7 +129,7 @@
       </div>
       <div id="trial-clock" class="trial-clock" hidden aria-live="off">
         <b id="tc-time">0:30</b><span class="tc-wait">starts on your move</span><span id="tc-flash" class="tc-flash"></span>
-        <span class="tc-score"><b id="tc-score">0</b> right<small id="tc-best"></small></span>
+        <span class="tc-score" title="Right moves in this run, over every line you play before the clock runs out or you slip"><b id="tc-score">0</b> moves right this run<small id="tc-best"></small></span>
       </div>
       <div class="progress">
         <span id="line-at"></span>
@@ -222,7 +222,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261030122943"></script>
+  <script type="module" src="app.js?v=20261030124039"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>
