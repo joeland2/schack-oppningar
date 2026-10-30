@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030121628';
-import { STYLE_OF } from './styles.js?v=20261030121628';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030121655';
+import { STYLE_OF } from './styles.js?v=20261030121655';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -643,23 +643,25 @@ async function build(name) {
   // from the first EARLY games as soon as they are in, then drawn again from all of them.
   const mine = runs, bar = $('#pf-load');
   let early = false;
-  if (bar && !quiet && !have.length) { bar.hidden = false; bar.firstElementChild.style.width = '0%'; }
+  // The bar over the profile on a first look-up: how far the games are, and what happens meanwhile.
+  const step = (pct, say) => { if (!bar || bar.hidden) return; bar.querySelector('i').style.width = `${pct}%`; bar.querySelector('[role=progressbar]').setAttribute('aria-valuenow', Math.round(pct)); bar.querySelector('.pf-load-k').textContent = say; };
+  if (bar && !quiet && !have.length) { bar.hidden = false; step(0, `Asking Lichess for ${name}'s last ${MAX} rated games…`); }
   const fresh = await fetchGames(name, (k, gs) => {
     msg.textContent = early ? '' : `Fetching ${name}'s games from Lichess… ${k}`;
-    if (bar && !bar.hidden) { bar.firstElementChild.style.width = `${(k / MAX) * 100}%`; bar.title = `${k} of ${MAX} games`; }
+    step((k / MAX) * 95, k < EARLY ? `Fetching games from Lichess: ${k} of up to ${MAX}` : `Fetching games from Lichess: ${k} of up to ${MAX}. The card is drawn from these and fills in as the rest come.`);
     if (!have.length && !quiet && (k === EARLY || (early && k % REDRAW === 0))) {
       early = true;
       loadScores().then(() => { if (mine === runs) { const y = scrollY; drawingEarly = true; try { render(name, Date.now(), profileOf(gs.slice().map((g) => readGame(g, name.toLowerCase())))); } finally { drawingEarly = false; } scrollTo(0, y); } }).catch(() => {});
     }
-  }, have.length ? have[0].createdAt + 1 : null);
-  if (bar) bar.hidden = true;
+  }, have.length ? have[0].createdAt + 1 : null).catch((err) => { if (bar) bar.hidden = true; throw err; });
+  step(96, `Reading all ${fresh.length} games for the card…`);
   const ids = new Set(fresh.map((g) => g.id));
   const raw = [...fresh, ...have.filter((g) => !ids.has(g.id))].slice(0, MAX);
-  if (!raw.length) throw new Error(`${name} has no rated games on Lichess yet.`);
+  if (!raw.length) { if (bar) bar.hidden = true; throw new Error(`${name} has no rated games on Lichess yet.`); }
   merged = await mergeRemote(name, raw);
   saveGames(name, raw);
   RAW = raw; RAW_NAME = name;
-  return readAll(name, raw);
+  try { return await readAll(name, raw); } finally { if (bar) bar.hidden = true; }
 }
 // The profile every page shows: read just now (within FRESH), else new games fetched and all read again,
 // so the profile, compare and the practice plan always agree and follow new games and analyses.
