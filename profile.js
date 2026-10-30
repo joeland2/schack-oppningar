@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030121757';
-import { STYLE_OF } from './styles.js?v=20261030121757';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030122227';
+import { STYLE_OF } from './styles.js?v=20261030122227';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -979,21 +979,26 @@ function cardCode(p, t, skills) {
 // ---------- Pros ----------
 // Known professional players' Lichess accounts (checked: the name on the account, or widely known, as
 // Magnus Carlsen's DrNykterstein): their cards wear a gold PRO frame wherever they show.
-const PROS = new Map(Object.entries({ drnykterstein: 'GM Magnus Carlsen', alireza2003: 'GM Alireza Firouzja', nihalsarin2004: 'GM Nihal Sarin', penguingim1: 'GM Andrew Tang',
-  zhigalko_sergei: 'GM Sergei Zhigalko', vladimirovich9000: 'GM Dmitry Andreikin', may6enexttime: 'GM Aleksei Sarana', 'night-king96': 'GM Oleksandr Bortnyk',
-  konevlad: 'GM Vladislav Artemiev', ericrosen: 'IM Eric Rosen', fins: 'IM John Bartholomew' }));
+// Keys as Lichess spells them (shown in the search's suggestions); looked up in lower case.
+const PRO_NAMES = { DrNykterstein: 'GM Magnus Carlsen', DrDrunkenstein: 'GM Magnus Carlsen', DannyTheDonkey: 'GM Magnus Carlsen', manwithavan: 'GM Magnus Carlsen',
+  MagnusCarlsen: 'GM Magnus Carlsen', alireza2003: 'GM Alireza Firouzja', nihalsarin2004: 'GM Nihal Sarin', penguingim1: 'GM Andrew Tang',
+  Zhigalko_Sergei: 'GM Sergei Zhigalko', Vladimirovich9000: 'GM Dmitry Andreikin', may6enexttime: 'GM Aleksei Sarana', 'Night-King96': 'GM Oleksandr Bortnyk',
+  Konevlad: 'GM Vladislav Artemiev', AnishGiri: 'GM Anish Giri', RebeccaHarris: 'GM Daniel Naroditsky', DanielNaroditsky: 'GM Daniel Naroditsky',
+  EricRosen: 'IM Eric Rosen', Fins: 'IM John Bartholomew' };
+const PROS = new Map(Object.entries(PRO_NAMES).map(([k, v]) => [k.toLowerCase(), v]));
 // On a pro's profile, under the name: who the account belongs to.
 const proLine = (name) => {
   const who = proOf(name), title = /^(GM|IM) /.test(who || '') ? who.split(' ')[0] : '';
   return who ? `<p class="pf-pro-line ${proKind(name)}"><span class="pf-pro-tag">${proKind(name).toUpperCase()}</span><b>${esc(who.replace(/^(GM|IM) /, ''))}</b>${title ? `<span class="pf-pro-title">${title}</span>` : ''}</p>` : '';
 };
 // Known streamers and chess creators (checked the same way): a VIP frame instead.
-const VIPS = new Map(Object.entries({ agadmator: 'Antonio Radić', tigerlilov: 'IM Valeri Lilov' }));
+const VIP_NAMES = { agadmator: 'Antonio Radić', tigerlilov: 'IM Valeri Lilov' };
+const VIPS = new Map(Object.entries(VIP_NAMES).map(([k, v]) => [k.toLowerCase(), v]));
 const proOf = (name) => PROS.get(String(name).toLowerCase()) || VIPS.get(String(name).toLowerCase()) || null;
 const proKind = (name) => (PROS.has(String(name).toLowerCase()) ? 'pro' : VIPS.has(String(name).toLowerCase()) ? 'vip' : '');
 const proClass = (name) => (proKind(name) ? ` ${proKind(name)}` : '');
 // For the player search's suggestions (header.js): the known accounts, found by the person's name too.
-window.knownPlayers = [...PROS, ...VIPS].map(([id, who]) => ({ id, who: who.replace(/^(GM|IM) /, ''), title: /^(GM|IM) /.exec(who)?.[1] || null, kind: proKind(id) }));
+window.knownPlayers = Object.entries({ ...PRO_NAMES, ...VIP_NAMES }).map(([name, who]) => ({ id: name.toLowerCase(), name, who: who.replace(/^(GM|IM) /, ''), title: /^(GM|IM) /.exec(who)?.[1] || null, kind: proKind(name) }));
 // ---------- Flags ----------
 // A player's country flag from their Lichess profile, as a sticker on the card's corner; none without
 // one. Lichess's other flags (_earth, _rainbow…) get no sticker. Images from flag-icons (MIT).

@@ -171,7 +171,7 @@ addEventListener('DOMContentLoaded', () => {
       const t = input.value.trim().toLowerCase(), mine = ++seq;
       // Known pros and streamers whose account or own name matches, word by word: "magnus" finds DrNykterstein.
       const known = t.length < 3 ? [] : (window.knownPlayers || []).filter((k) => k.id.includes(t) || k.who.toLowerCase().split(/\s+/).some((w) => w.startsWith(t)) || k.who.toLowerCase().startsWith(t))
-        .slice(0, 3).map((k) => ({ name: k.id, who: k.who, title: k.title, kind: 'known', tag: k.kind.toUpperCase() }));
+        .slice(0, 6).map((k) => ({ name: k.name, who: k.who, title: k.title, kind: 'known', tag: k.kind.toUpperCase() }));
       const old = [...recent().filter((x) => !t || x.toLowerCase().includes(t)).slice(0, 3).map((name) => ({ name, kind: 'recent' })),
         ...known].filter((x, i, a) => a.findIndex((y) => y.name.toLowerCase() === x.name.toLowerCase()) === i);
       items = old; at = -1; draw();
