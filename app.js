@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030133856';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030133856';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030133856';
-import { GUIDE } from './guide.js?v=20261030133856';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030133856';
-import { maia3Move } from './maia3.js?v=20261030133856';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030133856';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030133856';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030133856';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030134240';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030134240';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030134240';
+import { GUIDE } from './guide.js?v=20261030134240';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030134240';
+import { maia3Move } from './maia3.js?v=20261030134240';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030134240';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030134240';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030134240';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1073,7 +1073,7 @@ function renderMoves() {
   $('#m-name').textContent = $('#op-title').textContent;
   // The line's own name leads (two lines share an opening's name), its number after.
   $('#m-line').textContent = lines[lineIdx] && mode !== 'explore' ? `${lineName(lines[lineIdx])} · ${lineIdx + 1}/${lines.length}` : mode === 'explore' ? 'Exploring' : '';
-  $('#m-mode').value = mode;
+  for (const b of $('.m-modes').children) b.setAttribute('aria-pressed', b.dataset.mode === mode);
   // The path: how many lines wait for review under Practice, and what a step means until a line is learned.
   const st = cur && stats[statKey(cur.id)], due = dueCount(st);
   $('#path-due').textContent = due ? `${due} due for review` : 'from memory';
@@ -2533,6 +2533,9 @@ function renderLines() {
       <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? `<span class="trap-tag${l.trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(l.trap)}</span> ` : l.theory ? '<span class="trap-tag theory">Theory</span> ' : ''}${lineName(l)}<small>${lineTag(l)}</small></span>
       <span class="line-share">${bigShare(l.share)}</span><span class="line-ok">${star(l)}</span>
     </button></li>`).join('');
+  // The phone picks the line from a list over the board, the lines of your depth, a tick once cleared.
+  $('#m-lines').innerHTML = lines.map((l, i) => `<option value="${i}">${i + 1}. ${lineName(l)}${done.includes(lineKey(l.moves)) ? ' ✓' : ''}</option>`).join('');
+  $('#m-lines').value = lineIdx;
   if (linesView === 'tree') renderTree();
 }
 $('#lines-list').addEventListener('click', (e) => {
@@ -3343,7 +3346,8 @@ $('#move-form').addEventListener('submit', (e) => {
   for (const sq of [m.from, m.to]) boardEl.querySelector(`[data-sq="${sq}"]`)?.click();
   $('#move-in').focus();
 });
-$('#m-mode').addEventListener('change', (e) => $(`#mode-${e.target.value}`).click());
+$('.m-modes').addEventListener('click', (e) => e.target.dataset.mode && $(`#mode-${e.target.dataset.mode}`).click());
+$('#m-lines').addEventListener('change', (e) => play(Number(e.target.value)));
 function setMode(m, restart = true, remember = true) {
   const was = mode;
   mode = m; view = null;

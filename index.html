@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261030133856">
-  <script src="header.js?v=20261030133856" defer></script>
-  <script src="theme.js?v=20261030133856"></script>
+  <link rel="stylesheet" href="style.css?v=20261030134240">
+  <script src="header.js?v=20261030134240" defer></script>
+  <script src="theme.js?v=20261030134240"></script>
 </head>
 <body>
   <header class="top">
@@ -123,9 +123,7 @@
       <div class="m-bar">
         <button id="m-back" class="m-back" type="button" aria-label="All openings"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
         <div class="m-title"><b id="m-name"></b><small id="m-line"></small></div>
-        <label class="m-mode"><span class="visually-hidden">Mode</span><select id="m-mode">
-          <option value="learn">1 · Learn</option><option value="try">2 · Practice</option><option value="time">3 · Time challenge</option><option value="explore">Explore</option>
-        </select></label>
+        <label class="m-mode"><span class="visually-hidden">Line</span><select id="m-lines"></select></label>
       </div>
       <div id="trial-clock" class="trial-clock" hidden aria-live="off">
         <b id="tc-time">0:30</b><span class="tc-wait">starts on your move</span><span id="tc-flash" class="tc-flash"></span>
@@ -155,6 +153,7 @@
         <button id="step-fwd" type="button" aria-label="Step forward one move (right arrow)" title="Step forward (→)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
         <button id="hint" type="button">Hint</button>
         <button id="show" type="button">Show move</button>
+        <span class="m-modes" role="group" aria-label="Mode"><button type="button" data-mode="learn">Learn</button><button type="button" data-mode="try">Practice</button><button type="button" data-mode="time">Time</button></span>
         <button id="restart" type="button">Restart</button>
       </div>
       <form id="move-form" class="move-type"><label for="move-in">Type a move</label><input id="move-in" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. Nf3, e4, O-O" aria-describedby="move-msg"><span id="move-msg" class="info" aria-live="polite"></span></form>
@@ -223,7 +222,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261030133856"></script>
+  <script type="module" src="app.js?v=20261030134240"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>
