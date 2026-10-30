@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030111237';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030111237';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030111237';
-import { GUIDE } from './guide.js?v=20261030111237';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030111237';
-import { maia3Move } from './maia3.js?v=20261030111237';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030111237';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030111237';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030111237';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030111404';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030111404';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030111404';
+import { GUIDE } from './guide.js?v=20261030111404';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030111404';
+import { maia3Move } from './maia3.js?v=20261030111404';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030111404';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030111404';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030111404';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1220,12 +1220,12 @@ function askGo() {
   const done = mode === 'try' && !misses && !assisted ? 'Line cleared' : mode === 'try' ? 'Line done' : 'Line learned';
   // What the line gave you before the choice: where you stand at your level, and where to take the game.
   const sum = `<div class="go-sum"><p class="go-k">Where you stand</p>${lineFacts()}${lineWhy()}</div>`;
-  $('#go-ask').innerHTML = `<div class="depth-card go-card" role="dialog" aria-labelledby="go-title"><p class="depth-k">${done}</p><p class="depth-q" id="go-title">${lineName(lines[lineIdx])}</p>${sum}<p class="go-ask-q">How do you want to go on?</p>
+  $('#go-ask').innerHTML = `<div class="depth-card go-card" role="dialog" aria-labelledby="go-title"><button type="button" class="go-close" data-go="close" aria-label="Close and see the board">×</button><p class="depth-k">${done}</p><p class="depth-q" id="go-title">${lineName(lines[lineIdx])}</p>${sum}<p class="go-ask-q">How do you want to go on?</p>
     <button type="button" class="cta go-next" data-go="next">${$('#restart').textContent}<small>${$('#restart').textContent === 'Try again' ? 'this line once more, from memory, to clear it' : mode === 'try' ? 'the next line to practise' : 'learn the next line, with arrows'}</small></button>
     <div class="go-grid" role="group" aria-label="Or go on with this line">
-      <span></span><span class="go-col">Learn<small>arrows</small></span><span class="go-col">Practice<small>from memory</small></span>
-      <span class="go-row">Play on from here</span><button type="button" data-go="learn-on" aria-label="Learn on from here, with arrows">Learn on</button><button type="button" data-go="try-on" aria-label="Practise on from here, from memory">Practise on</button>
-      <span class="go-row">From the start</span><button type="button" data-go="learn" aria-label="Learn this line again from the start, with arrows">Learn again</button><button type="button" data-go="try" aria-label="Practise this line from the start, from memory">Practise it</button>
+      <span></span><span class="go-col">Learn<small>arrows</small></span><span class="go-col">Practice<small>from memory</small></span><span class="go-col">Time<small>${trialSeconds()} s</small></span>
+      <span class="go-row">Play on from here</span><button type="button" data-go="learn-on" aria-label="Learn on from here, with arrows">Learn on</button><button type="button" data-go="try-on" aria-label="Practise on from here, from memory">Practise on</button><span></span>
+      <span class="go-row">From the start</span><button type="button" data-go="learn" aria-label="Learn this line again from the start, with arrows">Learn again</button><button type="button" data-go="try" aria-label="Practise this line from the start, from memory">Practise it</button><button type="button" data-go="time" aria-label="This line against the clock">Time it</button>
     </div></div>`;
   showGo(true);
   confetti(done === 'Line cleared' ? 110 : done === 'Line learned' ? 60 : 0);
@@ -1235,6 +1235,8 @@ function askGo() {
 }
 function goOn(go) {
   if (go === 'next') return $('#restart').click(); // the next line, in the mode you are in
+  if (go === 'close') return render(); // the card closed: the board and the line's summary beside it
+  if (go === 'time') { setMode('time', false); return startTrial(lineIdx); } // this line first, against the clock
   const [m, on] = go.split('-');
   setMode(m, false);
   if (on) { // play on: the board stays, the arrows follow the mode
@@ -2635,14 +2637,19 @@ function backToTrap() {
 // ---------- Time trial ----------
 // The lines from memory against the clock: a right move adds time, a wrong one takes some and the
 // right move is played for you; a finished line goes straight on to another. The best score is kept.
-const TRIAL_S = 60, TRIAL_RIGHT = 2;
+const TRIAL_RIGHT = 2;
+// The clock follows the opening's lines: about 6 seconds a move of yours in an average line, 30 to 120.
+function trialSeconds() {
+  const own = lines.length ? lines.reduce((t, l) => t + Math.ceil(l.moves.length / 2), 0) / lines.length : 10;
+  return Math.max(30, Math.min(120, Math.round((own * 6) / 5) * 5));
+}
 let trial = null; // { end, score, done, timer }
-function startTrial() {
+function startTrial(first = Math.floor(Math.random() * lines.length)) {
   stopTrial();
   // The clock waits (end null, left kept) until your first move, and again between lines.
-  trial = { end: null, left: TRIAL_S * 1000, score: 0, done: 0, timer: setInterval(tickTrial, 100) };
+  trial = { end: null, left: trialSeconds() * 1000, full: trialSeconds() * 1000, score: 0, done: 0, timer: setInterval(tickTrial, 100) };
   $('#restart').textContent = 'Restart';
-  play(Math.floor(Math.random() * lines.length));
+  play(first);
   say('Play the first move from memory: the clock starts then.');
 }
 const trialLeft = () => (trial.end ? trial.end - Date.now() : trial.left);
@@ -2665,7 +2672,7 @@ function tickTrial() {
   $('#trial-clock').classList.toggle('waiting', !trial.end && left > 0); // paused until your first move
   $('#tc-score').textContent = trial.score;
   $('#tc-best').textContent = stats[statKey(cur.id)]?.timeBest ? ` · best ${stats[statKey(cur.id)].timeBest}` : '';
-  $('#bar').style.width = `${Math.max(0, Math.min(1, left / (TRIAL_S * 1000))) * 100}%`;
+  $('#bar').style.width = `${Math.max(0, Math.min(1, left / trial.full)) * 100}%`;
   if (left > 0) return;
   clearInterval(trial.timer);
   gameGen++; busy = true; // the trial is over: no more moves
@@ -2678,7 +2685,7 @@ function tickTrial() {
   const opt = (k, label, about) => `<button type="button" class="depth-opt" data-trial="${k}"><b>${label}</b><span>${about}</span></button>`;
   $('#go-ask').innerHTML = `<div class="depth-card"><p class="depth-k">${record ? 'Time · a new best' : 'Time is up'}</p>
     <p class="depth-q">${plural(trial.score, 'move')} right${record ? '' : ` · your best ${best}`}. What next?</p>
-    ${opt('again', 'Try again', `${TRIAL_S} seconds, the clock starts on your first move`)}
+    ${opt('again', 'Try again', `${trialSeconds()} seconds, the clock starts on your first move`)}
     ${opt('try', 'Practise these lines', 'From memory, without the clock')}
     ${opt('learn', 'Learn the lines', 'Every move shown, with arrows')}
     ${opt('pick', 'Another opening', 'Back to the list')}</div>`;
@@ -3247,7 +3254,7 @@ function setMode(m, restart = true, remember = true) {
   $('#mode-about').textContent = {
     learn: 'Every move is shown, with the replies you can expect at your level. Nothing is scored.',
     try: `Practice: play lines from memory, ${COHORT} at a time in course order; a new line joins when you clear one. A cleared line comes back for review after 1, 3, 7, 14 and 30 days.`,
-    time: `Time challenge: ${TRIAL_S} seconds to play as many moves of this opening's lines as you can from memory, each right move +${TRIAL_RIGHT} s. One wrong move and it starts again. The clock starts on your first move.`,
+    time: `Time challenge: ${lines.length ? trialSeconds() : 60} seconds (more for longer lines) to play as many moves of this opening's lines as you can from memory, each right move +${TRIAL_RIGHT} s. One wrong move and it starts again. The clock starts on your first move.`,
     explore: 'Play any move: the opponent answers as players at your level most often do, and you see how often each move is played and how it scores. To try another answer, step back and move their piece.',
   }[m];
   if (!lines.length) return;

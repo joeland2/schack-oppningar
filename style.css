@@ -2059,3 +2059,8 @@ main.profile:has(#admin) { max-width: 1320px; }
 .cmp-pick-favs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 @media (max-width: 640px) { .cmp-pick { grid-template-columns: 1fr; justify-items: center; } .cmp-pick-a .pf-pcard { zoom: .8; } }
 .coach .message:empty { display: none; } /* nothing to say: the card over the board speaks */
+/* The line's end card: a close button to see the board, and a Time column */
+.go-card { position: relative; }
+.go-close { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: none; color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer; }
+.go-close:hover, .go-close:focus-visible { color: var(--ink); border-color: var(--ink); }
+.go-card .go-grid { grid-template-columns: auto 1fr 1fr 1fr; }
