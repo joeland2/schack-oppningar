@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030122227';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030122227';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030122227';
-import { GUIDE } from './guide.js?v=20261030122227';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030122227';
-import { maia3Move } from './maia3.js?v=20261030122227';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030122227';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030122227';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030122227';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030122707';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030122707';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030122707';
+import { GUIDE } from './guide.js?v=20261030122707';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030122707';
+import { maia3Move } from './maia3.js?v=20261030122707';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030122707';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030122707';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030122707';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2839,13 +2839,39 @@ function guide() {
 // A line played through, for the admin page: which openings people finish, and in which mode
 // (the opening was counted when it was opened, as 'practise' with its name alone).
 const trackDone = () => cur && window.track?.('practise', `done ${mode} · ${cur.side === 'b' ? 'Black' : 'White'}: ${(isVs(cur) ? 'vs ' : '') + cur.name}`);
+// A line's first diamond star: shown big in the middle of the screen, then it flies into its place in
+// the lines list (where it stays hidden until it lands). With reduced motion, or no list in sight, no show.
+function diamondFly(i) {
+  const to = $(`#lines-list .line-btn[data-i="${i}"] .line-star.diamond`);
+  if (!to || REDUCE_MOTION) return Promise.resolve();
+  to.scrollIntoView({ block: 'nearest' });
+  const r = to.getBoundingClientRect(), size = Math.min(240, innerWidth * .55), cx = innerWidth / 2, cy = innerHeight / 2;
+  const seen = r.width > 0 && r.bottom > 0 && r.top < innerHeight;
+  const big = document.createElement('div');
+  big.className = 'star-fly';
+  big.innerHTML = `<svg class="line-star diamond" viewBox="0 0 24 24" aria-hidden="true">${to.querySelector('path').outerHTML}</svg><b>Diamond star</b><i class="star-fly-glow"></i>`;
+  big.style.cssText = `left:${cx - size / 2}px;top:${cy - size / 2}px;width:${size}px`;
+  document.body.append(big);
+  to.style.visibility = 'hidden';
+  const end = seen ? `translate(${r.left + r.width / 2 - cx}px, ${r.top + r.height / 2 - cy}px) scale(${r.width / size})` : 'translateY(-40px) scale(.6)';
+  for (const el of big.querySelectorAll('b, i')) el.animate([{ opacity: 0 }, { opacity: 1, offset: .2 }, { opacity: 1, offset: .5 }, { opacity: 0, offset: .6 }, { opacity: 0 }], { duration: 1800, fill: 'forwards' });
+  return big.animate([
+    { transform: 'scale(.2) rotate(-40deg)', opacity: 0, easing: 'cubic-bezier(.2,.9,.3,1.3)' },
+    { transform: 'scale(1) rotate(0)', opacity: 1, offset: .25 },
+    { transform: 'scale(1) rotate(0)', opacity: 1, offset: .55, easing: 'cubic-bezier(.5,0,.2,1)' },
+    { transform: end, opacity: seen ? 1 : 0 }], { duration: 1800, fill: 'forwards' }).finished.then(() => {
+    big.remove(); to.style.visibility = '';
+    to.animate([{ transform: 'scale(2)' }, { transform: 'scale(1)' }], { duration: 350, easing: 'cubic-bezier(.2,.9,.3,1.3)' });
+  });
+}
 function finish() {
   if (mode === 'time') {
     trackDone();
     trial.done++;
     // A line played without a slip against the clock earns its diamond star in the lines list.
     const st = stats[statKey(cur.id)], k = lineKey(line);
-    if (!misses && st && !(st.timed ??= []).includes(k)) { st.timed.push(k); store(STORE, stats); }
+    const firstDiamond = !misses && st && !(st.timed ??= []).includes(k);
+    if (firstDiamond) { st.timed.push(k); store(STORE, stats); renderLines(); }
     // Each line's best time, from your first move to its last, for runs without a slip (kept with your stars).
     const took = trial.lineStart ? (Date.now() - trial.lineStart) / 1000 : null, best = st?.times?.[k] ?? null;
     const record = took !== null && !misses && (best === null || took < best);
@@ -2862,7 +2888,8 @@ function finish() {
       ${opt('line', 'This line again', 'For a better time, with a fresh clock')}
       ${opt('learn', 'Learn the next line', 'Every move shown, with arrows')}
       ${opt('try', 'Practise the next line', 'From memory, without the clock')}</div>`;
-    return setTimeout(() => { if (mode === 'time') { showGo(true); confetti(misses ? 50 : 110); $('#go-ask button')?.focus(); } }, 300); }
+    const ask = () => { if (mode === 'time') { showGo(true); confetti(misses ? 50 : 110); $('#go-ask button')?.focus(); } };
+    return setTimeout(() => (firstDiamond ? diamondFly(lineIdx).then(ask) : ask()), 300); }
   // A mate in 10 or less for you at the line's end is played out too, before the line is done. That
   // needs Stockfish's verdict, so wait for it (the board waits with you).
   const key = evalKey(game.fen());

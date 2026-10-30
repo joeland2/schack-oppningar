@@ -2129,3 +2129,7 @@ main.profile:has(#admin) { max-width: 1320px; }
 .ts-who { font-weight: 500; color: var(--muted); }
 .ts-tag { margin-left: auto; padding: 1px 5px; border-radius: 3px; font: 700 10px var(--font-body); letter-spacing: .08em; color: #141414; background: #d9a514; }
 .ts-tag.vip { background: #e86fa8; }
+.star-fly { position: fixed; z-index: 200; display: grid; justify-items: center; gap: 6px; pointer-events: none; transform-origin: 50% calc(50% - 16px); }
+.star-fly .line-star { width: 100%; height: auto; aspect-ratio: 1; stroke-width: .8; filter: drop-shadow(0 0 18px rgb(120 220 255 / .8)); }
+.star-fly b { font: 400 34px/1 var(--font-poster); text-transform: uppercase; letter-spacing: .03em; color: #bdf0ff; white-space: nowrap; text-shadow: 0 2px 12px rgb(0 0 0 / .6); }
+.star-fly-glow { position: absolute; inset: -45% -60%; z-index: -1; background: radial-gradient(closest-side, rgb(8 18 28 / .85), rgb(8 18 28 / .5) 55%, transparent); }
