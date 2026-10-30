@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030101333';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030101333';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030101333';
-import { GUIDE } from './guide.js?v=20261030101333';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030101333';
-import { maia3Move } from './maia3.js?v=20261030101333';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030101333';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030101333';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf } from './profile.js?v=20261030101333';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030102902';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030102902';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030102902';
+import { GUIDE } from './guide.js?v=20261030102902';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030102902';
+import { maia3Move } from './maia3.js?v=20261030102902';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030102902';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030102902';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf } from './profile.js?v=20261030102902';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -359,7 +359,8 @@ function popularOpenings() {
         named.add(family);
         const o = { id: family, name: shortName(family), family, eco: m.eco, side: 'w', root: moves.join(' '), share, win: m.win, draw: m.draw, score: m.score };
         if (moves.length % 2 && !BLACKS.test(family)) found.set(family, o);
-        else defences.set(family, { ...o, id: `b:${family}`, side: 'b' });
+        // White's systems named only after a Black move (the London after ...e6) are White's: Black meets them as "vs".
+        else if (!/London System$/.test(family)) defences.set(family, { ...o, id: `b:${family}`, side: 'b' });
       }
       open.push({ moves, share });
     }
@@ -375,9 +376,11 @@ function popularOpenings() {
 
 const isVs = (o) => o.id.startsWith('vs:'); // a White opening practised from Black's side
 // Black's openings by name, whichever move first gave them their name ("King's Indian Defense" can first
-// appear after a White move, but it is still Black's choice).
-const BLACKS = /(Defen[cs]e|Countergambit|Gambit Accepted|Gambit Declined)$/;
-console.assert(BLACKS.test("King's Indian Defense") && !BLACKS.test("King's Gambit") && !BLACKS.test('Italian Game'), 'BLACKS');
+// appear after a White move, but it is still Black's choice). Black's own gambits (1.d4 e5, the Englund)
+// are Black's, and accepting or declining them White's.
+const BLACK_GAMBIT = /^(Englund|Elephant|Latvian|Benko|Duras) Gambit/;
+const BLACKS = { test: (f) => (BLACK_GAMBIT.test(f) ? !/(Accepted|Declined)$/.test(f) : /(Defen[cs]e|Countergambit|Gambit Accepted|Gambit Declined)$/.test(f)) };
+console.assert(BLACKS.test("King's Indian Defense") && !BLACKS.test("King's Gambit") && !BLACKS.test('Italian Game') && BLACKS.test('Englund Gambit') && !BLACKS.test('Latvian Gambit Accepted'), 'BLACKS');
 
 // "Queen's Pawn Game: London System" → "London System", but "Queen's Pawn Game: Chigorin Variation" stays whole.
 const shortName = (family) => (/Variation$/.test(family) ? family : family.split(': ').at(-1));
@@ -3340,6 +3343,8 @@ async function deepLink() {
   history.replaceState(null, '', location.pathname);
   if (want) {
     const [side, family] = [want.slice(0, 1), want.slice(2)];
+    // Black's 1...e5 or 1...d5 (a profile's "Open Game") meets many White openings: the list of them, from Black's side.
+    if (family === 'Open Game' || family === 'Closed Game') { listSide = 'b'; return renderList(); }
     const vs = BLACKS.test(family) !== (side === 'b');
     const op = OPENINGS.find((x) => x.family === family && x.side === side && isVs(x) === vs)
       ?? OPENINGS.find((x) => x.side === side && (family.startsWith(x.family) || x.family.startsWith(family)));

@@ -1940,14 +1940,14 @@ main .learn-from a.lf-link { font-size: 14px; }
 .choice-band { order: 10; flex: 1 1 100%; }
 .choice-band .choice-label b { color: var(--ink); font-weight: 700; }
 .range2 { position: relative; height: 32px; }
-.range2-track { position: absolute; left: 12px; right: 12px; top: 13px; height: 6px; border-radius: 3px; background: var(--line); }
+.range2-track { position: absolute; left: 9px; right: 9px; top: 13px; height: 6px; border-radius: 3px; background: var(--line); }
 .range2-track i { position: absolute; top: 0; bottom: 0; background: var(--hot); border-radius: 3px; }
 .range2 input { position: absolute; inset: 0; width: 100%; height: 32px; margin: 0; background: none; pointer-events: none; -webkit-appearance: none; appearance: none; }
 .range2 input::-webkit-slider-runnable-track { background: none; }
-.range2 input::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; width: 24px; height: 24px; border-radius: 50%; background: var(--surface); border: 3px solid var(--hot); cursor: grab; }
-.range2 input::-moz-range-thumb { pointer-events: auto; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 3px solid var(--hot); cursor: grab; }
+.range2 input::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 3px solid var(--hot); cursor: grab; }
+.range2 input::-moz-range-thumb { pointer-events: auto; width: 13px; height: 13px; border-radius: 50%; background: var(--surface); border: 3px solid var(--hot); cursor: grab; }
 .range2 input::-moz-range-track { background: none; }
-.range2-ticks { position: relative; height: 18px; margin: 0 12px; font: 500 12px/1 var(--font-mono); color: var(--muted); }
+.range2-ticks { position: relative; height: 18px; margin: 0 9px; font: 500 12px/1 var(--font-mono); color: var(--muted); }
 .range2-ticks span { position: absolute; top: 2px; transform: translateX(-50%); white-space: nowrap; }
 .range2-ticks span.in { color: var(--ink); font-weight: 700; }
 .range2 input:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--hot); outline-offset: 2px; }
@@ -2045,3 +2045,5 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-pcard.vip { box-shadow: 0 0 0 3px #e0459b, 0 0 0 5px rgb(20 20 20 / .6), 0 22px 44px rgb(20 20 20 / .25); }
 .pf-pcard.vip::before { content: 'VIP'; position: absolute; top: -11px; left: 16px; z-index: 2; padding: 3px 8px 2px; border-radius: 3px; background: #e0459b; color: #fff; font: 400 13px/1 var(--font-poster); letter-spacing: .12em; box-shadow: 0 2px 4px rgb(0 0 0 / .3); }
 .pf-pro-line.vip .pf-pro-tag { background: #e0459b; color: #fff; }
+
+.og-bar .sort-seg { flex: none; } /* sorting sits with the lists it sorts, between the tabs and the search */
