@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030135519';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030135519';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030135519';
-import { GUIDE } from './guide.js?v=20261030135519';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030135519';
-import { maia3Move } from './maia3.js?v=20261030135519';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030135519';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030135519';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030135519';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030141042';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030141042';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030141042';
+import { GUIDE } from './guide.js?v=20261030141042';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030141042';
+import { maia3Move } from './maia3.js?v=20261030141042';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030141042';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030141042';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030141042';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1300,7 +1300,7 @@ function renderWhy() {
   // Before the first move, an introduction: what the opening is about and which line this is.
   if (!hist.length && lines[lineIdx]) {
     const l = lines[lineIdx];
-    parts.push(`<p class="intro">This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level${bigShare(l.share) ? ` (${bigShare(l.share)})` : ''}. It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap ? ` <b>${l.trap.kind === 'mistake' ? 'A common mistake' : 'A trap'}.</b> ${trapStory(l)}` : ''}</p>`);
+    parts.push(`<p class="intro">This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>, ${lineIdx ? 'the next most common way' : 'the most common way'} games in this opening go at your level${bigShare(l.share) ? ` (${bigShare(l.share)})` : ''}. It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap ? ` <b>${l.trap.kind === 'mistake' ? 'A common mistake' : 'A blunder to punish'}.</b> ${trapStory(l)}` : ''}</p>`);
   }
   // First what to play and why (Learn), then a quiet line on the last move, then the other replies
   // folded away: the board and the move to make come first.
@@ -1437,7 +1437,7 @@ function lineWhy() {
       : `Stockfish gives ${them} ${cp > -100 ? 'a small' : 'an'} edge${scoresWell() ? ', but players at your level win more than they lose from here' : ', so play carefully'}.`);
   }
   const trap = lines[lineIdx]?.trap;
-  if (trap) why.push(`${them} ${trap.kind === 'mistake' ? 'made the common mistake' : 'fell for the trap'} ${trapMove(trap)}${trap.win ? `, which loses ${trap.win}` : ''}: players at your level score ${pct(1 - trap.score)} from here.`);
+  if (trap) why.push(`${them} ${trap.kind === 'mistake' ? 'made the common mistake' : 'blundered with'} ${trapMove(trap)}${trap.win ? `, which loses ${trap.win}` : ''}: players at your level score ${pct(1 - trap.score)} from here.`);
   if (p.out > p.theirOut) why.push(`You are ahead in development: ${p.out} knights and bishops out against ${p.theirOut}, so open the game before ${them} catches up.`);
   else if (p.out < p.theirOut) why.push(`${them} is ahead in development (${plural(p.theirOut, "piece")} out against your ${p.out}), so catch up before you start anything.`);
   if (p.theirKingInCentre && !p.theyCastled) why.push(`${them}'s king is still in the centre: if the centre opens, it is a target.`);
@@ -2416,7 +2416,8 @@ function punishText(t) {
 // A trap or a common mistake: a trap loses something concrete (material, or mate) by Stockfish's best
 // line after it; a common mistake only gives you the easier game (time, development, a weak king).
 // t.kind is 'trap' or 'mistake' once Stockfish has looked (classifyTraps), t.win what you win.
-const trapWord = (t) => (t.kind === 'mistake' ? 'Common mistake' : 'Trap');
+// Found in the games, not named in any book: a slip that loses material is a blunder, not a trap.
+const trapWord = (t) => (t.kind === 'mistake' ? 'Common mistake' : 'Blunder');
 // Why a common mistake is one, read from the position, and how to use it: the first reason that
 // holds of a queen out early, a blocked bishop, a piece moved twice, a flank or f-pawn move, or a
 // piece left undefended; else the time it costs.
@@ -2440,7 +2441,7 @@ function mistakeWhy(t) {
   return { why: `It costs ${who} time: the move does not help development or the centre.`, how: `Use the time: develop with threats and take the initiative.` };
 }
 const trapStory = (l) => `At your level your opponent often plays <b>${trapMove(l.trap)}</b>. ${l.trap.kind === 'trap' && l.trap.win
-  ? `It looks natural, but it loses ${l.trap.win}` : l.trap.kind === 'mistake' ? `It is no blunder, but it hands you the easier game. ${mistakeWhy(l.trap)?.why.replace(/\.$/, '') || 'It costs time'}` : 'It looks natural, but it lets you win'}: you score ${pct(1 - l.trap.score)} after it. This line shows how to punish it.`;
+  ? `It loses ${l.trap.win}` : l.trap.kind === 'mistake' ? `It is no blunder, but it hands you the easier game. ${mistakeWhy(l.trap)?.why.replace(/\.$/, '') || 'It costs time'}` : 'It lets you win'}: you score ${pct(1 - l.trap.score)} after it. This line shows how to punish it.`;
 const TRAPS_KEY = STORE + '-traps'; // { [fen before | move]: { kind, win } }, so Stockfish looks once
 // What a run of moves wins for the side to move at its start: the pieces each side loses, as words.
 function winOf(fen, pv) {
@@ -2645,7 +2646,7 @@ function showTrap(t, m) {
         if (mv) return tryMove(mv.from, mv.to);
         goodMove().then((x) => { if (x && gen === gameGen && userTurn()) tryMove(x.from, x.to); });
       };
-      moment('trap', `${trapWord(t)}!`, `${sideName(m.color)} played <b>${trapMove(t)}</b>, the move this line is about. ${t.kind === 'trap' && t.win ? `It loses ${t.win}.` : t.kind === 'mistake' ? (mistakeWhy(t) ? `${mistakeWhy(t).why} ${mistakeWhy(t).how}` : 'No blunder, but it costs time and hands you the easier game.') : 'It looks natural, but it lets you win.'} Players at your level score ${pct(1 - t.score)} after it. ${mode === 'learn' ? punishText(t) || 'The green arrow shows how to punish it.' : 'This is the moment: find the move that punishes it.'}`,
+      moment('trap', `${trapWord(t)}!`, `${sideName(m.color)} played <b>${trapMove(t)}</b>, the move this line is about. ${t.kind === 'trap' && t.win ? `It loses ${t.win}.` : t.kind === 'mistake' ? (mistakeWhy(t) ? `${mistakeWhy(t).why} ${mistakeWhy(t).how}` : 'No blunder, but it costs time and hands you the easier game.') : 'It lets you win.'} Players at your level score ${pct(1 - t.score)} after it. ${mode === 'learn' ? punishText(t) || 'The green arrow shows how to punish it.' : 'This is the moment: find the move that punishes it.'}`,
         [mode === 'learn' ? { label: 'Punish it', run: punish } : { label: 'Find the answer', run: go }], was === null ? null : [was, 1 - t.score], [[m.from, m.to, RED], ...punishArrow(t)], go);
       // Where the line stops at the slip, Stockfish's best move is the punishment to show.
       if (mode === 'learn' && momentArrows.length === 1) {
