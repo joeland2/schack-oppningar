@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030124039';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030124039';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030124039';
-import { GUIDE } from './guide.js?v=20261030124039';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030124039';
-import { maia3Move } from './maia3.js?v=20261030124039';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030124039';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030124039';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030124039';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030124048';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030124048';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030124048';
+import { GUIDE } from './guide.js?v=20261030124048';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030124048';
+import { maia3Move } from './maia3.js?v=20261030124048';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030124048';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030124048';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030124048';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2891,7 +2891,7 @@ function finish() {
     pauseTrial();
     const opt = (k, label, about) => `<button type="button" class="depth-opt" data-trial="${k}"><b>${label}</b><span>${about}</span></button>`;
     $('#go-ask').innerHTML = `<div class="depth-card go-card"><button type="button" class="go-close" data-trial="close" aria-label="Close and see the board">×</button><p class="depth-k">Line done · ${plural(trial.score, 'move')} right</p>
-      <p class="depth-q">${lineName(lines[lineIdx])}${!misses ? ' · a diamond star' : ''}. How do you want to go on?</p>${timeLine}
+      <p class="depth-q">${lineName(lines[lineIdx])}${firstDiamond ? ' · a new diamond star' : !misses ? ' · no slips' : ''}. How do you want to go on?</p>${timeLine}
       <button type="button" class="cta go-next" data-trial="continue">Next line in Time<small>the clock starts on your first move, ${Math.ceil(trialLeft() / 1000)} s left</small></button>
       ${opt('line', 'This line again', 'For a better time, with a fresh clock')}
       ${opt('learn', 'Learn the next line', 'Every move shown, with arrows')}
