@@ -2071,4 +2071,4 @@ main.profile:has(#admin) { max-width: 1320px; }
 .path-step b, .path-step small { line-height: 1.2; white-space: normal; } /* "Time challenge" wraps in a narrow panel */
 #mode-learn:hover, #mode-learn:focus-visible { border-color: var(--good); box-shadow: 0 0 0 1px var(--good); }
 #mode-try:hover, #mode-try:focus-visible { border-color: #e0b23a; box-shadow: 0 0 0 1px #e0b23a; }
-#mode-time:hover, #mode-time:focus-visible { border-color: #4fb8e0; box-shadow: 0 0 0 1px #4fb8e0, 0 0 10px rgb(120 220 255 / .35); }
+#mode-time:hover, #mode-time:focus-visible { border-color: #4fb8e0; box-shadow: 0 0 0 1px #4fb8e0; }
