@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030113700';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030113700';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030113700';
-import { GUIDE } from './guide.js?v=20261030113700';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030113700';
-import { maia3Move } from './maia3.js?v=20261030113700';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030113700';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030113700';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030113700';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030114111';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030114111';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030114111';
+import { GUIDE } from './guide.js?v=20261030114111';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030114111';
+import { maia3Move } from './maia3.js?v=20261030114111';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030114111';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030114111';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030114111';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1197,7 +1197,9 @@ $('#go-ask').addEventListener('click', (e) => {
     showGo(false);
     if (t === 'again') return startTrial();
     if (t === 'pick') return showPicker();
-    if (t === 'continue') return play((lineIdx + 1 + Math.floor(Math.random() * (lines.length - 1))) % lines.length);
+    if (t === 'close') return render(); // the card closed: the board
+    if (t === 'line') return startTrial(lineIdx); // this line again, for a better time
+    if (t === 'continue') { trial.lineStart = null; return play((lineIdx + 1 + Math.floor(Math.random() * (lines.length - 1))) % lines.length); }
     setMode(t, false); // Practice or Learn, from the next line
     return play(nextLine());
   }
@@ -1220,10 +1222,10 @@ function askGo() {
   const done = mode === 'try' && !misses && !assisted ? 'Line cleared' : mode === 'try' ? 'Line done' : 'Line learned';
   // What the line gave you before the choice: where you stand at your level, and where to take the game.
   const sum = `<div class="go-sum"><p class="go-k">Where you stand</p>${lineFacts()}${lineWhy()}</div>`;
-  $('#go-ask').innerHTML = `<div class="depth-card go-card" role="dialog" aria-labelledby="go-title"><button type="button" class="go-close" data-go="close" aria-label="Close and see the board">×</button><p class="depth-k">${done}</p><p class="depth-q" id="go-title">${lineName(lines[lineIdx])}</p>${sum}<p class="go-ask-q">How do you want to go on?</p>
+  $('#go-ask').innerHTML = `<div class="depth-card go-card" role="dialog" aria-labelledby="go-title"><button type="button" class="go-close" data-go="close" aria-label="Close and see the board">×</button><p class="depth-k go-k-${done === 'Line cleared' ? 'gold' : done === 'Line learned' ? 'green' : 'plain'}">${done}</p><p class="depth-q" id="go-title">${lineName(lines[lineIdx])}</p>${sum}<p class="go-ask-q">How do you want to go on?</p>
     <button type="button" class="cta go-next" data-go="next">${$('#restart').textContent}<small>${$('#restart').textContent === 'Try again' ? 'this line once more, from memory, to clear it' : mode === 'try' ? 'the next line to practise' : 'learn the next line, with arrows'}</small></button>
     <div class="go-grid" role="group" aria-label="Or go on with this line">
-      <span></span><span class="go-col">Learn<small>arrows</small></span><span class="go-col">Practice<small>from memory</small></span><span class="go-col">Time<small>${trialSeconds()} s</small></span>
+      <span></span><span class="go-col go-learn">Learn<small>arrows</small></span><span class="go-col go-try">Practice<small>from memory</small></span><span class="go-col go-time-col">Time<small>${trialSeconds()} s</small></span>
       <span class="go-row">Play on from here</span><button type="button" data-go="learn-on" aria-label="Learn on from here, with arrows">Learn on</button><button type="button" data-go="try-on" aria-label="Practise on from here, from memory">Practise on</button><span></span>
       <span class="go-row">From the start</span><button type="button" data-go="learn" aria-label="Learn this line again from the start, with arrows">Learn again</button><button type="button" data-go="try" aria-label="Practise this line from the start, from memory">Practise it</button><button type="button" data-go="time" aria-label="This line against the clock">Time it</button>
     </div></div>`;
@@ -1599,7 +1601,7 @@ $('#depth').addEventListener('click', () => askDepth(allLines.length));
 function play(i, again = false) {
   if (drill && lineFor(drill.now ?? '') !== i) drill = null; // another line chosen: the drill ends
   lineIdx = i;
-  if (mode === 'time') pauseTrial();
+  if (mode === 'time') { pauseTrial(); if (trial) trial.lineStart = null; }
   const l = lines[i];
   line = l.moves;
   game = new Chess();
@@ -2654,7 +2656,8 @@ function startTrial(first = Math.floor(Math.random() * lines.length)) {
 }
 const trialLeft = () => (trial.end ? trial.end - Date.now() : trial.left);
 function pauseTrial() { if (trial?.end) { trial.left = trial.end - Date.now(); trial.end = null; } }
-function runTrial() { if (trial && !trial.end && trial.timer) trial.end = Date.now() + trial.left; }
+// The clock runs from your first move of a line; lineStart times the line on its own, for its best time.
+function runTrial() { if (trial && !trial.end && trial.timer) { trial.end = Date.now() + trial.left; trial.lineStart ??= Date.now(); } }
 function stopTrial() { if (trial) clearInterval(trial.timer); trial = trial && { ...trial, timer: null }; if (mode !== 'time') $('#trial-clock').hidden = true; }
 // The seconds a move won or cost, flashed beside the clock.
 function trialFlash(text, good) {
@@ -2843,13 +2846,20 @@ function finish() {
     // A line played without a slip against the clock earns its diamond star in the lines list.
     const st = stats[statKey(cur.id)], k = lineKey(line);
     if (!misses && st && !(st.timed ??= []).includes(k)) { st.timed.push(k); store(STORE, stats); }
+    // Each line's best time, from your first move to its last, for runs without a slip (kept with your stars).
+    const took = trial.lineStart ? (Date.now() - trial.lineStart) / 1000 : null, best = st?.times?.[k] ?? null;
+    const record = took !== null && !misses && (best === null || took < best);
+    if (record && st) { (st.times ??= {})[k] = Math.round(took * 10) / 10; store(STORE, stats); }
+    trial.lineStart = null;
+    const timeLine = took === null ? '' : `<p class="go-time">${record ? `<b>New best: ${took.toFixed(1)} s</b>${best !== null ? ` · was ${best.toFixed(1)} s` : ''}` : `This line: ${took.toFixed(1)} s${best !== null ? ` · best ${best.toFixed(1)} s` : ''}${misses ? ' · a slip, so no best time' : ''}`}</p>`;
     // The clock stops and the board asks how to go on: the next line against the clock, or the next
     // line in Learn or Practice.
     pauseTrial();
     const opt = (k, label, about) => `<button type="button" class="depth-opt" data-trial="${k}"><b>${label}</b><span>${about}</span></button>`;
-    $('#go-ask').innerHTML = `<div class="depth-card"><p class="depth-k">Line done · ${plural(trial.score, 'move')} right</p>
-      <p class="depth-q">${lineName(lines[lineIdx])}${!misses ? ' · a diamond star' : ''}. How do you want to go on?</p>
+    $('#go-ask').innerHTML = `<div class="depth-card go-card"><button type="button" class="go-close" data-trial="close" aria-label="Close and see the board">×</button><p class="depth-k">Line done · ${plural(trial.score, 'move')} right</p>
+      <p class="depth-q">${lineName(lines[lineIdx])}${!misses ? ' · a diamond star' : ''}. How do you want to go on?</p>${timeLine}
       <button type="button" class="cta go-next" data-trial="continue">Next line in Time<small>the clock starts on your first move, ${Math.ceil(trialLeft() / 1000)} s left</small></button>
+      ${opt('line', 'This line again', 'For a better time, with a fresh clock')}
       ${opt('learn', 'Learn the next line', 'Every move shown, with arrows')}
       ${opt('try', 'Practise the next line', 'From memory, without the clock')}</div>`;
     return setTimeout(() => { if (mode === 'time') { showGo(true); confetti(misses ? 50 : 110); $('#go-ask button')?.focus(); } }, 300); }

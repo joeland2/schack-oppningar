@@ -2091,3 +2091,18 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-piece-auto small { display: block; font: 700 10px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: #a8a093; }
 .pf-piece-auto b { display: block; font-size: 14px; margin: 1px 0 3px; }
 .pf-piece-auto em { display: block; font-style: normal; font-size: 12px; line-height: 1.35; color: #c9c1b4; }
+.go-time { margin: 0 0 4px; font-size: 14px; color: var(--muted); } .go-time b { color: var(--ink); } /* the line's time and its best */
+/* The line's end card, colour-coded: the kicker in the colour of the star just earned, results in their
+   colours, and each column of ways on in its star's colour (green Learn, gold Practice, diamond blue Time),
+   its buttons ringed in it on hover */
+.go-k-gold { color: #e0b23a; } .go-k-green { color: var(--good); }
+.go-sum .facts div:nth-child(1) b { color: var(--good); }
+.go-sum .facts div:nth-child(3) b { color: var(--bad); }
+.go-col::before { content: '★'; display: block; font-size: 13px; line-height: 1; margin-bottom: 2px; }
+.go-col.go-learn::before { color: var(--good); } .go-col.go-try::before { color: #e0b23a; } .go-col.go-time-col::before { color: #4fb8e0; }
+.go-grid button { transition: border-color .12s, box-shadow .12s; }
+.go-grid [data-go^="learn"]:hover, .go-grid [data-go^="learn"]:focus-visible { border-color: var(--good); box-shadow: 0 0 0 1px var(--good); }
+.go-grid [data-go^="try"]:hover, .go-grid [data-go^="try"]:focus-visible { border-color: #e0b23a; box-shadow: 0 0 0 1px #e0b23a; }
+.go-grid [data-go="time"]:hover, .go-grid [data-go="time"]:focus-visible { border-color: #4fb8e0; box-shadow: 0 0 0 1px #4fb8e0; }
+.depth-opt[data-trial="line"]:hover, .depth-opt[data-trial="line"]:focus-visible { border-color: #4fb8e0; }
+@media (prefers-reduced-motion: reduce) { .go-grid button { transition: none; } }
