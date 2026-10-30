@@ -1602,7 +1602,7 @@ button.depth-btn:hover { border-color: var(--ink); }
 #trainer .p-head .op-head h1 { font-size: clamp(1.6rem, 2.6vw, 2.1rem); letter-spacing: .03em; line-height: 1.05; }
 /* Admin: the visitors line and the visitors list */
 .ad-line { width: 100%; height: auto; overflow: visible; }
-.ad-line polyline { fill: none; stroke: var(--hot); stroke-width: 2; stroke-linejoin: round; }
+.ad-line polyline, .ad-line .ad-curve { fill: none; stroke: var(--hot); stroke-width: 2; stroke-linejoin: round; }
 .ad-line .ad-area { fill: color-mix(in srgb, var(--hot) 14%, transparent); stroke: none; }
 .ad-line .ad-axis { stroke: var(--line); }
 .ad-line circle { fill: var(--hot); }

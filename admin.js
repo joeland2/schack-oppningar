@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261030131517';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261030131517';
+import { account, login, finishLogin } from './lichess.js?v=20261030131936';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261030131936';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -78,11 +78,12 @@ const land = (c) => { try { return c && c !== '–' ? `${NAMES.of(c)} (${c})` : 
 const KIND = { profile: 'Looked up a profile', compare: 'Comparisons', analyse: 'Analysed', practise: 'Openings practised', card: 'Cards downloaded', login: 'Lichess logins' };
 
 // Visitors per day (each counted once that day) as a line, and unique visitors (their first visit
-// ever) as the shaded area under it, over the picked span; Today (from midnight) and 1W are per hour.
+// ever) as the shaded area under it, over the picked span; Today (from midnight), 1W and 1M are per hour,
+// drawn as a smooth curve through a short moving average (the tooltip has each hour's own numbers).
 // Days without visits are zero. Moving the mouse along the graph shows that point's numbers and notes.
 const SPANS = [['Today', 'today'], ['1W', 7], ['1M', 30], ['6M', 182], ['1Y', 365], ['All', Infinity]];
 let span = 30;
-const hourly = () => span === 'today' || span === 7; // these spans are drawn per hour
+const hourly = () => span === 'today' || span === 7 || span === 30; // these spans are drawn per hour
 const W = 760, H = 180;
 const TZ = 'Europe/Stockholm';
 const dayKey = (t) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }).format(new Date(t));
@@ -91,8 +92,8 @@ const hourKey = (t) => `${dayKey(t)} ${new Intl.DateTimeFormat('en-GB', { timeZo
 function spanPoints(body) {
   const zero = { fresh: 0, visitors: 0, views: 0 };
   if (hourly()) {
-    // Per hour: Today from midnight, 1W the last 168 hours.
-    const by = new Map((body.perHour || []).map((d) => [d.hour, d])), n = span === 'today' ? Math.max(Number(hourKey(Date.now()).slice(-2)) + 1, 2) : 168;
+    // Per hour: Today from midnight, 1W and 1M their last 168 and 720 hours.
+    const by = new Map((body.perHour || []).map((d) => [d.hour, d])), n = span === 'today' ? Math.max(Number(hourKey(Date.now()).slice(-2)) + 1, 2) : span * 24;
     return Array.from({ length: n }, (_, k) => { const t = Date.now() - (n - 1 - k) * 36e5, key = hourKey(t), h = Number(key.slice(-2));
       return { ...zero, ...by.get(key), key, label: `${span === 'today' ? '' : `${new Date(t).toLocaleDateString('en-GB', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short' })}, `}${String(h).padStart(2, '0')}:00–${String(h + 1).padStart(2, '0')}:00` }; });
   }
@@ -105,16 +106,30 @@ const NOTES_KEY = 'chess-trainer-admin-notes';
 const notes = () => { try { return JSON.parse(localStorage.getItem(NOTES_KEY)) || []; } catch { return []; } };
 const saveNotes = (xs) => { try { localStorage.setItem(NOTES_KEY, JSON.stringify(xs.sort((a, b) => a.t - b.t))); } catch {} };
 const noteKey = (t) => (hourly() ? hourKey(t) : dayKey(t));
+// A curve through the points that never overshoots them (monotone cubic, Fritsch–Carlson), as an SVG path.
+function curve(ps) {
+  const n = ps.length, d = ps.slice(1).map(([x, y], i) => (y - ps[i][1]) / (x - ps[i][0])), m = ps.map((_, i) => (i === 0 ? d[0] : i === n - 1 ? d[n - 2] : d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2));
+  for (let i = 0; i < n - 1; i++) if (d[i] === 0) m[i] = m[i + 1] = 0; else { const a = m[i] / d[i], b = m[i + 1] / d[i], h = a * a + b * b; if (h > 9) { const t = 3 / Math.sqrt(h); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; } }
+  return ps.map(([x, y], i) => { if (!i) return `M${x.toFixed(1)},${y.toFixed(1)}`; const [x0, y0] = ps[i - 1], h = (x - x0) / 3;
+    return `C${(x0 + h).toFixed(1)},${(y0 + m[i - 1] * h).toFixed(1)} ${(x - h).toFixed(1)},${(y - m[i] * h).toFixed(1)} ${x.toFixed(1)},${y.toFixed(1)}`; }).join('');
+}
+console.assert(curve([[0, 0], [1, 1]]).startsWith('M0.0,0.0C'), 'curve');
+// Each point as the mean of its neighbours (k on each side), so single hours do not make spikes.
+const ease = (vs, k) => vs.map((_, i) => { const w = vs.slice(Math.max(0, i - k), i + k + 1); return w.reduce((t, v) => t + v, 0) / w.length; });
+const SMOOTH = () => (span === 30 ? 3 : span === 7 ? 1 : 0); // hours on each side
 function visitorLine(ds) {
-  const top = Math.max(1, ...ds.map((d) => d.visitors)), x = (i) => (i / (ds.length - 1)) * W, y = (v) => H - (v / top) * (H - 10);
-  const line = (k) => ds.map((d, i) => `${x(i).toFixed(1)},${y(d[k]).toFixed(1)}`).join(' ');
+  const sv = { visitors: ease(ds.map((d) => d.visitors), SMOOTH()), fresh: ease(ds.map((d) => d.fresh), SMOOTH()) };
+  const top = Math.max(1, Math.ceil(Math.max(...sv.visitors))), x = (i) => (i / (ds.length - 1)) * W, y = (v) => H - (v / top) * (H - 10);
+  const pts = (k) => sv[k].map((v, i) => [x(i), y(v)]);
+  ds.forEach((d, i) => { d.drawn = sv.visitors[i]; }); // where the hover dot sits
   const at = new Map(ds.map((d, i) => [d.key, i]));
   const marks = notes().map((nt, k) => [nt, at.get(noteKey(nt.t)), k]).filter(([, i]) => i !== undefined);
   return `<svg class="ad-line" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Visitors ${hourly() ? `per hour over ${ds.length} hours` : `per day over ${ds.length} days`}: ${ds.reduce((t, d) => t + d.fresh, 0)} unique">
     <line class="ad-axis" x1="0" y1="${H}" x2="${W}" y2="${H}"></line>
-    ${span === 7 ? ds.map((d, i) => (i && d.key.endsWith(' 00') && x(i) < W - 60 ? `<line class="ad-midnight" x1="${x(i)}" y1="0" x2="${x(i)}" y2="${H}"></line><text x="${x(i) + 4}" y="${H + 16}">${new Date(d.key.slice(0, 10)).toLocaleDateString('en-GB', { weekday: 'short' })}</text>` : '')).join('') : ''}
+    ${span === 7 || span === 30 ? ds.map((d, i) => { const date = new Date(d.key.slice(0, 10)); // a midnight each day in 1W, each Monday in 1M
+      return i && d.key.endsWith(' 00') && x(i) < W - 60 && (span === 7 || date.getDay() === 1) ? `<line class="ad-midnight" x1="${x(i)}" y1="0" x2="${x(i)}" y2="${H}"></line><text x="${x(i) + 4}" y="${H + 16}">${date.toLocaleDateString('en-GB', span === 7 ? { weekday: 'short' } : { day: 'numeric', month: 'short' })}</text>` : ''; }).join('') : ''}
     ${marks.map(([nt, i]) => `<g class="ad-note"><line x1="${x(i)}" y1="6" x2="${x(i)}" y2="${H}"></line><circle cx="${x(i)}" cy="6" r="4"></circle></g>`).join('')}
-    <polygon class="ad-area" points="0,${H} ${line('fresh')} ${W},${H}"></polygon><polyline points="${line('visitors')}"></polyline>
+    <path class="ad-area" d="${curve(pts('fresh'))}L${W},${H}L0,${H}Z"></path><path class="ad-curve" d="${curve(pts('visitors'))}"></path>
     <line class="ad-cross" x1="0" y1="0" x2="0" y2="${H}" visibility="hidden"></line><circle class="ad-dot" r="4" visibility="hidden"></circle>
     <text x="0" y="${H + 16}">${span === 'today' ? '00:00' : day(ds[0].key.slice(0, 10))}</text><text x="${W}" y="${H + 16}" text-anchor="end">${hourly() ? 'Now' : 'Today'}</text><text x="4" y="12">${top}</text></svg>
     <div class="ad-tip" hidden></div>
@@ -124,10 +139,10 @@ function bindLine(body) {
   const ds = spanPoints(body), box = $('#ad-line');
   box.innerHTML = visitorLine(ds);
   const svg = box.querySelector('svg'), cross = svg.querySelector('.ad-cross'), dot = svg.querySelector('.ad-dot'), tip = box.querySelector('.ad-tip');
-  const top = Math.max(1, ...ds.map((d) => d.visitors));
+  const top = Math.max(1, Math.ceil(Math.max(...ds.map((d) => d.drawn))));
   svg.addEventListener('pointermove', (e) => {
     const r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(ds.length - 1, Math.round(((e.clientX - r.left) / r.width) * (ds.length - 1)))), d = ds[i];
-    const cx = (i / (ds.length - 1)) * W, cy = H - (d.visitors / top) * (H - 10);
+    const cx = (i / (ds.length - 1)) * W, cy = H - (d.drawn / top) * (H - 10);
     cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.setAttribute('visibility', 'visible');
     dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('visibility', 'visible');
     const here = notes().filter((nt) => noteKey(nt.t) === d.key);
@@ -317,7 +332,7 @@ function demoData() {
   const count = (xs) => Object.entries(xs.reduce((m, x) => ({ ...m, [x]: (m[x] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([name, n]) => ({ name, n }));
   const sum = (n, k) => perDay.slice(-n).reduce((t, d) => t + d[k], 0), events = visitors.flatMap((v) => v.events);
   const registered = [...new Set(visitors.map((v) => v.name).filter(Boolean))];
-  const perHour = Array.from({ length: 168 }, (_, k) => { const t = now - k * 36e5, f = Math.round(4 * Math.max(0, Math.sin(((Number(hourKey(t).slice(-2)) - 7) / 16) * Math.PI)) * (0.5 + rnd()));
+  const perHour = Array.from({ length: 720 }, (_, k) => { const t = now - k * 36e5, f = Math.round(4 * Math.max(0, Math.sin(((Number(hourKey(t).slice(-2)) - 7) / 16) * Math.PI)) * (0.5 + rnd()));
     return { hour: hourKey(t), fresh: f, visitors: Math.round(f * (1.5 + rnd())), views: Math.round(f * (5 + rnd() * 3)) }; });
   const hours = Array.from({ length: 24 }, (_, h) => Math.round(40 + 120 * Math.max(0, Math.sin(((h - 7) / 16) * Math.PI)) * (0.8 + rnd() * 0.4)));
   return {
