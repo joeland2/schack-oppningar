@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030113534';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030113534';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030113534';
-import { GUIDE } from './guide.js?v=20261030113534';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030113534';
-import { maia3Move } from './maia3.js?v=20261030113534';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030113534';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030113534';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030113534';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030113700';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030113700';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030113700';
+import { GUIDE } from './guide.js?v=20261030113700';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030113700';
+import { maia3Move } from './maia3.js?v=20261030113700';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030113700';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030113700';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030113700';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1122,8 +1122,8 @@ function renderControls() {
   $('#step-back').disabled = !game.history().length || view === 0;
   $('#step-fwd').disabled = view === null && !(mode === 'explore' && redo.length) && !(mode === 'learn' && !playing && ply < line.length && userTurn());
   $('#hint').disabled = !userTurn();
-  // The filled button is for going on (Next line, Try again, Next trap); Restart in the middle of a line is quiet.
-  $('#restart').classList.toggle('primary', $('#restart').textContent !== 'Restart');
+  // One look for the button under the board in every mode, whatever it says (Restart, Try again, Next line).
+  $('#restart').classList.remove('primary');
   $('#show').disabled = !userTurn();
   $('#hint').hidden = $('#show').hidden = mode === 'explore' || mode === 'time';
 }
@@ -2719,7 +2719,7 @@ function tryMove(from, to) {
     // The board stays with the right move as an arrow until you choose to go again.
     clearInterval(trial.timer); trial.end = null; trial.left = 0; $('#trial-clock').classList.remove('waiting');
     say(`Not ${m.san}: the arrow shows ${want}. ${plural(trial.score, 'move')} right${record ? ', a new best' : ''}.`, 'bad');
-    $('#restart').textContent = 'Try again'; $('#restart').classList.add('primary');
+    $('#restart').textContent = 'Try again';
     return true;
   }
   if (mode === 'time') { runTrial(); trial.end += TRIAL_RIGHT * 1000; trial.score++; trialFlash(`+${TRIAL_RIGHT} s`, true); }
@@ -2880,7 +2880,6 @@ function finish() {
   renderLines();
   renderLineBox();
   $('#restart').textContent = trapRun ? 'Next trap' : mode === 'try' && (misses || assisted) ? 'Try again' : 'Next line';
-  $('#restart').classList.add('primary');
   const on = 'Play on if you like: the arrow shows a good next move.';
   if (mode === 'learn') say(`Line learned. ${on} Or press Next line, or switch to Practice to play it from memory.`, 'good');
   else if (assisted) say(`Line done. You switched to Practice on the way, so it does not count as cleared: press Try again to play it from the start. ${on}`, 'good');
@@ -3110,8 +3109,6 @@ document.addEventListener('keydown', (e) => {
 });
 
 $('#restart').addEventListener('click', () => {
-  // Starting over in the middle of a line throws the moves away, so it asks first.
-  if ($('#restart').textContent === 'Restart' && ply > 0 && ply < line.length && !confirm('Start this line again from the first move?')) return;
   if (trapRun) return nextTrap();
   if (!lines.length) return start(cur);
   if (mode === 'time') { wrongSq = null; return startTrial(); }
