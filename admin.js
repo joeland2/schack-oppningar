@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261030124216';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261030124216';
+import { account, login, finishLogin } from './lichess.js?v=20261030130409';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261030130409';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -78,30 +78,47 @@ const land = (c) => { try { return c && c !== '–' ? `${NAMES.of(c)} (${c})` : 
 const KIND = { profile: 'Looked up a profile', compare: 'Comparisons', analyse: 'Analysed', practise: 'Openings practised', card: 'Cards downloaded', login: 'Lichess logins' };
 
 // Visitors per day (each counted once that day) as a line, and unique visitors (their first visit
-// ever) as the shaded area under it, over the picked span; days without visits are zero. Moving the
-// mouse along the graph shows that day's numbers.
-const SPANS = [['1W', 7], ['1M', 30], ['6M', 182], ['1Y', 365], ['All', Infinity]];
+// ever) as the shaded area under it, over the picked span; Today is per hour, from midnight to now.
+// Days without visits are zero. Moving the mouse along the graph shows that point's numbers and notes.
+const SPANS = [['Today', 'today'], ['1W', 7], ['1M', 30], ['6M', 182], ['1Y', 365], ['All', Infinity]];
 let span = 30;
 const W = 760, H = 180;
-function spanDays(perDay) {
-  const by = new Map(perDay.map((d) => [d.day, d])), n = Number.isFinite(span) ? span : Math.max(perDay.length, 2), out = [];
-  const iso = (t) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm' }).format(new Date(t));
-  for (let i = n - 1; i >= 0; i--) { const k = iso(Date.now() - i * 864e5); out.push(by.get(k) || { day: k, fresh: 0, visitors: 0, views: 0 }); }
+const TZ = 'Europe/Stockholm';
+const dayKey = (t) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }).format(new Date(t));
+const hourKey = (t) => `${dayKey(t)} ${new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', hourCycle: 'h23' }).format(new Date(t))}`;
+// The span's points, oldest first: { key, label, fresh, visitors, views }.
+function spanPoints(body) {
+  const zero = { fresh: 0, visitors: 0, views: 0 };
+  if (span === 'today') {
+    const by = new Map((body.perHour || []).map((d) => [d.hour, d])), today = dayKey(Date.now()), now = Number(hourKey(Date.now()).slice(-2));
+    return Array.from({ length: Math.max(now + 1, 2) }, (_, h) => { const key = `${today} ${String(h).padStart(2, '0')}`;
+      return { ...zero, ...by.get(key), key, label: `${String(h).padStart(2, '0')}:00–${String(h + 1).padStart(2, '0')}:00` }; });
+  }
+  const by = new Map(body.perDay.map((d) => [d.day, d])), n = Number.isFinite(span) ? span : Math.max(body.perDay.length, 2), out = [];
+  for (let i = n - 1; i >= 0; i--) { const key = dayKey(Date.now() - i * 864e5); out.push({ ...zero, ...by.get(key), key, label: day(key) }); }
   return out;
 }
+// Notes on the graph (what was done when: "posted on Reddit"), kept with the admin's account (header.js syncs the key).
+const NOTES_KEY = 'chess-trainer-admin-notes';
+const notes = () => { try { return JSON.parse(localStorage.getItem(NOTES_KEY)) || []; } catch { return []; } };
+const saveNotes = (xs) => { try { localStorage.setItem(NOTES_KEY, JSON.stringify(xs.sort((a, b) => a.t - b.t))); } catch {} };
+const noteKey = (t) => (span === 'today' ? hourKey(t) : dayKey(t));
 function visitorLine(ds) {
   const top = Math.max(1, ...ds.map((d) => d.visitors)), x = (i) => (i / (ds.length - 1)) * W, y = (v) => H - (v / top) * (H - 10);
   const line = (k) => ds.map((d, i) => `${x(i).toFixed(1)},${y(d[k]).toFixed(1)}`).join(' ');
-  return `<svg class="ad-line" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Visitors per day over ${ds.length} days: ${ds.reduce((t, d) => t + d.fresh, 0)} unique">
+  const at = new Map(ds.map((d, i) => [d.key, i]));
+  const marks = notes().map((nt, k) => [nt, at.get(noteKey(nt.t)), k]).filter(([, i]) => i !== undefined);
+  return `<svg class="ad-line" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Visitors ${span === 'today' ? 'per hour today' : `per day over ${ds.length} days`}: ${ds.reduce((t, d) => t + d.fresh, 0)} unique">
     <line class="ad-axis" x1="0" y1="${H}" x2="${W}" y2="${H}"></line>
+    ${marks.map(([nt, i]) => `<g class="ad-note"><line x1="${x(i)}" y1="6" x2="${x(i)}" y2="${H}"></line><circle cx="${x(i)}" cy="6" r="4"></circle></g>`).join('')}
     <polygon class="ad-area" points="0,${H} ${line('fresh')} ${W},${H}"></polygon><polyline points="${line('visitors')}"></polyline>
     <line class="ad-cross" x1="0" y1="0" x2="0" y2="${H}" visibility="hidden"></line><circle class="ad-dot" r="4" visibility="hidden"></circle>
-    <text x="0" y="${H + 16}">${day(ds[0].day)}</text><text x="${W}" y="${H + 16}" text-anchor="end">Today</text><text x="4" y="12">${top}</text></svg>
+    <text x="0" y="${H + 16}">${span === 'today' ? '00:00' : day(ds[0].key)}</text><text x="${W}" y="${H + 16}" text-anchor="end">${span === 'today' ? 'Now' : 'Today'}</text><text x="4" y="12">${top}</text></svg>
     <div class="ad-tip" hidden></div>
-    <p class="ad-key"><span class="ad-k-line"></span>Visitors <span class="ad-k-area"></span>Unique (first visit)</p>`;
+    <p class="ad-key"><span class="ad-k-line"></span>Visitors <span class="ad-k-area"></span>Unique (first visit) <span class="ad-k-note"></span>Note</p>`;
 }
-function bindLine(perDay) {
-  const ds = spanDays(perDay), box = $('#ad-line');
+function bindLine(body) {
+  const ds = spanPoints(body), box = $('#ad-line');
   box.innerHTML = visitorLine(ds);
   const svg = box.querySelector('svg'), cross = svg.querySelector('.ad-cross'), dot = svg.querySelector('.ad-dot'), tip = box.querySelector('.ad-tip');
   const top = Math.max(1, ...ds.map((d) => d.visitors));
@@ -110,12 +127,24 @@ function bindLine(perDay) {
     const cx = (i / (ds.length - 1)) * W, cy = H - (d.visitors / top) * (H - 10);
     cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.setAttribute('visibility', 'visible');
     dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('visibility', 'visible');
+    const here = notes().filter((nt) => noteKey(nt.t) === d.key);
     tip.hidden = false;
-    tip.innerHTML = `<b>${day(d.day)}</b><br>${d.visitors} visitor${d.visitors === 1 ? '' : 's'} · ${d.fresh} unique<br><small>${d.views} page views</small>`;
+    tip.innerHTML = `<b>${d.label}</b><br>${d.visitors} visitor${d.visitors === 1 ? '' : 's'} · ${d.fresh} unique<br><small>${d.views} page views</small>${here.map((nt) => `<br><span class="ad-tip-note">${esc(nt.text)}</span>`).join('')}`;
     const px = (cx / W) * r.width;
     tip.style.left = `${Math.min(Math.max(px, 60), r.width - 60)}px`;
   });
   svg.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.hidden = true; });
+  renderNotes(body);
+}
+// The notes under the graph: when and what, newest first; add one (now, or any time) or remove one.
+function renderNotes(body) {
+  const el = $('#ad-notes'), when = (t) => new Date(t).toLocaleString('en-GB', { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const local = (t) => { const d = new Date(t - new Date(t).getTimezoneOffset() * 6e4); return d.toISOString().slice(0, 16); };
+  el.innerHTML = `<form class="ad-note-form"><input name="text" required maxlength="80" placeholder="What did you do? e.g. Posted on r/lichess" aria-label="Note"><input name="at" type="datetime-local" value="${local(Date.now())}" aria-label="When"><button type="submit" class="cta">Add note</button></form>
+    ${notes().length ? `<ul class="ad-note-list">${notes().slice().reverse().map((nt) => `<li><span>${when(nt.t)}</span><b>${esc(nt.text)}</b><button type="button" data-note="${nt.t}" aria-label="Remove the note ${esc(nt.text)}">×</button></li>`).join('')}</ul>` : ''}`;
+  el.querySelector('form').onsubmit = (e) => { e.preventDefault(); const f = e.target, t = Date.parse(f.at.value) || Date.now();
+    saveNotes([...notes(), { t, text: f.text.value.trim() }]); bindLine(body); };
+  el.onclick = (e) => { const b = e.target.closest('[data-note]'); if (b) { saveNotes(notes().filter((nt) => nt.t !== Number(b.dataset.note))); bindLine(body); } };
 }
 const rows = (list, label = (x) => esc(x.name)) => (list.length
   ? `<ul class="pf-rows ad-rows">${list.map((x) => `<li><span>${label(x)}</span><small>${x.n}</small></li>`).join('')}</ul>`
@@ -151,7 +180,7 @@ function render(s) {
       <div><dt>Profiles created</dt><dd>${t.registered}</dd><small>logged in with Lichess</small></div>
     </dl>
     <section class="pf-card"><div class="ad-head"><h2>Visitors</h2><div class="seg" role="group" aria-label="Time span" id="ad-span">${SPANS.map(([l, n]) => `<button type="button" data-span="${n}" aria-pressed="${n === span}">${l}</button>`).join('')}</div></div>
-      <div id="ad-line" class="ad-line-box"></div></section>
+      <div id="ad-line" class="ad-line-box"></div><div id="ad-notes" class="ad-notes"></div></section>
     <section class="pf-card"><div class="ad-head"><h2>Unique visitors · ${s.visitors.length}</h2><small>Every visitor once, newest first. IP addresses without their last part. Click one to see what they did.</small></div>
       ${s.visitors.length ? `<div class="ad-visitors"><div class="ad-v-head"><span>Location</span><span>IP</span><span>Lichess</span><span>Device</span><span>Visits</span><span>Last seen</span></div>${s.visitors.map((v) => `<details class="ad-visitor"><summary>
           <span class="ad-v-where">${flag(v.country)}${esc(v.country ? land(v.country).replace(/ \(..\)$/, '') : 'Unknown')}${v.city ? ` · ${esc(v.city)}` : ''}</span>
@@ -242,9 +271,9 @@ function bindCards(body) {
 function show(body) {
   render(body);
   bindCards(body);
-  bindLine(body.perDay);
-  $('#ad-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = Number(b.dataset.span);
-    $('#ad-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body.perDay); });
+  bindLine(body);
+  $('#ad-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = b.dataset.span === 'today' ? 'today' : Number(b.dataset.span);
+    $('#ad-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body); });
   // The visitor list shows the newest 10 until opened.
   $('[data-more]')?.addEventListener('click', (e) => { const b = e.currentTarget, open = $('.ad-visitors').classList.toggle('open');
     b.setAttribute('aria-expanded', open); b.textContent = open ? 'Show the newest 10' : `Show all ${body.visitors.length}`; });
@@ -285,12 +314,14 @@ function demoData() {
   const count = (xs) => Object.entries(xs.reduce((m, x) => ({ ...m, [x]: (m[x] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([name, n]) => ({ name, n }));
   const sum = (n, k) => perDay.slice(-n).reduce((t, d) => t + d[k], 0), events = visitors.flatMap((v) => v.events);
   const registered = [...new Set(visitors.map((v) => v.name).filter(Boolean))];
+  const perHour = Array.from({ length: 48 }, (_, k) => { const t = now - k * 36e5, f = Math.round(4 * Math.max(0, Math.sin(((Number(hourKey(t).slice(-2)) - 7) / 16) * Math.PI)) * (0.5 + rnd()));
+    return { hour: hourKey(t), fresh: f, visitors: Math.round(f * (1.5 + rnd())), views: Math.round(f * (5 + rnd() * 3)) }; });
   const hours = Array.from({ length: 24 }, (_, h) => Math.round(40 + 120 * Math.max(0, Math.sin(((h - 7) / 16) * Math.PI)) * (0.8 + rnd() * 0.4)));
   return {
     demo: true, days: 30,
     totals: { today: perDay.at(-1).visitors, newToday: perDay.at(-1).fresh, week: Math.round(sum(7, 'visitors') * 0.6), new7: sum(7, 'fresh'), month: Math.round(sum(30, 'visitors') * 0.5), new30: sum(30, 'fresh'),
       all: sum(DAYS, 'fresh'), views: sum(DAYS, 'views'), mobile: visitors.filter((v) => /iPhone|Android/.test(v.device)).length / visitors.length, loggedIn: registered.length, registered: registered.length * 6 },
-    perDay,
+    perDay, perHour,
     pages: count(events.filter((e) => e.kind === 'view').map((e) => e.page)).map((x) => ({ ...x, n: x.n * 9, unique: x.n * 3 })),
     sources: count(visitors.map((v) => v.source)), countries: count(visitors.map((v) => v.country)), cities: count(visitors.map((v) => `${v.city}, ${v.country}`)), devices: count(visitors.map((v) => v.device)),
     hours, weekdays: [520, 480, 470, 500, 560, 760, 720],

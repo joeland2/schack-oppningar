@@ -74,6 +74,12 @@ Deno.serve(async (req) => {
   for (const r of views) { const d = days[day(r.at)]; if (d) { d.views++; d.visitors.add(r.visitor); } }
   for (const w of visitors) { const d = days[day(w.first)]; if (d) d.fresh++; }
   const today = day(new Date().toISOString());
+  // The last two days per hour (Swedish time, keys 'YYYY-MM-DD HH'), for the graph's Today.
+  const hourOf = (iso: string) => `${day(iso)} ${new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', hourCycle: 'h23' }).format(new Date(iso))}`;
+  const hours48: Record<string, { fresh: number; visitors: Set<string>; views: number }> = {};
+  const lately = (iso: string) => Date.now() - Date.parse(iso) < 2 * 864e5;
+  for (const r of views) if (lately(r.at)) { const h = hours48[hourOf(r.at)] ??= { fresh: 0, visitors: new Set(), views: 0 }; h.views++; h.visitors.add(r.visitor); }
+  for (const w of visitors) if (lately(w.first)) (hours48[hourOf(w.first)] ??= { fresh: 0, visitors: new Set(), views: 0 }).fresh++;
   // Visitors in the last n days: each counted once (seen at all), and unique ones (their very first visit).
   const seenIn = (n: number) => new Set(views.filter((r) => Date.now() - Date.parse(r.at) < n * 864e5).map((r) => r.visitor)).size;
   const newIn = (n: number) => visitors.filter((w) => Date.now() - Date.parse(w.first) < n * 864e5).length;
@@ -100,6 +106,7 @@ Deno.serve(async (req) => {
       mobile: recentVisitors.length ? mobile / recentVisitors.length : 0, loggedIn: Object.keys(logins).length,
     },
     perDay: Object.entries(days).map(([d, x]) => ({ day: d, fresh: x.fresh, visitors: x.visitors.size, views: x.views })),
+    perHour: Object.entries(hours48).map(([h, x]) => ({ hour: h, fresh: x.fresh, visitors: x.visitors.size, views: x.views })),
     pages: count(recentViews.map((r) => r.page)).map((x) => ({ ...x, unique: visitorsIn(recentViews.filter((r) => r.page === x.name)) })),
     sources: unique(recent.filter((r) => r.source), (r) => r.source),
     countries: count(recentVisitors.map((w) => w.country ?? '–')),

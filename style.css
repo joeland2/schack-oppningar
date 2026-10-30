@@ -2150,3 +2150,17 @@ main.profile:has(#admin) { max-width: 1320px; }
 .line-board li.me { background: var(--raised); }
 .line-board li:first-child b { color: #4fb8e0; }
 .line-board .info { margin: 6px 0 0; font-size: 13px; }
+.ad-line .ad-note line { stroke: var(--good); stroke-width: 1.5; stroke-dasharray: 2 3; }
+.ad-line .ad-note circle { fill: var(--good); }
+.ad-k-note { width: 10px; height: 10px; margin-left: 10px; border-radius: 50%; background: var(--good); }
+.ad-tip-note { color: var(--good); font-weight: 600; }
+.ad-notes { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.ad-note-form { display: flex; flex-wrap: wrap; gap: 8px; }
+.ad-note-form input { font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; color-scheme: dark light; }
+.ad-note-form input[name=text] { flex: 1 1 260px; min-width: 0; }
+.ad-note-list { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.ad-note-list li { display: flex; align-items: baseline; gap: 12px; padding: 5px 0; font-size: 13px; border-bottom: 1px solid var(--line); }
+.ad-note-list li span { width: 9.5em; flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ad-note-list li b { flex: 1; min-width: 0; font-weight: 600; }
+.ad-note-list button { border: 0; background: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 4px; }
+.ad-note-list button:hover { color: var(--bad); }
