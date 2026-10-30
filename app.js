@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030091004';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030091004';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030091004';
-import { GUIDE } from './guide.js?v=20261030091004';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030091004';
-import { maia3Move } from './maia3.js?v=20261030091004';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030091004';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030091004';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261030091004';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030091518';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030091518';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030091518';
+import { GUIDE } from './guide.js?v=20261030091518';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030091518';
+import { maia3Move } from './maia3.js?v=20261030091518';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030091518';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030091518';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261030091518';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3384,6 +3384,16 @@ if (!account()) fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/lea
     const r = rows.find((x) => x.name.toLowerCase() === a.dataset.p);
     if (r) a.innerHTML = `${pcard(r)}<span class="hero-r">${esc(a.dataset.lvl)}</span>`;
   });
+  // More players after the three, from every level in turn, so the row runs from edge to edge on any
+  // screen (CSS shows as many as fit in one row).
+  const shown = new Set([...document.querySelectorAll('.hero-p[data-p]')].map((a) => a.dataset.p));
+  const lvl = (x) => (x < 1000 ? 'Beginner' : x < 1600 ? 'Club player' : x < 2000 ? 'Strong' : x < 2400 ? 'Expert' : x < 2700 ? 'Master' : 'World class');
+  const more = rows.filter((x) => x.rating && x.skills && !shown.has(x.name.toLowerCase())).sort((a, b) => a.rating - b.rating);
+  const step = Math.max(1, Math.floor(more.length / 12));
+  const picked = more.filter((_, k) => k % step === 0).slice(0, 12);
+  const mixed = picked.map((_, k) => picked[k % 2 ? Math.floor(k / 2) : picked.length - 1 - Math.floor(k / 2)]); // strongest, weakest, next strongest…
+  $('.hero-ex').insertAdjacentHTML('beforeend', mixed
+    .map((x) => `<a class="hero-p" href="profile.html?u=${encodeURIComponent(x.name)}">${pcard(x)}<span class="hero-r">${lvl(x.rating)}</span></a>`).join(''));
 }).catch(() => {});
 
 // ---------- Lichess login ----------

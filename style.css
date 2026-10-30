@@ -198,7 +198,8 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .hero-search input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .hero-search .cta { padding-inline: 20px; font-size: 16px; white-space: nowrap; }
 .hero[hidden] { display: none; }
-.hero-ex { display: flex; gap: 22px; margin-top: 28px; }
+/* One row of cards from edge to edge: as many columns as fit, the rest of the cards hidden below */
+.hero-ex { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); grid-template-rows: auto; grid-auto-rows: 0; row-gap: 0; column-gap: 18px; overflow: hidden; margin-top: 28px; }
 .hero-p { display: grid; justify-items: start; gap: 8px; color: var(--ink); text-decoration: none; }
 .hero-p > b { font: 400 22px/1.05 var(--font-poster); text-transform: uppercase; } /* before the cards arrive */
 .hero-p .pf-pcard { zoom: .7; box-shadow: none; transition: transform .2s cubic-bezier(.2, .8, .2, 1); }
@@ -207,7 +208,7 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 @media (max-width: 560px) {
   .hero-search { flex-direction: column; } .hero-search .cta { padding-block: 12px; }
   /* Three whole cards across the phone */
-  .hero-ex { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .hero-ex { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 8px; }
   .hero-p { min-width: 0; gap: 4px; } .hero-p .pf-pcard { zoom: .35; } .hero-r { font-size: 11px; line-height: 1.3; }
 }
 
