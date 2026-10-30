@@ -139,3 +139,59 @@ addEventListener('DOMContentLoaded', () => {
   }
   pull();
 })();
+
+// Player search in the top row: while you type, up to three players you opened before (kept with your
+// account), then real Lichess names that start with what you typed.
+(() => {
+  const form = document.querySelector('.top-search'), input = form?.querySelector('input[name=u]');
+  const KEY = 'opening-book-v2-recent-players';
+  const recent = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } };
+  const q = new URLSearchParams(location.search);
+  if (/profile\.html$/.test(location.pathname) && q.get('u') && !q.has('vs')) {
+    const u = q.get('u');
+    try { localStorage.setItem(KEY, JSON.stringify([u, ...recent().filter((x) => x.toLowerCase() !== u.toLowerCase())].slice(0, 20))); } catch {}
+  }
+  if (!input) return;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+  const list = document.createElement('ul');
+  list.className = 'top-suggest'; list.id = 'top-suggest'; list.role = 'listbox'; list.hidden = true;
+  form.append(list);
+  input.setAttribute('aria-controls', 'top-suggest'); input.setAttribute('aria-autocomplete', 'list');
+  let items = [], at = -1, seq = 0;
+  const go = (name) => { location.href = `profile.html?u=${encodeURIComponent(name)}`; };
+  const draw = () => {
+    list.hidden = !items.length;
+    list.innerHTML = items.map((x, i) => `${!i || x.kind !== items[i - 1].kind ? `<li class="top-suggest-k" role="presentation">${x.kind === 'recent' ? 'Opened before' : 'On Lichess'}</li>` : ''}
+      <li role="option" id="ts-${i}" data-i="${i}" aria-selected="${i === at}">${x.title ? `<b class="ts-title">${esc(x.title)}</b> ` : ''}${esc(x.name)}${x.online ? '<i class="ts-on" title="Online"></i>' : ''}</li>`).join('');
+    input.setAttribute('aria-expanded', String(!list.hidden));
+    if (at >= 0) input.setAttribute('aria-activedescendant', `ts-${at}`); else input.removeAttribute('aria-activedescendant');
+  };
+  let timer = 0;
+  const update = () => {
+    const t = input.value.trim().toLowerCase(), mine = ++seq;
+    const old = recent().filter((x) => !t || x.toLowerCase().includes(t)).slice(0, 3).map((name) => ({ name, kind: 'recent' }));
+    items = old; at = -1; draw();
+    clearTimeout(timer);
+    if (t.length < 3) return;
+    timer = setTimeout(async () => {
+      try {
+        const r = await fetch(`https://lichess.org/api/player/autocomplete?term=${encodeURIComponent(t)}&object=true`);
+        const found = r.ok ? (await r.json()).result || [] : [];
+        if (mine !== seq) return;
+        const seen = new Set(old.map((x) => x.name.toLowerCase()));
+        items = [...old, ...found.filter((p) => !seen.has(p.name.toLowerCase())).slice(0, 7).map((p) => ({ name: p.name, title: p.title, online: p.online, kind: 'lichess' }))];
+        draw();
+      } catch {}
+    }, 200);
+  };
+  input.addEventListener('input', update);
+  input.addEventListener('focus', update);
+  input.addEventListener('blur', () => setTimeout(() => { list.hidden = true; input.setAttribute('aria-expanded', 'false'); }, 150));
+  input.addEventListener('keydown', (e) => {
+    if (list.hidden || !items.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const n = items.length + 1; at = (at + 1 + (e.key === 'ArrowDown' ? 1 : -1) + n) % n - 1; draw(); }
+    else if (e.key === 'Enter' && at >= 0) { e.preventDefault(); go(items[at].name); }
+    else if (e.key === 'Escape') { list.hidden = true; at = -1; }
+  });
+  list.addEventListener('mousedown', (e) => { const li = e.target.closest('[data-i]'); if (li) { e.preventDefault(); go(items[+li.dataset.i].name); } });
+})();
