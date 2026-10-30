@@ -2064,3 +2064,11 @@ main.profile:has(#admin) { max-width: 1320px; }
 .go-close { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: none; color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer; }
 .go-close:hover, .go-close:focus-visible { color: var(--ink); border-color: var(--ink); }
 .go-card .go-grid { grid-template-columns: auto 1fr 1fr 1fr; }
+/* The three ways in: the text wraps inside its box (no overflow), and hovering one rings it in the colour
+   of the star it gives: green for Learn, gold for Practice, diamond blue for Time */
+.path-step { min-width: 0; }
+.path-step > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.path-step b, .path-step small { line-height: 1.2; white-space: normal; } /* "Time challenge" wraps in a narrow panel */
+#mode-learn:hover, #mode-learn:focus-visible { border-color: var(--good); box-shadow: 0 0 0 1px var(--good); }
+#mode-try:hover, #mode-try:focus-visible { border-color: #e0b23a; box-shadow: 0 0 0 1px #e0b23a; }
+#mode-time:hover, #mode-time:focus-visible { border-color: #4fb8e0; box-shadow: 0 0 0 1px #4fb8e0, 0 0 10px rgb(120 220 255 / .35); }
