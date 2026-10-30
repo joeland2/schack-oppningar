@@ -2133,3 +2133,9 @@ main.profile:has(#admin) { max-width: 1320px; }
 .star-fly .line-star { width: 100%; height: auto; aspect-ratio: 1; stroke-width: .8; filter: drop-shadow(0 0 18px rgb(120 220 255 / .8)); }
 .star-fly b { font: 400 34px/1 var(--font-poster); text-transform: uppercase; letter-spacing: .03em; color: #bdf0ff; white-space: nowrap; text-shadow: 0 2px 12px rgb(0 0 0 / .6); }
 .star-fly-glow { position: absolute; inset: -45% -60%; z-index: -1; background: radial-gradient(closest-side, rgb(8 18 28 / .85), rgb(8 18 28 / .5) 55%, transparent); }
+.hint-tip { position: absolute; bottom: calc(100% + 8px); transform: translateX(-50%); z-index: 20; padding: 7px 11px; border-radius: var(--radius); background: var(--ink); color: var(--bg); font-size: 13px; font-weight: 600; white-space: nowrap; pointer-events: none; animation: hint-tip .2s ease-out; }
+.hint-tip::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border: 5px solid transparent; border-top-color: var(--ink); }
+@keyframes hint-tip { from { opacity: 0; transform: translate(-50%, 4px); } }
+#trainer .controls { position: relative; }
+.star-fly.green .line-star { filter: drop-shadow(0 0 18px rgb(95 196 138 / .8)); } .star-fly.green b { color: #8fe0b0; }
+.star-fly.gold .line-star { filter: drop-shadow(0 0 18px rgb(232 194 90 / .85)); } .star-fly.gold b { color: #f3d27a; }

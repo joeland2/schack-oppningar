@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030122707';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030122707';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030122707';
-import { GUIDE } from './guide.js?v=20261030122707';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030122707';
-import { maia3Move } from './maia3.js?v=20261030122707';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030122707';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030122707';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030122707';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030122943';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030122943';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030122943';
+import { GUIDE } from './guide.js?v=20261030122943';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030122943';
+import { maia3Move } from './maia3.js?v=20261030122943';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030122943';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030122943';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030122943';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1125,7 +1125,8 @@ function renderControls() {
   // One look for the button under the board in every mode, whatever it says (Restart, Try again, Next line).
   $('#restart').classList.remove('primary');
   $('#show').disabled = !userTurn();
-  $('#hint').hidden = $('#show').hidden = mode === 'explore' || mode === 'time';
+  $('#hint').hidden = mode === 'explore';
+  $('#show').hidden = mode === 'explore' || mode === 'time' || mode === 'try'; // from memory means no move shown
 }
 
 // ---------- Move explanations ----------
@@ -1217,6 +1218,7 @@ function showGo(on) {
 }
 function askGo() {
   goAsked = true;
+  if (flying) { const f = flying, gen = gameGen; flying = null; return void f.then(() => { if (gen === gameGen) askGo(); }); }
   trackDone();
   // Every way on is here, Next line first, so nothing outside the card is needed.
   const done = mode === 'try' && !misses && !assisted ? 'Line cleared' : mode === 'try' ? 'Line done' : 'Line learned';
@@ -1609,7 +1611,7 @@ function play(i, again = false) {
   punish = 0; punishDone = false; endLen = 0; assisted = false;
   closeMoment();
   $('#op-more').open = mode === 'learn' && i === 0; // the opening's story goes with its first line
-  misses = again ? misses : 0; missesHere = 0; busy = false; shownFree = false;
+  misses = again ? misses : 0; missesHere = 0; busy = false; hintUsed = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
   playing = false; opponent = saidOpponent = null;
   premove = null; notes = []; betters = []; lineDone = ''; view = null;
@@ -2839,17 +2841,20 @@ function guide() {
 // A line played through, for the admin page: which openings people finish, and in which mode
 // (the opening was counted when it was opened, as 'practise' with its name alone).
 const trackDone = () => cur && window.track?.('practise', `done ${mode} · ${cur.side === 'b' ? 'Black' : 'White'}: ${(isVs(cur) ? 'vs ' : '') + cur.name}`);
-// A line's first diamond star: shown big in the middle of the screen, then it flies into its place in
-// the lines list (where it stays hidden until it lands). With reduced motion, or no list in sight, no show.
-function diamondFly(i) {
-  const to = $(`#lines-list .line-btn[data-i="${i}"] .line-star.diamond`);
+// A star a line has just earned (green in Learn, gold in Practice, diamond in Time): shown big in the
+// middle of the screen, then it flies into its place in the lines list (hidden there until it lands).
+// With reduced motion, no show.
+const STAR_WORD = { green: 'Green star', gold: 'Gold star', diamond: 'Diamond star' };
+let flying = null; // the star on its way: the end card waits for it
+function starFly(i, kind) {
+  const to = $(`#lines-list .line-btn[data-i="${i}"] .line-star.${kind}`);
   if (!to || REDUCE_MOTION) return Promise.resolve();
   to.scrollIntoView({ block: 'nearest' });
   const r = to.getBoundingClientRect(), size = Math.min(240, innerWidth * .55), cx = innerWidth / 2, cy = innerHeight / 2;
   const seen = r.width > 0 && r.bottom > 0 && r.top < innerHeight;
   const big = document.createElement('div');
-  big.className = 'star-fly';
-  big.innerHTML = `<svg class="line-star diamond" viewBox="0 0 24 24" aria-hidden="true">${to.querySelector('path').outerHTML}</svg><b>Diamond star</b><i class="star-fly-glow"></i>`;
+  big.className = `star-fly ${kind}`;
+  big.innerHTML = `<svg class="line-star ${kind}" viewBox="0 0 24 24" aria-hidden="true">${to.querySelector('path').outerHTML}</svg><b>${STAR_WORD[kind]}</b><i class="star-fly-glow"></i>`;
   big.style.cssText = `left:${cx - size / 2}px;top:${cy - size / 2}px;width:${size}px`;
   document.body.append(big);
   to.style.visibility = 'hidden';
@@ -2889,7 +2894,7 @@ function finish() {
       ${opt('learn', 'Learn the next line', 'Every move shown, with arrows')}
       ${opt('try', 'Practise the next line', 'From memory, without the clock')}</div>`;
     const ask = () => { if (mode === 'time') { showGo(true); confetti(misses ? 50 : 110); $('#go-ask button')?.focus(); } };
-    return setTimeout(() => (firstDiamond ? diamondFly(lineIdx).then(ask) : ask()), 300); }
+    return setTimeout(() => (firstDiamond ? starFly(lineIdx, 'diamond').then(ask) : ask()), 300); }
   // A mate in 10 or less for you at the line's end is played out too, before the line is done. That
   // needs Stockfish's verdict, so wait for it (the board waits with you).
   const key = evalKey(game.fen());
@@ -2909,12 +2914,15 @@ function finish() {
   }
   endLen = game.history().length;
   const s = stats[statKey(cur.id)];
-  const k = lineKey(lines[lineIdx].moves);
+  const k = lineKey(lines[lineIdx].moves), hadGreen = s.played.includes(k) || (s.done || []).includes(k), hadGold = (s.done || []).includes(k);
   if (!s.played.includes(k)) s.played.push(k);
   store(STORE, stats);
   const wasComplete = cleared() === lines.length;
   const r = mode === 'try' && !assisted ? review(misses === 0) : null;
   renderLines();
+  // A star the line has just earned flies into the list before the end card.
+  const newStar = !trapRun && (mode === 'learn' || mode === 'try') ? (!hadGold && (s.done || []).includes(k) ? 'gold' : !hadGreen ? 'green' : null) : null;
+  if (newStar) flying = starFly(lineIdx, newStar);
   renderLineBox();
   $('#restart').textContent = trapRun ? 'Next trap' : mode === 'try' && (misses || assisted) ? 'Try again' : 'Next line';
   const on = 'Play on if you like: the arrow shows a good next move.';
@@ -3152,11 +3160,29 @@ $('#restart').addEventListener('click', () => {
   if (mode === 'learn') return ply >= line.length ? learnNext() : play(lineIdx);
   play(ply >= line.length && misses === 0 ? nextLine() : lineIdx);
 });
-// Hint in three steps, one per press: the piece, then what kind of move it is, then the move itself
-// (step three is Show move, which in Practice counts as a mistake).
+// Hint in three steps, one per press: the piece, then what kind of move it is, then the move itself.
+// In Practice and Time a line gets one hint, the piece and the kind of move at once, and it still
+// clears; a second press only says so, by the button.
 let hintStep = 0, hintFen = '';
+function hintTip() {
+  const b = $('#hint');
+  b.parentElement.querySelector('.hint-tip')?.remove();
+  const tip = Object.assign(document.createElement('span'), { className: 'hint-tip', role: 'status', textContent: 'You can only use a hint once per line!' });
+  b.after(tip);
+  tip.style.left = `${b.offsetLeft + b.offsetWidth / 2}px`;
+  setTimeout(() => tip.remove(), 2600);
+}
 $('#hint').addEventListener('click', async () => {
   if (!userTurn() || busy) return;
+  if ((mode === 'try' || mode === 'time') && !playing) {
+    if (hintUsed) return hintTip();
+    const m = expectedMove();
+    if (!m) return;
+    hintUsed = true;
+    hintSq = [m.from]; renderBoard();
+    const kind = hintFor(m), where = m.piece === 'p' ? `the pawn moves ${Math.abs(m.to[1] - m.from[1]) === 2 ? 'two squares' : 'one square'} forward.` : `the ${PIECE[m.piece]} goes to the ${m.to[0]}-file.`;
+    return say(`Your one hint for this line: the piece to move is highlighted, and ${kind.startsWith('Look for the move that improves') ? where : kind.charAt(0).toLowerCase() + kind.slice(1)}`);
+  }
   const at = game.fen();
   if (hintFen !== at) { hintFen = at; hintStep = 0; }
   const m = playing ? await goodMove() : expectedMove();
@@ -3178,10 +3204,8 @@ $('#show').addEventListener('click', async () => {
     hintSq = [m.from, m.to]; renderBoard();
     return say(`Best move: ${instruction(m)}.${why ? ' ' + why : ''}`);
   }
-  // In Practice the first move shown in a run is free: one look per line still clears it; the next counts.
-  const m = expectedMove(), free = mode === 'try' && !shownFree;
-  if (free) shownFree = true; else misses++;
-  say(`The move: ${instruction(m)}.${mode === 'try' ? (free ? ' Your one free look in this line: it still clears.' : ' A second look: this run no longer clears the line.') : ''}`);
+  const m = expectedMove(); // Learn only: Practice and Time have no Show move
+  say(`The move: ${instruction(m)}.`);
   hintSq = [m.from, m.to]; renderBoard();
 });
 // Opening picker, shown before the board.
@@ -3319,7 +3343,7 @@ function carryOn(was) {
   else reply();
 }
 let assisted = false; // this run of the line was not all from memory (see carryOn)
-let shownFree = false; // the one move shown free in this run of a line (Show move, or Hint three times)
+let hintUsed = false; // Practice and Time: the one hint a run of a line gets
 $('#mode-learn').addEventListener('click', () => setMode('learn'));
 $('#mode-try').addEventListener('click', () => setMode('try'));
 $('#mode-explore').addEventListener('click', () => setMode('explore'));
