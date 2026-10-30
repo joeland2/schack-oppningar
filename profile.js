@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030113119';
-import { STYLE_OF } from './styles.js?v=20261030113119';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030113307';
+import { STYLE_OF } from './styles.js?v=20261030113307';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -944,7 +944,8 @@ function portrait(name, p, skills, me, part = 'lead') {
   if (known.length >= 2) out.push(`${me ? 'Your' : 'Their'} game is carried by ${named(known[0])}${leak ? ` and held back most by ${named(leak)}` : `, and ${me ? 'you match your' : 'they match their'} opponents everywhere else`}.`);
   if (part === 'lead') return out.join(' ');
   out.length = 0;
-  if (p.piece) out.push(`${me ? 'Your' : 'Their'} most important piece is the ${PIECE_NAME[p.piece]}.`);
+  const games = p.pieceAuto ?? p.piece; // what the games say, whatever piece the card shows
+  if (games) out.push(`${me ? 'Your' : 'Their'} most important piece is the ${PIECE_NAME[games]}.`);
   return out.join(' ');
 }
 // The player card: the overall (the mean of the known skills), a short code for the type, the six skills.
@@ -1728,7 +1729,13 @@ function bindPiecePick(name) {
   const choose = (pc) => {
     if (pc) PICKED.set(name.toLowerCase(), pc); else PICKED.delete(name.toLowerCase());
     fetch(SYNC, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ player: name.toLowerCase(), rows: [{ id: 'TYPEpiec', data: { piece: pc || null } }] }) }).catch(() => {});
-    const y = scrollY; render(...shown); scrollTo(0, y);
+    // Only the card's piece changes: no redraw of the page.
+    const shownPiece = pc || shownP?.pieceAuto || 'n';
+    if (shownP) { shownP.piece = shownPiece; shownP.pieceWhy = pc ? 'chosen' : shownP.pieceWhyAuto; }
+    side.querySelector('.ink-on-light').src = `pieces/b${shownPiece.toUpperCase()}.svg`;
+    side.querySelector('.ink-on-dark').src = `pieces/${CARD_INK}${shownPiece.toUpperCase()}.svg`;
+    side.querySelector('.ink-on-dark').title = pc ? `Chosen by ${name}` : `${name}'s most important piece: the ${PIECE_NAME[shownPiece]}`;
+    $('.pf-piece-menu')?.remove();
   };
   const open = (e) => {
     e.preventDefault(); e.stopPropagation();
