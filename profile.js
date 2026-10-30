@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030115830';
-import { STYLE_OF } from './styles.js?v=20261030115830';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030115957';
+import { STYLE_OF } from './styles.js?v=20261030115957';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1795,7 +1795,9 @@ async function comparePick(name) {
         <div class="cmp-pick-g"><p class="cmp-pick-k">Any Lichess player</p><form class="cmp-pick-form" action="profile.html"><input type="hidden" name="u" value="${esc(name)}"><input name="vs" required maxlength="30" pattern="[A-Za-z0-9_\\-]{2,30}" placeholder="Lichess name" aria-label="Any Lichess name" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="cta">Compare</button></form></div>
         ${others.length ? `<div class="cmp-pick-g"><p class="cmp-pick-k">Your starred players</p>${others.map((x) => `<a class="cmp-opt" href="${compareLink(name, x)}"><b>${esc(x)}</b><span aria-hidden="true">→</span></a>`).join('')}</div>` : ''}
       </div></section>`;
-  $('.cmp-pick-form input[name=vs]').focus();
+  const vs = $('.cmp-pick-form input[name=vs]');
+  window.playerSuggest?.(vs, (x) => { location.href = compareLink(name, x); });
+  vs.focus();
   try {
     const A = await profileFor(name);
     await loadFlags([name]);
