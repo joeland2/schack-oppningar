@@ -2140,3 +2140,13 @@ main.profile:has(#admin) { max-width: 1320px; }
 .star-fly.green .line-star { filter: drop-shadow(0 0 18px rgb(95 196 138 / .8)); } .star-fly.green b { color: #8fe0b0; }
 .star-fly.gold .line-star { filter: drop-shadow(0 0 18px rgb(232 194 90 / .85)); } .star-fly.gold b { color: #f3d27a; }
 #tc-best.up { color: var(--good); font-weight: 700; }
+.line-board { margin: 0 0 16px; padding: 14px 0 0; border-top: 1px solid var(--line); }
+.line-board h3 { margin: 0 0 8px; font: 700 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.line-board ol { margin: 0; padding: 0; list-style: none; }
+.line-board li { display: flex; align-items: baseline; gap: 10px; padding: 6px 8px; border-radius: var(--radius); font-size: 14px; }
+.line-board li span { width: 1.4em; color: var(--muted); font-variant-numeric: tabular-nums; }
+.line-board li a { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.line-board li b { font-variant-numeric: tabular-nums; }
+.line-board li.me { background: var(--raised); }
+.line-board li:first-child b { color: #4fb8e0; }
+.line-board .info { margin: 6px 0 0; font-size: 13px; }

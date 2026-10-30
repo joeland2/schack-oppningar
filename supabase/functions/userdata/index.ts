@@ -3,6 +3,8 @@
 // key: the token is checked with Lichess, and only that player's own row is read or written.
 // GET returns { data }; POST { data } merges keys in, the newer of two values (by its time t) winning.
 // data is { [key]: { v: string | null, t: number } }, v being the browser's stored text (null: removed).
+// GET ?board=<speed:opening>&line=<line> needs no login: the best times on one line in Time, from every
+// player's kept stars and times, fastest first (each player's name and best time, nothing else).
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'x-lichess-token, content-type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' };
@@ -25,6 +27,19 @@ async function idOf(token: string | null) {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  const q = new URL(req.url).searchParams;
+  if (req.method === 'GET' && q.has('board')) {
+    const board = q.get('board') || '', line = q.get('line') || '';
+    if (board.length > 120 || line.length > 400) return json({ error: 'bad' }, 400);
+    // shortcut: reads every player's store per call; keep times in their own table past a few thousand players
+    const { data: rows, error } = await db.from('user_data').select('id, data');
+    if (error) return json({ error: 'error' }, 500);
+    const times: { player: string; s: number }[] = [];
+    for (const r of rows || []) {
+      try { const s = JSON.parse(r.data?.['opening-book-v2']?.v)?.[board]?.times?.[line]; if (typeof s === 'number' && s > 0) times.push({ player: r.id, s }); } catch { /* no store */ }
+    }
+    return json(times.sort((a, b) => a.s - b.s).slice(0, 10));
+  }
   const id = await idOf(req.headers.get('x-lichess-token'));
   if (!id) return json({ error: 'Log in with Lichess first.' }, 401);
   const { data: row, error } = await db.from('user_data').select('data').eq('id', id).maybeSingle();

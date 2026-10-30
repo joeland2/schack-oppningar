@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030124048';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030124048';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030124048';
-import { GUIDE } from './guide.js?v=20261030124048';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030124048';
-import { maia3Move } from './maia3.js?v=20261030124048';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030124048';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030124048';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030124048';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030124216';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030124216';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030124216';
+import { GUIDE } from './guide.js?v=20261030124216';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030124216';
+import { maia3Move } from './maia3.js?v=20261030124216';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030124216';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030124216';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030124216';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1604,8 +1604,10 @@ function play(i, again = false) {
   if (drill && lineFor(drill.now ?? '') !== i) drill = null; // another line chosen: the drill ends
   lineIdx = i;
   if (mode === 'time') { pauseTrial(); if (trial) trial.lineStart = null; }
+  else $('#line-board').hidden = true;
   const l = lines[i];
   line = l.moves;
+  if (mode === 'time') lineBoard();
   game = new Chess();
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
   punish = 0; punishDone = false; endLen = 0; assisted = false;
@@ -2872,6 +2874,22 @@ function starFly(i, kind) {
     to.animate([{ transform: 'scale(2)' }, { transform: 'scale(1)' }], { duration: 350, easing: 'cubic-bezier(.2,.9,.3,1.3)' });
   });
 }
+// Time: the fastest runs without a slip on this line, every logged-in player's best (the userdata
+// function reads them from the stars and times kept with each account), yours marked.
+const BOARD_API = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/userdata';
+async function lineBoard() {
+  const el = $('#line-board');
+  if (!cur || mode !== 'time' || !line.length) return void (el.hidden = true);
+  const board = statKey(cur.id), k = lineKey(line), me = account()?.name?.toLowerCase() || null, mine = stats[board]?.times?.[k] ?? null;
+  el.hidden = false;
+  let rows = [];
+  try { const r = await fetch(`${BOARD_API}?board=${encodeURIComponent(board)}&line=${encodeURIComponent(k)}`); if (r.ok) rows = await r.json(); } catch {}
+  if (!Array.isArray(rows) || statKey(cur?.id) !== board || lineKey(line) !== k) return;
+  // Your best here counts at once, before it reaches the account.
+  if (me && mine !== null) rows = [...rows.filter((x) => x.player !== me), { player: me, s: Math.min(mine, rows.find((x) => x.player === me)?.s ?? Infinity) }].sort((a, b) => a.s - b.s).slice(0, 10);
+  el.innerHTML = `<h3>Fastest on this line</h3>${rows.length ? `<ol>${rows.map((x, i) => `<li${x.player === me ? ' class="me"' : ''}><span>${i + 1}</span><a href="profile.html?u=${encodeURIComponent(x.player)}">${esc(x.player)}</a><b>${x.s.toFixed(1)} s</b></li>`).join('')}</ol>` : '<p class="info">No times yet: play it without a slip to be first.</p>'}
+    ${!me ? '<p class="info">Log in with Lichess to be on it.</p>' : mine === null ? '<p class="info">Play it without a slip to get your time on it.</p>' : ''}`;
+}
 function finish() {
   if (mode === 'time') {
     trackDone();
@@ -2884,6 +2902,7 @@ function finish() {
     const took = trial.lineStart ? (Date.now() - trial.lineStart) / 1000 : null, best = st?.times?.[k] ?? null;
     const record = took !== null && !misses && (best === null || took < best);
     if (record && st) { (st.times ??= {})[k] = Math.round(took * 10) / 10; store(STORE, stats); }
+    if (record) lineBoard();
     trial.lineStart = null;
     const timeLine = took === null ? '' : `<p class="go-time">${record ? `<b>New best: ${took.toFixed(1)} s</b>${best !== null ? ` · was ${best.toFixed(1)} s` : ''}` : `This line: ${took.toFixed(1)} s${best !== null ? ` · best ${best.toFixed(1)} s` : ''}${misses ? ' · a slip, so no best time' : ''}`}</p>`;
     // The clock stops and the board asks how to go on: the next line against the clock, or the next
