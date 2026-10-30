@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030091518';
-import { STYLE_OF } from './styles.js?v=20261030091518';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030092344';
+import { STYLE_OF } from './styles.js?v=20261030092344';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -427,10 +427,10 @@ console.assert(rawSkills({ peer: { analysed: 120, ups: 36, downs: 12, after12: 1
 }
 
 // ---------- Fetching ----------
-async function fetchGames(name, onGame, since = null) {
+async function fetchGames(name, onGame, since = null, perf = 'bullet,blitz,rapid,classical') {
   const a = account();
   const res = await fetch(`https://lichess.org/api/games/user/${encodeURIComponent(name)}?` + new URLSearchParams({
-    max: MAX, ...(since ? { since } : {}), rated: 'true', perfType: 'bullet,blitz,rapid,classical', moves: 'true', opening: 'true', clocks: 'true', evals: 'true', accuracy: 'true',
+    max: MAX, ...(since ? { since } : {}), rated: 'true', perfType: perf, moves: 'true', opening: 'true', clocks: 'true', evals: 'true', accuracy: 'true',
   }), { headers: { Accept: 'application/x-ndjson', ...(a ? { Authorization: `Bearer ${a.token}` } : {}) } });
   if (res.status === 404) throw new Error(`Lichess has no player called ${name}.`);
   if (res.status === 429) throw new Error('Lichess is busy right now. Try again in a minute.');
@@ -548,7 +548,10 @@ function saveGames(name, games) {
   MEM.set(me, value); persist(me, value);
   clearTimeout(pushing); pushing = setTimeout(() => push(name, games), 3000); // a run saves often
   const own = (myName() || '').toLowerCase(), precious = (k, v) => k === own || v.games.some((g) => g.ours);
-  [...MEM].filter(([k, v]) => k !== me && !precious(k, v)).sort((a, b) => b[1].at - a[1].at).slice(KEEP).forEach(([k]) => { MEM.delete(k); persist(k, null); });
+  // A time control's own games (name~speed) go with their player: they neither count nor stay on alone.
+  const base = me.split('~')[0];
+  [...MEM].filter(([k, v]) => !k.includes('~') && k !== base && !precious(k, v)).sort((a, b) => b[1].at - a[1].at).slice(KEEP)
+    .forEach(([k]) => [...MEM.keys()].filter((x) => x === k || x.startsWith(`${k}~`)).forEach((x) => { MEM.delete(x); persist(x, null); }));
 }
 // One game changed here (analysed on its own page) goes back into the kept games.
 function keepGame(name, g) {
@@ -1124,17 +1127,53 @@ async function sendCard(name, full, sp) {
 // One time control at a time: bullet and blitz games say different things about speed, endgames and
 // the level, so the profile reads the player's main time control unless another (or All) is picked.
 let pfSpeed = null, shown = null; // the picked time control ('all' or a speed); the last render's arguments
-// Time controls with enough games; only when the games themselves are kept here (the last few players looked up).
+// Every time control the player has rated games in on Lichess, with how many games the card reads now: a
+// time control's own last 500 games once fetched (fetchSpeed), else its share of the last 500 of all.
+// Only when the games themselves are kept here (the last few players looked up).
+const PERFS = new Map(); // lower-case name → promise of { bullet: games, … } from Lichess
+function perfsOf(name) {
+  const k = name.toLowerCase();
+  if (!PERFS.has(k)) PERFS.set(k, fetch(`https://lichess.org/api/user/${encodeURIComponent(name)}`).then((r) => (r.ok ? r.json() : null))
+    .then((u) => u && Object.fromEntries(SPEEDS.map((sp) => [sp, u.perfs?.[sp]?.games || 0]))).catch(() => null)
+    .then((x) => { PERFS.set(k, x); return x; }));
+  return PERFS.get(k);
+}
+const speedKey = (name, sp) => `${name}~${sp}`; // a time control's own games, kept beside the player's
 function speedsOf(name, full) {
-  return storedGames(name) ? SPEEDS.map((sp) => [sp, full.speeds.find((x) => x.speed === sp)?.n || 0]).filter(([, n]) => n >= MIN_GAMES) : [];
+  if (!storedGames(name)) return [];
+  const perfs = PERFS.get(name.toLowerCase());
+  const known = perfs && !(perfs instanceof Promise) ? perfs : null;
+  return SPEEDS.map((sp) => {
+    const own = storedGames(speedKey(name, sp)), mixed = full.speeds.find((x) => x.speed === sp)?.n || 0;
+    return [sp, own ? own.length : mixed, known?.[sp] || 0];
+  }).filter(([, n, all]) => n > 0 || all > 0);
 }
 function forSpeed(name, full, sp) {
-  return sp === 'all' ? full : profileOf(recordsOf(name, storedGames(name)).filter((g) => g.speed === sp));
+  if (sp === 'all') return full;
+  const games = storedGames(speedKey(name, sp)) || storedGames(name);
+  return profileOf(recordsOf(name, games).filter((g) => g.speed === sp));
+}
+// A time control's own last 500 games, fetched when it is picked and the last 500 of all hold fewer
+// than Lichess has; later picks fetch only the games played since.
+async function fetchSpeed(name, sp) {
+  const have = storedGames(speedKey(name, sp)) || [], mixed = (storedGames(name) || []).filter((g) => g.speed === sp);
+  const perfs = await perfsOf(name);
+  if (!have.length && (!perfs || mixed.length >= Math.min(MAX, perfs[sp]))) return false; // the last 500 of all already hold them
+  const msg = $('#profile-msg');
+  if (!have.length) msg.textContent = `Fetching ${name}'s last ${Math.min(MAX, perfs[sp])} ${sp} games from Lichess…`;
+  const fresh = await fetchGames(name, (k) => { if (!have.length) msg.textContent = `Fetching ${name}'s ${sp} games from Lichess… ${k} of ${Math.min(MAX, perfs[sp])}`; },
+    have.length ? have[0].createdAt + 1 : null, sp);
+  msg.textContent = '';
+  const ids = new Set(fresh.map((g) => g.id)), raw = [...fresh, ...have.filter((g) => !ids.has(g.id))].slice(0, MAX);
+  await mergeRemote(name, raw);
+  saveGames(speedKey(name, sp), raw);
+  return true;
 }
 function speedBar(name, full, sp, avail) {
   if (avail.length < 2 && sp !== 'all') return '';
-  return `<div class="pf-seg pf-speeds" role="group" aria-label="Time control">${[['all', full.n], ...avail].map(([k, n]) =>
-    `<button type="button" data-pf-speed="${k}" aria-pressed="${k === sp}">${k === 'all' ? 'All games' : k[0].toUpperCase() + k.slice(1)} <small>${n}</small></button>`).join('')}</div>`;
+  // A time control with more games on Lichess than the card reads says so: picking it fetches them.
+  return `<div class="pf-seg pf-speeds" role="group" aria-label="Time control">${[['all', full.n], ...avail].map(([k, n, all = 0]) =>
+    `<button type="button" data-pf-speed="${k}" aria-pressed="${k === sp}"${all > n && n < MAX ? ` title="${n} of ${all} ${k} games read: pick it to fetch the last ${Math.min(MAX, all)}"` : ''}>${k === 'all' ? 'All games' : k[0].toUpperCase() + k.slice(1)} <small>${n}</small></button>`).join('')}</div>`;
 }
 let shownCode = ''; // render: the card on screen as a short code (cardCode)
 function render(name, at, full) {
@@ -1219,7 +1258,14 @@ function render(name, at, full) {
   bindAnalyse(name);
   quickLook(name);
   $('.pf-card-help a[href="#pf-skills"]')?.addEventListener('click', (e) => { e.preventDefault(); $('#pf-skills').scrollIntoView({ behavior: 'smooth' }); });
-  document.querySelectorAll('[data-pf-speed]').forEach((b) => b.addEventListener('click', () => { pfSpeed = b.dataset.pfSpeed; const y = scrollY; render(...shown); scrollTo(0, y); }));
+  document.querySelectorAll('[data-pf-speed]').forEach((b) => b.addEventListener('click', async () => {
+    const sp = b.dataset.pfSpeed, redraw = () => { const y = scrollY; render(...shown); scrollTo(0, y); };
+    pfSpeed = sp; redraw();
+    if (sp === 'all') return;
+    try { if (await fetchSpeed(name, sp) && pfSpeed === sp) redraw(); } catch (err) { $('#profile-msg').textContent = err.message; }
+  }));
+  // Time controls missing from the last 500 games show once Lichess says the player has them.
+  if (!PERFS.has(name.toLowerCase())) perfsOf(name).then((x) => { if (x && shown?.[0] === name) { const y = scrollY; render(...shown); scrollTo(0, y); } });
   placeActs();
   bindPlayerBar(name);
   gamesList(name, 8);
