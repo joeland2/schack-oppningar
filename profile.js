@@ -3,12 +3,12 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030104307';
-import { STYLE_OF } from './styles.js?v=20261030104307';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030111058';
+import { STYLE_OF } from './styles.js?v=20261030111058';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
-const PV = 36;
+const PV = 37;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -92,6 +92,7 @@ function readGame(g, me) {
     // chosen: this player picked the opening (blacksName); answer: Black's 1...e5 or 1...d5 against White's opening.
     chosen: blacksName((g.opening?.name || '').split(':')[0]) === (side === 'b'),
     answer: answerOf(moves, (g.opening?.name || 'Unknown').split(':')[0], side),
+    first: side === 'w' ? moves[0] : moves.slice(0, 2).join(' '), // the player's first move (Black: with White's before it)
     expect: expectOf((g.opening?.name || 'Unknown').split(':')[0], side, mine.rating, g.speed), diff: mine.ratingDiff || 0, them: theirs.rating,
     castled, queensOff, endgame: endgameAt !== null, pieces, played,
     analysed: v.length > 0, ours: !!g.ours, acc: mine.analysis?.accuracy ?? null, blunders: mine.analysis?.blunder ?? null, mistakes: mine.analysis?.mistake ?? null,
@@ -144,7 +145,8 @@ export function profileOf(games) {
     for (const g of games.filter((x) => x.side === side)) for (const k of [g.family, g.answer].filter(Boolean)) m.set(k, [...(m.get(k) || []), g]);
     // "vs" marks the other side's choice.
     const vs = (fam) => (ANSWERS.includes(fam) ? fam : blacksName(fam) === (side === 'w') ? `vs ${fam}` : fam);
-    return [...m].filter(([, gs]) => gs.length >= 5).map(([fam, gs]) => ({ fam: vs(fam), n: gs.length, score: score(gs), win: gs.filter((g) => g.result === 1).length / gs.length })).sort((a, b) => b.n - a.n);
+    const firstOf = (gs) => Object.entries(gs.reduce((c, g) => ({ ...c, [g.first]: (c[g.first] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1])[0]?.[0];
+    return [...m].filter(([, gs]) => gs.length >= 5).map(([fam, gs]) => ({ fam: vs(fam), n: gs.length, score: score(gs), win: gs.filter((g) => g.result === 1).length / gs.length, first: firstOf(gs) })).sort((a, b) => b.n - a.n);
   };
   const ups = an.filter((g) => g.best >= 300), downs = an.filter((g) => g.worst <= -300);
   const slips = { opening: 0, middlegame: 0, endgame: 0 };
@@ -344,13 +346,19 @@ function traitsOf(p) {
   ];
   return { styles, strengths: [...raw, ...extra] };
 }
-function typeOf(p) {
+// keep: the type shown so far (stableType): a near tie keeps it, so the card does not flip between two
+// styles with a few new games; it changes when another leads clearly.
+const KEEP_LEAN = 0.3, KEEP_V = 6;
+function typeOf(p, keep = null) {
   const { styles, strengths } = traitsOf(p);
-  const style = styles[0]; // the style that leans furthest, even when none stands out clearly
+  const kept = keep && styles.find((x) => x.name === keep.style);
+  const style = kept && kept.lean >= styles[0].lean - KEEP_LEAN ? kept : styles[0]; // the style that leans furthest, even when none stands out clearly
   // The strength: the one furthest above the player's own opponents (50 is even). One that stands out
   // (64 or more) wins; failing that, everyone still gets the one they are best at, if above their opponents.
   // Defense has no strength of its own: being best at it is the Guardian style.
-  const best = strengths.filter((x) => x.label !== 'Defense' && x.v !== null && x.v > 50 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v)[0];
+  const ranked = strengths.filter((x) => x.label !== 'Defense' && x.v !== null && x.v > 50 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v);
+  const keptS = keep && ranked.find((x) => (STRENGTH[x.label] || x.label) === keep.strength);
+  const best = keptS && keptS.v >= ranked[0].v - KEEP_V ? keptS : ranked[0];
   const second = best ? { name: STRENGTH[best.label] || best.label, why: STRENGTH[best.label] ? `${best.label} is where you beat your level most: ${best.why}` : best.why } : styles[1].lean >= 1 ? styles[1] : null; // a second style only when it is top-tenth
   return second ? [style, second] : [style];
 }
@@ -532,9 +540,34 @@ function pull(name) {
   if (!PULLS.has(me)) PULLS.set(me, fetch(`${SYNC}?u=${encodeURIComponent(me)}`).then((r) => (r.ok ? r.json() : [])).catch(() => []).then((rows) => {
     const m = new Map(rows.map((r) => [r.id, r.data]));
     for (const [id, d] of m) SENT.set(`${me}|${id}`, sig(d));
+    for (const sp of ['all', ...SPEEDS]) if (m.get(typeId(sp))?.style) STABLE.set(`${me}|${sp}`, m.get(typeId(sp)));
     return m;
   }));
   return PULLS.get(me);
+}
+// ---------- The stable type ----------
+// The style and strength shown for a player in a time control are kept with their analyses (rows
+// TYPEbull, TYPEblit… in the analyses function), so everyone, on any device, sees the same type, and a near
+// tie between two styles does not flip it; whoever reads the full games first sets it, and a clear lead changes it.
+const STABLE = new Map(); // 'name|speed' → { style, strength }
+const typeId = (sp) => `TYPE${(sp || 'all').slice(0, 4).padEnd(4, 'g')}`; // TYPEbull, TYPEblit, TYPErapi, TYPEclas, TYPEallg
+let drawingEarly = false; // build draws from the first games while the rest come in: such a type is not kept
+function stableType(name, sp, p) {
+  const k = `${name.toLowerCase()}|${sp}`, keep = STABLE.get(k) || null, t = typeOf(p, keep);
+  const now = { style: t[0]?.name, strength: t[1]?.name || null };
+  if (!drawingEarly && p.n >= MIN_GAMES && (!keep || keep.style !== now.style || keep.strength !== now.strength)) {
+    STABLE.set(k, now);
+    fetch(SYNC, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ player: name.toLowerCase(), rows: [{ id: typeId(sp), data: now }] }) }).catch(() => {});
+  }
+  return t;
+}
+// Lists of cards (leaderboard, landing): each card's style and strength as kept, so they match the profile.
+// One light call for all of them (the analyses function's ?types=); as they were if it cannot answer.
+async function keptTypes(rows) {
+  const names = [...new Set(rows.map((r) => r.name.toLowerCase()))];
+  const got = await fetch(`${SYNC}?types=${encodeURIComponent(names.join(','))}`).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+  for (const x of Array.isArray(got) ? got : []) for (const sp of ['all', ...SPEEDS]) if (x.id === typeId(sp) && x.data?.style) STABLE.set(`${x.player}|${sp}`, x.data);
+  return rows.map((r) => { const k = STABLE.get(`${r.name.toLowerCase()}|${r.speed}`); return k ? { ...r, style: k.style, strength: k.strength } : r; });
 }
 // Puts what other devices did into these games (in place); true when something was added.
 let merged = false; // the last build took in analyses from another device: the shown profile is out of date
@@ -607,7 +640,7 @@ async function build(name) {
     if (bar && !bar.hidden) { bar.firstElementChild.style.width = `${(k / MAX) * 100}%`; bar.title = `${k} of ${MAX} games`; }
     if (!have.length && !quiet && (k === EARLY || (early && k % REDRAW === 0))) {
       early = true;
-      loadScores().then(() => { if (mine === runs) { const y = scrollY; render(name, Date.now(), profileOf(gs.slice().map((g) => readGame(g, name.toLowerCase())))); scrollTo(0, y); } }).catch(() => {});
+      loadScores().then(() => { if (mine === runs) { const y = scrollY; drawingEarly = true; try { render(name, Date.now(), profileOf(gs.slice().map((g) => readGame(g, name.toLowerCase())))); } finally { drawingEarly = false; } scrollTo(0, y); } }).catch(() => {});
     }
   }, have.length ? have[0].createdAt + 1 : null);
   if (bar) bar.hidden = true;
@@ -625,6 +658,7 @@ const FRESH = 5 * 60e3;
 async function current(name) {
   await gamesReady;
   const c = cache()[name.toLowerCase()];
+  await pull(name); // the kept type (stableType) is known before any card is drawn
   return c && c.v === PV && Date.now() - c.at < FRESH && storedGames(name) ? c.p : build(name);
 }
 async function readAll(name, raw) {
@@ -873,9 +907,20 @@ const leakOf = (skills) => skills.filter((x) => x.raw !== null && x.raw <= 45).s
 function portrait(name, p, skills, me, part = 'lead') {
   const you = me ? 'You' : esc(name), your = me ? 'your' : 'their', are = me ? 'are' : 'is';
   // The openings chosen, by family: the King's Gambit Accepted and Declined are one King's Gambit.
-  // At least a tenth of the games with that colour: an opening played now and then is no choice of theirs.
+  // The openings a player chooses, as a reader would name them. A named opening counts from 6% of the
+  // games with that colour; a broad one (1.e4, 1...e5) from 10%, and only when no named opening of theirs
+  // starts with the same move (the Italian already says 1.e4). As White, the main one, and a second when
+  // it is half as common or more; as Black, the main answer to each of White's two usual first moves
+  // (1...e5 against 1.e4, the Englund against 1.d4).
   const sideN = { w: p.nWhite ?? p.n / 2, b: p.n - (p.nWhite ?? p.n / 2) };
-  const own = (list, side) => [...new Set(list.filter((o) => !o.fam.startsWith('vs ') && o.n >= sideN[side] / 10).map((o) => o.fam.replace(/ (Accepted|Declined)$/, '')))].slice(0, 2).map((f) => opLink(side, f));
+  const own = (list, side) => {
+    const mine = list.filter((o) => !o.fam.startsWith('vs ') && o.n >= sideN[side] * (ANSWERS.includes(o.fam) ? 0.1 : 0.06));
+    const keep = mine.filter((o) => !ANSWERS.includes(o.fam) || !mine.some((x) => !ANSWERS.includes(x.fam) && x.first === o.first))
+      .map((o) => ({ ...o, fam: o.fam.replace(/ (Accepted|Declined)$/, '') })).filter((o, i, a) => a.findIndex((x) => x.fam === o.fam) === i);
+    const picks = side === 'w' ? keep.filter((o, i) => i === 0 || o.n >= keep[0].n / 2)
+      : [...new Map(keep.map((o) => [o.first?.split(' ')[0], o]).reverse()).values()].sort((a, b) => b.n - a.n); // each White first move's main answer
+    return picks.slice(0, 2).map((o) => opLink(side, o.fam));
+  };
   const w = own(p.openings.w, 'w'), b = own(p.openings.b, 'b');
   const and = (xs) => xs.join(' and ');
   const out = [];
@@ -1236,11 +1281,13 @@ function speedsOf(name, full) {
   }).filter(([, n, all]) => n > 0 || all > 0);
 }
 function forSpeed(name, full, sp) {
-  if (sp === 'all') return full;
+  if (sp === 'all') { full.type = stableType(name, 'all', full); return full; }
   const own = storedGames(speedKey(name, sp)), mixed = storedGames(name);
   const done = new Map(mixed.filter((g) => g.analysis).map((g) => [g.id, g])); // analysed among all the player's games
   const games = own ? own.map((g) => (!g.analysis && done.get(g.id)) || g) : mixed;
-  return profileOf(recordsOf(name, games).filter((g) => g.speed === sp));
+  const p = profileOf(recordsOf(name, games).filter((g) => g.speed === sp));
+  p.type = stableType(name, sp, p);
+  return p;
 }
 // A time control's own last 500 games, fetched when it is picked and the last 500 of all hold fewer
 // than Lichess has; later picks fetch only the games played since.
@@ -1602,7 +1649,7 @@ function failed(name, err) {
 
 // A profile from games already fetched (Lichess's shape), without fetching: for checking the types on many players.
 const profileFromRaw = async (name, raw) => (await loadScores(), profileOf(raw.map((g) => readGame(g, name.toLowerCase()))));
-export { cardImage, playerCard, flagHtml, loadFlags, bandColor, tierOf, TIERS_AT, proClass, proOf, PROS, boardCard, fineSkillsOf, gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
+export { keptTypes, cardImage, playerCard, flagHtml, loadFlags, bandColor, tierOf, TIERS_AT, proClass, proOf, PROS, boardCard, fineSkillsOf, gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
 // ---------- The games themselves ----------
 // The newest games as a list; each opens on game.html with the board, how it went and the key moves.
 const STATUS = { mate: 'mate', resign: 'resignation', outoftime: 'time', timeout: 'time', draw: 'agreement', stalemate: 'stalemate', aborted: 'abort' };

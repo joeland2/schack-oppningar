@@ -1,6 +1,6 @@
 // The leaderboard: everyone logged in here with Lichess who has opened their profile (see the profile), ranked within a time control
 // and a rating band, by the card's overall number or one of its skills.
-import { flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261030104307';
+import { flagHtml, loadFlags, bandColor, proClass, keptTypes } from './profile.js?v=20261030111058';
 const BOARD = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -59,5 +59,6 @@ Promise.all([fetch(BOARD).then((r) => (r.ok ? r.json() : Promise.reject(new Erro
     const have = new Set(x.map((r) => `${r.name.toLowerCase()}|${r.speed}`));
     rows = [...x, ...pros.filter((p) => !have.has(`${p.name.toLowerCase()}|${p.speed}`))];
     render(); loadFlags(rows.map((r) => r.name)).then(render);
+    keptTypes(rows).then((x) => { rows = x; render(); }); // each style as the profile keeps it
   })
   .catch((err) => { $('#lb-msg').textContent = err.message; });

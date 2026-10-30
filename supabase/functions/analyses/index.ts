@@ -11,6 +11,14 @@ const NAME = /^[A-Za-z0-9_-]{2,30}$/, ID = /^[A-Za-z0-9]{8}$/;
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method === 'GET') {
+    // ?types=a,b,c: only the kept style and strength (rows TYPE…) of many players at once, for lists of cards.
+    const types = new URL(req.url).searchParams.get('types');
+    if (types !== null) {
+      const names = types.toLowerCase().split(',').filter((n) => NAME.test(n)).slice(0, 300);
+      if (!names.length) return json([]);
+      const { data, error } = await db.from('analyses').select('player, id, data').in('player', names).like('id', 'TYPE%');
+      return error ? json({ error: 'error' }, 500) : json(data);
+    }
     const player = (new URL(req.url).searchParams.get('u') || '').toLowerCase();
     if (!NAME.test(player)) return json({ error: 'bad' }, 400);
     const out = [];

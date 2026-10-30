@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030104307';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030104307';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030104307';
-import { GUIDE } from './guide.js?v=20261030104307';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030104307';
-import { maia3Move } from './maia3.js?v=20261030104307';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030104307';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030104307';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf } from './profile.js?v=20261030104307';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030111058';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030111058';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030111058';
+import { GUIDE } from './guide.js?v=20261030111058';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030111058';
+import { maia3Move } from './maia3.js?v=20261030111058';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030111058';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030111058';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030111058';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2728,12 +2728,12 @@ function tryMove(from, to) {
       wrongSq = null;
       hardMiss();
       if (drill) { // drilling a hard move: see it, then the next one (or this one again later)
-        say(`${m.san} is not the move here. The line plays ${moveWords(want)}.`, 'bad');
+        say(''); // the card over the board says it: the coach does not say it again
         moment('wrong', 'Not this one', `You played <b>${m.san}</b> (red). The move is <b>${want.san}</b> (green). It comes back at the end of this drill.`,
           [{ label: 'OK, next', run: () => { drill.queue.push(drill.now); nextDrill(); } }], null, [[m.from, m.to, RED], [want.from, want.to, GREEN]]);
         return true;
       }
-      say(`${m.san} is not the move here. The line plays ${moveWords(want)}.`, 'bad');
+      say(''); // the card over the board says it: the coach does not say it again
       moment('wrong', 'Not this one', `You played <b>${m.san}</b> (red). The line plays <b>${want.san}</b> (green)${ideaAt(new Chess(game.fen()), want.san) ? `: ${ideaAt(new Chess(game.fen()), want.san).replace(/^./, (c) => c.toLowerCase())}` : '.'} Take a look, then play the line again from the start.`,
         [{ label: trapRun ? 'OK, try again' : 'OK, start again', run: () => (trapRun ? setupTrap(trapRun.now) : play(lineIdx, true)) }], null, [[m.from, m.to, RED], [want.from, want.to, GREEN]]);
       return true;
@@ -3396,7 +3396,7 @@ if (!account()) Promise.all([fetch('https://duhlvhjtxoofgnjegspa.supabase.co/fun
   // The leaderboard keeps a card per time control: each player shows their main one (the most games).
   const best = new Map();
   for (const x of all) { const k = x.name.toLowerCase(); if (!best.has(k) || x.games > best.get(k).games) best.set(k, x); }
-  const rows = [...best.values()];
+  const rows = await keptTypes([...best.values()]); // each style as the profile keeps it
   await loadFlags(rows.map((x) => x.name));
   // One row of cards from the lowest rated to the highest, as many as fit, spread evenly over the levels so
   // the card colours run through the bands; picked again when the width changes.

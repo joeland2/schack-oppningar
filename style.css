@@ -2058,3 +2058,4 @@ main.profile:has(#admin) { max-width: 1320px; }
 .cmp-pick-k { margin: 6px 0 0; font: 700 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .cmp-pick-favs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 @media (max-width: 640px) { .cmp-pick { grid-template-columns: 1fr; justify-items: center; } .cmp-pick-a .pf-pcard { zoom: .8; } }
+.coach .message:empty { display: none; } /* nothing to say: the card over the board speaks */
