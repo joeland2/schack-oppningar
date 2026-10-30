@@ -199,7 +199,7 @@ h1 { margin: 4px 0 6px; font-family: var(--font-display); font-weight: 700; font
 .hero-search .cta { padding-inline: 20px; font-size: 16px; white-space: nowrap; }
 .hero[hidden] { display: none; }
 /* One row of cards from edge to edge: as many columns as fit, the rest of the cards hidden below */
-.hero-ex { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); grid-template-rows: auto; grid-auto-rows: 0; row-gap: 0; column-gap: 18px; overflow: hidden; margin-top: 28px; }
+.hero-ex { display: grid; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr)); justify-items: center; grid-template-rows: auto; grid-auto-rows: 0; row-gap: 0; column-gap: 18px; overflow: hidden; margin-top: 28px; }
 .hero-p { display: grid; justify-items: start; gap: 8px; color: var(--ink); text-decoration: none; }
 .hero-p > b { font: 400 22px/1.05 var(--font-poster); text-transform: uppercase; } /* before the cards arrive */
 .hero-p .pf-pcard { zoom: .7; box-shadow: none; transition: transform .2s cubic-bezier(.2, .8, .2, 1); }
@@ -1822,8 +1822,8 @@ p, li, dd, small { text-wrap: pretty; }
 /* The player card with bars: a rule and the overall in the rating's colour (the leaderboard's bands),
    the style with its strength under it, and the six skills as bars. */
 .pf-pcard { --band: #e2561c; border-top: 5px solid var(--band-ink, var(--band)); }
-.pf-pcard[data-band="0"] { --band: #3f9a6e; } .pf-pcard[data-band="1"] { --band: #3a86c8; } .pf-pcard[data-band="2"] { --band: #e2561c; }
-.pf-pcard[data-band="3"] { --band: #d63a4f; } .pf-pcard[data-band="4"] { --band: #8a5ae0; }
+.pf-pcard[data-band="0"] { --band: #8a9a32; } .pf-pcard[data-band="1"] { --band: #3f9a6e; } .pf-pcard[data-band="2"] { --band: #1a9aa3; } .pf-pcard[data-band="3"] { --band: #3a86c8; }
+.pf-pcard[data-band="4"] { --band: #e2561c; } .pf-pcard[data-band="5"] { --band: #d63a4f; } .pf-pcard[data-band="6"] { --band: #8a5ae0; } .pf-pcard[data-band="7"] { --band: #d4a017; }
 .pf-pcard { --band-ink: var(--band); }
 /* Dark mode turns the card cream: the colour a shade darker there, so it still reads */
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pf-pcard { --band-ink: color-mix(in srgb, var(--band) 78%, #000); } }

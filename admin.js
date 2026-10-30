@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261030095216';
-import { cardImage, flagHtml, loadFlags } from './profile.js?v=20261030095216';
+import { account, login, finishLogin } from './lichess.js?v=20261030095407';
+import { cardImage, flagHtml, loadFlags } from './profile.js?v=20261030095407';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -13,7 +13,7 @@ const TYPE_CODES = ['Striker', 'Guardian', 'Solid builder', 'Endgame artist', 'T
   'Killer instinct', 'Well prepared', 'Grinder', 'Sure hand', 'Speed demon', 'Clutch player', 'Giant killer', 'White specialist', 'Black specialist', 'Fighter', 'Finisher'];
 const SPEED_OF = { bu: 'bullet', bl: 'blitz', ra: 'rapid', cl: 'classical', co: 'correspondence' };
 const SKILL_KEYS = ['ATK', 'DEF', 'EARLY', 'LATE', 'ACC', 'SPD'];
-const bandOf = (r) => (!r ? 2 : r < 1000 ? 0 : r < 1400 ? 1 : r < 1800 ? 2 : r < 2200 ? 3 : 4); // as profile.js
+const bandOf = (r) => (!r ? 3 : r < 800 ? 0 : r < 1100 ? 1 : r < 1400 ? 2 : r < 1700 ? 3 : r < 2000 ? 4 : r < 2300 ? 5 : r < 2600 ? 6 : 7); // the card's colour, as in profile.js
 function cardOf(target, board) {
   const [head, rest] = (target || '').split(' #'), name = head.split(/ · |: /)[0];
   const [code, extra] = (rest || '').split(' ~'); // newer downloads also carry what the image needs (profile.js cardExtra)

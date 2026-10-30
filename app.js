@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030095216';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030095216';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030095216';
-import { GUIDE } from './guide.js?v=20261030095216';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030095216';
-import { maia3Move } from './maia3.js?v=20261030095216';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030095216';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030095216';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags } from './profile.js?v=20261030095216';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030095407';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030095407';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030095407';
+import { GUIDE } from './guide.js?v=20261030095407';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030095407';
+import { maia3Move } from './maia3.js?v=20261030095407';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030095407';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030095407';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags } from './profile.js?v=20261030095407';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3371,7 +3371,7 @@ async function deepLink() {
 // shown as their player cards (from the leaderboard; their names alone until it answers).
 const ABBR = { Attack: 'ATK', Defense: 'DEF', 'Early game': 'EARLY', 'Late game': 'LATE', Accuracy: 'ACC', Speed: 'SPD' };
 const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-const bandOf = (x) => (!x ? 2 : x < 1000 ? 0 : x < 1400 ? 1 : x < 1800 ? 2 : x < 2200 ? 3 : 4); // the card's colour, as in profile.js
+const bandOf = (r) => (!r ? 3 : r < 800 ? 0 : r < 1100 ? 1 : r < 1400 ? 2 : r < 1700 ? 3 : r < 2000 ? 4 : r < 2300 ? 5 : r < 2600 ? 6 : 7); // the card's colour, as in profile.js
 const pcard = (r) => `<div class="pf-pcard" data-band="${bandOf(r.rating)}">${flagHtml(r.name)}<div class="pf-pcard-top"><div><b class="pf-ovr">${r.overall ?? '–'}</b><span class="pf-pos">${esc(r.style)}</span>${r.strength ? `<span class="pf-str">+ ${esc(r.strength)}</span>` : ''}</div>
     <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(r.piece || 'n').toUpperCase()}.svg" alt=""><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(r.piece || 'n').toUpperCase()}.svg" alt=""><span class="pf-pcard-rating">${r.rating} <small>${esc(r.speed)}</small></span></div></div>
     <p class="pf-pcard-name">${esc(r.name)}</p>
@@ -3391,13 +3391,13 @@ if (!account()) fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/lea
   const lvl = (x) => (x < 1000 ? 'Beginner' : x < 1600 ? 'Club player' : x < 2000 ? 'Strong' : x < 2400 ? 'Expert' : x < 2700 ? 'Master' : 'World class');
   const pool = rows.filter((x) => x.rating && x.skills).sort((a, b) => a.rating - b.rating), ex = $('.hero-ex');
   const draw = () => {
-    const cols = Math.max(1, getComputedStyle(ex).gridTemplateColumns.split(' ').length), n = Math.min(cols, pool.length);
-    // Evenly over the ratings, not the list (most players sit near 1200): the nearest player not yet picked.
-    const lo = pool[0].rating, hi = pool.at(-1).rating, left = [...pool], picks = [];
-    for (let k = 0; k < n; k++) {
-      const want = n === 1 ? hi : lo + ((hi - lo) * k) / (n - 1), i = left.reduce((b, x, j) => (Math.abs(x.rating - want) < Math.abs(left[b].rating - want) ? j : b), 0);
-      picks.push(left.splice(i, 1)[0]);
-    }
+    const gap = parseFloat(getComputedStyle(ex).columnGap) || 0, n = Math.max(1, Math.floor((ex.clientWidth + gap) / (232 + gap))); // columns that fit (CSS: 232px each)
+    // One card per colour, never two alike: a player from each rating band there is (the one nearest the
+    // band's middle), and when more bands than columns, bands spread evenly from the lowest to the highest.
+    const bands = [...new Set(pool.map((x) => bandOf(x.rating)))].sort((a, b) => a - b);
+    const take = n >= bands.length ? bands : Array.from({ length: n }, (_, k) => bands[n === 1 ? bands.length - 1 : Math.round((k * (bands.length - 1)) / (n - 1))]);
+    const mid = (b) => [650, 950, 1250, 1550, 1850, 2150, 2450, 2800][b];
+    const picks = take.map((b) => pool.filter((x) => bandOf(x.rating) === b).sort((x, y) => Math.abs(x.rating - mid(b)) - Math.abs(y.rating - mid(b)))[0]);
     picks.sort((a, b) => a.rating - b.rating);
     ex.innerHTML = picks.map((x) => `<a class="hero-p" href="profile.html?u=${encodeURIComponent(x.name)}">${pcard(x)}<span class="hero-r">${lvl(x.rating)}</span></a>`).join('');
   };

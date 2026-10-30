@@ -1,6 +1,6 @@
 // The leaderboard: everyone logged in here with Lichess who has opened their profile (see the profile), ranked within a time control
 // and a rating band, by the card's overall number or one of its skills.
-import { flagHtml, loadFlags } from './profile.js?v=20261030095216';
+import { flagHtml, loadFlags } from './profile.js?v=20261030095407';
 const BOARD = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -13,7 +13,7 @@ const BY = [['overall', 'Overall', (r) => r.overall], ...['Attack', 'Defense', '
 // six skills, the ranked one marked), and beside it the name, style + strength and the openings played most.
 const practise = (side, fam) => `./?practise=${side}~${encodeURIComponent(fam.replace(/^vs /, ''))}`;
 const PIECE = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
-const bandOf = (r) => (!r ? 2 : r < 1000 ? 0 : r < 1400 ? 1 : r < 1800 ? 2 : r < 2200 ? 3 : 4); // the card's colour, as in profile.js
+const bandOf = (r) => (!r ? 3 : r < 800 ? 0 : r < 1100 ? 1 : r < 1400 ? 2 : r < 1700 ? 3 : r < 2000 ? 4 : r < 2300 ? 5 : r < 2600 ? 6 : 7); // the card's colour, as in profile.js
 function row(r, i, value) {
   const top = (side) => (r.openings || []).filter((o) => o.side === side).sort((a, b) => b.n - a.n)[0];
   const w = top('w'), bl = top('b'), href = `profile.html?u=${encodeURIComponent(r.name)}`;

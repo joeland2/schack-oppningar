@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030095216';
-import { STYLE_OF } from './styles.js?v=20261030095216';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030095407';
+import { STYLE_OF } from './styles.js?v=20261030095407';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -872,10 +872,12 @@ function portrait(name, p, skills, me, part = 'lead') {
 // The piece is drawn white for the black card; in dark mode, where the card is cream, CSS inverts it.
 const CARD_INK = 'w';
 const PIECE_NAME = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
-// The card's picture is coloured by rating, in the leaderboard's bands: under 1000, 1000–1399,
-// 1400–1799, 1800–2199, 2200+ (CSS [data-band], and BAND for the downloaded image).
-const bandOf = (r) => (!r ? 2 : r < 1000 ? 0 : r < 1400 ? 1 : r < 1800 ? 2 : r < 2200 ? 3 : 4);
-const BAND = ['#3f7a5c', '#2c6b9e', '#e2561c', '#c4283f', '#7a4ad6'];
+// The card's picture is coloured by rating, in bands of 300 points: under 800, 800–1099, 1100–1399 …
+// 2600+ (CSS [data-band], and BAND for the downloaded image).
+const bandOf = (r) => (!r ? 3 : r < 800 ? 0 : r < 1100 ? 1 : r < 1400 ? 2 : r < 1700 ? 3 : r < 2000 ? 4 : r < 2300 ? 5 : r < 2600 ? 6 : 7);
+// Eight bands of 300 points, each its own colour: olive, green, teal, blue, orange, red, violet, gold.
+const BAND = ['#6b7a2a', '#2e8a55', '#13808a', '#2c6b9e', '#e2561c', '#c4283f', '#7a4ad6', '#b8860b'];
+const darker = (hex) => `#${[1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.78).toString(16).padStart(2, '0')).join('')}`; // as CSS's 78% mix with black
 // The six skills as bars, so a player's shape reads before the numbers; [label, value] pairs.
 const cardBars = (xs, on = null) => `<div class="pf-pcard-bars">${xs.map(([k, v]) => `<div${k === on ? ' class="on"' : ''}><span>${k}</span><i style="--v:${v ?? 0}%"></i><b>${v ?? '–'}</b></div>`).join('')}</div>`;
 const ABBR = { Attack: 'ATK', Defense: 'DEF', 'Early game': 'EARLY', 'Late game': 'LATE', Accuracy: 'ACC', Speed: 'SPD' };
@@ -930,7 +932,7 @@ function playerCard(name, p, t, skills) {
 // On the cream card the rating colours are a shade darker, as on the page (BAND).
 const CARDS = {
   dark: { bg: '#141414', ink: '#f4efe6', muted: '#a8a093', line: '#3d3730', hot: '#ff5a1f', paper: '#e6dfd1', paperInk: '#141414', paperMuted: '#62594c', piece: 'w', band: BAND },
-  light: { bg: '#f4efe6', ink: '#141414', muted: '#62594c', line: '#d3c8b3', hot: '#c2410c', paper: '#1b1815', paperInk: '#f4efe6', paperMuted: '#a8a093', piece: 'b', band: ['#2f5c45', '#21507a', '#b8400f', '#9c1f32', '#5e36ad'] },
+  light: { bg: '#f4efe6', ink: '#141414', muted: '#62594c', line: '#d3c8b3', hot: '#c2410c', paper: '#1b1815', paperInk: '#f4efe6', paperMuted: '#a8a093', piece: 'b', band: BAND.map(darker) },
 };
 let CARD = CARDS.dark;
 const cardLook = () => { try { return localStorage.getItem('chess-trainer-card-look') === 'light' ? 'light' : 'dark'; } catch { return 'dark'; } };
