@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030115957';
-import { STYLE_OF } from './styles.js?v=20261030115957';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030120236';
+import { STYLE_OF } from './styles.js?v=20261030120236';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1338,7 +1338,8 @@ let shownP = null;
 function render(name, at, full) {
   shown = [name, at, full];
   const avail = speedsOf(name, full), main = full.speeds[0]?.speed;
-  const sp = pfSpeed && (pfSpeed === 'all' || avail.some(([k]) => k === pfSpeed)) ? pfSpeed : avail.some(([k]) => k === main) ? main : 'all';
+  // A time control with no games read yet has no card of its own: the main one shows until its games come.
+  const sp = pfSpeed && (pfSpeed === 'all' || avail.some(([k, n]) => k === pfSpeed && n > 0)) ? pfSpeed : avail.some(([k]) => k === main) ? main : 'all';
   const p = forSpeed(name, full, sp);
   if (sp !== 'all') chartState.speed = sp;
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
@@ -1423,6 +1424,7 @@ function render(name, at, full) {
     pfSpeed = sp; redraw();
     if (sp === 'all') return;
     try { if (await fetchSpeed(name, sp) && pfSpeed === sp) redraw(); } catch (err) { $('#profile-msg').textContent = err.message; }
+    if (pfSpeed === sp && !speedsOf(name, shown[2]).some(([k, n]) => k === sp && n > 0)) $('#profile-msg').textContent = `Lichess gave no ${sp} games for ${name} to read, so the card stays on the others.`;
   }));
   // Time controls missing from the last 500 games show once Lichess says the player has them.
   if (!PERFS.has(name.toLowerCase())) perfsOf(name).then((x) => { if (x && shown?.[0] === name) { const y = scrollY; render(...shown); scrollTo(0, y); } });
