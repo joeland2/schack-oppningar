@@ -2032,3 +2032,12 @@ main.profile:has(#admin) { max-width: 1320px; }
 /* Each example keeps room for its card's sticker and clips the rest, so the cards past the one row
    (zero high) show nothing, not even a sticker's edge */
 .hero-ex > .hero-p { min-height: 0; overflow: hidden; padding: 10px 10px 0 0; }
+/* A known pro's card: a gold frame and a PRO tag on the top edge */
+.pf-pcard.pro { box-shadow: 0 0 0 3px #d4a017, 0 0 0 5px rgb(20 20 20 / .6), 0 22px 44px rgb(20 20 20 / .25); }
+.pf-pcard.pro::before { content: 'PRO'; position: absolute; top: -11px; left: 16px; z-index: 2; padding: 3px 8px 2px; border-radius: 3px; background: #d4a017; color: #141414; font: 400 13px/1 var(--font-poster); letter-spacing: .12em; box-shadow: 0 2px 4px rgb(0 0 0 / .3); }
+/* A pro's real name under the account name: the gold PRO tag, the name, the title */
+#profile > .pf-pro-line { display: flex; align-items: center; gap: 10px; margin: -26px 0 0; font-size: clamp(1rem, 2.2vw, 1.35rem); }
+.pf-pro-tag { padding: 4px 9px 3px; border-radius: 3px; background: #d4a017; color: #141414; font: 400 .8em/1 var(--font-poster); letter-spacing: .12em; }
+.pf-pro-line b { font-weight: 700; }
+.pf-pro-title { padding: 3px 7px; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); font: 700 .7em/1 var(--font-body); letter-spacing: .08em; }
+@media (max-width: 640px) { #profile > .pf-pro-line { justify-content: center; margin-top: -14px; } }

@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030095609';
-import { STYLE_OF } from './styles.js?v=20261030095609';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030100335';
+import { STYLE_OF } from './styles.js?v=20261030100335';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -873,9 +873,9 @@ function portrait(name, p, skills, me, part = 'lead') {
 const CARD_INK = 'w';
 const PIECE_NAME = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
 // The card's picture is coloured by rating (bandColor, below), on the page and in the downloaded image.
-// The colour glides with the rating through eight colours spread from 650 to 3170 (olive, green, teal,
-// blue, orange, red, violet, gold), so every rating has its own shade, the world's best included.
-const BAND_AT = [[650, '#8a9a32'], [1010, '#3f9a6e'], [1370, '#1a9aa3'], [1730, '#3a86c8'], [2090, '#e2561c'], [2450, '#d63a4f'], [2810, '#8a5ae0'], [3170, '#d4a017']];
+// The colour glides with the rating through the game ranks (bronze, silver, gold, platinum, diamond),
+// spread from 800 to 2900, so every rating has its own shade, the world's best included.
+const BAND_AT = [[800, '#a8652f'], [1300, '#8f9aa6'], [1800, '#d4a017'], [2350, '#24a89a'], [2900, '#6a7cf0']]; // bronze, silver, gold, platinum, diamond
 // Mixed along the colour wheel (hue, saturation, lightness), not straight through RGB, which turns muddy
 // between far-apart colours (orange to red went brown).
 const hsl = (hex) => {
@@ -893,9 +893,11 @@ function bandColor(r) {
   const [[a, ca], [b, cb]] = [BAND_AT[k], BAND_AT[k + 1] || BAND_AT[k]], f = b > a ? (x - a) / (b - a) : 0;
   if (f === 0) return ca;
   const [h1, s1, l1] = hsl(ca), [h2, s2, l2] = hsl(cb), dh = ((h2 - h1 + 540) % 360) - 180; // the short way round
+  // Towards a near-grey (silver) the hue means little: mix straight, which goes through no other colour.
+  if (Math.min(s1, s2) < 0.25) return `#${[1, 3, 5].map((i) => Math.round(parseInt(ca.slice(i, i + 2), 16) * (1 - f) + parseInt(cb.slice(i, i + 2), 16) * f).toString(16).padStart(2, '0')).join('')}`;
   return hex([(h1 + dh * f + 360) % 360, s1 + (s2 - s1) * f, l1 + (l2 - l1) * f]);
 }
-console.assert(bandColor(1730) === '#3a86c8' && hex(hsl('#e2561c')) === '#e2561c' && bandColor(100) === '#8a9a32' && bandColor(3500) === '#d4a017' && bandColor(1700) !== bandColor(1600), 'bandColor');
+console.assert(bandColor(1800) === '#d4a017' && hex(hsl('#e2561c')) === '#e2561c' && bandColor(100) === '#a8652f' && bandColor(3500) === '#6a7cf0' && bandColor(1700) !== bandColor(1600), 'bandColor');
 const darker = (hex) => `#${[1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.78).toString(16).padStart(2, '0')).join('')}`; // as CSS's 78% mix with black
 // The six skills as bars, so a player's shape reads before the numbers; [label, value] pairs.
 const cardBars = (xs, on = null) => `<div class="pf-pcard-bars">${xs.map(([k, v]) => `<div${k === on ? ' class="on"' : ''}><span>${k}</span><i style="--v:${v ?? 0}%"></i><b>${v ?? '–'}</b></div>`).join('')}</div>`;
@@ -910,6 +912,16 @@ function cardCode(p, t, skills) {
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '-';
   return [ovr, TYPE_CODES.indexOf(t[0]?.name), t[1] ? TYPE_CODES.indexOf(t[1].name) : '', skills.map((x) => x.v ?? '-').join('.'), main ? `${main.rating}${main.speed.slice(0, 2)}` : '', p.piece || 'n'].join('/');
 }
+// ---------- Pros ----------
+// Known professional players' Lichess accounts (checked: the name on the account, or widely known, as
+// Magnus Carlsen's DrNykterstein): their cards wear a gold PRO frame wherever they show.
+const PROS = new Map(Object.entries({ drnykterstein: 'GM Magnus Carlsen', alireza2003: 'GM Alireza Firouzja', nihalsarin2004: 'GM Nihal Sarin', penguingim1: 'GM Andrew Tang',
+  zhigalko_sergei: 'GM Sergei Zhigalko', vladimirovich9000: 'GM Dmitry Andreikin', may6enexttime: 'GM Aleksei Sarana', 'night-king96': 'GM Oleksandr Bortnyk',
+  konevlad: 'GM Vladislav Artemiev', ericrosen: 'IM Eric Rosen', fins: 'IM John Bartholomew' }));
+// On a pro's profile, under the name: who the account belongs to.
+const proLine = (name) => { const who = proOf(name); return who ? `<p class="pf-pro-line"><span class="pf-pro-tag">PRO</span><b>${esc(who.replace(/^(GM|IM) /, ''))}</b><span class="pf-pro-title">${esc(who.split(' ')[0])}</span></p>` : ''; };
+const proOf = (name) => PROS.get(String(name).toLowerCase()) || null;
+const proClass = (name) => (proOf(name) ? ' pro' : '');
 // ---------- Flags ----------
 // A player's country flag from their Lichess profile, as a sticker on the card's corner; none without
 // one. Lichess's other flags (_earth, _rainbow…) get no sticker. Images from flag-icons (MIT).
@@ -934,7 +946,7 @@ function playerCard(name, p, t, skills) {
   const known = skills.filter((x) => x.v !== null);
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
   const main = p.speeds[0];
-  return `<div class="pf-pcard" style="--band:${bandColor(main?.rating)}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}
+  return `<div class="pf-pcard${proClass(name)}" style="--band:${bandColor(main?.rating)}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span>${t[1] ? `<span class="pf-str">+ ${esc(t[1].name)}</span>` : ''}</div>
       <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title=""${esc(name)}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
         ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
@@ -982,6 +994,11 @@ function drawCard(ctx, x, y, name, p, t, skills, piece, flag = null) {
   ctx.fillStyle = CARD.ink; fit(ctx, t[0].name.toUpperCase(), '400 #px Anton', 40, 300); ctx.fillText(t[0].name.toUpperCase(), 42, 232);
   if (t[1]) { ctx.fillStyle = CARD.muted; ctx.font = '600 24px Geist'; ctx.fillText(`+ ${t[1].name}`, 42, 266); }
   if (piece) ctx.drawImage(piece, 450, 48, 110, 110);
+  if (proOf(name)) { // a known pro: the gold frame and the PRO tag, as .pf-pcard.pro
+    ctx.strokeStyle = '#d4a017'; ctx.lineWidth = 8; ctx.beginPath(); ctx.roundRect(-4, -4, 608, 788, 13); ctx.stroke();
+    ctx.fillStyle = '#d4a017'; ctx.beginPath(); ctx.roundRect(32, -20, 84, 34, 5); ctx.fill();
+    ctx.fillStyle = '#141414'; ctx.font = '400 26px Anton'; ctx.letterSpacing = '3px'; ctx.fillText('PRO', 46, 8); ctx.letterSpacing = '0px';
+  }
   if (flag) { // the sticker on the corner: white edge, tilted, a soft shadow (as .pf-flag)
     ctx.save(); ctx.translate(560, 18); ctx.rotate(8 * Math.PI / 180);
     ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 7;
@@ -1248,7 +1265,7 @@ function render(name, at, full) {
   document.title = me ? 'Your Profile' : `${name} · Profile`;
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
-    ${nameRow(name)}
+    ${nameRow(name)}${proLine(name)}
     <section class="pf-hero">
       <div class="pf-card-col">${playerCard(name, p, t, skills)}${speedBar(name, full, sp, avail)}${me ? starsStrip() : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
         <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
@@ -1576,7 +1593,7 @@ function failed(name, err) {
 
 // A profile from games already fetched (Lichess's shape), without fetching: for checking the types on many players.
 const profileFromRaw = async (name, raw) => (await loadScores(), profileOf(raw.map((g) => readGame(g, name.toLowerCase()))));
-export { cardImage, playerCard, flagHtml, loadFlags, bandColor, fineSkillsOf, gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
+export { cardImage, playerCard, flagHtml, loadFlags, bandColor, proClass, proOf, PROS, boardCard, fineSkillsOf, gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
 // ---------- The games themselves ----------
 // The newest games as a list; each opens on game.html with the board, how it went and the key moves.
 const STATUS = { mate: 'mate', resign: 'resignation', outoftime: 'time', timeout: 'time', draw: 'agreement', stalemate: 'stalemate', aborted: 'abort' };

@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030095609';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030095609';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030095609';
-import { GUIDE } from './guide.js?v=20261030095609';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030095609';
-import { maia3Move } from './maia3.js?v=20261030095609';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030095609';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030095609';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor } from './profile.js?v=20261030095609';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030100335';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030100335';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030100335';
+import { GUIDE } from './guide.js?v=20261030100335';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030100335';
+import { maia3Move } from './maia3.js?v=20261030100335';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030100335';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030100335';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261030100335';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3371,7 +3371,7 @@ async function deepLink() {
 // shown as their player cards (from the leaderboard; their names alone until it answers).
 const ABBR = { Attack: 'ATK', Defense: 'DEF', 'Early game': 'EARLY', 'Late game': 'LATE', Accuracy: 'ACC', Speed: 'SPD' };
 const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-const pcard = (r) => `<div class="pf-pcard" style="--band:${bandColor(r.rating)}">${flagHtml(r.name)}<div class="pf-pcard-top"><div><b class="pf-ovr">${r.overall ?? '–'}</b><span class="pf-pos">${esc(r.style)}</span>${r.strength ? `<span class="pf-str">+ ${esc(r.strength)}</span>` : ''}</div>
+const pcard = (r) => `<div class="pf-pcard${proClass(r.name)}" style="--band:${bandColor(r.rating)}">${flagHtml(r.name)}<div class="pf-pcard-top"><div><b class="pf-ovr">${r.overall ?? '–'}</b><span class="pf-pos">${esc(r.style)}</span>${r.strength ? `<span class="pf-str">+ ${esc(r.strength)}</span>` : ''}</div>
     <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(r.piece || 'n').toUpperCase()}.svg" alt=""><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(r.piece || 'n').toUpperCase()}.svg" alt=""><span class="pf-pcard-rating">${r.rating} <small>${esc(r.speed)}</small></span></div></div>
     <p class="pf-pcard-name">${esc(r.name)}</p>
     <div class="pf-pcard-bars">${Object.entries(ABBR).map(([k, a]) => `<div><span>${a}</span><i style="--v:${r.skills?.[k] ?? 0}%"></i><b>${r.skills?.[k] ?? '–'}</b></div>`).join('')}</div></div>`;
@@ -3400,7 +3400,7 @@ if (!account()) fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/lea
       if (x) picks.push(x);
     }
     picks.sort((a, b) => a.rating - b.rating);
-    ex.innerHTML = picks.map((x) => `<a class="hero-p" href="profile.html?u=${encodeURIComponent(x.name)}">${pcard(x)}<span class="hero-r">${lvl(x.rating)}</span></a>`).join('');
+    ex.innerHTML = picks.map((x) => `<a class="hero-p" href="profile.html?u=${encodeURIComponent(x.name)}" aria-label="${esc(x.name)}, ${lvl(x.rating)}">${pcard(x)}</a>`).join('');
   };
   if (pool.length) { draw(); let w = innerWidth; addEventListener('resize', () => { if (innerWidth !== w) { w = innerWidth; draw(); } }); }
 }).catch(() => {});
