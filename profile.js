@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030094215';
-import { STYLE_OF } from './styles.js?v=20261030094215';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030094442';
+import { STYLE_OF } from './styles.js?v=20261030094442';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -889,11 +889,31 @@ function cardCode(p, t, skills) {
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '-';
   return [ovr, TYPE_CODES.indexOf(t[0]?.name), t[1] ? TYPE_CODES.indexOf(t[1].name) : '', skills.map((x) => x.v ?? '-').join('.'), main ? `${main.rating}${main.speed.slice(0, 2)}` : '', p.piece || 'n'].join('/');
 }
+// ---------- Flags ----------
+// A player's country flag from their Lichess profile, as a sticker on the card's corner; none without
+// one. Lichess's other flags (_earth, _rainbow…) get no sticker. Images from flag-icons (MIT).
+const FLAGS = new Map(); // lower-case name → 'se', 'gb-eng'… or null
+const flagCode = (f) => (/^[A-Z]{2}(-[A-Z]{3})?$/i.test(f || '') ? f.toLowerCase() : null);
+const flagSrc = (c) => `https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/${c}.svg`;
+const flagHtml = (name) => { const c = FLAGS.get(String(name).toLowerCase()); return c ? `<span class="pf-flag" style="background-image:url(${flagSrc(c)})" aria-hidden="true"></span>` : ''; };
+console.assert(flagCode('SE') === 'se' && flagCode('GB-ENG') === 'gb-eng' && flagCode('_earth') === null && flagCode(undefined) === null, 'flagCode');
+// Many players at once (Lichess answers up to 300 a call), for lists of cards.
+async function loadFlags(names) {
+  const todo = [...new Set(names.map((n) => String(n).toLowerCase()))].filter((n) => !FLAGS.has(n));
+  for (let i = 0; i < todo.length; i += 300) {
+    const part = todo.slice(i, i + 300);
+    const users = await fetch('https://lichess.org/api/users', { method: 'POST', body: part.join(',') }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+    part.forEach((n) => FLAGS.set(n, null));
+    for (const u of users) FLAGS.set(u.id, flagCode(u.profile?.flag));
+  }
+}
+// The flag as an image for the downloaded cards (null without one).
+const flagImage = (name) => { const c = FLAGS.get(String(name).toLowerCase()); return c ? new Promise((ok) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => ok(im); im.onerror = () => ok(null); im.src = flagSrc(c); }) : Promise.resolve(null); };
 function playerCard(name, p, t, skills) {
   const known = skills.filter((x) => x.v !== null);
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
   const main = p.speeds[0];
-  return `<div class="pf-pcard" data-band="${bandOf(main?.rating)}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">
+  return `<div class="pf-pcard" data-band="${bandOf(main?.rating)}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span>${t[1] ? `<span class="pf-str">+ ${esc(t[1].name)}</span>` : ''}</div>
       <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title=""${esc(name)}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
         ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
@@ -930,7 +950,7 @@ function wrap(ctx, text, x, y, max, lh, lines = 99, indent = 0) {
   return y;
 }
 // One card, 600 x 780 units, top left at (x, y).
-function drawCard(ctx, x, y, name, p, t, skills, piece) {
+function drawCard(ctx, x, y, name, p, t, skills, piece, flag = null) {
   const known = skills.filter((k) => k.v !== null), ovr = known.length ? String(Math.round(sum(known, (k) => k.v) / known.length)) : '–', main = p.speeds[0];
   const band = CARD.band[bandOf(main?.rating)];
   ctx.save(); ctx.translate(x, y);
@@ -941,6 +961,12 @@ function drawCard(ctx, x, y, name, p, t, skills, piece) {
   ctx.fillStyle = CARD.ink; fit(ctx, t[0].name.toUpperCase(), '400 #px Anton', 40, 300); ctx.fillText(t[0].name.toUpperCase(), 42, 232);
   if (t[1]) { ctx.fillStyle = CARD.muted; ctx.font = '600 24px Geist'; ctx.fillText(`+ ${t[1].name}`, 42, 266); }
   if (piece) ctx.drawImage(piece, 450, 48, 110, 110);
+  if (flag) { // the sticker on the corner: white edge, tilted, a soft shadow (as .pf-flag)
+    ctx.save(); ctx.translate(560, 18); ctx.rotate(8 * Math.PI / 180);
+    ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 7;
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(-52, -38, 104, 76, 10); ctx.fill(); ctx.shadowColor = 'transparent';
+    ctx.beginPath(); ctx.roundRect(-46, -32, 92, 64, 5); ctx.clip(); ctx.drawImage(flag, -46, -32, 92, 64); ctx.restore();
+  }
   if (main) {
     ctx.textAlign = 'right'; ctx.font = '400 26px Anton'; ctx.fillStyle = CARD.muted; const sp = main.speed.toUpperCase(); ctx.fillText(sp, 560, 232);
     const w = ctx.measureText(sp).width; ctx.font = '400 52px Anton'; ctx.fillStyle = CARD.ink; ctx.fillText(String(main.rating), 560 - w - 10, 232); ctx.textAlign = 'left';
@@ -992,7 +1018,8 @@ async function comparePng(A, B, sa, sb, detail, btn) {
     ctx.scale(S, S);
     ctx.fillStyle = CARD.paper; ctx.fillRect(0, 0, W, H);
     const xs = [70, W - 70 - cw];
-    [[A, sa, pa], [B, sb, pb]].forEach(([X, sk, pc], i) => { ctx.save(); ctx.translate(xs[i], top); ctx.scale(k, k); drawCard(ctx, 0, 0, X.name, X.p, X.p.type, sk, pc); ctx.restore(); });
+    const [fa, fb] = await Promise.all([flagImage(A.name), flagImage(B.name)]);
+    [[A, sa, pa, fa], [B, sb, pb, fb]].forEach(([X, sk, pc, fl], i) => { ctx.save(); ctx.translate(xs[i], top); ctx.scale(k, k); drawCard(ctx, 0, 0, X.name, X.p, X.p.type, sk, pc, fl); ctx.restore(); });
     ctx.fillStyle = CARD.hot; ctx.font = '400 84px Anton'; ctx.textAlign = 'center'; ctx.fillText('VS', W / 2, top + ch / 2 + 30); ctx.textAlign = 'left';
     let y = top + ch + 60;
     if (detail) {
@@ -1070,10 +1097,11 @@ async function cardImage(look, name, p, t, skills, detail, lead) {
     const S = 2, W = detail ? 1080 : 680, H = detail ? 1350 : 860;
     const canvas = Object.assign(document.createElement('canvas'), { width: W * S, height: H * S }), ctx = canvas.getContext('2d');
     ctx.scale(S, S);
-    if (!detail) drawCard(ctx, 40, 40, name, p, t, skills, piece);
+    const flag = await flagImage(name);
+    if (!detail) drawCard(ctx, 40, 40, name, p, t, skills, piece, flag);
     else {
       ctx.fillStyle = CARD.paper; ctx.fillRect(0, 0, W, H);
-      ctx.save(); ctx.translate(60, 60); ctx.scale(0.78, 0.78); drawCard(ctx, 0, 0, name, p, t, skills, piece); ctx.restore();
+      ctx.save(); ctx.translate(60, 60); ctx.scale(0.78, 0.78); drawCard(ctx, 0, 0, name, p, t, skills, piece, flag); ctx.restore();
       const x = 560, max = W - x - 60; let y = 140;
       ctx.fillStyle = CARD.paperInk; const z = fit(ctx, t[0].name.toUpperCase(), '400 #px Anton', 120, max); ctx.fillText(t[0].name.toUpperCase(), x, y += z * 0.2);
       if (t[1]) { ctx.fillStyle = CARD.paperMuted; fit(ctx, `+ ${t[1].name}`, '400 #px Anton', 48, max); ctx.fillText(`+ ${t[1].name}`, x, y += 70); }
@@ -1144,7 +1172,7 @@ const PERFS = new Map(); // lower-case name → promise of { bullet: games, … 
 function perfsOf(name) {
   const k = name.toLowerCase();
   if (!PERFS.has(k)) PERFS.set(k, fetch(`https://lichess.org/api/user/${encodeURIComponent(name)}`).then((r) => (r.ok ? r.json() : null))
-    .then((u) => u && Object.fromEntries(SPEEDS.map((sp) => [sp, u.perfs?.[sp]?.games || 0]))).catch(() => null)
+    .then((u) => { if (u) FLAGS.set(k, flagCode(u.profile?.flag)); return u && Object.fromEntries(SPEEDS.map((sp) => [sp, u.perfs?.[sp]?.games || 0])); }).catch(() => null)
     .then((x) => { PERFS.set(k, x); return x; }));
   return PERFS.get(k);
 }
@@ -1527,7 +1555,7 @@ function failed(name, err) {
 
 // A profile from games already fetched (Lichess's shape), without fetching: for checking the types on many players.
 const profileFromRaw = async (name, raw) => (await loadScores(), profileOf(raw.map((g) => readGame(g, name.toLowerCase()))));
-export { cardImage, playerCard, fineSkillsOf, gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
+export { cardImage, playerCard, flagHtml, loadFlags, fineSkillsOf, gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
 // ---------- The games themselves ----------
 // The newest games as a list; each opens on game.html with the board, how it went and the key moves.
 const STATUS = { mate: 'mate', resign: 'resignation', outoftime: 'time', timeout: 'time', draw: 'agreement', stalemate: 'stalemate', aborted: 'abort' };
@@ -1629,6 +1657,7 @@ async function compare(a, b, speed = new URLSearchParams(location.search).get('s
     const avail = SPEEDS.filter((sp) => count(a, ga, sp) >= MIN_SPEED && count(b, gb, sp) >= MIN_SPEED);
     if (speed === null) speed = avail.includes(A.p.speeds[0]?.speed) ? A.p.speeds[0].speed : 'all';
     const sub = (X, gs) => (speed === 'all' || !gs.length ? X : { name: X.name, p: forSpeed(X.name, X.p, speed) });
+    await loadFlags([a, b]);
     renderCompare(sub(A, ga), sub(B, gb), speed, avail);
   } catch (err) { $('#profile-msg').textContent = err.message; }
 }

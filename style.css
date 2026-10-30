@@ -2021,7 +2021,13 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-card-col .pf-speeds { display: flex; width: 300px; max-width: 100%; }
 .pf-card-col .pf-speeds button { flex: 1 1 0; min-width: 0; display: grid; justify-items: center; gap: 1px; padding: 6px 2px; font-size: 12.5px; line-height: 1.15; }
 .pf-card-col .pf-speeds small { font-size: 11px; }
-/* The star on the time control played most: a sticker on the button's top right corner */
+/* The star on the time control played most: a small sticker like the flag's, white edge, tilted, above
+   its own button's top edge so it covers no text */
 .pf-card-col .pf-speeds { overflow: visible; }
 .pf-card-col .pf-speeds button { position: relative; overflow: visible; }
-.pf-speed-star { position: absolute; top: -8px; right: 8px; z-index: 1; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--hint); color: #141414; font-style: normal; font-size: 13px; line-height: 1; box-shadow: 0 1px 3px rgb(0 0 0 / .4); transform: rotate(12deg); }
+.pf-speed-star { position: absolute; top: -11px; right: 4px; z-index: 1; display: grid; place-items: center; width: 18px; height: 18px; border: 2px solid #fff; border-radius: 5px; background: var(--hint); color: #141414; font-style: normal; font-size: 11px; line-height: 1; box-shadow: 0 2px 4px rgb(0 0 0 / .3); transform: rotate(10deg); }
+
+/* A player's country flag (from Lichess) as a sticker on the card's corner: white edge, tilted, shadow */
+.pf-pcard { position: relative; }
+.pf-flag { position: absolute; top: -8px; right: -10px; z-index: 2; width: 52px; height: 38px; background: center / cover no-repeat; border: 3px solid #fff; border-radius: 6px; transform: rotate(8deg); box-shadow: 0 4px 8px rgb(0 0 0 / .3); pointer-events: none; }
+.hero-ex { padding: 10px 10px 0 0; } /* room for the stickers over the cards' corners */

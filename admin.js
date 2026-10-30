@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261030094215';
-import { cardImage } from './profile.js?v=20261030094215';
+import { account, login, finishLogin } from './lichess.js?v=20261030094442';
+import { cardImage, flagHtml, loadFlags } from './profile.js?v=20261030094442';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -26,7 +26,7 @@ function cardOf(target, board) {
   const r = board.filter((x) => x.name.toLowerCase() === name.toLowerCase()).sort((x, y) => y.games - x.games)[0]; // their main time control
   return r && { name: r.name, overall: r.overall, style: r.style, strength: r.strength, skills: ['Attack', 'Defense', 'Early game', 'Late game', 'Accuracy', 'Speed'].map((k) => r.skills?.[k] ?? null), rating: r.rating, speed: r.speed, piece: r.piece };
 }
-const cardHtml = (c, look = 'dark', style = false) => `<div class="ad-cv ad-cv-${look}${style ? ' with-style' : ''}"><div class="pf-pcard" data-band="${bandOf(c.rating)}"><div class="pf-pcard-top"><div><b class="pf-ovr">${esc(c.overall ?? '–')}</b><span class="pf-pos">${esc(c.style || '')}</span>${c.strength ? `<span class="pf-str">+ ${esc(c.strength)}</span>` : ''}</div>
+const cardHtml = (c, look = 'dark', style = false) => `<div class="ad-cv ad-cv-${look}${style ? ' with-style' : ''}"><div class="pf-pcard" data-band="${bandOf(c.rating)}">${flagHtml(c.name)}<div class="pf-pcard-top"><div><b class="pf-ovr">${esc(c.overall ?? '–')}</b><span class="pf-pos">${esc(c.style || '')}</span>${c.strength ? `<span class="pf-str">+ ${esc(c.strength)}</span>` : ''}</div>
   <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(c.piece || 'n').toUpperCase()}.svg" alt=""><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(c.piece || 'n').toUpperCase()}.svg" alt="">${c.rating ? `<span class="pf-pcard-rating">${c.rating} <small>${esc(c.speed || '')}</small></span>` : ''}</div></div>
   <p class="pf-pcard-name">${esc(c.name)}</p><div class="pf-pcard-bars">${SKILL_KEYS.map((k, i) => `<div><span>${k}</span><i style="--v:${c.skills[i] ?? 0}%"></i><b>${c.skills[i] ?? '–'}</b></div>`).join('')}</div></div>${style ? `<div class="ad-cv-style"><b>${esc(c.style || '')}</b>${c.strength ? `<span>+ ${esc(c.strength)}</span>` : ''}</div>` : ''}</div>`;
 let BOARD = [];
@@ -222,6 +222,7 @@ function shot(key, c, look, style) {
 }
 function bindCards(body) {
   const cards = cardsOf(body), box = $('#admin');
+  loadFlags([...cards.keys()]); // the stickers on the cards shown on hover
   tip ??= document.body.appendChild(Object.assign(document.createElement('div'), { className: 'ad-card-tip', hidden: true }));
   const place = (e) => { const w = tip.offsetWidth, h = tip.offsetHeight;
     tip.style.left = `${Math.min(e.clientX + 16, innerWidth - w - 8)}px`; tip.style.top = `${Math.min(e.clientY + 16, innerHeight - h - 8)}px`; };
