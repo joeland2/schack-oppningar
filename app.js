@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030095119';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030095119';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030095119';
-import { GUIDE } from './guide.js?v=20261030095119';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030095119';
-import { maia3Move } from './maia3.js?v=20261030095119';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030095119';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030095119';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags } from './profile.js?v=20261030095119';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030095216';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030095216';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030095216';
+import { GUIDE } from './guide.js?v=20261030095216';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030095216';
+import { maia3Move } from './maia3.js?v=20261030095216';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030095216';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030095216';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags } from './profile.js?v=20261030095216';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3386,20 +3386,22 @@ if (!account()) fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/lea
   for (const x of all) { const k = x.name.toLowerCase(); if (!best.has(k) || x.games > best.get(k).games) best.set(k, x); }
   const rows = [...best.values()];
   await loadFlags(rows.map((x) => x.name));
-  document.querySelectorAll('.hero-p[data-p]').forEach((a) => {
-    const r = rows.find((x) => x.name.toLowerCase() === a.dataset.p);
-    if (r) a.innerHTML = `${pcard(r)}<span class="hero-r">${esc(a.dataset.lvl)}</span>`;
-  });
-  // More players after the three, from every level in turn, so the row runs from edge to edge on any
-  // screen (CSS shows as many as fit in one row).
-  const shown = new Set([...document.querySelectorAll('.hero-p[data-p]')].map((a) => a.dataset.p));
+  // One row of cards from the lowest rated to the highest, as many as fit, spread evenly over the levels so
+  // the card colours run through the bands; picked again when the width changes.
   const lvl = (x) => (x < 1000 ? 'Beginner' : x < 1600 ? 'Club player' : x < 2000 ? 'Strong' : x < 2400 ? 'Expert' : x < 2700 ? 'Master' : 'World class');
-  const more = rows.filter((x) => x.rating && x.skills && !shown.has(x.name.toLowerCase())).sort((a, b) => a.rating - b.rating);
-  const step = Math.max(1, Math.floor(more.length / 12));
-  const picked = more.filter((_, k) => k % step === 0).slice(0, 12);
-  const mixed = picked.map((_, k) => picked[k % 2 ? Math.floor(k / 2) : picked.length - 1 - Math.floor(k / 2)]); // strongest, weakest, next strongest…
-  $('.hero-ex').insertAdjacentHTML('beforeend', mixed
-    .map((x) => `<a class="hero-p" href="profile.html?u=${encodeURIComponent(x.name)}">${pcard(x)}<span class="hero-r">${lvl(x.rating)}</span></a>`).join(''));
+  const pool = rows.filter((x) => x.rating && x.skills).sort((a, b) => a.rating - b.rating), ex = $('.hero-ex');
+  const draw = () => {
+    const cols = Math.max(1, getComputedStyle(ex).gridTemplateColumns.split(' ').length), n = Math.min(cols, pool.length);
+    // Evenly over the ratings, not the list (most players sit near 1200): the nearest player not yet picked.
+    const lo = pool[0].rating, hi = pool.at(-1).rating, left = [...pool], picks = [];
+    for (let k = 0; k < n; k++) {
+      const want = n === 1 ? hi : lo + ((hi - lo) * k) / (n - 1), i = left.reduce((b, x, j) => (Math.abs(x.rating - want) < Math.abs(left[b].rating - want) ? j : b), 0);
+      picks.push(left.splice(i, 1)[0]);
+    }
+    picks.sort((a, b) => a.rating - b.rating);
+    ex.innerHTML = picks.map((x) => `<a class="hero-p" href="profile.html?u=${encodeURIComponent(x.name)}">${pcard(x)}<span class="hero-r">${lvl(x.rating)}</span></a>`).join('');
+  };
+  if (pool.length) { draw(); let w = innerWidth; addEventListener('resize', () => { if (innerWidth !== w) { w = innerWidth; draw(); } }); }
 }).catch(() => {});
 
 // ---------- Lichess login ----------
