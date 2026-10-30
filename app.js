@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030100335';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030100335';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030100335';
-import { GUIDE } from './guide.js?v=20261030100335';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030100335';
-import { maia3Move } from './maia3.js?v=20261030100335';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030100335';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030100335';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261030100335';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030100455';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030100455';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030100455';
+import { GUIDE } from './guide.js?v=20261030100455';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030100455';
+import { maia3Move } from './maia3.js?v=20261030100455';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030100455';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030100455';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261030100455';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3379,7 +3379,8 @@ const pcard = (r) => `<div class="pf-pcard${proClass(r.name)}" style="--band:${b
 function landing() { $('.hero').hidden = !!account() || location.hash === '#openings' || /[?&](do|practise)=/.test(location.search); } // a declaration: a link straight to a trainer calls it early
 landing();
 addEventListener('hashchange', landing);
-if (!account()) fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard').then((r) => (r.ok ? r.json() : [])).then(async (all) => {
+if (!account()) Promise.all([fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard').then((r) => (r.ok ? r.json() : [])),
+  fetch('data/pro-cards.json').then((r) => (r.ok ? r.json() : [])).catch(() => [])]).then(([board, pros]) => [...board, ...pros]).then(async (all) => { // the leaderboard and the known pros
   // The leaderboard keeps a card per time control: each player shows their main one (the most games).
   const best = new Map();
   for (const x of all) { const k = x.name.toLowerCase(); if (!best.has(k) || x.games > best.get(k).games) best.set(k, x); }
@@ -3388,7 +3389,9 @@ if (!account()) fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/lea
   // One row of cards from the lowest rated to the highest, as many as fit, spread evenly over the levels so
   // the card colours run through the bands; picked again when the width changes.
   const lvl = (x) => (x < 1000 ? 'Beginner' : x < 1600 ? 'Club player' : x < 2000 ? 'Strong' : x < 2400 ? 'Expert' : x < 2700 ? 'Master' : 'World class');
-  const pool = rows.filter((x) => x.rating && x.skills).sort((a, b) => a.rating - b.rating), ex = $('.hero-ex');
+  // Magnus Carlsen (DrNykterstein) closes the row as its highest: the one name everyone knows.
+  const top = rows.find((x) => x.name.toLowerCase() === 'drnykterstein');
+  const pool = rows.filter((x) => x.rating && x.skills && (!top || x.rating <= top.rating)).sort((a, b) => a.rating - b.rating), ex = $('.hero-ex');
   const draw = () => {
     const gap = parseFloat(getComputedStyle(ex).columnGap) || 0, n = Math.max(1, Math.floor((ex.clientWidth + gap) / (232 + gap))); // columns that fit (CSS: 232px each)
     // Spread evenly over the ratings, the nearest player to each step; never two whose colours are close

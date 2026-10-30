@@ -1,6 +1,6 @@
 // The leaderboard: everyone logged in here with Lichess who has opened their profile (see the profile), ranked within a time control
 // and a rating band, by the card's overall number or one of its skills.
-import { flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261030100335';
+import { flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261030100455';
 const BOARD = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -51,6 +51,13 @@ function render() {
     + (later.length && state.by !== 'stars' ? `<li class="lb-later">No ${BY.find(([k]) => k === state.by)[1].toLowerCase()} number yet: not enough analysed games</li>${later.map((r) => row(r, null, null)).join('')}` : '');
 }
 
-fetch(BOARD).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`The leaderboard answered with an error (${r.status}).`))))
-  .then((x) => { rows = x; render(); loadFlags(x.map((r) => r.name)).then(render); })
+// Known pros (data/pro-cards.json, their cards read here from their own games) stand on the board too,
+// unless they have a card of their own for that time control.
+const PRO_CARDS = fetch('data/pro-cards.json').then((r) => (r.ok ? r.json() : [])).catch(() => []);
+Promise.all([fetch(BOARD).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`The leaderboard answered with an error (${r.status}).`)))), PRO_CARDS])
+  .then(([x, pros]) => {
+    const have = new Set(x.map((r) => `${r.name.toLowerCase()}|${r.speed}`));
+    rows = [...x, ...pros.filter((p) => !have.has(`${p.name.toLowerCase()}|${p.speed}`))];
+    render(); loadFlags(rows.map((r) => r.name)).then(render);
+  })
   .catch((err) => { $('#lb-msg').textContent = err.message; });
