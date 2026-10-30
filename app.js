@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030100455';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030100455';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030100455';
-import { GUIDE } from './guide.js?v=20261030100455';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030100455';
-import { maia3Move } from './maia3.js?v=20261030100455';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030100455';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030100455';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261030100455';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030100822';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030100822';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030100822';
+import { GUIDE } from './guide.js?v=20261030100822';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030100822';
+import { maia3Move } from './maia3.js?v=20261030100822';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030100822';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030100822';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf } from './profile.js?v=20261030100822';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3394,14 +3394,11 @@ if (!account()) Promise.all([fetch('https://duhlvhjtxoofgnjegspa.supabase.co/fun
   const pool = rows.filter((x) => x.rating && x.skills && (!top || x.rating <= top.rating)).sort((a, b) => a.rating - b.rating), ex = $('.hero-ex');
   const draw = () => {
     const gap = parseFloat(getComputedStyle(ex).columnGap) || 0, n = Math.max(1, Math.floor((ex.clientWidth + gap) / (232 + gap))); // columns that fit (CSS: 232px each)
-    // Spread evenly over the ratings, the nearest player to each step; never two whose colours are close
-    // (the colour follows the rating, so 150 points apart at least).
-    const lo = pool[0].rating, hi = pool.at(-1).rating, picks = [];
-    for (let k = 0; k < n; k++) {
-      const want = n === 1 ? hi : lo + ((hi - lo) * k) / (n - 1);
-      const x = pool.filter((y) => picks.every((z) => Math.abs(z.rating - y.rating) >= 150)).sort((a, b) => Math.abs(a.rating - want) - Math.abs(b.rating - want))[0];
-      if (x) picks.push(x);
-    }
+    // One card per rank, never two alike: the player nearest the middle of each rank there is (Magnus in
+    // the top one), and when more ranks than columns, ranks spread evenly from the lowest to the highest.
+    const ranks = [...new Set(pool.map((x) => tierOf(x.rating)))].sort((a, b) => a - b);
+    const take = n >= ranks.length ? ranks : Array.from({ length: n }, (_, k) => ranks[n === 1 ? ranks.length - 1 : Math.round((k * (ranks.length - 1)) / (n - 1))]);
+    const picks = take.map((t) => (top && tierOf(top.rating) === t ? top : pool.filter((x) => tierOf(x.rating) === t).sort((x, y) => Math.abs(x.rating - (650 + t * 300)) - Math.abs(y.rating - (650 + t * 300)))[0]));
     picks.sort((a, b) => a.rating - b.rating);
     ex.innerHTML = picks.map((x) => `<a class="hero-p" href="profile.html?u=${encodeURIComponent(x.name)}" aria-label="${esc(x.name)}, ${lvl(x.rating)}">${pcard(x)}</a>`).join('');
   };
