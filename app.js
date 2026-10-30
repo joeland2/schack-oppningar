@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030101045';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030101045';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030101045';
-import { GUIDE } from './guide.js?v=20261030101045';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030101045';
-import { maia3Move } from './maia3.js?v=20261030101045';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030101045';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030101045';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf } from './profile.js?v=20261030101045';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030101333';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030101333';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030101333';
+import { GUIDE } from './guide.js?v=20261030101333';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030101333';
+import { maia3Move } from './maia3.js?v=20261030101333';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030101333';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030101333';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf } from './profile.js?v=20261030101333';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3389,16 +3389,18 @@ if (!account()) Promise.all([fetch('https://duhlvhjtxoofgnjegspa.supabase.co/fun
   // One row of cards from the lowest rated to the highest, as many as fit, spread evenly over the levels so
   // the card colours run through the bands; picked again when the width changes.
   const lvl = (x) => (x < 1000 ? 'Beginner' : x < 1600 ? 'Club player' : x < 2000 ? 'Strong' : x < 2400 ? 'Expert' : x < 2700 ? 'Master' : 'World class');
-  // Magnus Carlsen (DrNykterstein) closes the row as its highest: the one name everyone knows.
-  const top = rows.find((x) => x.name.toLowerCase() === 'drnykterstein');
-  const pool = rows.filter((x) => x.rating && x.skills && (!top || x.rating <= top.rating)).sort((a, b) => a.rating - b.rating), ex = $('.hero-ex');
+  const pool = rows.filter((x) => x.rating && x.skills).sort((a, b) => a.rating - b.rating), ex = $('.hero-ex');
+  const luck = Array.from({ length: 12 }, () => Math.random()); // drawn once per visit, so a resize keeps the cards
   const draw = () => {
     const gap = parseFloat(getComputedStyle(ex).columnGap) || 0, n = Math.max(1, Math.floor((ex.clientWidth + gap) / (232 + gap))); // columns that fit (CSS: 232px each)
-    // One card per rank, never two alike: the player nearest the middle of each rank there is (Magnus in
-    // the top one), and when more ranks than columns, ranks spread evenly from the lowest to the highest.
+    // One card per rank, never two alike; when more ranks than columns, ranks spread evenly from the
+    // lowest to the highest.
     const ranks = [...new Set(pool.map((x) => tierOf(x.rating)))].sort((a, b) => a - b);
     const take = n >= ranks.length ? ranks : Array.from({ length: n }, (_, k) => ranks[n === 1 ? ranks.length - 1 : Math.round((k * (ranks.length - 1)) / (n - 1))]);
-    const picks = take.map((t) => (top && tierOf(top.rating) === t ? top : pool.filter((x) => tierOf(x.rating) === t).sort((x, y) => Math.abs(x.rating - (650 + t * 300)) - Math.abs(y.rating - (650 + t * 300)))[0]));
+    // A new player from each rank on every visit (the same ones while the page is open); the top rank
+    // shows a known pro when there is one.
+    const picks = take.map((t) => { const all = pool.filter((x) => tierOf(x.rating) === t), pros = all.filter((x) => proClass(x.name));
+      const from = t === ranks.at(-1) && pros.length ? pros : all; return from[Math.floor(luck[t] * from.length)]; });
     picks.sort((a, b) => a.rating - b.rating);
     ex.innerHTML = picks.map((x) => `<a class="hero-p" href="profile.html?u=${encodeURIComponent(x.name)}" aria-label="${esc(x.name)}, ${lvl(x.rating)}">${pcard(x)}</a>`).join('');
   };
