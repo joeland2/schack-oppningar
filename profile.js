@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030114111';
-import { STYLE_OF } from './styles.js?v=20261030114111';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030115613';
+import { STYLE_OF } from './styles.js?v=20261030115613';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1791,9 +1791,9 @@ async function comparePick(name) {
   $('#profile').innerHTML = `<header class="cmp-head"><h1 class="pf-h1">Compare <a href="${profileLink(name)}">${esc(name)}</a></h1></header>
     <section class="cmp-pick"><div class="cmp-pick-a" id="cmp-pick-a"><p class="info">Reading ${esc(name)}'s games…</p></div><span class="cmp-pick-vs">VS</span>
       <div class="cmp-pick-b"><h2>With who?</h2>
-        ${mine && mine.toLowerCase() !== name.toLowerCase() ? `<a class="cta cmp-pick-me" href="${compareLink(name, mine)}">With me <small>${esc(mine)}</small></a>` : ''}
-        <form class="cmp-pick-form" action="profile.html"><input type="hidden" name="u" value="${esc(name)}"><input name="vs" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="Any Lichess name" aria-label="Any Lichess name" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="cta">Compare</button></form>
-        ${others.length ? `<p class="cmp-pick-k">Your starred players</p><p class="cmp-pick-favs">${others.map((x) => `<a class="pf-chip" href="${compareLink(name, x)}">${esc(x)}</a>`).join('')}</p>` : ''}
+        ${mine && mine.toLowerCase() !== name.toLowerCase() ? `<div class="cmp-pick-g"><p class="cmp-pick-k">You</p><a class="cmp-opt" href="${compareLink(name, mine)}"><b>${esc(mine)}</b><span aria-hidden="true">→</span></a></div>` : ''}
+        <div class="cmp-pick-g"><p class="cmp-pick-k">Any Lichess player</p><form class="cmp-pick-form" action="profile.html"><input type="hidden" name="u" value="${esc(name)}"><input name="vs" required maxlength="30" pattern="[A-Za-z0-9_\\-]{2,30}" placeholder="Lichess name" aria-label="Any Lichess name" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="cta">Compare</button></form></div>
+        ${others.length ? `<div class="cmp-pick-g"><p class="cmp-pick-k">Your starred players</p>${others.map((x) => `<a class="cmp-opt" href="${compareLink(name, x)}"><b>${esc(x)}</b><span aria-hidden="true">→</span></a>`).join('')}</div>` : ''}
       </div></section>`;
   $('.cmp-pick-form input[name=vs]').focus();
   try {

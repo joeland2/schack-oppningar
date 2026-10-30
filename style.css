@@ -2050,13 +2050,19 @@ main.profile:has(#admin) { max-width: 1320px; }
 /* Compare: the player you came from, VS, and the other to pick */
 .cmp-pick { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 28px; margin-top: 12px; }
 .cmp-pick-vs { font: 400 44px/1 var(--font-poster); color: var(--muted); }
-.cmp-pick-b { display: grid; gap: 12px; justify-items: start; max-width: 420px; }
+.cmp-pick-b { display: grid; gap: 22px; width: min(100%, 380px); }
 .cmp-pick-b h2 { margin: 0; font: 400 32px/1 var(--font-poster); text-transform: uppercase; }
-.cmp-pick-me small { margin-left: 6px; font-weight: 500; opacity: .75; }
-.cmp-pick-form { display: flex; gap: 8px; width: 100%; }
-.cmp-pick-form input { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; }
-.cmp-pick-k { margin: 6px 0 0; font: 700 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
-.cmp-pick-favs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.cmp-pick-g { display: grid; gap: 6px; }
+.cmp-pick-k { margin: 0 0 2px; font: 700 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.cmp-opt { display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink) !important; text-decoration: none !important; transition: border-color .15s; }
+.cmp-opt b { font-weight: 600; }
+.cmp-opt span { color: var(--muted); transition: transform .15s, color .15s; }
+.cmp-opt:hover, .cmp-opt:focus-visible { border-color: var(--ink); }
+.cmp-opt:hover span, .cmp-opt:focus-visible span { color: var(--ink); transform: translateX(3px); }
+.cmp-pick-form { display: flex; gap: 8px; }
+.cmp-pick-form input { flex: 1; min-width: 0; height: 44px; box-sizing: border-box; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 0 14px; }
+.cmp-pick-form input:focus { outline: none; border-color: var(--ink); }
+.cmp-pick-form .cta { height: 44px; box-sizing: border-box; }
 @media (max-width: 640px) { .cmp-pick { grid-template-columns: 1fr; justify-items: center; } .cmp-pick-a .pf-pcard { zoom: .8; } }
 .coach .message:empty { display: none; } /* nothing to say: the card over the board speaks */
 /* The line's end card: a close button to see the board, and a Time column */
