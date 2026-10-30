@@ -2072,3 +2072,14 @@ main.profile:has(#admin) { max-width: 1320px; }
 #mode-learn:hover, #mode-learn:focus-visible { border-color: var(--good); box-shadow: 0 0 0 1px var(--good); }
 #mode-try:hover, #mode-try:focus-visible { border-color: #e0b23a; box-shadow: 0 0 0 1px #e0b23a; }
 #mode-time:hover, #mode-time:focus-visible { border-color: #4fb8e0; box-shadow: 0 0 0 1px #4fb8e0; }
+/* Your own card's piece: tap it to choose another */
+.pf-pick-piece { cursor: pointer; border-radius: 6px; }
+.pf-pick-piece:hover .pf-pcard-piece, .pf-pick-piece:focus-visible .pf-pcard-piece { transform: scale(1.06); }
+.pf-pick-piece:focus-visible { outline: 2px solid var(--hot); outline-offset: 2px; }
+.pf-piece-menu { position: absolute; top: 70px; right: 12px; z-index: 5; display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #141414; color: #f4efe6; box-shadow: 0 10px 30px rgb(0 0 0 / .4); }
+.pf-piece-menu p { margin: 0; font: 700 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: #a8a093; }
+.pf-piece-menu div { display: grid; grid-template-columns: repeat(3, 44px); gap: 6px; }
+.pf-piece-menu div button { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid #3d3730; border-radius: 8px; background: none; cursor: pointer; }
+.pf-piece-menu div button:hover, .pf-piece-menu div button:focus-visible { border-color: #f4efe6; }
+.pf-piece-menu img { width: 30px; height: 30px; }
+.pf-piece-menu .link { justify-self: start; color: #f4efe6; font-size: 13px; }

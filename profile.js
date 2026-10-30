@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030112626';
-import { STYLE_OF } from './styles.js?v=20261030112626';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030112748';
+import { STYLE_OF } from './styles.js?v=20261030112748';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -541,6 +541,7 @@ function pull(name) {
     const m = new Map(rows.map((r) => [r.id, r.data]));
     for (const [id, d] of m) SENT.set(`${me}|${id}`, sig(d));
     for (const sp of ['all', ...SPEEDS]) if (m.get(typeId(sp))?.style) STABLE.set(`${me}|${sp}`, m.get(typeId(sp)));
+    if (m.get('TYPEpiec')?.piece) PICKED.set(me, m.get('TYPEpiec').piece);
     return m;
   }));
   return PULLS.get(me);
@@ -550,10 +551,14 @@ function pull(name) {
 // TYPEbull, TYPEblit… in the analyses function), so everyone, on any device, sees the same type, and a near
 // tie between two styles does not flip it; whoever reads the full games first sets it, and a clear lead changes it.
 const STABLE = new Map(); // 'name|speed' → { style, strength }
+const PICKED = new Map(); // name → the piece the player chose for their card (row TYPEpiec), over the one their games give
 const typeId = (sp) => `TYPE${(sp || 'all').slice(0, 4).padEnd(4, 'g')}`; // TYPEbull, TYPEblit, TYPErapi, TYPEclas, TYPEallg
 let drawingEarly = false; // build draws from the first games while the rest come in: such a type is not kept
 function stableType(name, sp, p) {
   const k = `${name.toLowerCase()}|${sp}`, keep = STABLE.get(k) || null, t = typeOf(p, keep);
+  const pc = PICKED.get(name.toLowerCase());
+  if (p.pieceAuto === undefined) { p.pieceAuto = p.piece; p.pieceWhyAuto = p.pieceWhy; } // the one the games give, kept to go back to
+  if (pc) { p.piece = pc; p.pieceWhy = 'chosen'; } else { p.piece = p.pieceAuto; p.pieceWhy = p.pieceWhyAuto; } // the player's own pick for their card
   const now = { style: t[0]?.name, strength: t[1]?.name || null };
   if (!drawingEarly && p.n >= MIN_GAMES && (!keep || keep.style !== now.style || keep.strength !== now.strength)) {
     STABLE.set(k, now);
@@ -566,8 +571,12 @@ function stableType(name, sp, p) {
 async function keptTypes(rows) {
   const names = [...new Set(rows.map((r) => r.name.toLowerCase()))];
   const got = await fetch(`${SYNC}?types=${encodeURIComponent(names.join(','))}`).then((r) => (r.ok ? r.json() : [])).catch(() => []);
-  for (const x of Array.isArray(got) ? got : []) for (const sp of ['all', ...SPEEDS]) if (x.id === typeId(sp) && x.data?.style) STABLE.set(`${x.player}|${sp}`, x.data);
-  return rows.map((r) => { const k = STABLE.get(`${r.name.toLowerCase()}|${r.speed}`); return k ? { ...r, style: k.style, strength: k.strength } : r; });
+  for (const x of Array.isArray(got) ? got : []) {
+    for (const sp of ['all', ...SPEEDS]) if (x.id === typeId(sp) && x.data?.style) STABLE.set(`${x.player}|${sp}`, x.data);
+    if (x.id === 'TYPEpiec' && x.data?.piece) PICKED.set(x.player, x.data.piece);
+  }
+  return rows.map((r) => { const k = STABLE.get(`${r.name.toLowerCase()}|${r.speed}`), pc = PICKED.get(r.name.toLowerCase());
+    return { ...r, ...(k ? { style: k.style, strength: k.strength } : {}), ...(pc ? { piece: pc } : {}) }; });
 }
 // Puts what other devices did into these games (in place); true when something was added.
 let merged = false; // the last build took in analyses from another device: the shown profile is out of date
@@ -941,7 +950,7 @@ function portrait(name, p, skills, me, part = 'lead') {
 // The player card: the overall (the mean of the known skills), a short code for the type, the six skills.
 // The piece is drawn white for the black card; in dark mode, where the card is cream, CSS inverts it.
 const CARD_INK = 'w';
-const PIECE_NAME = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
+const PIECE_NAME = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king', p: 'pawn' };
 // The card's picture is coloured by rating (bandColor, below), on the page and in the downloaded image.
 // The card's colour goes from cold to warm as the rating rises, as rating colours usually do (grey,
 // green, teal, blue, violet, orange, red, deep red), every 300 points from 800, with gold for the elite.
@@ -1006,7 +1015,7 @@ function playerCard(name, p, t, skills) {
   const main = p.speeds[0];
   return `<div class="pf-pcard${proClass(name)}" style="--band:${bandColor(main?.rating)}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span>${t[1] ? `<span class="pf-str">+ ${esc(t[1].name)}</span>` : ''}</div>
-      <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title=""${esc(name)}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
+      <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title=""${esc(name)}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'chosen' ? `chosen by ${esc(name)}` : p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
         ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
     <p class="pf-pcard-name">${esc(name)}</p>
     ${cardBars(skills.map((x) => [ABBR[x.label], x.v]))}
@@ -1161,8 +1170,7 @@ async function comparePng(A, B, sa, sb, detail, btn) {
     ctx.fillStyle = CARD.paperInk; ctx.font = '400 28px Anton'; ctx.fillText('CHESS TRAINER', 70, H - 34);
     ctx.fillStyle = CARD.paperMuted; ctx.font = '400 19px Geist'; ctx.textAlign = 'right'; ctx.fillText(`${A.name} vs ${B.name}, from their last ${MAX} rated Lichess games`, W - 70, H - 36); ctx.textAlign = 'left';
     const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${A.name}-vs-${B.name}${detail ? '-text' : ''}-${cardLook()}.png`, { type: 'image/png' });
-    if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) await navigator.share({ files: [file], title: `${A.name} vs ${B.name}` }).catch(() => {});
-    else { const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: file.name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+    await saveImage(blob, file, `${A.name} vs ${B.name}`);
   } catch (err) { $('#profile-msg').textContent = `The image could not be made: ${err.message}`; }
   btn.disabled = false; btn.textContent = label;
 }
@@ -1173,14 +1181,21 @@ function cardExtra(name, p, skills, detail) {
   const tt = (m) => { const x = taste(m); return x ? `${x.label}:${x.share.toFixed(2)}` : ''; };
   return [p.n, tt(p.styleMix?.w), tt(p.styleMix?.b), detail ? plain(portrait(name, p, skills, false)).replace(/~/g, '-') : ''].join('~');
 }
+// An image to keep: downloaded (on Android it lands in Downloads and the gallery), except on an iPhone or
+// iPad, where the share sheet is the way to Save Image.
+async function saveImage(blob, file, title) {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (ios && navigator.canShare?.({ files: [file] })) return navigator.share({ files: [file], title }).catch(() => {});
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: file.name });
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
 async function cardPng(name, p, t, skills, detail, btn) {
   const label = btn.textContent; btn.disabled = true; btn.textContent = 'Making the image…';
   window.track?.('card', `${name} · ${detail ? 'style' : 'card'} · ${cardLook()} #${cardCode(p, t, skills)} ~${cardExtra(name, p, skills, detail)}`);
   try {
     const canvas = await cardImage(cardLook(), name, p, t, skills, detail, plain(portrait(name, p, skills, false)));
     const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${name}-chess-${detail ? 'profile' : 'card'}-${cardLook()}.png`, { type: 'image/png' });
-    if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) await navigator.share({ files: [file], title: `${name}'s chess card` }).catch(() => {});
-    else { const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: file.name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+    await saveImage(blob, file, `${name}'s chess card`);
   } catch (err) { $('#profile-msg').textContent = `The image could not be made: ${err.message}`; }
   btn.disabled = false; btn.textContent = label;
 }
@@ -1409,6 +1424,7 @@ function render(name, at, full) {
   // Time controls missing from the last 500 games show once Lichess says the player has them.
   if (!PERFS.has(name.toLowerCase())) perfsOf(name).then((x) => { if (x && shown?.[0] === name) { const y = scrollY; render(...shown); scrollTo(0, y); } });
   placeActs();
+  if (me) bindPiecePick(name);
   bindPlayerBar(name);
   gamesList(name, 8);
   $('[data-skill-text]').addEventListener('click', (e) => {
@@ -1700,6 +1716,31 @@ function nameRow(name) {
     <button type="button" class="ghost pf-act pf-star" data-fav aria-pressed="${fav}" aria-label="${fav ? 'Starred: unstar' : 'Star this player'}" title="${fav ? 'Starred (press to unstar)' : 'Star this player: one tap to them from the ★ menu'}">${icon(STAR_PATH, fav)}</button>
     <a class="ghost pf-act" href="${pickLink(name)}" aria-label="Compare" title="Compare ${esc(name)} with you or anyone">${icon('M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4')}</a>
     <a class="ghost pf-act" href="https://lichess.org/@/${encodeURIComponent(name)}" target="_blank" rel="noopener" aria-label="${esc(name)} on Lichess" title="${esc(name)} on Lichess">${icon('M14 4h6v6M20 4l-9 9M18 14v6H4V6h6')}</a></div>`}</div>`;
+}
+// Your own card: tap its piece to choose the one shown, or go back to the one your games give. Kept with
+// your analyses (row TYPEpiec), so everyone sees it, on the leaderboard too.
+function bindPiecePick(name) {
+  const side = $('.pf-hero .pf-pcard .pf-pcard-side');
+  if (!side) return;
+  Object.assign(side, { tabIndex: 0, title: 'Choose your piece' }); side.setAttribute('role', 'button'); side.classList.add('pf-pick-piece');
+  const choose = (pc) => {
+    if (pc) PICKED.set(name.toLowerCase(), pc); else PICKED.delete(name.toLowerCase());
+    fetch(SYNC, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ player: name.toLowerCase(), rows: [{ id: 'TYPEpiec', data: { piece: pc || null } }] }) }).catch(() => {});
+    const y = scrollY; render(...shown); scrollTo(0, y);
+  };
+  const open = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    $('.pf-piece-menu')?.remove();
+    const menu = Object.assign(document.createElement('div'), { className: 'pf-piece-menu' });
+    menu.innerHTML = `<p>Your piece</p><div>${['k', 'q', 'r', 'b', 'n', 'p'].map((k) => `<button type="button" data-piece="${k}" aria-label="The ${PIECE_NAME[k]}"><img src="pieces/w${k.toUpperCase()}.svg" alt=""></button>`).join('')}</div>
+      <button type="button" class="link" data-piece="">From my games</button>`;
+    side.closest('.pf-pcard').append(menu);
+    menu.addEventListener('click', (ev) => { const b = ev.target.closest('[data-piece]'); if (b) { ev.stopPropagation(); choose(b.dataset.piece); } });
+    setTimeout(() => addEventListener('click', () => menu.remove(), { once: true }));
+    menu.querySelector('button').focus();
+  };
+  side.addEventListener('click', open);
+  side.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') open(e); });
 }
 function bindPlayerBar(name) {
   // New games: only the games played since the last read are fetched, then the whole profile is read again.
