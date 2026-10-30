@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030231646';
-import { STYLE_OF } from './styles.js?v=20261030231646';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030232053';
+import { STYLE_OF } from './styles.js?v=20261030232053';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1411,7 +1411,11 @@ function render(name, at, full) {
     </section>
     ${me ? starsCard() : ''}
     ${nextActions(name, me)}`;
-  $('#refresh').addEventListener('click', () => run(name));
+  $('#refresh').addEventListener('click', async (e) => { // a seen player is read again quietly: the button says it is working
+    Object.assign(e.target, { disabled: true, textContent: 'Reading…' });
+    await run(name);
+    if (e.target.isConnected) Object.assign(e.target, { disabled: false, textContent: 'Read them again' });
+  });
   if (me) {
     sendCard(name, full, sp);
   }
@@ -1681,6 +1685,7 @@ async function run(name) {
 // Something went wrong: say what, and offer to try again (reading the games afresh).
 function failed(name, err) {
   console.error(err);
+  $('#profile .pf-skeleton')?.remove(); // the loading outline, never a card already drawn
   $('#profile-msg').innerHTML = `${esc(err.message || String(err))} <button type="button" class="link" data-retry>Try again</button>`;
   $('[data-retry]').addEventListener('click', () => run(name));
 }
