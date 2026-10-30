@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030111404';
-import { STYLE_OF } from './styles.js?v=20261030111404';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030111954';
+import { STYLE_OF } from './styles.js?v=20261030111954';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -907,19 +907,22 @@ const leakOf = (skills) => skills.filter((x) => x.raw !== null && x.raw <= 45).s
 function portrait(name, p, skills, me, part = 'lead') {
   const you = me ? 'You' : esc(name), your = me ? 'your' : 'their', are = me ? 'are' : 'is';
   // The openings chosen, by family: the King's Gambit Accepted and Declined are one King's Gambit.
-  // The openings a player chooses, as a reader would name them. A named opening counts from 6% of the
-  // games with that colour; a broad one (1.e4, 1...e5) from 10%, and only when no named opening of theirs
-  // starts with the same move (the Italian already says 1.e4). As White, the main one, and a second when
-  // it is half as common or more; as Black, the main answer to each of White's two usual first moves
-  // (1...e5 against 1.e4, the Englund against 1.d4).
+  // The openings a player chooses, as a reader would name them, by their first move: each first move
+  // (as Black, each answer to White's first move) played in at least 15% of the games with that colour,
+  // most played first, named by their own opening that starts so (6% of the games or more: the Italian
+  // for 1.e4), else broadly (the King's Pawn Opening, the Open Game). A move played now and then (1.e3 in
+  // 7% of games) is not their choice, however it compares with a named opening that needs 1...e5 first.
   const sideN = { w: p.nWhite ?? p.n / 2, b: p.n - (p.nWhite ?? p.n / 2) };
   const own = (list, side) => {
-    const mine = list.filter((o) => !o.fam.startsWith('vs ') && o.n >= sideN[side] * (ANSWERS.includes(o.fam) ? 0.1 : 0.06));
-    const keep = mine.filter((o) => !ANSWERS.includes(o.fam) || !mine.some((x) => !ANSWERS.includes(x.fam) && x.first === o.first))
-      .map((o) => ({ ...o, fam: o.fam.replace(/ (Accepted|Declined)$/, '') })).filter((o, i, a) => a.findIndex((x) => x.fam === o.fam) === i);
-    const picks = side === 'w' ? keep.filter((o, i) => i === 0 || o.n >= keep[0].n / 2)
-      : [...new Map(keep.map((o) => [o.first?.split(' ')[0], o]).reverse()).values()].sort((a, b) => b.n - a.n); // each White first move's main answer
-    return picks.slice(0, 2).map((o) => opLink(side, o.fam));
+    const key = (o) => (side === 'w' ? o.first : o.first?.split(' ')[0]) || '?';
+    const total = {};
+    for (const o of list) if (!ANSWERS.includes(o.fam)) total[key(o)] = (total[key(o)] || 0) + o.n;
+    return Object.entries(total).filter(([, n]) => n >= sideN[side] * 0.15).sort((a, b) => b[1] - a[1]).map(([k]) => {
+      const mine = list.filter((o) => key(o) === k && !o.fam.startsWith('vs '));
+      const named = mine.filter((o) => !ANSWERS.includes(o.fam) && o.n >= sideN[side] * 0.06).sort((a, b) => b.n - a.n)[0];
+      return named || mine.find((o) => ANSWERS.includes(o.fam));
+    // White's King's Gambit, accepted or not, is one; Black's Queen's Gambit Declined keeps its name.
+    }).filter(Boolean).map((o) => (side === 'w' ? o.fam.replace(/ (Accepted|Declined)$/, '') : o.fam)).filter((f, i, a) => a.indexOf(f) === i).slice(0, 2).map((f) => opLink(side, f));
   };
   const w = own(p.openings.w, 'w'), b = own(p.openings.b, 'b');
   const and = (xs) => xs.join(' and ');
