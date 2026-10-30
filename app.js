@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030134557';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030134557';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030134557';
-import { GUIDE } from './guide.js?v=20261030134557';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030134557';
-import { maia3Move } from './maia3.js?v=20261030134557';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030134557';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030134557';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030134557';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030134751';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030134751';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030134751';
+import { GUIDE } from './guide.js?v=20261030134751';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030134751';
+import { maia3Move } from './maia3.js?v=20261030134751';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030134751';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030134751';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030134751';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2529,25 +2529,31 @@ function renderLines() {
       .filter(([on]) => on).map(([, c, t]) => `<svg class="line-star ${c}" viewBox="0 0 24 24" role="img" aria-label="${t}"><title>${t}</title><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>`).join(''); };
   // Every line, in course order, under the depth it belongs to; those past your depth are paler.
   const group = (i) => (all.length > DEPTHS[0][1] ? DEPTHS.find(([, d], k) => i === (k ? DEPTHS[k - 1][1] : 0)) : null);
-  $('#lines-list').innerHTML = all.map((l, i) => `${group(i) ? `<li class="line-group">${group(i)[0]}</li>` : ''}<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}${i >= lines.length ? ' beyond' : ''}" data-i="${i}">
+  $('#lines-list').innerHTML = $('#m-lines-pop').innerHTML = all.map((l, i) => `${group(i) ? `<li class="line-group">${group(i)[0]}</li>` : ''}<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}${i >= lines.length ? ' beyond' : ''}" data-i="${i}">
       <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? `<span class="trap-tag${l.trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(l.trap)}</span> ` : l.theory ? '<span class="trap-tag theory">Theory</span> ' : ''}${lineName(l)}<small>${lineTag(l)}</small></span>
       <span class="line-share">${bigShare(l.share)}</span><span class="line-ok">${star(l)}</span>
     </button></li>`).join('');
-  // The phone picks the line from a list over the board, the lines of your depth, a tick once cleared.
-  $('#m-lines').innerHTML = lines.map((l, i) => `<option value="${i}">${i + 1}. ${lineName(l)}${done.includes(lineKey(l.moves)) ? ' ✓' : ''}</option>`).join('');
-  $('#m-lines').value = lineIdx;
+  // The phone picks the line from the same list, stars and all, opened from the bar over the board.
+  $('#m-lines').textContent = lines[lineIdx] ? `${lineIdx + 1}. ${lineName(lines[lineIdx])}` : 'Lines';
   if (linesView === 'tree') renderTree();
 }
-$('#lines-list').addEventListener('click', (e) => {
+function pickLine(e) {
   const b = e.target.closest('.line-btn');
   if (!b) return;
+  mLines(false);
   const i = Number(b.dataset.i);
   if (i >= lines.length) { // a line past your depth: go as deep as it is, then play it
     store(STORE + '-depth', { ...load(STORE + '-depth', {}), [cur.id]: DEPTHS.find(([, d]) => i < d)[1] });
     start(cur, true);
   }
   play(i);
-});
+}
+$('#lines-list').addEventListener('click', pickLine);
+$('#m-lines-pop').addEventListener('click', pickLine);
+const mLines = (open) => { $('#m-lines-pop').hidden = !open; $('#m-lines').setAttribute('aria-expanded', open); };
+$('#m-lines').addEventListener('click', () => mLines($('#m-lines-pop').hidden));
+document.addEventListener('click', (e) => { if (!e.target.closest('.m-mode')) mLines(false); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') mLines(false); });
 
 // The lines as a tree, as a course's overview: the moves they share once, a branch where they part,
 // and at each line's end its number and how far you are with it.
@@ -3348,7 +3354,6 @@ $('#move-form').addEventListener('submit', (e) => {
   $('#move-in').focus();
 });
 $('.m-modes').addEventListener('click', (e) => e.target.dataset.mode && $(`#mode-${e.target.dataset.mode}`).click());
-$('#m-lines').addEventListener('change', (e) => play(Number(e.target.value)));
 function setMode(m, restart = true, remember = true) {
   const was = mode;
   mode = m; view = null;
