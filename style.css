@@ -2083,3 +2083,6 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-piece-menu div button:hover, .pf-piece-menu div button:focus-visible { border-color: #f4efe6; }
 .pf-piece-menu img { width: 30px; height: 30px; }
 .pf-piece-menu .link { justify-self: start; color: #f4efe6; font-size: 13px; }
+.pf-piece-menu { max-width: 190px; }
+.pf-piece-menu div button.auto { border-color: #a8a093; } /* the one your games give */
+.pf-piece-why { color: #a8a093; font-size: 12px; line-height: 1.35; }

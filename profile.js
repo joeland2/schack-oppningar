@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030112748';
-import { STYLE_OF } from './styles.js?v=20261030112748';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030113119';
+import { STYLE_OF } from './styles.js?v=20261030113119';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1333,6 +1333,7 @@ function speedBar(name, full, sp, avail) {
     `<button type="button" data-pf-speed="${k}" aria-pressed="${k === sp}"${all > n && n < MAX ? ` title="${n} of ${all} ${k} games read: pick it to fetch the last ${Math.min(MAX, all)}"` : k === full.speeds[0]?.speed ? ' title="Played most"' : ''}>${k === full.speeds[0]?.speed ? '<i class="pf-speed-star" aria-label="played most">★</i>' : ''}<span>${k === 'all' ? 'All' : k[0].toUpperCase() + k.slice(1)}</span><small>${n}</small></button>`).join('')}</div>`;
 }
 let shownCode = ''; // render: the card on screen as a short code (cardCode)
+let shownP = null;
 function render(name, at, full) {
   shown = [name, at, full];
   const avail = speedsOf(name, full), main = full.speeds[0]?.speed;
@@ -1341,6 +1342,7 @@ function render(name, at, full) {
   if (sp !== 'all') chartState.speed = sp;
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
   shownCode = cardCode(p, t, skills); // the card as drawn, for the lookup's event
+  shownP = p; // the card's profile, for the piece menu
   document.title = me ? 'Your Profile' : `${name} · Profile`;
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
@@ -1732,8 +1734,11 @@ function bindPiecePick(name) {
     e.preventDefault(); e.stopPropagation();
     $('.pf-piece-menu')?.remove();
     const menu = Object.assign(document.createElement('div'), { className: 'pf-piece-menu' });
-    menu.innerHTML = `<p>Your piece</p><div>${['k', 'q', 'r', 'b', 'n', 'p'].map((k) => `<button type="button" data-piece="${k}" aria-label="The ${PIECE_NAME[k]}"><img src="pieces/w${k.toUpperCase()}.svg" alt=""></button>`).join('')}</div>
-      <button type="button" class="link" data-piece="">From my games</button>`;
+    // The one the games give, and why: as the card's own explanation.
+    const auto = shownP?.pieceAuto || 'n', why = shownP?.pieceWhyAuto === 'best' ? 'the piece you play best: the fewest mistakes and blunders per move in your analysed games'
+      : 'the piece that does the most in your games (analyse 20 games and it becomes the piece you play best)';
+    menu.innerHTML = `<p>Your piece</p><div>${['k', 'q', 'r', 'b', 'n', 'p'].map((k) => `<button type="button" data-piece="${k}" aria-label="The ${PIECE_NAME[k]}"${k === auto ? ' class="auto"' : ''}><img src="pieces/w${k.toUpperCase()}.svg" alt=""></button>`).join('')}</div>
+      <button type="button" class="link" data-piece="">From your games: the ${PIECE_NAME[auto]}</button><small class="pf-piece-why">${why}.</small>`;
     side.closest('.pf-pcard').append(menu);
     menu.addEventListener('click', (ev) => { const b = ev.target.closest('[data-piece]'); if (b) { ev.stopPropagation(); choose(b.dataset.piece); } });
     setTimeout(() => addEventListener('click', () => menu.remove(), { once: true }));
