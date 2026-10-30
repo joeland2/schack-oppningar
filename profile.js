@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030120236';
-import { STYLE_OF } from './styles.js?v=20261030120236';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030121628';
+import { STYLE_OF } from './styles.js?v=20261030121628';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1337,6 +1337,7 @@ let shownCode = ''; // render: the card on screen as a short code (cardCode)
 let shownP = null;
 function render(name, at, full) {
   shown = [name, at, full];
+  if (full.n > 0) window.rememberPlayer?.(name);
   const avail = speedsOf(name, full), main = full.speeds[0]?.speed;
   // A time control with no games read yet has no card of its own: the main one shows until its games come.
   const sp = pfSpeed && (pfSpeed === 'all' || avail.some(([k, n]) => k === pfSpeed && n > 0)) ? pfSpeed : avail.some(([k]) => k === main) ? main : 'all';

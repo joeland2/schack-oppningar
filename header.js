@@ -146,11 +146,10 @@ addEventListener('DOMContentLoaded', () => {
   const form = document.querySelector('.top-search'), input = form?.querySelector('input[name=u]');
   const KEY = 'opening-book-v2-recent-players';
   const recent = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } };
-  const q = new URLSearchParams(location.search);
-  if (/profile\.html$/.test(location.pathname) && q.get('u') && !q.has('vs')) {
-    const u = q.get('u');
+  // The profile page calls this once a player's games could be read, so a mistyped name is never kept.
+  window.rememberPlayer = (u) => {
     try { localStorage.setItem(KEY, JSON.stringify([u, ...recent().filter((x) => x.toLowerCase() !== u.toLowerCase())].slice(0, 20))); } catch {}
-  }
+  };
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
   let lists = 0;
   // Any name field can have the list: go(name) is what picking a name does.

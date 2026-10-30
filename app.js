@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030120236';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030120236';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030120236';
-import { GUIDE } from './guide.js?v=20261030120236';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030120236';
-import { maia3Move } from './maia3.js?v=20261030120236';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030120236';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030120236';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030120236';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030121628';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030121628';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030121628';
+import { GUIDE } from './guide.js?v=20261030121628';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030121628';
+import { maia3Move } from './maia3.js?v=20261030121628';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030121628';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030121628';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030121628';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3408,6 +3408,7 @@ const pcard = (r) => `<div class="pf-pcard${proClass(r.name)}" style="--band:${b
 function landing() { $('.hero').hidden = !!account() || location.hash === '#openings' || /[?&](do|practise)=/.test(location.search); } // a declaration: a link straight to a trainer calls it early
 landing();
 addEventListener('hashchange', landing);
+{ const q = $('.hero-search input'); if (q) window.playerSuggest?.(q, (name) => { location.href = `profile.html?u=${encodeURIComponent(name)}`; }); }
 if (!account()) Promise.all([fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard').then((r) => (r.ok ? r.json() : [])),
   fetch('data/pro-cards.json').then((r) => (r.ok ? r.json() : [])).catch(() => [])]).then(([board, pros]) => [...board, ...pros]).then(async (all) => { // the leaderboard and the known pros
   // The leaderboard keeps a card per time control: each player shows their main one (the most games).
@@ -3421,7 +3422,7 @@ if (!account()) Promise.all([fetch('https://duhlvhjtxoofgnjegspa.supabase.co/fun
   const pool = rows.filter((x) => x.rating && x.skills).sort((a, b) => a.rating - b.rating), ex = $('.hero-ex');
   const luck = Array.from({ length: 12 }, () => Math.random()); // drawn once per visit, so a resize keeps the cards
   const draw = () => {
-    const gap = parseFloat(getComputedStyle(ex).columnGap) || 0, n = Math.max(1, Math.floor((ex.clientWidth + gap) / (232 + gap))); // columns that fit (CSS: 232px each)
+    const gap = parseFloat(getComputedStyle(ex).columnGap) || 0, n = matchMedia('(max-width: 560px)').matches ? 3 : Math.max(1, Math.floor((ex.clientWidth + gap) / (232 + gap))); // columns that fit (CSS: 232px each, three small ones on a phone)
     // One card per rank, never two alike; when more ranks than columns, ranks spread evenly from the
     // lowest to the highest.
     const ranks = [...new Set(pool.map((x) => tierOf(x.rating)))].sort((a, b) => a - b);
