@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030213628';
-import { STYLE_OF } from './styles.js?v=20261030213628';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030224249';
+import { STYLE_OF } from './styles.js?v=20261030224249';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1339,9 +1339,9 @@ async function fetchSpeed(name, sp) {
 function speedBar(name, full, sp, avail) {
   if (avail.length < 2 && sp !== 'all') return '';
   // A time control with more games on Lichess than the card reads shows the count picking it fetches,
-  // so the number does not jump when it is picked.
+  // so the number does not jump when it is picked; the one shown says what the card reads.
   return `<div class="pf-seg pf-speeds" role="group" aria-label="Time control">${[['all', full.n], ...avail].map(([k, n, all = 0]) =>
-    `<button type="button" data-pf-speed="${k}" aria-pressed="${k === sp}"${all > n && n < MAX ? ` title="Pick it to fetch the last ${Math.min(MAX, all)} ${k} games (${n} are among the last ${MAX} of all)"` : k === full.speeds[0]?.speed ? ' title="Played most"' : ''}>${k === full.speeds[0]?.speed ? '<i class="pf-speed-star" aria-label="played most">★</i>' : ''}<span>${k === 'all' ? 'All' : k[0].toUpperCase() + k.slice(1)}</span><small>${Math.max(n, Math.min(MAX, all))}</small></button>`).join('')}</div>`;
+    `<button type="button" data-pf-speed="${k}" aria-pressed="${k === sp}"${all > n && n < MAX ? ` title="Pick it to fetch the last ${Math.min(MAX, all)} ${k} games (${n} are among the last ${MAX} of all)"` : k === full.speeds[0]?.speed ? ' title="Played most"' : ''}>${k === full.speeds[0]?.speed ? '<i class="pf-speed-star" aria-label="played most">★</i>' : ''}<span>${k === 'all' ? 'All' : k[0].toUpperCase() + k.slice(1)}</span><small>${k === sp ? n : Math.max(n, Math.min(MAX, all))}</small></button>`).join('')}</div>`;
 }
 let shownCode = ''; // render: the card on screen as a short code (cardCode)
 let shownP = null;

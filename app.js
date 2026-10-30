@@ -1,19 +1,19 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030213628';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030213628';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030213628';
-import { GUIDE } from './guide.js?v=20261030213628';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030213628';
-import { maia3Move } from './maia3.js?v=20261030213628';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030213628';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030213628';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030213628';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030224249';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030224249';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030224249';
+import { GUIDE } from './guide.js?v=20261030224249';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030224249';
+import { maia3Move } from './maia3.js?v=20261030224249';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030224249';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030224249';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030224249';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
 const MAX_LINES = 20;
 // How deep to learn an opening, as a course does it: lines are in course order, so a depth is the first n.
-const DEPTHS = [['Essentials', 6, 'The main line and known theory'], ['Advanced', 12, 'Adds the traps and common sidelines'], ['Everything', MAX_LINES, 'Every line players at your level meet']];
+const DEPTHS = [['Essentials', 6, 'The main line and known theory'], ['Advanced', 12, 'Adds the common blunders to punish, and sidelines'], ['Everything', MAX_LINES, 'Every line players at your level meet']];
 const depthName = (n) => (DEPTHS.find(([, d]) => d >= n) || DEPTHS.at(-1))[0];
 let allLines = []; // the opening's lines at every depth (lines is the first n of them)
 const MIN_LINE = 0.03;   // a side line needs 3% of the opening's games to become a line of its own
@@ -493,7 +493,7 @@ function renderList() {
       : `No opening at your level matches "${q.replace(/[<&"]/g, '')}".`}</p>
       <div class="olist">${list.map((o) => card(o).replace('</h3>', `<small class="as">you play ${sideName(o.side)}</small></h3>`)).join('')}</div>`;
   } else if (listSide === 'r') {
-    body = `<p class="og-about">${favs.length ? `The openings you have starred${played.length ? ', and the ones you play most in your Lichess games' : ''}, from both sides. <button type="button" class="link" data-traps>Practise their traps</button>` : 'Nothing here yet. Star (★) an opening, or check your Lichess games, and it shows up here.'}</p>
+    body = `<p class="og-about">${favs.length ? `The openings you have starred${played.length ? ', and the ones you play most in your Lichess games' : ''}, from both sides. <button type="button" class="link" data-traps>Practise punishing their blunders</button>` : 'Nothing here yet. Star (★) an opening, or check your Lichess games, and it shows up here.'}</p>
       <div class="olist">${favs.map((o) => (played.includes(o) ? card(o).replace('<span class="chip ', '<span class="tag played">Played most</span><span class="chip ') : card(o))).join('')}</div>`;
   } else {
     // Your starred openings of this side come first, pinned, even ones the style or the cut would hide.
@@ -2198,7 +2198,7 @@ function startTraps() {
     .sort(() => Math.random() - 0.5).slice(0, 15);
   let queue = trapsOf(OPENINGS.filter((o) => repertoire.has(o.id)));
   if (!queue.length) queue = trapsOf(shown().filter((o) => o.side === 'w').slice(0, 10)); // starred ones without traps: the most played
-  if (!queue.length) return say('No traps in these openings at your level.');
+  if (!queue.length) return say('No common blunders to punish in these openings at your level.');
   trapRun = { queue, done: 0, total: queue.length };
   nextTrap();
 }
@@ -2209,7 +2209,7 @@ function nextTrap() {
     const n = trapRun.total;
     trapRun = null;
     renderLineBox();
-    return say(`Trap training done: ${plural(n, 'trap')}. Press Next line to go on with this opening.`, 'good');
+    return say(`Blunder training done: ${plural(n, 'blunder')} punished. Press Next line to go on with this opening.`, 'good');
   }
   trapRun.now = t; trapRun.done++;
   setupTrap(t);
@@ -2224,7 +2224,7 @@ function setupTrap(t) {
   for (const x of lines[i].moves.slice(0, t.ply)) { lastMove = game.move(x); notes[ply++] = 'book'; }
   assisted = true;
   render();
-  say(`Trap ${trapRun.done} of ${trapRun.total}: watch their next move.`);
+  say(`Blunder ${trapRun.done} of ${trapRun.total}: watch their next move.`);
   reply(); // their move: the slip
 }
 
@@ -2507,7 +2507,7 @@ function renderLineBox() {
       <div><b>${done}/${n}</b><span>lines cleared${due ? `, ${due} due for review` : ''}</span></div>
     </div>
     <div class="lb-bar" aria-hidden="true"><span class="lb-done" style="width:${(done / n) * 100}%"></span><span class="lb-played" style="width:${(Math.max(0, played - done) / n) * 100}%"></span></div>
-    ${trapRun ? `<p class="lb-choice">Trap training: ${trapRun.done} of ${trapRun.total}</p>` : ''}
+    ${trapRun ? `<p class="lb-choice">Blunder training: ${trapRun.done} of ${trapRun.total}</p>` : ''}
     ${hardDue().length && !drill ? `<p class="lb-choice">${plural(hardDue().length, 'hard move')} to drill <button type="button" class="link" data-drill>Drill them</button></p>` : ''}
     ${mode === 'try' && practiceSet().length ? `<p class="lb-note">Practising lines ${practiceSet().map((i) => i + 1).join(', ')}.</p>` : ''}
     <p class="lb-note">${nextReview ? nextReview + ' ' : ''}${savedWhere()}</p>`;

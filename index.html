@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261030213628">
-  <script src="header.js?v=20261030213628" defer></script>
-  <script src="theme.js?v=20261030213628"></script>
+  <link rel="stylesheet" href="style.css?v=20261030224249">
+  <script src="header.js?v=20261030224249" defer></script>
+  <script src="theme.js?v=20261030224249"></script>
 </head>
 <body>
   <header class="top">
@@ -123,7 +123,7 @@
       <div class="m-bar">
         <button id="m-back" class="m-back" type="button" aria-label="All openings"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
         <div class="m-title"><b id="m-name"></b><small id="m-line"></small></div>
-        <div class="m-mode"><button id="m-lines" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="m-lines-pop"></button><ol id="m-lines-pop" class="m-lines-pop" hidden></ol></div>
+        <div class="m-mode"><button id="m-lines" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="m-lines-pop">Lines</button><ol id="m-lines-pop" class="m-lines-pop" hidden></ol></div>
       </div>
       <div id="trial-clock" class="trial-clock" hidden aria-live="off">
         <b id="tc-time">0:30</b><span class="tc-wait">starts on your move</span><span id="tc-flash" class="tc-flash"></span>
@@ -195,7 +195,7 @@
 
     <aside class="side" aria-label="This line">
       <details class="lines">
-        <summary id="lines-sum"></summary>
+        <summary id="lines-sum">Lines</summary>
         <div id="line-box" class="line-box"></div>
         <div class="lines-view" role="group" aria-label="Show the lines as">
           <button type="button" class="chip-btn" data-view="list" aria-pressed="true">List</button>
@@ -222,7 +222,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261030213628"></script>
+  <script type="module" src="app.js?v=20261030224249"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>
