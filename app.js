@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030111058';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030111058';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030111058';
-import { GUIDE } from './guide.js?v=20261030111058';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030111058';
-import { maia3Move } from './maia3.js?v=20261030111058';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030111058';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030111058';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030111058';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030111237';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030111237';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030111237';
+import { GUIDE } from './guide.js?v=20261030111237';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030111237';
+import { maia3Move } from './maia3.js?v=20261030111237';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030111237';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030111237';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030111237';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1221,7 +1221,7 @@ function askGo() {
   // What the line gave you before the choice: where you stand at your level, and where to take the game.
   const sum = `<div class="go-sum"><p class="go-k">Where you stand</p>${lineFacts()}${lineWhy()}</div>`;
   $('#go-ask').innerHTML = `<div class="depth-card go-card" role="dialog" aria-labelledby="go-title"><p class="depth-k">${done}</p><p class="depth-q" id="go-title">${lineName(lines[lineIdx])}</p>${sum}<p class="go-ask-q">How do you want to go on?</p>
-    <button type="button" class="cta go-next" data-go="next">${$('#restart').textContent}<small>${mode === 'try' ? 'the next line to practise' : 'learn the next line, with arrows'}</small></button>
+    <button type="button" class="cta go-next" data-go="next">${$('#restart').textContent}<small>${$('#restart').textContent === 'Try again' ? 'this line once more, from memory, to clear it' : mode === 'try' ? 'the next line to practise' : 'learn the next line, with arrows'}</small></button>
     <div class="go-grid" role="group" aria-label="Or go on with this line">
       <span></span><span class="go-col">Learn<small>arrows</small></span><span class="go-col">Practice<small>from memory</small></span>
       <span class="go-row">Play on from here</span><button type="button" data-go="learn-on" aria-label="Learn on from here, with arrows">Learn on</button><button type="button" data-go="try-on" aria-label="Practise on from here, from memory">Practise on</button>
@@ -1605,7 +1605,7 @@ function play(i, again = false) {
   punish = 0; punishDone = false; endLen = 0; assisted = false;
   closeMoment();
   $('#op-more').open = mode === 'learn' && i === 0; // the opening's story goes with its first line
-  misses = again ? misses : 0; missesHere = 0; busy = false;
+  misses = again ? misses : 0; missesHere = 0; busy = false; shownFree = false;
   gameGen++; // ignore an opponent reply still on its way from the previous game
   playing = false; opponent = saidOpponent = null;
   premove = null; notes = []; betters = []; lineDone = ''; view = null;
@@ -2735,7 +2735,8 @@ function tryMove(from, to) {
       }
       say(''); // the card over the board says it: the coach does not say it again
       moment('wrong', 'Not this one', `You played <b>${m.san}</b> (red). The line plays <b>${want.san}</b> (green)${ideaAt(new Chess(game.fen()), want.san) ? `: ${ideaAt(new Chess(game.fen()), want.san).replace(/^./, (c) => c.toLowerCase())}` : '.'} Take a look, then play the line again from the start.`,
-        [{ label: trapRun ? 'OK, try again' : 'OK, start again', run: () => (trapRun ? setupTrap(trapRun.now) : play(lineIdx, true)) }], null, [[m.from, m.to, RED], [want.from, want.to, GREEN]]);
+        // A clean run from the start then clears the line (the slip is kept for review all the same).
+        [{ label: trapRun ? 'OK, try again' : 'OK, start again', run: () => (trapRun ? setupTrap(trapRun.now) : play(lineIdx)) }], null, [[m.from, m.to, RED], [want.from, want.to, GREEN]]);
       return true;
     }
     if (missesHere >= 2) showHint();
@@ -3136,9 +3137,10 @@ $('#show').addEventListener('click', async () => {
     hintSq = [m.from, m.to]; renderBoard();
     return say(`Best move: ${instruction(m)}.${why ? ' ' + why : ''}`);
   }
-  const m = expectedMove();
-  misses++;
-  say(`The move: ${instruction(m)}.`);
+  // In Practice the first move shown in a run is free: one look per line still clears it; the next counts.
+  const m = expectedMove(), free = mode === 'try' && !shownFree;
+  if (free) shownFree = true; else misses++;
+  say(`The move: ${instruction(m)}.${mode === 'try' ? (free ? ' Your one free look in this line: it still clears.' : ' A second look: this run no longer clears the line.') : ''}`);
   hintSq = [m.from, m.to]; renderBoard();
 });
 // Opening picker, shown before the board.
@@ -3276,6 +3278,7 @@ function carryOn(was) {
   else reply();
 }
 let assisted = false; // this run of the line was not all from memory (see carryOn)
+let shownFree = false; // the one move shown free in this run of a line (Show move, or Hint three times)
 $('#mode-learn').addEventListener('click', () => setMode('learn'));
 $('#mode-try').addEventListener('click', () => setMode('try'));
 $('#mode-explore').addEventListener('click', () => setMode('explore'));
