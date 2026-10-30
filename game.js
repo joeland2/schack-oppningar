@@ -3,9 +3,9 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261030093641';
-import { account } from './lichess.js?v=20261030093641';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261030093641';
+import { drawBoard } from './board.js?v=20261030094215';
+import { account } from './lichess.js?v=20261030094215';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261030094215';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -18,7 +18,7 @@ let g = null, moves = [], fens = [], side = 'white', idx = 0, flip = false, focu
 
 async function load() {
   await gamesReady;
-  g = (storedGames(name) || []).find((x) => x.id === id);
+  g = [name, ...['bullet', 'blitz', 'rapid', 'classical'].map((sp) => `${name}~${sp}`)].map((k) => (storedGames(k) || []).find((x) => x.id === id)).find(Boolean); // the player's games, or a time control's own
   if (!g) {
     $('#profile-msg').textContent = 'Fetching the game from Lichess…';
     const a = account();
@@ -225,7 +225,10 @@ function render() {
 // without it, skill by skill (only what changed), and the style if it changed.
 async function impact() {
   await gamesReady;
-  const el = $('#gm-impact'), all = (storedGames(name) || []).filter((x) => x.speed === g.speed);
+  // The games the profile card of this time control reads: its own last 500 when fetched, the analyses of
+  // the player's games laid over them, so the "now" numbers match the card.
+  const mixed = storedGames(name) || [], own = storedGames(`${name}~${g.speed}`), done = new Map(mixed.filter((x) => x.analysis).map((x) => [x.id, x]));
+  const el = $('#gm-impact'), all = own ? own.map((x) => (x.id === g.id ? g : (!x.analysis && done.get(x.id)) || x)) : mixed.filter((x) => x.speed === g.speed);
   // Only once the game is analysed: without it, only the result and the clock count, and the analysis
   // would then move the numbers again.
   if (!el || !g.analysis || !all.some((x) => x.id === g.id) || all.length < 50) return;

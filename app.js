@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030093641';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030093641';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030093641';
-import { GUIDE } from './guide.js?v=20261030093641';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030093641';
-import { maia3Move } from './maia3.js?v=20261030093641';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030093641';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030093641';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261030093641';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030094215';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030094215';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030094215';
+import { GUIDE } from './guide.js?v=20261030094215';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030094215';
+import { maia3Move } from './maia3.js?v=20261030094215';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030094215';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030094215';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard } from './profile.js?v=20261030094215';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3379,7 +3379,11 @@ const pcard = (r) => `<div class="pf-pcard" data-band="${bandOf(r.rating)}"><div
 function landing() { $('.hero').hidden = !!account() || location.hash === '#openings' || /[?&](do|practise)=/.test(location.search); } // a declaration: a link straight to a trainer calls it early
 landing();
 addEventListener('hashchange', landing);
-if (!account()) fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard').then((r) => (r.ok ? r.json() : [])).then((rows) => {
+if (!account()) fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard').then((r) => (r.ok ? r.json() : [])).then((all) => {
+  // The leaderboard keeps a card per time control: each player shows their main one (the most games).
+  const best = new Map();
+  for (const x of all) { const k = x.name.toLowerCase(); if (!best.has(k) || x.games > best.get(k).games) best.set(k, x); }
+  const rows = [...best.values()];
   document.querySelectorAll('.hero-p[data-p]').forEach((a) => {
     const r = rows.find((x) => x.name.toLowerCase() === a.dataset.p);
     if (r) a.innerHTML = `${pcard(r)}<span class="hero-r">${esc(a.dataset.lvl)}</span>`;

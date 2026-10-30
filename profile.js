@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030093641';
-import { STYLE_OF } from './styles.js?v=20261030093641';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030094215';
+import { STYLE_OF } from './styles.js?v=20261030094215';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -555,10 +555,11 @@ function saveGames(name, games) {
 }
 // One game changed here (analysed on its own page) goes back into the kept games.
 function keepGame(name, g) {
-  const games = storedGames(name);
-  if (!games) return;
-  const i = games.findIndex((x) => x.id === g.id);
-  if (i >= 0) { games[i] = g; saveGames(name, games); forget(name); }
+  for (const k of [name, ...SPEEDS.map((sp) => speedKey(name, sp))]) { // the player's games and each time control's own
+    const games = storedGames(k), i = games ? games.findIndex((x) => x.id === g.id) : -1;
+    if (i >= 0) { games[i] = g; saveGames(k, games); }
+  }
+  forget(name);
 }
 function forget(name) {
   const all = cache(); delete all[name.toLowerCase()];
@@ -1623,10 +1624,11 @@ async function compare(a, b, speed = new URLSearchParams(location.search).get('s
   try {
     const A = await profileFor(a), B = await profileFor(b);
     const ga = storedGames(a) || [], gb = storedGames(b) || [];
-    const count = (gs, sp) => gs.filter((g) => g.speed === sp).length;
-    const avail = SPEEDS.filter((sp) => count(ga, sp) >= MIN_SPEED && count(gb, sp) >= MIN_SPEED);
+    // A time control's own last 500 games when fetched on the profile, as the profile's card reads them.
+    const count = (x, gs, sp) => storedGames(speedKey(x, sp))?.length || gs.filter((g) => g.speed === sp).length;
+    const avail = SPEEDS.filter((sp) => count(a, ga, sp) >= MIN_SPEED && count(b, gb, sp) >= MIN_SPEED);
     if (speed === null) speed = avail.includes(A.p.speeds[0]?.speed) ? A.p.speeds[0].speed : 'all';
-    const sub = (X, gs) => (speed === 'all' || !gs.length ? X : { name: X.name, p: profileOf(recordsOf(X.name, gs).filter((g) => g.speed === speed)) });
+    const sub = (X, gs) => (speed === 'all' || !gs.length ? X : { name: X.name, p: forSpeed(X.name, X.p, speed) });
     renderCompare(sub(A, ga), sub(B, gb), speed, avail);
   } catch (err) { $('#profile-msg').textContent = err.message; }
 }
@@ -1652,7 +1654,7 @@ function renderCompare(A, B, speed = 'all', avail = []) {
     <div class="pf-players"><a class="ghost" href="${profileLink(A.name)}">← ${esc(A.name)}</a><a class="ghost" href="${profileLink(B.name)}">${esc(B.name)} →</a></div>
     <header class="cmp-head"><h1 class="pf-h1"><a href="${profileLink(A.name)}">${esc(A.name)}</a> <span>vs</span> <a href="${profileLink(B.name)}">${esc(B.name)}</a></h1>
       <div class="pf-seg cmp-speeds" role="group" aria-label="Time control">${['all', ...SPEEDS].map((sp) => `<button type="button" data-speed="${sp}" aria-pressed="${sp === speed}" ${sp === 'all' || avail.includes(sp) ? '' : `disabled title="Fewer than ${MIN_SPEED} ${sp} games for one of you"`}>${sp === 'all' ? 'All games' : sp[0].toUpperCase() + sp.slice(1)}</button>`).join('')}</div>
-      <p class="info cmp-scope">${speed === 'all' ? 'Every number below is from all rated games.' : `Every number below is from ${speed} games only, so it can differ a little from the profiles, which use all games.`}</p></header>
+      <p class="info cmp-scope">${speed === 'all' ? 'Every number below is from all rated games.' : `Every number below is from ${speed} games only, the same games as each profile's ${speed} card.`}</p></header>
     <section class="cmp-cards">
       <div><a class="cmp-card" href="${profileLink(A.name)}" title="Open ${esc(A.name)}'s profile">${playerCard(A.name, A.p, A.p.type, sa)}</a><p class="cmp-type"><b>${A.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
       <div><a class="cmp-card" href="${profileLink(B.name)}" title="Open ${esc(B.name)}'s profile">${playerCard(B.name, B.p, B.p.type, sb)}</a><p class="cmp-type"><b>${B.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>

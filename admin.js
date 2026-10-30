@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261030093641';
-import { cardImage } from './profile.js?v=20261030093641';
+import { account, login, finishLogin } from './lichess.js?v=20261030094215';
+import { cardImage } from './profile.js?v=20261030094215';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -23,7 +23,7 @@ function cardOf(target, board) {
     return { name, overall: ovr, style: TYPE_CODES[st], strength: TYPE_CODES[sg], skills: sk.split('.').map((v) => (v === '-' ? null : Number(v))), rating: m && Number(m[1]), speed: m && SPEED_OF[m[2]], piece: piece?.trim(),
       ...(n ? { n: Number(n), w, b, lead: lead || '' } : {}) };
   }
-  const r = board.find((x) => x.name.toLowerCase() === name.toLowerCase());
+  const r = board.filter((x) => x.name.toLowerCase() === name.toLowerCase()).sort((x, y) => y.games - x.games)[0]; // their main time control
   return r && { name: r.name, overall: r.overall, style: r.style, strength: r.strength, skills: ['Attack', 'Defense', 'Early game', 'Late game', 'Accuracy', 'Speed'].map((k) => r.skills?.[k] ?? null), rating: r.rating, speed: r.speed, piece: r.piece };
 }
 const cardHtml = (c, look = 'dark', style = false) => `<div class="ad-cv ad-cv-${look}${style ? ' with-style' : ''}"><div class="pf-pcard" data-band="${bandOf(c.rating)}"><div class="pf-pcard-top"><div><b class="pf-ovr">${esc(c.overall ?? '–')}</b><span class="pf-pos">${esc(c.style || '')}</span>${c.strength ? `<span class="pf-str">+ ${esc(c.strength)}</span>` : ''}</div>
