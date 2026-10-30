@@ -69,6 +69,8 @@ Deno.serve(async (req) => {
   const days: Record<string, { fresh: number; visitors: Set<string>; views: number }> = {};
   const first = rows.length ? Date.parse(rows[0].at) : Date.now();
   for (let t = first; t <= Date.now(); t += 864e5) days[day(new Date(t).toISOString())] ??= { fresh: 0, visitors: new Set(), views: 0 };
+  // The 24 h steps skip today when the first event's time of day is later than now.
+  days[day(new Date().toISOString())] ??= { fresh: 0, visitors: new Set(), views: 0 };
   for (const r of views) { const d = days[day(r.at)]; if (d) { d.views++; d.visitors.add(r.visitor); } }
   for (const w of visitors) { const d = days[day(w.first)]; if (d) d.fresh++; }
   const today = day(new Date().toISOString());
