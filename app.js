@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030131936';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030131936';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030131936';
-import { GUIDE } from './guide.js?v=20261030131936';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030131936';
-import { maia3Move } from './maia3.js?v=20261030131936';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030131936';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030131936';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030131936';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030133108';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030133108';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030133108';
+import { GUIDE } from './guide.js?v=20261030133108';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030133108';
+import { maia3Move } from './maia3.js?v=20261030133108';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030133108';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030133108';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030133108';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1560,7 +1560,10 @@ function start(op, keepTraps = false) {
   $('#trainer').hidden = false;
   if (!location.hash) { history.replaceState(null, '', `${location.pathname}${location.search}#openings`); landing(); } // back from here: the openings, not the landing
   render();
+  if (!keepTraps) scrollTo(0, 0); // the board first, wherever the list was scrolled to (phones)
   if (!rating) return say(`Enter your Lichess ${speed} rating at the top.`);
+  // The first time an opening is opened, what it is about comes first, over the board.
+  if (!trapRun && !load(STORE + '-intro', {})[op.id] && !stats[statKey(op.id)]?.played?.length) return askIntro(); // not for openings already practised
   const all = buildLines(op), depths = load(STORE + '-depth', {});
   allLines = all;
   // Trap training needs every line; otherwise ask once per opening how deep to go.
@@ -1580,6 +1583,20 @@ function start(op, keepTraps = false) {
   if (mode === 'time') startTrial(); else play(nextLine());
 }
 
+// An opening's first visit: its story (how it goes at your rating, the idea, your plan, the main
+// variations) in a card over the board; closing it starts the practice. Seen once per opening, kept
+// with your progress.
+function askIntro() {
+  const x = oddsAt(cur, rating);
+  $('#depth-ask').innerHTML = `<div class="depth-card go-card intro-card" role="dialog" aria-labelledby="intro-title"><button type="button" class="go-close" data-intro aria-label="Close and start">×</button>
+    <p class="depth-k">${cur.side === 'w' ? 'You play White' : 'You play Black'} · ${esc(cur.eco || '')}</p><p class="depth-q" id="intro-title">${esc((isVs(cur) ? 'vs ' : '') + cur.name)}</p>
+    ${x ? `<div class="intro-odds"><p class="intro-k">At your rating (${rating})</p>${wdl(x, cur.side)}</div>` : ''}
+    <div class="intro-about">${$('#op-about').innerHTML}</div>
+    <button type="button" class="cta go-next" data-intro>Start practising<small>you can read this again under About this opening</small></button></div>`;
+  $('#depth-ask').hidden = false;
+  $('#depth-ask .go-next').focus({ preventScroll: true });
+  say('Read what the opening is about, then start.');
+}
 // The depth chooser over the board: one card per depth, with the lines it holds for this opening.
 function askDepth(n) {
   const now = load(STORE + '-depth', {})[cur.id];
@@ -1591,6 +1608,7 @@ function askDepth(n) {
   say('Choose how deep to go.');
 }
 $('#depth-ask').addEventListener('click', (e) => {
+  if (e.target.closest('[data-intro]')) { store(STORE + '-intro', { ...load(STORE + '-intro', {}), [cur.id]: true }); $('#depth-ask').hidden = true; return start(cur, true); }
   const b = e.target.closest('[data-depth]');
   if (!b) return;
   store(STORE + '-depth', { ...load(STORE + '-depth', {}), [cur.id]: Number(b.dataset.depth) });
