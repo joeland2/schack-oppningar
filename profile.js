@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030113307';
-import { STYLE_OF } from './styles.js?v=20261030113307';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030113534';
+import { STYLE_OF } from './styles.js?v=20261030113534';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1742,10 +1742,10 @@ function bindPiecePick(name) {
     $('.pf-piece-menu')?.remove();
     const menu = Object.assign(document.createElement('div'), { className: 'pf-piece-menu' });
     // The one the games give, and why: as the card's own explanation.
-    const auto = shownP?.pieceAuto || 'n', why = shownP?.pieceWhyAuto === 'best' ? 'the piece you play best: the fewest mistakes and blunders per move in your analysed games'
-      : 'the piece that does the most in your games (analyse 20 games and it becomes the piece you play best)';
+    const auto = shownP?.pieceAuto || 'n', why = shownP?.pieceWhyAuto === 'best' ? 'You play it best: the fewest mistakes per move.'
+      : 'It does the most in your games. With 20 analysed games, it becomes the piece you play best.';
     menu.innerHTML = `<p>Your piece</p><div>${['k', 'q', 'r', 'b', 'n', 'p'].map((k) => `<button type="button" data-piece="${k}" aria-label="The ${PIECE_NAME[k]}"${k === auto ? ' class="auto"' : ''}><img src="pieces/w${k.toUpperCase()}.svg" alt=""></button>`).join('')}</div>
-      <button type="button" class="link" data-piece="">From your games: the ${PIECE_NAME[auto]}</button><small class="pf-piece-why">${why}.</small>`;
+      <button type="button" class="pf-piece-auto" data-piece=""><img src="pieces/w${auto.toUpperCase()}.svg" alt=""><span><small>From your games</small><b>The ${PIECE_NAME[auto]}</b><em>${why}</em></span></button>`;
     side.closest('.pf-pcard').append(menu);
     menu.addEventListener('click', (ev) => { const b = ev.target.closest('[data-piece]'); if (b) { ev.stopPropagation(); choose(b.dataset.piece); } });
     setTimeout(() => addEventListener('click', () => menu.remove(), { once: true }));

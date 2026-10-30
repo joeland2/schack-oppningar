@@ -2082,7 +2082,12 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-piece-menu div button { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid #3d3730; border-radius: 8px; background: none; cursor: pointer; }
 .pf-piece-menu div button:hover, .pf-piece-menu div button:focus-visible { border-color: #f4efe6; }
 .pf-piece-menu img { width: 30px; height: 30px; }
-.pf-piece-menu .link { justify-self: start; color: #f4efe6; font-size: 13px; }
-.pf-piece-menu { max-width: 190px; }
+.pf-piece-menu { width: 180px; }
 .pf-piece-menu div button.auto { border-color: #a8a093; } /* the one your games give */
-.pf-piece-why { color: #a8a093; font-size: 12px; line-height: 1.35; }
+/* The piece your games give: a row under the choices, icon, name and why */
+.pf-piece-auto { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: start; padding: 8px; border: 1px solid #3d3730; border-radius: 8px; background: none; color: #f4efe6; text-align: left; cursor: pointer; }
+.pf-piece-auto:hover, .pf-piece-auto:focus-visible { border-color: #f4efe6; }
+.pf-piece-auto img { width: 28px; height: 28px; }
+.pf-piece-auto small { display: block; font: 700 10px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: #a8a093; }
+.pf-piece-auto b { display: block; font-size: 14px; margin: 1px 0 3px; }
+.pf-piece-auto em { display: block; font-style: normal; font-size: 12px; line-height: 1.35; color: #c9c1b4; }
