@@ -2016,3 +2016,9 @@ main.profile:has(#admin) { max-width: 1320px; }
   .ad-recent li > span { white-space: normal; }
   .ad-recent li > small { margin-left: auto; }
 }
+/* The time control under the card: as wide as the card, each button its name over its games; a small
+   star on the one played most */
+.pf-card-col .pf-speeds { display: flex; width: 300px; max-width: 100%; }
+.pf-card-col .pf-speeds button { flex: 1 1 0; min-width: 0; display: grid; justify-items: center; gap: 1px; padding: 6px 2px; font-size: 12.5px; line-height: 1.15; }
+.pf-card-col .pf-speeds small { font-size: 11px; }
+.pf-speed-star { font-style: normal; color: var(--hint); margin-right: 3px; font-size: 10px; vertical-align: 1px; }
