@@ -2030,4 +2030,6 @@ main.profile:has(#admin) { max-width: 1320px; }
 /* A player's country flag (from Lichess) as a sticker on the card's corner: white edge, tilted, shadow */
 .pf-pcard { position: relative; }
 .pf-flag { position: absolute; top: -8px; right: -10px; z-index: 2; width: 52px; height: 38px; background: center / cover no-repeat; border: 3px solid #fff; border-radius: 6px; transform: rotate(8deg); box-shadow: 0 4px 8px rgb(0 0 0 / .3); pointer-events: none; }
-.hero-ex { padding: 10px 10px 0 0; } /* room for the stickers over the cards' corners */
+/* Each example keeps room for its card's sticker and clips the rest, so the cards past the one row
+   (zero high) show nothing, not even a sticker's edge */
+.hero-ex > .hero-p { min-height: 0; overflow: hidden; padding: 10px 10px 0 0; }
