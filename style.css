@@ -2047,3 +2047,14 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-pro-line.vip .pf-pro-tag { background: #e0459b; color: #fff; }
 
 .og-bar .sort-seg { flex: none; } /* sorting sits with the lists it sorts, between the tabs and the search */
+/* Compare: the player you came from, VS, and the other to pick */
+.cmp-pick { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 28px; margin-top: 12px; }
+.cmp-pick-vs { font: 400 44px/1 var(--font-poster); color: var(--muted); }
+.cmp-pick-b { display: grid; gap: 12px; justify-items: start; max-width: 420px; }
+.cmp-pick-b h2 { margin: 0; font: 400 32px/1 var(--font-poster); text-transform: uppercase; }
+.cmp-pick-me small { margin-left: 6px; font-weight: 500; opacity: .75; }
+.cmp-pick-form { display: flex; gap: 8px; width: 100%; }
+.cmp-pick-form input { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; }
+.cmp-pick-k { margin: 6px 0 0; font: 700 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.cmp-pick-favs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+@media (max-width: 640px) { .cmp-pick { grid-template-columns: 1fr; justify-items: center; } .cmp-pick-a .pf-pcard { zoom: .8; } }

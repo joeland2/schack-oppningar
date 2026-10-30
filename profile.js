@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261030103406';
-import { STYLE_OF } from './styles.js?v=20261030103406';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261030104307';
+import { STYLE_OF } from './styles.js?v=20261030104307';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1450,10 +1450,8 @@ function starCounts() {
 function nextActions(name, me) {
   const friend = favs()[0];
   return `<section class="pf-next"><h2>What next</h2><div>
-    ${me ? '<a class="cta" href="practice.html">Open your training plan</a>' : myName() && myName().toLowerCase() !== name.toLowerCase() ? `<a class="cta" href="${compareLink(myName(), name)}">Compare with me</a>`
-      // Your name not known here (not logged in): ask for it, so the comparison is never the player against themselves
-      : `<form class="pf-cmp-ask" action="profile.html"><input type="hidden" name="vs" value="${esc(name)}"><input name="u" required maxlength="30" pattern="[A-Za-z0-9_\\-]{2,30}" placeholder="Your Lichess name" aria-label="Your Lichess name" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="cta">Compare with me</button></form>`}
-    ${me && friend ? `<a class="ghost" href="${compareLink(name, friend)}">Compare with ${esc(friend)}</a>` : me ? '<span class="info">Look up a friend with Find a player and star them to compare.</span>' : ''}
+    ${me ? '<a class="cta" href="practice.html">Open your training plan</a>' : ''}
+    <a class="${me ? 'ghost' : 'cta'}" href="${pickLink(name)}">${me ? 'Compare with someone' : `Compare ${esc(name)}`}</a>
   </div></section>`;
 }
 
@@ -1640,13 +1638,14 @@ function toggleFav(name) {
 }
 const profileLink = (n) => `profile.html?u=${encodeURIComponent(n)}`;
 const compareLink = (a, b) => `profile.html?u=${encodeURIComponent(a)}&vs=${encodeURIComponent(b)}`;
+const pickLink = (a) => `profile.html?u=${encodeURIComponent(a)}&vs=`; // compare a with someone to pick (comparePick)
 // The name, with small icons in the corner: star this player, compare with them, them on Lichess.
 function nameRow(name) {
   const me = isMe(name), mine = myName(), fav = isFav(name);
   const icon = (d, solid = false) => `<svg class="ico${solid ? ' ico-solid' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
   return `<div class="pf-name-row"><h1 class="pf-name" style="--n:${name.length}">${esc(name)}</h1>${me ? '' : `<div class="pf-acts">
     <button type="button" class="ghost pf-act pf-star" data-fav aria-pressed="${fav}" aria-label="${fav ? 'Starred: unstar' : 'Star this player'}" title="${fav ? 'Starred (press to unstar)' : 'Star this player: one tap to them from the ★ menu'}">${icon(STAR_PATH, fav)}</button>
-    ${mine && mine.toLowerCase() !== name.toLowerCase() ? `<a class="ghost pf-act" href="${compareLink(mine, name)}" aria-label="Compare with me" title="Compare ${esc(name)} with you">${icon('M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4')}</a>` : ''}
+    <a class="ghost pf-act" href="${pickLink(name)}" aria-label="Compare" title="Compare ${esc(name)} with you or anyone">${icon('M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4')}</a>
     <a class="ghost pf-act" href="https://lichess.org/@/${encodeURIComponent(name)}" target="_blank" rel="noopener" aria-label="${esc(name)} on Lichess" title="${esc(name)} on Lichess">${icon('M14 4h6v6M20 4l-9 9M18 14v6H4V6h6')}</a></div>`}</div>`;
 }
 function bindPlayerBar(name) {
@@ -1678,6 +1677,25 @@ function placeActs() {
   if (a && matchMedia('(max-width: 640px)').matches) $('.pf-hero .pf-type-row')?.append(a);
 }
 // A profile ready to show: kept here, else read from the player's games.
+// Compare: the player you came from on the left, and on the right the other to pick: you, one of your
+// starred players, or anyone by name.
+async function comparePick(name) {
+  document.title = `Compare ${name}`;
+  const mine = myName(), others = favs().filter((x) => x.toLowerCase() !== name.toLowerCase() && x.toLowerCase() !== (mine || '').toLowerCase());
+  $('#profile').innerHTML = `<header class="cmp-head"><h1 class="pf-h1">Compare <a href="${profileLink(name)}">${esc(name)}</a></h1></header>
+    <section class="cmp-pick"><div class="cmp-pick-a" id="cmp-pick-a"><p class="info">Reading ${esc(name)}'s games…</p></div><span class="cmp-pick-vs">VS</span>
+      <div class="cmp-pick-b"><h2>With who?</h2>
+        ${mine && mine.toLowerCase() !== name.toLowerCase() ? `<a class="cta cmp-pick-me" href="${compareLink(name, mine)}">With me <small>${esc(mine)}</small></a>` : ''}
+        <form class="cmp-pick-form" action="profile.html"><input type="hidden" name="u" value="${esc(name)}"><input name="vs" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="Any Lichess name" aria-label="Any Lichess name" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="cta">Compare</button></form>
+        ${others.length ? `<p class="cmp-pick-k">Your starred players</p><p class="cmp-pick-favs">${others.map((x) => `<a class="pf-chip" href="${compareLink(name, x)}">${esc(x)}</a>`).join('')}</p>` : ''}
+      </div></section>`;
+  $('.cmp-pick-form input[name=vs]').focus();
+  try {
+    const A = await profileFor(name);
+    await loadFlags([name]);
+    $('#cmp-pick-a').innerHTML = playerCard(A.name, A.p, A.p.type, skillsOf(A.p));
+  } catch (err) { $('#cmp-pick-a').innerHTML = `<p class="info">${esc(err.message)}</p>`; }
+}
 async function profileFor(name) {
   return { name: cache()[name.toLowerCase()]?.name || name, p: await current(name) };
 }
@@ -1828,6 +1846,7 @@ function show(name, push) {
 }
 function start() {
   const q = new URLSearchParams(location.search), name = q.get('u') || myName();
+  if (name && q.has('vs') && !q.get('vs')) return comparePick(name); // compare with someone still to pick
   if (name && q.get('vs') && q.get('vs').toLowerCase() !== name.toLowerCase()) return compare(name, q.get('vs')); // the same name twice: just the profile
   if (name) show(name, false); else ask();
 }
