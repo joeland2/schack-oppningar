@@ -407,6 +407,15 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .account .ghost { white-space: nowrap; }
 .account .ghost::first-letter { text-transform: uppercase; }
 @media (max-width: 560px) { .wide-only { display: none; } }
+@media (min-width: 561px) { .narrow-only { display: none; } }
+/* A phone: the side tabs and the sorting share one row, the search under them */
+@media (max-width: 560px) {
+  .og-bar { gap: 8px; flex-wrap: wrap; }
+  .og-bar #side-tabs, .og-bar .sort-seg { flex: none; }
+  .og-bar .side-seg button, .og-bar .sort-seg button { padding: 6px 6px; font-size: 13px; }
+  .og-bar .side-seg .og-n { margin-left: 2px; padding: 1px 4px; font-size: 11px; }
+  .og-bar .choice-search { flex-basis: 100%; }
+}
 
 /* Taken pieces and material lead */
 .captured { display: flex; align-items: center; min-height: 22px; padding: 0 4px; gap: 0; }

@@ -1,13 +1,13 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030134240';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030134240';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030134240';
-import { GUIDE } from './guide.js?v=20261030134240';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030134240';
-import { maia3Move } from './maia3.js?v=20261030134240';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030134240';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030134240';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030134240';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030134557';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030134557';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030134557';
+import { GUIDE } from './guide.js?v=20261030134557';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030134557';
+import { maia3Move } from './maia3.js?v=20261030134557';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030134557';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030134557';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030134557';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -505,7 +505,7 @@ function renderList() {
   }
   // The side tabs sit beside the search box, outside the list, so typing a search keeps its focus.
   $('#side-tabs').innerHTML = `<div class="seg side-seg" role="group" aria-label="Your side">
-      ${['w', 'b', 'r'].map((side) => `<button type="button" data-side="${side}" aria-pressed="${!q && side === listSide}">${side === 'r' ? '<span class="wide-only">My </span>Favorites' : `<span class="wide-only">You play </span>${sideName(side)}`} <span class="og-n">${count(side)}</span></button>`).join('')}
+      ${['w', 'b', 'r'].map((side) => `<button type="button" data-side="${side}" aria-pressed="${!q && side === listSide}">${side === 'r' ? '<span class="wide-only">My Favorites</span><span class="narrow-only"><span aria-hidden="true">★</span><span class="visually-hidden">Favorites</span></span>' : `<span class="wide-only">You play </span>${sideName(side)}`} <span class="og-n">${count(side)}</span></button>`).join('')}
     </div>`;
   // Where each card stood, so the cards still listed glide to their new places instead of being redrawn.
   const was = new Map([...listEl.querySelectorAll('.ocard')].map((c) => [c.dataset.id, c.getBoundingClientRect()]));
@@ -3332,6 +3332,7 @@ document.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('clic
   if (OPENINGS.length) renderList();
 }));
 $('#back').addEventListener('click', showPicker);
+if (PHONE.matches) $('#filters').open = false; // a phone starts with them folded: all openings at your rating
 PHONE.addEventListener('change', (e) => { if (!e.matches) $('#filters').open = true; }); // on a computer the filters never fold
 $('#m-back').addEventListener('click', showPicker);
 // Typing a move: the keyboard's way to play, as if the piece and then its square were clicked.

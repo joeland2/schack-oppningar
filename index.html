@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261030134240">
-  <script src="header.js?v=20261030134240" defer></script>
-  <script src="theme.js?v=20261030134240"></script>
+  <link rel="stylesheet" href="style.css?v=20261030134557">
+  <script src="header.js?v=20261030134557" defer></script>
+  <script src="theme.js?v=20261030134557"></script>
 </head>
 <body>
   <header class="top">
@@ -106,8 +106,8 @@
     <div class="og-bar">
       <div id="side-tabs"></div>
       <div class="seg sort-seg" role="group" aria-label="Sort openings">
-        <button type="button" data-sort="score">Best results</button>
-        <button type="button" data-sort="played">Most played</button>
+        <button type="button" data-sort="score">Best<span class="wide-only"> results</span></button>
+        <button type="button" data-sort="played"><span class="wide-only">Most played</span><span class="narrow-only">Popular</span></button>
       </div>
       <div class="choice choice-search">
         <label class="visually-hidden" for="search">Find an opening</label>
@@ -222,7 +222,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261030134240"></script>
+  <script type="module" src="app.js?v=20261030134557"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>
