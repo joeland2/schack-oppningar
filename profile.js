@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031155610';
-import { STYLE_OF } from './styles.js?v=20261031155610';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031155610';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031155645';
+import { STYLE_OF } from './styles.js?v=20261031155645';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031155645';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1604,7 +1604,7 @@ function showPeek(e) {
   el.innerHTML = peekCard(a); el.hidden = false;
   const r = a.getBoundingClientRect(), w = el.offsetWidth;
   el.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + scrollX}px`;
-  el.style.top = `${r.bottom + 8 + scrollY}px`;
+  el.style.top = `${r.top - el.offsetHeight - 8 + scrollY}px`; // above the row, so the dates and the row stay in view
 }
 if (matchMedia('(hover: hover)').matches) {
   document.addEventListener('mouseover', showPeek);
