@@ -1284,7 +1284,7 @@ a { text-underline-offset: .18em; }
 .pf-res-dots .w { background: var(--good); } .pf-res-dots .d { background: var(--muted); opacity: .55; } .pf-res-dots .l { background: var(--bad); opacity: .75; }
 a.pf-res { text-decoration: none; transition: transform .12s; }
 /* Each of the last ten with its day under it; a day already shown to its left is faded */
-.pf-form-day { display: grid; justify-items: center; gap: 4px; }
+.pf-form-day { display: grid; justify-items: center; align-content: start; gap: 3px; }
 .pf-form-day small { font-size: 10px; line-height: 1.15; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pf-form-day.same small { opacity: .35; }
 a.pf-res:hover, a.pf-res:focus-visible { transform: translateY(-2px); outline: 2px solid var(--ink); outline-offset: 1px; }
@@ -2261,6 +2261,7 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-peek-board i { display: block; aspect-ratio: 1; }
 .pf-peek-board i.l { background: #f0d9b5; } .pf-peek-board i.d { background: #b58863; }
 .pf-peek-board img { display: block; width: 100%; height: 100%; }
+.pf-peek p, .pf-peek small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* one line each, so every card is the same size */
 .pf-peek p { margin: 8px 0 2px; line-height: 1.35; }
 .pf-peek p .pf-side { vertical-align: -1px; margin: 0 2px; }
 .pf-peek small { color: var(--muted); font-size: 12px; }
