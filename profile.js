@@ -3,8 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031091442';
-import { STYLE_OF } from './styles.js?v=20261031091442';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031122014';
+import { STYLE_OF } from './styles.js?v=20261031122014';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser } from './chesscom.js?v=20261031122014';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -478,6 +479,7 @@ console.assert(rawSkills({ peer: { analysed: 120, ups: 36, downs: 12, after12: 1
 
 // ---------- Fetching ----------
 async function fetchGames(name, onGame, since = null, perf = 'bullet,blitz,rapid,classical') {
+  if (isCC(name)) return fetchCC(name, onGame, since, perf, MAX);
   const a = account();
   const res = await fetch(`https://lichess.org/api/games/user/${encodeURIComponent(name)}?` + new URLSearchParams({
     max: MAX, ...(since ? { since } : {}), rated: 'true', perfType: perf, moves: 'true', opening: 'true', clocks: 'true', evals: 'true', accuracy: 'true',
@@ -561,6 +563,7 @@ const sig = (g) => `${g.ours ? 1 : 0}|${g.at12 ?? ''}`;
 const extra = (g) => { const t = pack(g); return { ours: g.ours || undefined, at12: g.at12 ?? undefined, an: g.ours ? t.an : undefined, pa: g.ours ? [g.players.white.analysis, g.players.black.analysis] : undefined }; };
 function pull(name) {
   const me = name.toLowerCase();
+  if (isCC(name)) return Promise.resolve(new Map()); // the analyses function keeps Lichess names and ids only
   if (!PULLS.has(me)) PULLS.set(me, fetch(`${SYNC}?u=${encodeURIComponent(me)}`).then((r) => (r.ok ? r.json() : [])).catch(() => []).then((rows) => {
     const m = new Map(rows.map((r) => [r.id, r.data]));
     for (const [id, d] of m) SENT.set(`${me}|${id}`, sig(d));
@@ -584,7 +587,7 @@ function stableType(name, sp, p) {
   if (p.pieceAuto === undefined) { p.pieceAuto = p.piece; p.pieceWhyAuto = p.pieceWhy; } // the one the games give, kept to go back to
   if (pc) { p.piece = pc; p.pieceWhy = 'chosen'; } else { p.piece = p.pieceAuto; p.pieceWhy = p.pieceWhyAuto; } // the player's own pick for their card
   const now = { style: t[0]?.name, strength: t[1]?.name || null };
-  if (!drawingEarly && p.n >= MIN_GAMES && (!keep || keep.style !== now.style || keep.strength !== now.strength)) {
+  if (!drawingEarly && !isCC(name) && p.n >= MIN_GAMES && (!keep || keep.style !== now.style || keep.strength !== now.strength)) {
     STABLE.set(k, now);
     fetch(SYNC, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ player: name.toLowerCase(), rows: [{ id: typeId(sp), data: now }] }) }).catch(() => {});
   }
@@ -620,6 +623,7 @@ async function mergeRemote(name, games) {
 }
 async function push(name, games) {
   const me = name.toLowerCase();
+  if (isCC(name)) return;
   await pull(name);
   const rows = games.filter((g) => (g.ours || g.at12 != null) && SENT.get(`${me}|${g.id}`) !== sig(g)).map((g) => ({ id: g.id, data: extra(g) }));
   for (let i = 0; i < rows.length; i += 200) { // shortcut: no retry; what fails goes again with the next save
@@ -662,17 +666,17 @@ let quiet = false; // checking for new games behind a profile already shown: no 
 const msgEl = () => (quiet ? { textContent: '' } : $('#profile-msg'));
 async function build(name) {
   const msg = msgEl(), have = storedGames(name) || [];
-  msg.textContent = have.length ? `Fetching ${name}'s new games from Lichess…` : `Fetching ${name}'s last ${MAX} rated games from Lichess…`;
+  msg.textContent = have.length ? `Fetching ${nick(name)}'s new games from ${siteOf(name)}…` : `Fetching ${nick(name)}'s last ${MAX} rated games from ${siteOf(name)}…`;
   // Lichess sends about 20-30 games a second, so a first look-up takes a while: the profile is drawn
   // from the first EARLY games as soon as they are in, then drawn again from all of them.
   const mine = runs, bar = $('#pf-load');
   let early = false;
   // The bar over the profile on a first look-up: how far the games are, and what happens meanwhile.
   const step = (pct, say) => { if (!bar || bar.hidden) return; bar.querySelector('i').style.width = `${pct}%`; bar.querySelector('[role=progressbar]').setAttribute('aria-valuenow', Math.round(pct)); bar.querySelector('.pf-load-k').textContent = say; };
-  if (bar && !quiet && !have.length) { bar.hidden = false; step(0, `Asking Lichess for ${name}'s last ${MAX} rated games…`); }
+  if (bar && !quiet && !have.length) { bar.hidden = false; step(0, `Asking ${siteOf(name)} for ${nick(name)}'s last ${MAX} rated games…`); }
   const fresh = await fetchGames(name, (k, gs) => {
-    msg.textContent = early ? '' : `Fetching ${name}'s games from Lichess… ${k}`;
-    step((k / MAX) * 95, k < EARLY ? `Fetching games from Lichess: ${k} of up to ${MAX}` : `Fetching games from Lichess: ${k} of up to ${MAX}. The card is drawn from these and fills in as the rest come.`);
+    msg.textContent = early ? '' : `Fetching ${nick(name)}'s games from ${siteOf(name)}… ${k}`;
+    step((k / MAX) * 95, k < EARLY ? `Fetching games from ${siteOf(name)}: ${k} of up to ${MAX}` : `Fetching games from ${siteOf(name)}: ${k} of up to ${MAX}. The card is drawn from these and fills in as the rest come.`);
     if (!have.length && !quiet && (k === EARLY || (early && k % REDRAW === 0))) {
       early = true;
       loadScores().then(() => { if (mine === runs) { const y = scrollY; drawingEarly = true; try { render(name, Date.now(), profileOf(gs.slice().map((g) => readGame(g, name.toLowerCase())))); } finally { drawingEarly = false; } scrollTo(0, y); } }).catch(() => {});
@@ -681,7 +685,7 @@ async function build(name) {
   step(96, `Reading all ${fresh.length} games for the card…`);
   const ids = new Set(fresh.map((g) => g.id));
   const raw = [...fresh, ...have.filter((g) => !ids.has(g.id))].slice(0, MAX);
-  if (!raw.length) { if (bar) bar.hidden = true; throw new Error(`${name} has no rated games on Lichess yet.`); }
+  if (!raw.length) { if (bar) bar.hidden = true; throw new Error(`${nick(name)} has no rated games on ${siteOf(name)} yet.`); }
   merged = await mergeRemote(name, raw);
   saveGames(name, raw);
   RAW = raw; RAW_NAME = name;
@@ -867,7 +871,7 @@ function analysePanel(name, p, shown = p, sp = null) {
       <span class="pf-acc-n">${p.analysed} of ${shown !== p ? 'all ' : ''}${p.n}${sp ? ` ${sp}` : ''} games analysed${shown !== p && shown.speeds?.[0] ? ` (${shown.analysed} in ${shown.speeds[0].speed})` : ''}</span>
       <details class="pf-help"><summary title="${WHY_ANALYSE}" aria-label="Why analyse?">?</summary><p>${WHY_ANALYSE}</p></details></div>
     <ol class="pf-acc-steps" aria-label="Stat accuracy: ${reached ? reached[1] : 'locked'}">${steps}</ol>
-    <p class="pf-acc-src">Counts the games analysed on lichess.org (${p.analysed - (p.ours || 0)}) and here (${p.ours || 0}). The buttons analyse more of the Lichess games with Stockfish in your browser; each game is done once and kept.</p>
+    <p class="pf-acc-src">${isCC(name) ? `Counts the games analysed here (${p.ours || 0}). The buttons analyse more of the games` : `Counts the games analysed on lichess.org (${p.analysed - (p.ours || 0)}) and here (${p.ours || 0}). The buttons analyse more of the Lichess games`} with Stockfish in your browser; each game is done once and kept.</p>
     <div class="pf-acc-foot"><p class="pf-acc-say">${say}</p>
     ${main ? `<div class="pf-an-row">${btn(main, 'cta pf-an-go')}${rest.map((o) => btn(o, 'pf-an-opt')).join('')}</div>` : ''}</div>
   </div>`;
@@ -892,9 +896,18 @@ const isMe = (name) => !!myName() && name.toLowerCase() === myName().toLowerCase
 // Someone else's profile reads in the third person: "you score" becomes "they score".
 const they = (t) => t.replace(/\b(Y|y)our\b/g, (_, y) => (y === 'Y' ? 'Their' : 'their')).replace(/\b(Y|y)ou\b/g, (_, y) => (y === 'Y' ? 'They' : 'they'));
 console.assert(they('You score 50%; your games, you were') === 'They score 50%; their games, they were', 'they');
-const search = (label) => `<form id="pf-form" class="rating-row pf-search" role="search"><input id="pf-name" type="text" required maxlength="30" pattern="[A-Za-z0-9_\\-]{2,30}" placeholder="Lichess username" aria-label="Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="ghost" type="submit">${label}</button></form>`;
+// Look up a player on Lichess or Chess.com: the site picked last is kept.
+const SITE = 'opening-book-v2-site';
+const pickedCC = () => { try { return localStorage.getItem(SITE) === 'cc'; } catch { return false; } };
+const search = (label) => `<div class="pf-seg pf-site" role="group" aria-label="Site">${[['li', 'Lichess'], ['cc', 'Chess.com']].map(([k, t]) => `<button type="button" data-site="${k}" aria-pressed="${(k === 'cc') === pickedCC()}">${t}</button>`).join('')}</div>
+  <form id="pf-form" class="rating-row pf-search" role="search"><input id="pf-name" type="text" required maxlength="30" pattern="[A-Za-z0-9_\\-]{2,30}" placeholder="${pickedCC() ? 'Chess.com' : 'Lichess'} username" aria-label="${pickedCC() ? 'Chess.com' : 'Lichess'} username" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="ghost" type="submit">${label}</button></form>`;
 function bindSearch() {
-  $('#pf-form')?.addEventListener('submit', (e) => { e.preventDefault(); show($('#pf-name').value.trim(), true); });
+  document.querySelectorAll('[data-site]').forEach((b) => b.addEventListener('click', () => {
+    try { localStorage.setItem(SITE, b.dataset.site); } catch {}
+    document.querySelectorAll('[data-site]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    $('#pf-name').placeholder = $('#pf-name').ariaLabel = `${b.textContent} username`; $('#pf-name').focus();
+  }));
+  $('#pf-form')?.addEventListener('submit', (e) => { e.preventDefault(); show(`${pickedCC() ? 'cc:' : ''}${$('#pf-name').value.trim()}`, true); });
 }
 const games = (n) => `${n} game${n === 1 ? '' : 's'}`;
 // Wins, draws, losses; a row with only a score (no win count) draws as wins and losses.
@@ -931,7 +944,7 @@ function tasteLine(mix, me) {
 function endsGrid(ends) {
   const kinds = [['mate', 'By mate'], ['resign', 'Resigned'], ['time', 'On time']];
   const row = (label, cls, x) => `<div class="pf-ends-row ${cls}"><span class="pf-ends-label">${label}</span>${kinds.map(([k, name]) => `
-    <div class="pf-ends-cell"><b>${pct(x[k])}</b><small>${name}</small><span class="pf-ends-bar"><i style="width:${x[k] * 100}%"></i></span></div>`).join('')}</div>`;
+    <div class="pf-ends-cell"><b>${pct(x[k])}</b><small>${nick(name)}</small><span class="pf-ends-bar"><i style="width:${x[k] * 100}%"></i></span></div>`).join('')}</div>`;
   return `<div class="pf-ends">${row('Wins', 'won', ends.won)}${row('Losses', 'lost', ends.lost)}</div>`;
 }
 // The leak: the worst skill clearly below the player's opponents (45 or less); 46–55 is noise.
@@ -940,7 +953,7 @@ const leakOf = (skills) => skills.filter((x) => x.raw !== null && x.raw <= 45).s
 // A portrait in words, from this player's own games: the openings they actually choose, how their
 // games end, their best piece, and the area that lifts or holds them back. No two read the same.
 function portrait(name, p, skills, me, part = 'lead') {
-  const you = me ? 'You' : esc(name), your = me ? 'your' : 'their', are = me ? 'are' : 'is';
+  const you = me ? 'You' : esc(nick(name)), your = me ? 'your' : 'their', are = me ? 'are' : 'is';
   // The openings chosen, by family: the King's Gambit Accepted and Declined are one King's Gambit.
   // The openings a player chooses, as a reader would name them, by their first move: each first move
   // (as Black, each answer to White's first move) played in at least 15% of the games with that colour,
@@ -1033,7 +1046,7 @@ const flagHtml = (name) => { const c = FLAGS.get(String(name).toLowerCase()); re
 console.assert(flagCode('SE') === 'se' && flagCode('GB-ENG') === 'gb-eng' && flagCode('_earth') === null && flagCode(undefined) === null, 'flagCode');
 // Many players at once (Lichess answers up to 300 a call), for lists of cards.
 async function loadFlags(names) {
-  const todo = [...new Set(names.map((n) => String(n).toLowerCase()))].filter((n) => !FLAGS.has(n));
+  const todo = [...new Set(names.map((n) => String(n).toLowerCase()))].filter((n) => !FLAGS.has(n) && !isCC(n)); // a chess.com player's comes with perfsOf
   for (let i = 0; i < todo.length; i += 300) {
     const part = todo.slice(i, i + 300);
     const users = await fetch('https://lichess.org/api/users', { method: 'POST', body: part.join(',') }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
@@ -1049,11 +1062,11 @@ function playerCard(name, p, t, skills) {
   const main = p.speeds[0];
   return `<div class="pf-pcard${proClass(name)}" style="--band:${bandColor(main?.rating)}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span>${t[1] ? `<span class="pf-str">+ ${esc(t[1].name)}</span>` : ''}</div>
-      <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title=""${esc(name)}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'chosen' ? `chosen by ${esc(name)}` : p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
+      <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title=""${esc(nick(name))}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'chosen' ? `chosen by ${esc(nick(name))}` : p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
         ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
-    <p class="pf-pcard-name">${esc(name)}</p>
+    <p class="pf-pcard-name">${esc(nick(name))}</p>
     ${cardBars(skills.map((x) => [ABBR[x.label], x.v]))}
-    <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
+    <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES${isCC(name) ? ' · CHESS.COM' : ''}</p>
   </div>`;
 }
 // Where a rating ranks among all Lichess players of that time control this week: "Top 27%".
@@ -1112,7 +1125,7 @@ function drawCard(ctx, x, y, name, p, t, skills, piece, flag = null) {
     const w = ctx.measureText(sp).width; ctx.font = '400 52px Anton'; ctx.fillStyle = CARD.ink; ctx.fillText(String(main.rating), 560 - w - 10, 232); ctx.textAlign = 'left';
   }
   ctx.fillStyle = CARD.line; ctx.fillRect(40, 292, 520, 2); ctx.fillRect(40, 392, 520, 2);
-  ctx.fillStyle = CARD.ink; ctx.textAlign = 'center'; fit(ctx, name.toUpperCase(), '400 #px Anton', 60, 520); ctx.fillText(name.toUpperCase(), 300, 366); ctx.textAlign = 'left';
+  ctx.fillStyle = CARD.ink; ctx.textAlign = 'center'; fit(ctx, nick(name).toUpperCase(), '400 #px Anton', 60, 520); ctx.fillText(nick(name).toUpperCase(), 300, 366); ctx.textAlign = 'left';
   // The six skills as bars, in the card's colour.
   skills.forEach((k, i) => {
     const cy = 452 + i * 50;
@@ -1189,7 +1202,7 @@ async function comparePng(A, B, sa, sb, detail, btn) {
       const ca = W - 70 - 2 * 260, cb = W - 70 - 260; // the two columns' left edges
       ctx.fillStyle = CARD.hot; ctx.fillRect(70, y, W - 140, 3);
       ctx.fillStyle = CARD.paperMuted; ctx.font = '700 16px Geist'; ctx.letterSpacing = '3px'; ctx.fillText('NUMBERS', 70, y += 40); ctx.letterSpacing = '0px';
-      ctx.fillStyle = CARD.paperInk; ctx.font = '700 20px Geist'; fit(ctx, A.name, '700 #px Geist', 20, 240); ctx.fillText(A.name, ca, y); fit(ctx, B.name, '700 #px Geist', 20, 240); ctx.fillText(B.name, cb, y);
+      ctx.fillStyle = CARD.paperInk; ctx.font = '700 20px Geist'; fit(ctx, nick(A.name), '700 #px Geist', 20, 240); ctx.fillText(nick(A.name), ca, y); fit(ctx, nick(B.name), '700 #px Geist', 20, 240); ctx.fillText(nick(B.name), cb, y);
       y += 14;
       for (const [label, a, b, va, vb, dir] of nums) {
         ctx.fillStyle = CARD.paperMuted; ctx.globalAlpha = 0.35; ctx.fillRect(70, y, W - 140, 1); ctx.globalAlpha = 1;
@@ -1228,8 +1241,8 @@ async function cardPng(name, p, t, skills, detail, btn) {
   window.track?.('card', `${name} · ${detail ? 'style' : 'card'} · ${cardLook()} #${cardCode(p, t, skills)} ~${cardExtra(name, p, skills, detail)}`);
   try {
     const canvas = await cardImage(cardLook(), name, p, t, skills, detail, plain(portrait(name, p, skills, false)));
-    const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${name}-chess-${detail ? 'profile' : 'card'}-${cardLook()}.png`, { type: 'image/png' });
-    await saveImage(blob, file, `${name}'s chess card`);
+    const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${nick(name)}-chess-${detail ? 'profile' : 'card'}-${cardLook()}.png`, { type: 'image/png' });
+    await saveImage(blob, file, `${nick(name)}'s chess card`);
   } catch (err) { $('#profile-msg').textContent = `The image could not be made: ${err.message}`; }
   btn.disabled = false; btn.textContent = label;
 }
@@ -1266,7 +1279,7 @@ async function cardImage(look, name, p, t, skills, detail, lead) {
       for (const k of t) { ctx.font = '700 24px Geist'; ctx.fillStyle = CARD.paperInk; ctx.fillText(`${k.name}.`, 60, ty); const w = ctx.measureText(`${k.name}. `).width; ctx.font = '400 24px Geist'; ctx.fillStyle = CARD.paperMuted; ty = wrap(ctx, TYPE_ABOUT[k.name] || '', 60, ty, W - 120, 34, 3, w) + 12; }
       ctx.fillStyle = CARD.hot; ctx.fillRect(60, H - 96, W - 120, 3);
       ctx.fillStyle = CARD.paperInk; ctx.font = '400 30px Anton'; ctx.fillText('CHESS TRAINER', 60, H - 50);
-      ctx.fillStyle = CARD.paperMuted; ctx.font = '400 20px Geist'; ctx.textAlign = 'right'; ctx.fillText(`From ${name}'s last ${p.n} rated Lichess games`, W - 60, H - 52); ctx.textAlign = 'left';
+      ctx.fillStyle = CARD.paperMuted; ctx.font = '400 20px Geist'; ctx.textAlign = 'right'; ctx.fillText(`From ${nick(name)}'s last ${p.n} rated ${siteOf(name)} games`, W - 60, H - 52); ctx.textAlign = 'left';
     }
     return canvas;
   }
@@ -1274,7 +1287,7 @@ async function cardImage(look, name, p, t, skills, detail, lead) {
 function cardNote(name, p, me) {
   const main = p.speeds[0];
   if (!main) return '';
-  return `<details class="pf-card-help"><summary>How the stats work</summary><p class="pf-card-note"><b>Every stat compares ${me ? 'you' : esc(name)} with ${me ? 'your' : 'their'} own opponents</b>, rated ${main.rating - PEER}–${main.rating + PEER}, in the same games. A higher rating starts the card higher; the big number is the average of the six skills. <a href="#pf-skills">What each skill measures</a></p></details>`;
+  return `<details class="pf-card-help"><summary>How the stats work</summary><p class="pf-card-note"><b>Every stat compares ${me ? 'you' : esc(nick(name))} with ${me ? 'your' : 'their'} own opponents</b>, rated ${main.rating - PEER}–${main.rating + PEER}, in the same games. A higher rating starts the card higher; the big number is the average of the six skills. <a href="#pf-skills">What each skill measures</a></p></details>`;
 }
 // Logged in: a small log-out button in the top bar, on the profile only.
 if (account()) {
@@ -1317,6 +1330,7 @@ let pfSpeed = null, shown = null; // the picked time control ('all' or a speed);
 const PERFS = new Map(); // lower-case name → promise of { bullet: games, … } from Lichess
 function perfsOf(name) {
   const k = name.toLowerCase();
+  if (!PERFS.has(k) && isCC(name)) PERFS.set(k, ccUser(name).then((u) => { if (u) FLAGS.set(k, flagCode(u.flag)); PERFS.set(k, u?.games || null); return u?.games || null; }));
   if (!PERFS.has(k)) PERFS.set(k, fetch(`https://lichess.org/api/user/${encodeURIComponent(name)}`).then((r) => (r.ok ? r.json() : null))
     .then((u) => { if (u) FLAGS.set(k, flagCode(u.profile?.flag)); return u && Object.fromEntries(SPEEDS.map((sp) => [sp, u.perfs?.[sp]?.games || 0])); }).catch(() => null)
     .then((x) => { PERFS.set(k, x); return x; }));
@@ -1351,8 +1365,8 @@ async function fetchSpeed(name, sp) {
   const perfs = await perfsOf(name);
   if (!have.length && (!perfs || mixed.length >= Math.min(MAX, perfs[sp]))) return false; // the last 500 of all already hold them
   const msg = $('#profile-msg');
-  if (!have.length) msg.textContent = `Fetching ${name}'s last ${Math.min(MAX, perfs[sp])} ${sp} games from Lichess…`;
-  const fresh = await fetchGames(name, (k) => { if (!have.length) msg.textContent = `Fetching ${name}'s ${sp} games from Lichess… ${k} of ${Math.min(MAX, perfs[sp])}`; },
+  if (!have.length) msg.textContent = `Fetching ${nick(name)}'s last ${Math.min(MAX, perfs[sp])} ${sp} games from ${siteOf(name)}…`;
+  const fresh = await fetchGames(name, (k) => { if (!have.length) msg.textContent = `Fetching ${nick(name)}'s ${sp} games from ${siteOf(name)}… ${k} of ${Math.min(MAX, perfs[sp])}`; },
     have.length ? have[0].createdAt + 1 : null, sp);
   msg.textContent = '';
   const ids = new Set(fresh.map((g) => g.id)), raw = [...fresh, ...have.filter((g) => !ids.has(g.id))].slice(0, MAX);
@@ -1380,7 +1394,7 @@ function render(name, at, full) {
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
   shownCode = cardCode(p, t, skills); // the card as drawn, for the lookup's event
   shownP = p; // the card's profile, for the piece menu
-  document.title = me ? 'Your Profile' : `${name} · Profile`;
+  document.title = me ? 'Your Profile' : `${nick(name)} · Profile`;
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
     ${nameRow(name)}${proLine(name)}
@@ -1402,7 +1416,7 @@ function render(name, at, full) {
     ${leadStory(name, p, skills, me)}
     <section class="pf-card pf-skills-card${showSkillText ? ' open' : ''}" id="pf-skills">
       ${p.n < MIN_GAMES ? `<p class="pf-an-few">Only ${p.n} rated games: skills need at least ${MIN_GAMES}.</p>` : ''}
-      <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(name)}'s skills`}</h2>
+      <div class="pf-skills-head"><h2>${me ? 'Skills' : `${esc(nick(name))}'s skills`}</h2>
         <button type="button" class="link" data-skill-text aria-expanded="${showSkillText}">${showSkillText ? 'Hide explanations' : 'What each one means'}</button></div>
       ${skillBars(skills, say, me)}
       <p class="pf-skill-scale">All against opponents within ${PEER} of ${me ? 'your' : 'their'} rating; the mark on each bar is as good as them.</p>
@@ -1428,7 +1442,7 @@ function render(name, at, full) {
     <section class="pf-card" id="pf-games"></section>
     <section class="pf-about-data">
       <h2>About these numbers</h2>
-      <p class="info">Read from ${me ? 'your' : `${esc(name)}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
+      <p class="info">Read from ${me ? 'your' : `${esc(nick(name))}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
       <p class="info">Results, openings, opening style, the clock, endgames and the rating graph use all ${p.n} games.
         Early game uses Stockfish's verdict on the position after move 12 in every game (looked at here once). Accuracy, blunders and the Defense and Accuracy skills (and part of Attack) need a computer's verdict on every move, so they use only the
         ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'} among the ${p.n} shown${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. ${p.todo ? 'Analyse more with the Analyse button under Skills.' : ''}</p>
@@ -1464,7 +1478,7 @@ function render(name, at, full) {
     pfSpeed = sp; redraw();
     if (sp === 'all') return;
     try { if (await fetchSpeed(name, sp) && pfSpeed === sp) redraw(); } catch (err) { $('#profile-msg').textContent = err.message; }
-    if (pfSpeed === sp && !speedsOf(name, shown[2]).some(([k, n]) => k === sp && n > 0)) $('#profile-msg').textContent = `Lichess gave no ${sp} games for ${name} to read, so the card stays on the others.`;
+    if (pfSpeed === sp && !speedsOf(name, shown[2]).some(([k, n]) => k === sp && n > 0)) $('#profile-msg').textContent = `${siteOf(name)} gave no ${sp} games for ${nick(name)} to read, so the card stays on the others.`;
   }));
   // Time controls missing from the last 500 games show once Lichess says the player has them.
   if (!PERFS.has(name.toLowerCase())) perfsOf(name).then((x) => { if (x && shown?.[0] === name) { const y = scrollY; render(...shown); scrollTo(0, y); } });
@@ -1511,7 +1525,7 @@ function leadStory(name, p, skills, me) {
   const last = (mine.length ? mine : games).slice(0, 10), form = last.map(res), wins = form.filter((x) => x === 'W').length, latest = last[0];
   return `<section class="pf-lead solo">
     <div class="pf-news"><h2>Latest</h2>
-      ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${last.map((g, i) => `<a class="pf-res r-${form[i]}" href="game.html?u=${encodeURIComponent(name)}&id=${g.id}" title="${{ W: 'Won', L: 'Lost', D: 'Drew' }[form[i]]} against ${esc(g.players[sideOf(g) === 'white' ? 'black' : 'white'].user?.id || 'anonymous')}, ${day(g.createdAt)}: open the game">${form[i]}</a>`).join('')}</p>
+      ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${last.map((g, i) => `<a class="pf-res r-${form[i]}" href="game.html?u=${encodeURIComponent(name)}&id=${g.id}" title="${{ W: 'Won', L: 'Lost', D: 'Drew' }[form[i]]} against ${esc(nick(g.players[sideOf(g) === 'white' ? 'black' : 'white'].user?.id || 'anonymous'))}, ${day(g.createdAt)}: open the game">${form[i]}</a>`).join('')}</p>
         <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}${main ? ` ${main}` : ''} games, newest first · last played ${day(latest.createdAt)}${change !== null ? ` · <b class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</b> this week in ${recent.length} game${recent.length === 1 ? '' : 's'}` : ''}</p>` : ''}
       <div class="pf-fetch-row">
       <button type="button" class="ghost pf-fetch" data-fetch title="Fetch the games played on Lichess since this profile was read"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg> New games</button>
@@ -1531,7 +1545,7 @@ const starIcon = (kind) => `<svg class="line-star ${kind}" viewBox="0 0 24 24" a
 function opponentsCard(p, me, name) {
   const rows = (p.opponents || []).slice().sort((a, b) => a.gain - b.gain);
   if (!rows.length) return '';
-  const pts = (x) => `${Math.abs(Math.round(x.gain * 100))} points ${x.gain < 0 ? 'below' : 'above'} what the ratings predict`, who = me ? 'You' : esc(name);
+  const pts = (x) => `${Math.abs(Math.round(x.gain * 100))} points ${x.gain < 0 ? 'below' : 'above'} what the ratings predict`, who = me ? 'You' : esc(nick(name));
   const worst = rows[0], best = rows.at(-1);
   return `<section class="pf-card pf-opps"><h2>Who ${me ? 'you struggle' : 'they struggle'} against</h2>
     <p class="info">${worst.gain <= -0.04 ? `${who} struggle${me ? '' : 's'} most against <b>${worst.name.toLowerCase()}</b>: ${pct(worst.score)} in ${worst.n} games, ${pts(worst)}.` : `No kind of opponent gives ${me ? 'you' : 'them'} trouble: the results are close to what the ratings predict, or better.`}${best !== worst && best.gain >= 0.04 ? ` Best against <b>${best.name.toLowerCase()}</b>: ${pts(best)}.` : ''}</p>
@@ -1576,7 +1590,7 @@ function nextActions(name, me) {
   const friend = favs()[0];
   return `<section class="pf-next"><h2>What next</h2><div>
     ${me ? '<a class="cta" href="practice.html">Open your training plan</a>' : ''}
-    <a class="${me ? 'ghost' : 'cta'}" href="${pickLink(name)}">${me ? 'Compare with someone' : `Compare ${esc(name)}`}</a>
+    <a class="${me ? 'ghost' : 'cta'}" href="${pickLink(name)}">${me ? 'Compare with someone' : `Compare ${esc(nick(name))}`}</a>
   </div></section>`;
 }
 
@@ -1586,7 +1600,7 @@ function nextActions(name, me) {
 const RANGES = [['1W', 7], ['1M', 30], ['6M', 182], ['1Y', 365], ['All', Infinity]];
 const DAY = 864e5;
 async function historyOf(name, p) {
-  try {
+  if (!isCC(name)) try {
     const a = account();
     const res = await fetch(`https://lichess.org/api/user/${encodeURIComponent(name)}/rating-history`, a ? { headers: { Authorization: `Bearer ${a.token}` } } : {});
     const perfs = res.ok ? await res.json() : [];
@@ -1623,7 +1637,7 @@ async function ratingChart(name, p) {
       <div class="pf-seg" role="group" aria-label="Time control">${speeds.map((k) => `<button type="button" data-speed="${k}" aria-pressed="${k === chartState.speed}">${k[0].toUpperCase() + k.slice(1)}</button>`).join('')}</div>
       <div class="pf-seg" role="group" aria-label="Period">${RANGES.map(([k]) => `<button type="button" data-range="${k}" aria-pressed="${k === chartState.range}">${k}</button>`).join('')}</div></div>
       ${pts.length < 2 ? '<p class="info">No rated games in this period.</p>' : lineChart(pts, from, end)}
-      ${covers ? '' : `<p class="info pf-note">The graph starts at ${new Date(first).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}, the oldest of the games read here. ${account() ? '' : 'Lichess gives the full history only to someone logged in. <button type="button" class="link" data-chart-login>Log in with Lichess</button>'}</p>`}`;
+      ${covers ? '' : `<p class="info pf-note">The graph starts at ${new Date(first).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}, the oldest of the games read here. ${account() || isCC(name) ? '' : 'Lichess gives the full history only to someone logged in. <button type="button" class="link" data-chart-login>Log in with Lichess</button>'}</p>`}`;
     el.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('click', () => { chartState.speed = b.dataset.speed; draw(); }));
     el.querySelectorAll('[data-range]').forEach((b) => b.addEventListener('click', () => { chartState.range = b.dataset.range; chartState.picked = true; draw(); }));
     el.querySelector('[data-chart-login]')?.addEventListener('click', login);
@@ -1706,11 +1720,11 @@ async function run(name) {
     return;
   }
   // A skeleton of the page while the games are read, so it is never blank.
-  $('#profile').innerHTML = `<section class="pf-hero pf-skeleton" aria-hidden="true"><div class="pf-card-col"><div class="pf-pcard"><b class="pf-ovr">–</b><p class="pf-pcard-name">${esc(name)}</p></div></div>
+  $('#profile').innerHTML = `<section class="pf-hero pf-skeleton" aria-hidden="true"><div class="pf-card-col"><div class="pf-pcard"><b class="pf-ovr">–</b><p class="pf-pcard-name">${esc(nick(name))}</p></div></div>
     <div class="pf-hero-text"><span class="pf-sk-line w60"></span><span class="pf-sk-line"></span><span class="pf-sk-line"></span><span class="pf-sk-line w80"></span></div></section>`;
-  $('#profile-msg').textContent = `Looking up ${name} on Lichess…`;
+  $('#profile-msg').textContent = `Looking up ${nick(name)} on ${siteOf(name)}…`;
   // Lichess can be slow to start sending games; say so instead of leaving the page blank.
-  const slow = setTimeout(() => { if (mine === runs && /Looking up|Fetching/.test($('#profile-msg').textContent)) $('#profile-msg').textContent += ' Lichess is slow right now; still waiting.'; }, 12000);
+  const slow = setTimeout(() => { if (mine === runs && /Looking up|Fetching/.test($('#profile-msg').textContent)) $('#profile-msg').textContent += ` ${siteOf(name)} is slow right now; still waiting.`; }, 12000);
   try {
     const p = await build(name);
     if (mine === runs) render(name, Date.now(), p);
@@ -1752,7 +1766,7 @@ function gamesList(name, n) {
     const blunders = g.players[side].analysis?.blunder;
     return `<li><a class="pf-game" href="game.html?u=${encodeURIComponent(name)}&id=${g.id}">
       <span class="pf-res r-${res}" title="${{ W: 'Won', L: 'Lost', D: 'Draw' }[res]}">${res}</span>
-      <span class="pf-game-main"><b>vs ${esc(opp.user?.id || 'anonymous')}</b> <small>${opp.rating || ''}</small><br><small>${esc((g.opening?.name || '').split(':')[0])}</small></span>
+      <span class="pf-game-main"><b>vs ${esc(nick(opp.user?.id || 'anonymous'))}</b> <small>${opp.rating || ''}</small><br><small>${esc((g.opening?.name || '').split(':')[0])}</small></span>
       <span class="pf-game-meta">${g.speed} · ${Math.ceil((g.moves || '').split(' ').length / 2)} moves<br><small>${new Date(g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}${acc != null ? ` · ${acc}% acc` : ''}${blunders ? ` · ${blunders} blunder${blunders > 1 ? 's' : ''}` : ''}</small></span>
     </a></li>`;
   };
@@ -1778,10 +1792,10 @@ const pickLink = (a) => `profile.html?u=${encodeURIComponent(a)}&vs=`; // compar
 function nameRow(name) {
   const me = isMe(name), mine = myName(), fav = isFav(name);
   const icon = (d, solid = false) => `<svg class="ico${solid ? ' ico-solid' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
-  return `<div class="pf-name-row"><h1 class="pf-name" style="--n:${name.length}">${esc(name)}</h1>${me ? '' : `<div class="pf-acts">
+  return `<div class="pf-name-row"><h1 class="pf-name" style="--n:${nick(name).length}">${esc(nick(name))}</h1>${me ? '' : `<div class="pf-acts">
     <button type="button" class="ghost pf-act pf-star" data-fav aria-pressed="${fav}" aria-label="${fav ? 'Starred: unstar' : 'Star this player'}" title="${fav ? 'Starred (press to unstar)' : 'Star this player: one tap to them from the ★ menu'}">${icon(STAR_PATH, fav)}</button>
-    <a class="ghost pf-act" href="${pickLink(name)}" aria-label="Compare" title="Compare ${esc(name)} with you or anyone">${icon('M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4')}</a>
-    <a class="ghost pf-act" href="https://lichess.org/@/${encodeURIComponent(name)}" target="_blank" rel="noopener" aria-label="${esc(name)} on Lichess" title="${esc(name)} on Lichess">${icon('M14 4h6v6M20 4l-9 9M18 14v6H4V6h6')}</a></div>`}</div>`;
+    <a class="ghost pf-act" href="${pickLink(name)}" aria-label="Compare" title="Compare ${esc(nick(name))} with you or anyone">${icon('M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4')}</a>
+    <a class="ghost pf-act" href="${isCC(name) ? ccUrl(name) : `https://lichess.org/@/${encodeURIComponent(name)}`}" target="_blank" rel="noopener" aria-label="${esc(nick(name))} on ${siteOf(name)}" title="${esc(nick(name))} on ${siteOf(name)}">${icon('M14 4h6v6M20 4l-9 9M18 14v6H4V6h6')}</a></div>`}</div>`;
 }
 // Your own card: tap its piece to choose the one shown, or go back to the one your games give. Kept with
 // your analyses (row TYPEpiec), so everyone sees it, on the leaderboard too.
@@ -1797,7 +1811,7 @@ function bindPiecePick(name) {
     if (shownP) { shownP.piece = shownPiece; shownP.pieceWhy = pc ? 'chosen' : shownP.pieceWhyAuto; }
     side.querySelector('.ink-on-light').src = `pieces/b${shownPiece.toUpperCase()}.svg`;
     side.querySelector('.ink-on-dark').src = `pieces/${CARD_INK}${shownPiece.toUpperCase()}.svg`;
-    side.querySelector('.ink-on-dark').title = pc ? `Chosen by ${name}` : `${name}'s most important piece: the ${PIECE_NAME[shownPiece]}`;
+    side.querySelector('.ink-on-dark').title = pc ? `Chosen by ${nick(name)}` : `${nick(name)}'s most important piece: the ${PIECE_NAME[shownPiece]}`;
     $('.pf-piece-menu')?.remove();
   };
   const open = (e) => {
@@ -1849,13 +1863,13 @@ function placeActs() {
 // Compare: the player you came from on the left, and on the right the other to pick: you, one of your
 // starred players, or anyone by name.
 async function comparePick(name) {
-  document.title = `Compare ${name}`;
+  document.title = `Compare ${nick(name)}`;
   const mine = myName(), others = favs().filter((x) => x.toLowerCase() !== name.toLowerCase() && x.toLowerCase() !== (mine || '').toLowerCase());
-  $('#profile').innerHTML = `<header class="cmp-head"><h1 class="pf-h1">Compare <a href="${profileLink(name)}">${esc(name)}</a></h1></header>
-    <section class="cmp-pick"><div class="cmp-pick-a" id="cmp-pick-a"><p class="info">Reading ${esc(name)}'s games…</p></div><span class="cmp-pick-vs">VS</span>
+  $('#profile').innerHTML = `<header class="cmp-head"><h1 class="pf-h1">Compare <a href="${profileLink(name)}">${esc(nick(name))}</a></h1></header>
+    <section class="cmp-pick"><div class="cmp-pick-a" id="cmp-pick-a"><p class="info">Reading ${esc(nick(name))}'s games…</p></div><span class="cmp-pick-vs">VS</span>
       <div class="cmp-pick-b"><h2>With who?</h2>
         ${mine && mine.toLowerCase() !== name.toLowerCase() ? `<div class="cmp-pick-g"><p class="cmp-pick-k">You</p><a class="cmp-opt" href="${compareLink(name, mine)}"><b>${esc(mine)}</b><span aria-hidden="true">→</span></a></div>` : ''}
-        <div class="cmp-pick-g"><p class="cmp-pick-k">Any Lichess player</p><form class="cmp-pick-form" action="profile.html"><input type="hidden" name="u" value="${esc(name)}"><input name="vs" required maxlength="30" pattern="[A-Za-z0-9_\\-]{2,30}" placeholder="Lichess name" aria-label="Any Lichess name" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="cta">Compare</button></form></div>
+        <div class="cmp-pick-g"><p class="cmp-pick-k">Any Lichess player</p><form class="cmp-pick-form" action="profile.html"><input type="hidden" name="u" value="${esc(nick(name))}"><input name="vs" required maxlength="30" pattern="[A-Za-z0-9_\\-]{2,30}" placeholder="Lichess name" aria-label="Any Lichess name" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="cta">Compare</button></form></div>
         ${others.length ? `<div class="cmp-pick-g"><p class="cmp-pick-k">Your starred players</p>${others.map((x) => `<a class="cmp-opt" href="${compareLink(name, x)}"><b>${esc(x)}</b><span aria-hidden="true">→</span></a>`).join('')}</div>` : ''}
       </div></section>`;
   const vs = $('.cmp-pick-form input[name=vs]');
@@ -1918,24 +1932,24 @@ function renderCompare(A, B, speed = 'all', avail = []) {
   ];
   const lead = (x, y, dir) => (dir && x != null && y != null && x !== y ? ((x > y) === (dir > 0) ? 'a' : 'b') : '');
   $('#profile').innerHTML = `
-    <div class="pf-players"><a class="ghost" href="${profileLink(A.name)}">← ${esc(A.name)}</a><a class="ghost" href="${profileLink(B.name)}">${esc(B.name)} →</a></div>
-    <header class="cmp-head"><h1 class="pf-h1"><a href="${profileLink(A.name)}">${esc(A.name)}</a> <span>vs</span> <a href="${profileLink(B.name)}">${esc(B.name)}</a></h1>
+    <div class="pf-players"><a class="ghost" href="${profileLink(A.name)}">← ${esc(nick(A.name))}</a><a class="ghost" href="${profileLink(B.name)}">${esc(nick(B.name))} →</a></div>
+    <header class="cmp-head"><h1 class="pf-h1"><a href="${profileLink(A.name)}">${esc(nick(A.name))}</a> <span>vs</span> <a href="${profileLink(B.name)}">${esc(nick(B.name))}</a></h1>
       <div class="pf-seg cmp-speeds" role="group" aria-label="Time control">${['all', ...SPEEDS].map((sp) => `<button type="button" data-speed="${sp}" aria-pressed="${sp === speed}" ${sp === 'all' || avail.includes(sp) ? '' : `disabled title="Fewer than ${MIN_SPEED} ${sp} games for one of you"`}>${sp === 'all' ? 'All games' : sp[0].toUpperCase() + sp.slice(1)}</button>`).join('')}</div>
       <p class="info cmp-scope">${speed === 'all' ? 'Every number below is from all rated games.' : `Every number below is from ${speed} games only, the same games as each profile's ${speed} card.`}</p></header>
     <section class="cmp-cards">
-      <div><a class="cmp-card" href="${profileLink(A.name)}" title="Open ${esc(A.name)}'s profile">${playerCard(A.name, A.p, A.p.type, sa)}</a><p class="cmp-type"><b>${A.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
-      <div><a class="cmp-card" href="${profileLink(B.name)}" title="Open ${esc(B.name)}'s profile">${playerCard(B.name, B.p, B.p.type, sb)}</a><p class="cmp-type"><b>${B.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
+      <div><a class="cmp-card" href="${profileLink(A.name)}" title="Open ${esc(nick(A.name))}'s profile">${playerCard(A.name, A.p, A.p.type, sa)}</a><p class="cmp-type"><b>${A.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
+      <div><a class="cmp-card" href="${profileLink(B.name)}" title="Open ${esc(nick(B.name))}'s profile">${playerCard(B.name, B.p, B.p.type, sb)}</a><p class="cmp-type"><b>${B.p.type.map((x) => esc(x.name)).join(' + ')}</b></p></div>
       <details class="pf-dl cmp-dl"><summary title="Download the comparison" aria-label="Download the comparison"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
         <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-cmp-png="cards">Cards</button><button type="button" data-cmp-png="text">Cards + text</button><button type="button" data-cmp-png="both">Both</button></div></details>
     </section>
     <section class="pf-card cmp-story"><h2>In short</h2>${compareStory(A, B, sa, sb).map((x) => `<p>${x}</p>`).join('')}</section>
     <section class="pf-card">
       <h2>Skills</h2>
-      <p class="cmp-key"><span class="cmp-a"></span>${esc(A.name)} <span class="cmp-b"></span>${esc(B.name)}</p>
+      <p class="cmp-key"><span class="cmp-a"></span>${esc(nick(A.name))} <span class="cmp-b"></span>${esc(nick(B.name))}</p>
       <ul class="cmp-skills">${sa.map((x, i) => {
         const y = sb[i], d = x.v !== null && y.v !== null ? x.v - y.v : null;
         return `<li><span class="cmp-label">${x.label}</span>
-          <div class="cmp-bars" role="img" aria-label="${x.label}: ${esc(A.name)} ${x.v ?? 'no data'}, ${esc(B.name)} ${y.v ?? 'no data'}">
+          <div class="cmp-bars" role="img" aria-label="${x.label}: ${esc(nick(A.name))} ${x.v ?? 'no data'}, ${esc(nick(B.name))} ${y.v ?? 'no data'}">
             <div class="cmp-bar a"><i style="width:calc((100% - 3em) * ${(x.v ?? 0) / 100})"></i><b>${x.v ?? '–'}</b></div>
             <div class="cmp-bar b"><i style="width:calc((100% - 3em) * ${(y.v ?? 0) / 100})"></i><b>${y.v ?? '–'}</b></div></div>
           <small>${d === null ? 'Not enough games for both.' : d === 0 ? 'Even.' : `${esc(d > 0 ? A.name : B.name)} +${Math.abs(d)}`}</small></li>`;
@@ -1943,7 +1957,7 @@ function renderCompare(A, B, speed = 'all', avail = []) {
     </section>
     <section class="pf-card">
       <h2>Numbers</h2>
-      <table class="cmp-table"><thead><tr><th></th><th>${esc(A.name)}</th><th>${esc(B.name)}</th></tr></thead>
+      <table class="cmp-table"><thead><tr><th></th><th>${esc(nick(A.name))}</th><th>${esc(nick(B.name))}</th></tr></thead>
         <tbody>${rows.map(([k, x, y, va, vb, dir]) => { const l = lead(va, vb, dir); return `<tr><th scope="row">${k}</th><td class="${l === 'a' ? 'lead' : ''}">${x}</td><td class="${l === 'b' ? 'lead' : ''}">${y}</td></tr>`; }).join('')}</tbody></table>
     </section>
     <p class="info">Both read from each player's last ${MAX} rated Lichess games${speed === 'all' ? '' : `, ${speed} only`} (${A.p.analysed} and ${B.p.analysed} of them analysed). The rating sets each card's level; each skill then moves above or below it by how the player does against their own opponents, with the gaps between a player's six drawn twice as large.</p>
@@ -1972,7 +1986,7 @@ function compareNext(A, B, sa, sb) {
   const gap = sa.map((x, i) => ({ x, d: x.v !== null && sb[i].v !== null ? x.v - sb[i].v : 0 })).sort((p, q) => p.d - q.d)[0];
   return `<section class="pf-next"><h2>What next</h2><div>${gap && gap.d <= -5
     ? `<a class="cta" href="${gap.x.href || 'practice.html'}">Close your ${gap.x.label.toLowerCase()} gap (−${-gap.d})</a>`
-    : '<a class="cta" href="practice.html">Open your training plan</a>'}<a class="ghost" href="${profileLink(B.name)}">${esc(B.name)}'s profile</a></div></section>`;
+    : '<a class="cta" href="practice.html">Open your training plan</a>'}<a class="ghost" href="${profileLink(B.name)}">${esc(nick(B.name))}'s profile</a></div></section>`;
 }
 // The comparison in words: who is stronger overall and by how much, where each one is better, how
 // they play, and how they score.

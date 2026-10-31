@@ -835,6 +835,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .pf-seg { display: inline-flex; border: 1px solid var(--line); border-radius: 2px; overflow: hidden; }
 .pf-seg button { border: 0; background: none; color: var(--muted); font: 600 12px var(--font-body); padding: 6px 10px; cursor: pointer; min-height: 32px; }
 .pf-seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.pf-site { display: flex; width: max-content; margin-bottom: 8px; } /* Lichess or Chess.com, over the look-up */
 .pf-chart-now { margin: 4px 0 6px; display: flex; align-items: baseline; gap: 10px; }
 .pf-chart-now b { font: 400 40px/1 var(--font-poster); }
 .pf-chart-now .up { color: var(--good); font-weight: 700; }

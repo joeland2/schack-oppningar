@@ -3,17 +3,18 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261031091442';
-import { account } from './lichess.js?v=20261031091442';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261031091442';
+import { drawBoard } from './board.js?v=20261031122014';
+import { account } from './lichess.js?v=20261031122014';
+import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261031122014';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261031122014';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const q = new URLSearchParams(location.search), name = q.get('u') || '', id = q.get('id') || '';
 // Your own game speaks to you; anyone else's names the player.
-const isMe = account()?.name?.toLowerCase() === name.toLowerCase(), who1 = esc(name);
+const isMe = account()?.name?.toLowerCase() === name.toLowerCase(), who1 = esc(nick(name));
 const P = isMe ? { You: 'You', you: 'you', your: 'your', Your: 'Your', were: 'were', they: 'you', their: 'your' } : { You: who1, you: who1, your: `${who1}'s`, Your: `${who1}'s`, were: 'was', they: 'they', their: 'their' };
-const oppName = (cap) => (isMe ? `${cap ? 'Your' : 'your'} opponent` : esc(g.players[side === 'white' ? 'black' : 'white'].user?.id || `${cap ? 'Their' : 'their'} opponent`));
+const oppName = (cap) => (isMe ? `${cap ? 'Your' : 'your'} opponent` : esc(nick(g.players[side === 'white' ? 'black' : 'white'].user?.id || '') || `${cap ? 'Their' : 'their'} opponent`));
 const RED = 'var(--bad)', GREEN = 'var(--good)';
 const GLYPHS = { Inaccuracy: '?!', Mistake: '?', Blunder: '??' };
 const HOW = { mate: 'by mate', resign: 'by resignation', outoftime: 'on time', timeout: 'on time', draw: 'by agreement', stalemate: 'by stalemate', insufficientMaterialClaim: 'by insufficient material', repetition: 'by repetition' };
@@ -129,7 +130,7 @@ function kindOf(i) {
 function players(bottom) {
   const strip = (c) => {
     const pl = g.players[c === 'w' ? 'white' : 'black'], you = (c === 'w') === (side === 'white');
-    return `<img src="pieces/${c}K.svg" alt=""><b>${esc(pl.user?.id || 'anonymous')}</b> <span>${pl.rating || ''}</span> <small>${c === 'w' ? 'White' : 'Black'}${you && name && !q.get('play') ? (isMe ? ' · you' : '') : ''}</small>`;
+    return `<img src="pieces/${c}K.svg" alt=""><b>${esc(nick(pl.user?.id || 'anonymous'))}</b> <span>${pl.rating || ''}</span> <small>${c === 'w' ? 'White' : 'Black'}${you && name && !q.get('play') ? (isMe ? ' · you' : '') : ''}</small>`;
   };
   $('#top-player').innerHTML = strip(bottom === 'w' ? 'b' : 'w');
   $('#bottom-player').innerHTML = strip(bottom);
@@ -185,7 +186,7 @@ function graph() {
 // A player's name as a link to their profile here (anonymous players have none).
 function who(colour, fallback = 'anonymous') {
   const id = g.players[colour].user?.id;
-  return id ? `<a class="gm-who" href="profile.html?u=${encodeURIComponent(id)}" title="${esc(id)}'s profile">${esc(id)}</a>` : esc(fallback);
+  return id ? `<a class="gm-who" href="profile.html?u=${encodeURIComponent(id)}" title="${esc(nick(id))}'s profile">${esc(nick(id))}</a>` : esc(fallback);
 }
 function render() {
   const s = story(), me = g.players[side], opp = g.players[side === 'white' ? 'black' : 'white'];
@@ -196,7 +197,7 @@ function render() {
     <h1 class="gm-title">${who('white', 'White')} <span>vs</span> ${who('black', 'Black')}</h1>
     <p class="gm-sides"><span><img src="pieces/wK.svg" alt="">White: <b>${who('white')}</b> ${g.players.white.rating || ''}</span>
       <span><img src="pieces/bK.svg" alt="">Black: <b>${who('black')}</b> ${g.players.black.rating || ''}</span></p>
-    <p class="info">${P.You} played ${esc(side)} · ${g.speed} · ${new Date(g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · <a href="https://lichess.org/${g.id}${side === 'black' ? '/black' : ''}" target="_blank" rel="noopener">On Lichess</a></p>
+    <p class="info">${P.You} played ${esc(side)} · ${g.speed} · ${new Date(g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · <a href="${isCC(name) ? ccGameUrl(g.id) : `https://lichess.org/${g.id}${side === 'black' ? '/black' : ''}`}" target="_blank" rel="noopener">On ${isCC(name) ? 'Chess.com' : 'Lichess'}</a></p>
     <section class="gm-impact" id="gm-impact"></section>
     <section class="gm-story">
       <p class="gm-head">${s.head}</p>
@@ -339,7 +340,7 @@ async function verdict(at, yours, theirs) {
     return { pct: Math.round(winPct(white ? r.cp : -r.cp)), reply };
   };
   const b = await check(theirs);
-  const who = esc(name);
+  const who = esc(nick(name));
   if (!yours || yours.san === theirs.san) return `Stockfish: after ${who}'s <b>${theirs.san}</b> the side to move here has <b>${b.pct}%</b> winning chances.`;
   const a = await check(yours), d = b.pct - a.pct;
   return `<span class="gm-vs"><span class="bad">Your usual <b>${yours.san}</b>: ${a.pct}% winning chances${a.reply ? `; the best answer to it is <b>${a.reply}</b>` : ''}.</span>
