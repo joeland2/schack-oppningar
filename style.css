@@ -2384,3 +2384,12 @@ main.profile:has(#admin) { max-width: 1320px; }
 .ps-more { color: var(--muted); font-size: 12.5px; align-self: center; }
 .lb-type a { color: inherit; text-decoration: none; } .lb-type a:hover { color: var(--hot); text-decoration: underline; }
 .ps-player .pf-flag { position: static; display: inline-block; width: 16px; height: 11px; flex: none; transform: none; background-size: cover; border-radius: 2px; box-shadow: none; }
+/* The account sits above the name as a small byline: the site, then the name; a pro's other accounts beside it */
+#profile > .pf-accts { margin-top: 0; gap: 18px; }
+#profile > .pf-accts + .pf-name-row { margin-top: 6px; }
+#profile .pf-acct { padding: 0; border: 0; border-radius: 0; background: none; font-size: 14px; gap: 7px; }
+#profile .pf-acct small { font-size: 11px; letter-spacing: .16em; }
+#profile .pf-acct:hover { background: none; text-decoration: underline; }
+#profile .pf-acct[aria-current] { background: none; color: var(--hot); }
+#profile .pf-acct[aria-current] small { color: var(--muted); opacity: 1; }
+#profile .pf-accts-more summary { padding: 0 4px; border: 0; color: var(--muted); }
