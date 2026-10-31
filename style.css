@@ -2445,3 +2445,22 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-link-note { flex-basis: 100%; font-size: 12px; }
 .pf-pcard-rating2 { display: block; margin-top: 3px; font: 400 15px/1 var(--font-poster); letter-spacing: .02em; text-align: right; opacity: .8; }
 .pf-pcard-rating2 small { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
+/* How the skills changed: one row per skill, all on one scale */
+.pf-tr-span { margin: 0; color: var(--muted); font-size: 13px; }
+.pf-tr-span b { color: var(--ink); font-weight: 600; }
+.pf-tr-rows { display: grid; }
+.pf-tr-row { display: grid; grid-template-columns: 110px minmax(0, 1fr) 46px 52px; gap: 14px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.pf-tr-row:last-child { border-bottom: 0; }
+.pf-tr-row > span:first-child small { display: block; color: var(--muted); font-size: 12px; }
+.pf-tr-row > b { font: 400 24px/1 var(--font-poster); text-align: right; font-variant-numeric: tabular-nums; }
+.pf-tr-d { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted); }
+.pf-tr-d.up { color: var(--good); } .pf-tr-d.down { color: var(--bad); }
+.pf-tr-hdr { padding-top: 0; color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+.pf-tr-hdr span:nth-child(n+3) { text-align: right; }
+.pf-trend .pf-line .ax { font-size: 10px; }
+.pf-trend .pf-line .ln { stroke-width: 2; }
+.pf-trend .pf-line circle.lo { fill: var(--bad); stroke: none; }
+.pf-trend .pf-line circle.hi { fill: var(--good); stroke: none; }
+.pf-tr-v { fill: var(--ink); font: 600 10px var(--font-body); }
+@media (max-width: 560px) { .pf-tr-row { grid-template-columns: 78px minmax(0, 1fr) 34px 42px; gap: 8px; } .pf-tr-row > b { font-size: 20px; } }
+.pf-trend .pf-line { width: auto; max-width: 100%; height: auto; }

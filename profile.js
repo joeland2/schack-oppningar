@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031191430';
-import { STYLE_OF } from './styles.js?v=20261031191430';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031191430';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031193717';
+import { STYLE_OF } from './styles.js?v=20261031193717';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031193717';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1111,6 +1111,8 @@ function fitAccounts() {
   more.querySelector('.pf-accts-menu').innerHTML = hid.map((x) => x.outerHTML.replace(' hidden=""', '')).join('');
 }
 addEventListener('resize', fitAccounts);
+let trendResize = 0;
+addEventListener('resize', () => { clearTimeout(trendResize); trendResize = setTimeout(() => { if (shown && $('#pf-trend')) trendCard(shown[2]); }, 200); });
 // When each account was last on its site (Lichess's seenAt, chess.com's last_online), for the order.
 const SEEN = new Map();
 async function seenOf(names) {
@@ -1494,9 +1496,9 @@ function speedBar(name, full, sp, avail) {
 let shownCode = ''; // render: the card on screen as a short code (cardCode)
 let shownGames = [], trendGames = []; // the games behind the card on screen, newest first
 // How the skills moved: each point reads 100 games in a row, as the card would, moving 25 games at a
-// time from the oldest of the games read to the latest 100. One skill at a time, Overall first.
+// time from the oldest of the games read to the latest 100. One row per skill in the card's order, all on
+// one scale, so a big swing looks big and a flat skill looks flat.
 const TREND = { win: 100, step: 25 };
-let trendPick = 'Overall';
 function trendOf(games, full) {
   const pts = [];
   for (let i = games.length - TREND.win; i > -TREND.step; i -= TREND.step) {
@@ -1512,23 +1514,25 @@ function trendCard(full) {
   const me = isMe(shown[0]), head = `<h2>How ${me ? 'your' : 'their'} skills changed</h2>`;
   if (games.length < TREND.win + TREND.step) { el.innerHTML = `${head}<p class="info">Needs at least ${TREND.win + TREND.step} games: each point reads ${TREND.win} in a row.</p>`; return; }
   const pts = trendOf(games, full), names = Object.keys(pts[0].v).filter((k) => pts.filter((q) => q.v[k] !== null).length >= 2);
-  if (!names.includes(trendPick)) trendPick = names[0];
-  const draw = () => {
-    const ps = pts.filter((q) => q.v[trendPick] !== null), vs = ps.map((q) => q.v[trendPick]);
-    const W = 760, H = 200, L = 40, R = 16, T = 14, B = 26, lo = Math.floor((Math.min(...vs) - 4) / 5) * 5, hi = Math.ceil((Math.max(...vs) + 4) / 5) * 5;
-    const x = (q) => L + (1 - q.from / pts[0].from) * (W - L - R), y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
-    const ticks = [lo, Math.round((lo + hi) / 2), hi], d = vs.at(-1) - vs[0];
-    el.innerHTML = `<div class="pf-chart-head">${head}<div class="pf-seg pf-trend-pick" role="group" aria-label="Skill">${names.map((k) => `<button type="button" data-trend="${k}" aria-pressed="${k === trendPick}">${k}</button>`).join('')}</div></div>
-      <p class="pf-chart-now"><b>${vs.at(-1)}</b> <span class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '+' : '−'}${Math.abs(d)}</span> <small>${trendPick} in ${me ? 'your' : 'their'} latest ${TREND.win} games, against the oldest ${TREND.win} of the last ${ps[0].from + TREND.win}</small></p>
-      <svg class="pf-line" viewBox="0 0 ${W} ${H}" role="img" aria-label="${trendPick} from ${vs[0]} to ${vs.at(-1)} over the last ${pts[0].from + TREND.win} games">
-        ${ticks.map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
-        <text class="ax" x="${L}" y="${H - 6}">${pts[0].from + TREND.win} games ago</text><text class="ax" x="${W - R}" y="${H - 6}" text-anchor="end">Latest ${TREND.win}</text>
-        <path class="ln" d="${ps.map((q, k) => `${k ? 'L' : 'M'}${x(q).toFixed(1)},${y(q.v[trendPick]).toFixed(1)}`).join('')}"/>
-        ${ps.map((q) => `<circle cx="${x(q).toFixed(1)}" cy="${y(q.v[trendPick]).toFixed(1)}" r="4"><title>${trendPick} ${q.v[trendPick]}: games ${q.from + 1}–${q.from + TREND.win} back, to ${fmtDay(q.at)}</title></circle>`).join('')}
-      </svg><p class="info pf-note">Each point reads ${TREND.win} games in a row the way the card does, moving ${TREND.step} games at a time; the right end is ${me ? 'your' : 'their'} card now.</p>`;
-    el.querySelectorAll('[data-trend]').forEach((b) => b.addEventListener('click', () => { trendPick = b.dataset.trend; draw(); }));
+  const all = names.flatMap((k) => pts.map((q) => q.v[k]).filter((v) => v !== null));
+  const lo = Math.floor((Math.min(...all) - 3) / 10) * 10, hi = Math.ceil((Math.max(...all) + 3) / 10) * 10, ticks = [lo, (lo + hi) / 2, hi];
+  // Drawn at the width it shows at, so the numbers stay small and sharp on a phone and a wide screen alike.
+  const phone = matchMedia('(max-width: 560px)').matches, W = Math.max(140, el.clientWidth - (phone ? 220 : 310)), H = 104, L = 28, R = 8, T = 16, B = 16, x = (i) => L + (i / (pts.length - 1)) * (W - L - R), y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const row = (k) => {
+    const ps = pts.map((q, i) => [i, q.v[k]]).filter(([, v]) => v !== null), vs = ps.map(([, v]) => v);
+    const low = ps[vs.indexOf(Math.min(...vs))], high = ps[vs.indexOf(Math.max(...vs))], last = ps.at(-1), d = last[1] - ps[0][1];
+    const mark = ([i, v], c, below) => `<circle class="${c}" cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3"/><text class="pf-tr-v" x="${x(i).toFixed(1)}" y="${(y(v) + (below ? 13 : -6)).toFixed(1)}" text-anchor="middle">${v}</text>`;
+    return `<div class="pf-tr-row"><span>${k}<small>swung ${Math.max(...vs) - Math.min(...vs)}</small></span>
+      <svg class="pf-line" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${k}: from ${ps[0][1]} to ${last[1]}, low ${low[1]}, high ${high[1]}">
+        ${ticks.map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L - 5}" y="${y(v) + 3}" text-anchor="end">${v}</text>`).join('')}
+        <path class="ln" d="${ps.map(([i, v], j) => `${j ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('')}"/>
+        ${low[0] !== last[0] ? mark(low, 'lo', true) : ''}${high[0] !== last[0] && high[1] !== low[1] ? mark(high, 'hi', false) : ''}<circle cx="${x(last[0]).toFixed(1)}" cy="${y(last[1]).toFixed(1)}" r="3.5"/>
+      </svg><b>${last[1]}</b><span class="pf-tr-d ${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '+' : d < 0 ? '−' : '±'}${Math.abs(d)}</span></div>`;
   };
-  draw();
+  const n = pts[0].from + TREND.win, day = (t) => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  el.innerHTML = `<div class="pf-chart-head">${head}<p class="pf-tr-span"><b>Last ${n} games</b> · ${day(games[n - 1].at)} – ${day(games[0].at)} · each point is ${TREND.win} games in a row</p></div>
+    <div class="pf-tr-rows"><div class="pf-tr-row pf-tr-hdr"><span>Skill</span><span>Over these ${n} games</span><span>Now</span><span>Change</span></div>${names.map(row).join('')}</div>
+    <p class="info pf-note">Each point is ${me ? 'your' : 'their'} card worked out from ${TREND.win} games in a row. Red: the low. Green: the high. The last dot is ${me ? 'your' : 'their'} card now; Change is against the first.</p>`;
 }
 let shownP = null;
 function render(name, at, full) {
