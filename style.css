@@ -2254,3 +2254,13 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-verdict.bad { background: color-mix(in srgb, var(--bad) 22%, transparent); color: var(--hot); }
 .pf-verdict.good { background: color-mix(in srgb, var(--good) 20%, transparent); color: var(--good); }
 .pf-opps .pf-skill-scale { margin: 14px 0 0; color: var(--muted); font-size: 12px; max-width: 720px; }
+
+/* The hover card over one of the last ten games */
+.pf-peek { position: absolute; z-index: 50; width: 220px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); box-shadow: 0 8px 24px rgb(0 0 0 / .35); pointer-events: none; font-size: 13px; }
+.pf-peek-board { display: grid; grid-template-columns: repeat(8, 1fr); aspect-ratio: 1; border-radius: 3px; overflow: hidden; }
+.pf-peek-board i { display: block; aspect-ratio: 1; }
+.pf-peek-board i.l { background: #f0d9b5; } .pf-peek-board i.d { background: #b58863; }
+.pf-peek-board img { display: block; width: 100%; height: 100%; }
+.pf-peek p { margin: 8px 0 2px; line-height: 1.35; }
+.pf-peek p .pf-side { vertical-align: -1px; margin: 0 2px; }
+.pf-peek small { color: var(--muted); font-size: 12px; }

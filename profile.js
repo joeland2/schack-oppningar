@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031154131';
-import { STYLE_OF } from './styles.js?v=20261031154131';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031154131';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031155610';
+import { STYLE_OF } from './styles.js?v=20261031155610';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031155610';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1577,7 +1577,7 @@ function leadStory(name, p, skills, me) {
   const last = (mine.length ? mine : games).slice(0, 10), form = last.map(res), wins = form.filter((x) => x === 'W').length, latest = last[0];
   return `<section class="pf-lead solo">
     <div class="pf-news"><h2>Latest</h2>
-      ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${last.map((g, i) => `<span class="pf-form-day${i && day(last[i - 1].createdAt) === day(g.createdAt) ? ' same' : ''}"><a class="pf-res r-${form[i]}" href="game.html?u=${encodeURIComponent(name)}&id=${g.id}" title="${{ W: 'Won', L: 'Lost', D: 'Drew' }[form[i]]} against ${esc(nick(g.players[sideOf(g) === 'white' ? 'black' : 'white'].user?.id || 'anonymous'))}, ${day(g.createdAt)}: open the game">${form[i]}</a><small aria-hidden="true">${day(g.createdAt).replace(' ', '<br>')}</small></span>`).join('')}</p>
+      ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${last.map((g, i) => `<span class="pf-form-day${i && day(last[i - 1].createdAt) === day(g.createdAt) ? ' same' : ''}"><a class="pf-res r-${form[i]}" href="game.html?u=${encodeURIComponent(name)}&id=${g.id}" data-peek="${PEEK.set(g.id, { g, me: name.toLowerCase(), res: form[i] }) && g.id}" aria-label="${{ W: 'Won', L: 'Lost', D: 'Drew' }[form[i]]} against ${esc(nick(g.players[sideOf(g) === 'white' ? 'black' : 'white'].user?.id || 'anonymous'))}, ${day(g.createdAt)}: open the game">${form[i]}</a><small aria-hidden="true">${day(g.createdAt).replace(' ', '<br>')}</small></span>`).join('')}</p>
         <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}${main ? ` ${main}` : ''} games, newest first · last played ${day(latest.createdAt)}${change !== null ? ` · <b class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</b> this week in ${recent.length} game${recent.length === 1 ? '' : 's'}` : ''}</p>` : ''}
       <div class="pf-fetch-row">
       <button type="button" class="ghost pf-fetch" data-fetch title="Fetch the games played on Lichess since this profile was read"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg> New games</button>
@@ -1585,6 +1585,30 @@ function leadStory(name, p, skills, me) {
       ${last.length ? recentFacts(last.map((g) => readGame(g, name.toLowerCase())), p) : ''}
     </div>
   </section>`;
+}
+// Hovering one of the last ten: the final position, seen from this player's side, with the colour and the opening.
+const PEEK = new Map();
+function peekCard(a) {
+  const { g, me, res } = PEEK.get(a.dataset.peek), white = g.players.white.user?.id === me, c = new Chess();
+  for (const m of (g.moves || '').split(' ').filter(Boolean)) { try { c.move(m); } catch { break; } }
+  const rows = c.board(), order = (xs) => (white ? xs : [...xs].reverse());
+  const sqs = order(rows).map((row, r) => order(row).map((p, f) => `<i class="${(r + f) % 2 ? 'd' : 'l'}">${p ? `<img src="pieces/${p.color}${p.type.toUpperCase()}.svg" alt="">` : ''}</i>`).join('')).join('');
+  const opp = nick(g.players[white ? 'black' : 'white'].user?.id || 'anonymous');
+  return `<div class="pf-peek-board">${sqs}</div><p><b>${{ W: 'Won', L: 'Lost', D: 'Drew' }[res]}</b> as <i class="pf-side ${white ? 'w' : 'b'}"></i> ${white ? 'White' : 'Black'} vs ${esc(opp)}</p><small>${esc(g.opening?.name || 'Opening unknown')}</small>`;
+}
+function showPeek(e) {
+  const a = e.target.closest?.('a[data-peek]');
+  let el = document.getElementById('pf-peek');
+  if (!a || !PEEK.has(a.dataset.peek)) { if (el) el.hidden = true; return; }
+  if (!el) { el = Object.assign(document.createElement('div'), { id: 'pf-peek', className: 'pf-peek' }); el.setAttribute('aria-hidden', 'true'); document.body.append(el); }
+  el.innerHTML = peekCard(a); el.hidden = false;
+  const r = a.getBoundingClientRect(), w = el.offsetWidth;
+  el.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + scrollX}px`;
+  el.style.top = `${r.bottom + 8 + scrollY}px`;
+}
+if (matchMedia('(hover: hover)').matches) {
+  document.addEventListener('mouseover', showPeek);
+  document.addEventListener('focusin', showPeek);
 }
 // The page ends on what to do next, not on the fine print.
 // Your stars from the Openings trainer, across every opening and time control (on your Lichess account
