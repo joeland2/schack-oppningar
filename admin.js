@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261031175712';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261031175712';
+import { account, login, finishLogin } from './lichess.js?v=20261031181215';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261031181215';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -378,7 +378,7 @@ function render(s) {
           <span class="num">${esc((v.ip || '–').replace(/\.0$/, '.x').replace(/::$/, ':x'))}</span>
           <span>${v.name ? link({ name: v.name }) : '<small>–</small>'}</span>
           <span>${esc(v.device || '–')}</span>
-          <span class="num">${v.views} views · since ${day(v.first)}</span>
+          <span class="num">${v.views} view${v.views === 1 ? '' : 's'} · since ${day(v.first)}</span>
           <span class="num">${when(v.last)}</span></summary>
           ${personHtml(v, s.visitors)}</details>`).join('')}</div>
       ${s.visitors.length > 10 ? `<button type="button" class="ghost ad-more" data-more aria-expanded="false">Show all ${s.visitors.length}</button>` : ''}`
