@@ -2072,6 +2072,8 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-pro-line b { font-weight: 700; }
 .pf-pro-title { padding: 3px 7px; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); font: 700 .7em/1 var(--font-body); letter-spacing: .08em; }
 @media (max-width: 640px) { #profile > .pf-pro-line { justify-content: center; margin-top: -14px; } }
+#profile > .pf-also { margin: 8px 0 0; color: var(--muted); font-size: .95rem; }
+@media (max-width: 640px) { #profile > .pf-also { text-align: center; } }
 /* A known streamer's card: the same frame and tag in pink, VIP */
 .pf-pcard.vip { box-shadow: 0 0 0 3px #e0459b, 0 0 0 5px rgb(20 20 20 / .6), 0 22px 44px rgb(20 20 20 / .25); }
 .pf-pcard.vip::before { content: 'VIP'; position: absolute; top: -11px; left: 16px; z-index: 2; padding: 3px 8px 2px; border-radius: 3px; background: #e0459b; color: #fff; font: 400 13px/1 var(--font-poster); letter-spacing: .12em; box-shadow: 0 2px 4px rgb(0 0 0 / .3); }

@@ -162,7 +162,7 @@ addEventListener('DOMContentLoaded', () => {
     const draw = () => {
       list.hidden = !items.length;
       list.innerHTML = items.map((x, i) => `${!i || x.kind !== items[i - 1].kind ? `<li class="top-suggest-k" role="presentation">${{ recent: 'Opened before', known: 'Pros and streamers', chesscom: 'On Chess.com' }[x.kind] || 'On Lichess'}</li>` : ''}
-        <li role="option" id="${id}-${i}" data-i="${i}" aria-selected="${i === at}">${x.title ? `<b class="ts-title">${esc(x.title)}</b> ` : ''}${esc(x.name.replace(/^cc:/i, ''))}${x.kind === 'recent' && /^cc:/i.test(x.name) ? '<small class="ts-who">Chess.com</small>' : ''}${x.who ? `<small class="ts-who">${esc(x.who)}</small><span class="ts-tag ${x.tag.toLowerCase()}">${x.tag}</span>` : ''}${x.online ? '<i class="ts-on" title="Online"></i>' : ''}</li>`).join('');
+        <li role="option" id="${id}-${i}" data-i="${i}" aria-selected="${i === at}">${x.title ? `<b class="ts-title">${esc(x.title)}</b> ` : ''}${esc(x.name.replace(/^cc:/i, ''))}${x.kind !== 'chesscom' && /^cc:/i.test(x.name) ? '<small class="ts-who">Chess.com</small>' : ''}${x.who ? `<small class="ts-who">${esc(x.who)}</small><span class="ts-tag ${x.tag.toLowerCase()}">${x.tag}</span>` : ''}${x.online ? '<i class="ts-on" title="Online"></i>' : ''}</li>`).join('');
       input.setAttribute('aria-expanded', String(!list.hidden));
       if (at >= 0) input.setAttribute('aria-activedescendant', `${id}-${at}`); else input.removeAttribute('aria-activedescendant');
     };

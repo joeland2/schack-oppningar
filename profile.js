@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031133428';
-import { STYLE_OF } from './styles.js?v=20261031133428';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031133428';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031133914';
+import { STYLE_OF } from './styles.js?v=20261031133914';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031133914';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1021,7 +1021,10 @@ const PRO_NAMES = { DrNykterstein: 'GM Magnus Carlsen', DrDrunkenstein: 'GM Magn
   MagnusCarlsen: 'GM Magnus Carlsen', alireza2003: 'GM Alireza Firouzja', nihalsarin2004: 'GM Nihal Sarin', penguingim1: 'GM Andrew Tang',
   Zhigalko_Sergei: 'GM Sergei Zhigalko', Vladimirovich9000: 'GM Dmitry Andreikin', may6enexttime: 'GM Aleksei Sarana', 'Night-King96': 'GM Oleksandr Bortnyk',
   Konevlad: 'GM Vladislav Artemiev', AnishGiri: 'GM Anish Giri', RebeccaHarris: 'GM Daniel Naroditsky', DanielNaroditsky: 'GM Daniel Naroditsky',
-  EricRosen: 'IM Eric Rosen', Fins: 'IM John Bartholomew' };
+  EricRosen: 'IM Eric Rosen', Fins: 'IM John Bartholomew',
+  // On chess.com (cc:), checked against the name and title chess.com gives the account.
+  'cc:Hikaru': 'GM Hikaru Nakamura', 'cc:MagnusCarlsen': 'GM Magnus Carlsen', 'cc:FabianoCaruana': 'GM Fabiano Caruana', 'cc:DanielNaroditsky': 'GM Daniel Naroditsky',
+  'cc:Firouzja2003': 'GM Alireza Firouzja', 'cc:NihalSarin': 'GM Nihal Sarin', 'cc:AnishGiri': 'GM Anish Giri', 'cc:Penguingm1': 'GM Andrew Tang', 'cc:IMRosen': 'IM Eric Rosen' };
 const PROS = new Map(Object.entries(PRO_NAMES).map(([k, v]) => [k.toLowerCase(), v]));
 // On a pro's profile, under the name: who the account belongs to.
 const proLine = (name) => {
@@ -1029,10 +1032,19 @@ const proLine = (name) => {
   return who ? `<p class="pf-pro-line ${proKind(name)}"><span class="pf-pro-tag">${proKind(name).toUpperCase()}</span><b>${esc(who.replace(/^(GM|IM) /, ''))}</b>${title ? `<span class="pf-pro-title">${title}</span>` : ''}</p>` : '';
 };
 // Known streamers and chess creators (checked the same way): a VIP frame instead.
-const VIP_NAMES = { agadmator: 'Antonio Radić', tigerlilov: 'IM Valeri Lilov' };
+const VIP_NAMES = { agadmator: 'Antonio Radić', tigerlilov: 'IM Valeri Lilov', 'cc:agadmator': 'Antonio Radić', 'cc:tigerlilov': 'IM Valeri Lilov', 'cc:GothamChess': 'IM Levy Rozman' };
 const VIPS = new Map(Object.entries(VIP_NAMES).map(([k, v]) => [k.toLowerCase(), v]));
 const proOf = (name) => PROS.get(String(name).toLowerCase()) || VIPS.get(String(name).toLowerCase()) || null;
 const proKind = (name) => (PROS.has(String(name).toLowerCase()) ? 'pro' : VIPS.has(String(name).toLowerCase()) ? 'vip' : '');
+// Under it, the same person's other accounts, kept apart (each its own card): "Also X on Lichess · Y on Chess.com".
+const alsoLine = (name) => {
+  const who = proOf(name);
+  if (!who) return '';
+  const others = Object.entries({ ...PRO_NAMES, ...VIP_NAMES }).filter(([n, w]) => w === who && n.toLowerCase() !== String(name).toLowerCase()).map(([n]) => n);
+  const on = (site) => others.filter((n) => siteOf(n) === site).map((n) => `<a href="${profileLink(n)}">${esc(nick(n))}</a>`).join(', ');
+  const parts = ['Lichess', 'Chess.com'].map((site) => (on(site) ? `${on(site)} on ${site}` : '')).filter(Boolean);
+  return parts.length ? `<p class="pf-also">Also ${parts.join(' · ')}</p>` : '';
+};
 const proClass = (name) => (proKind(name) ? ` ${proKind(name)}` : '');
 // For the player search's suggestions (header.js): the known accounts, found by the person's name too.
 window.knownPlayers = Object.entries({ ...PRO_NAMES, ...VIP_NAMES }).map(([name, who]) => ({ id: name.toLowerCase(), name, who: who.replace(/^(GM|IM) /, ''), title: /^(GM|IM) /.exec(who)?.[1] || null, kind: proKind(name) }));
@@ -1397,7 +1409,7 @@ function render(name, at, full) {
   document.title = me ? 'Your Profile' : `${nick(name)} · Profile`;
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
-    ${nameRow(name)}${proLine(name)}
+    ${nameRow(name)}${proLine(name)}${alsoLine(name)}
     <section class="pf-hero">
       <div class="pf-card-col">${playerCard(name, p, t, skills)}${speedBar(name, full, sp, avail)}${me ? starsStrip() : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
         <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
