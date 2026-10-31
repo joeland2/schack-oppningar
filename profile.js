@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031174330';
-import { STYLE_OF } from './styles.js?v=20261031174330';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031174330';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031175122';
+import { STYLE_OF } from './styles.js?v=20261031175122';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031175122';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1041,6 +1041,7 @@ const proKind = (name) => (PROS.has(String(name).toLowerCase()) ? 'pro' : VIPS.h
 const accountsRow = (name) => {
   const who = proOf(name), all = Object.entries({ ...PRO_NAMES, ...VIP_NAMES });
   const others = who ? all.filter(([n, w]) => w === who && n.toLowerCase() !== String(name).toLowerCase()).map(([n]) => n) : [];
+  if (!others.length) return ''; // only there to jump between one player's accounts
   const pill = (n, on) => `<a class="pf-acct" data-name="${esc(n)}" href="${profileLink(n)}"${on ? ' aria-current="page"' : ''}><small>${siteOf(n)}</small>${esc(nick(n))}</a>`;
   return `<nav class="pf-accts" aria-label="${others.length ? 'Their accounts' : 'Site'}">${[pill(name, true), ...others.map((n) => pill(n, false))].join('')}<details class="pf-accts-more" hidden><summary></summary><div class="pf-accts-menu"></div></details></nav>`;
 };
