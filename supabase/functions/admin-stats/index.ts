@@ -20,6 +20,76 @@ const cors = {
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 type Row = { at: string; kind: string; page: string | null; target: string | null; visitor: string; user_name: string | null; ip: string | null; country: string | null; city: string | null; device: string | null; source: string | null };
 
+// insights:start (tools/test-insights.mjs runs this part on made-up events)
+// The overview, the openings and the errors: from the events left after the filters above.
+type Ev = { at: string; kind: string; target: string | null; visitor: string };
+type Run = { k: string; m: string; s: string; o: string; l: string; x: number; p: number; f?: string; w?: string; g?: string };
+function insights(rows: Ev[], now = Date.now()) {
+  const DAY = 864e5, dayNo = (iso: string) => Math.floor(Date.parse(new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm' }).format(new Date(iso))) / DAY);
+  const today = dayNo(new Date(now).toISOString()), ago = (iso: string) => (now - Date.parse(iso)) / DAY;
+  const runOf = (r: Ev): Run | null => { try { return r.kind === 'line' ? JSON.parse(r.target ?? '') : null; } catch { return null; } };
+  const done = (r: Ev) => (r.kind === 'line' && runOf(r)?.k === 'done') || (r.kind === 'practise' && !!r.target?.startsWith('done '));
+  // Each visitor: the days they were here (Swedish days), their first, and what they did when.
+  const who = new Map<string, { first: number; days: Set<number>; ev: Ev[] }>();
+  for (const r of rows) { const w = who.get(r.visitor) ?? { first: dayNo(r.at), days: new Set<number>(), ev: [] }; w.days.add(dayNo(r.at)); w.ev.push(r); who.set(r.visitor, w); }
+  // The four numbers: the last 7 days against the 7 before.
+  const inSpan = (r: Ev, from: number, to: number) => ago(r.at) >= from && ago(r.at) < to;
+  const span = (from: number, to: number) => {
+    const rs = rows.filter((r) => inSpan(r, from, to));
+    // Came back: of the visitors new 7–14 days before the span's end, the share seen again on a later day within 7 days.
+    const fresh = [...who.values()].filter((w) => today - w.first >= 7 + from && today - w.first < 14 + from);
+    return { visitors: new Set(rs.map((r) => r.visitor)).size, profiles: rs.filter((r) => r.kind === 'profile').length, finished: rs.filter(done).length,
+      back: fresh.length ? [...fresh].filter((w) => [...w.days].some((d) => d > w.first && d <= w.first + 7)).length / fresh.length : null };
+  };
+  // How far the visitors of the last 7 days got, each step a share of all of them.
+  const week = [...who.entries()].filter(([, w]) => w.ev.some((r) => ago(r.at) < 7));
+  const did = (f: (r: Ev) => boolean) => week.filter(([, w]) => w.ev.some((r) => ago(r.at) < 7 && f(r))).length;
+  const funnel = [['Visited', week.length], ['Looked up a profile', did((r) => r.kind === 'profile')], ['Opened an opening', did((r) => r.kind === 'practise' || r.kind === 'line')],
+    ['Finished a line', did(done)], ['Came back another day', week.filter(([, w]) => w.days.size > 1).length]].map(([name, n]) => ({ name, n }));
+  // Come back: per week of the first visit (Monday first), the share seen again within 1, 7 and 30 days; null while too new to tell.
+  const monday = (d: number) => d - ((d + 3) % 7); // day 0 (1 Jan 1970) was a Thursday
+  const cohorts = new Map<number, { first: number; days: Set<number> }[]>();
+  for (const w of who.values()) cohorts.set(monday(w.first), [...(cohorts.get(monday(w.first)) ?? []), w]);
+  const retention = [...cohorts.entries()].sort((a, b) => b[0] - a[0]).slice(0, 6).map(([wk, ws]) => ({
+    week: new Date(wk * DAY).toISOString().slice(0, 10), n: ws.length,
+    ...Object.fromEntries([1, 7, 30].map((n) => [`d${n}`, today - wk < n + 7 ? null : ws.filter((w) => [...w.days].some((d) => d > w.first && d <= w.first + n)).length / ws.length])),
+  }));
+  // Openings, the last 30 days: per opening and colour, then per line, the runs, the people, how many
+  // were finished, the mistakes a run, and the lines finished in each mode.
+  const runs = rows.filter((r) => r.kind === 'line' && ago(r.at) < 30).map((r) => ({ r, x: runOf(r)! })).filter(({ x }) => x?.o);
+  const tally = () => ({ runs: 0, done: 0, misses: 0, people: new Set<string>(), learn: 0, try: 0, time: 0 });
+  const ops = new Map<string, ReturnType<typeof tally> & { side: string; name: string; lines: Map<string, ReturnType<typeof tally>> }>();
+  for (const { r, x } of runs) {
+    const o = ops.get(`${x.s}|${x.o}`) ?? { ...tally(), side: x.s, name: x.o, lines: new Map() };
+    const l = o.lines.get(x.l) ?? tally();
+    for (const t of [o, l]) { t.runs++; t.misses += x.x || 0; t.people.add(r.visitor); if (x.k === 'done') { t.done++; if (x.m in t) (t as any)[x.m]++; } }
+    o.lines.set(x.l, l); ops.set(`${x.s}|${x.o}`, o);
+  }
+  const plain = ({ people, lines, ...t }: any) => ({ ...t, people: people.size });
+  const openings2 = [...ops.values()].sort((a, b) => b.runs - a.runs).slice(0, 30)
+    .map((o) => ({ ...plain(o), lines: [...o.lines.entries()].sort((a, b) => b[1].runs - a[1].runs).map(([name, t]) => ({ name, ...plain(t) })) }));
+  // The hardest moves: where most runs of a line slip first, with the move most played instead.
+  const slips = new Map<string, { side: string; opening: string; line: string; fen: string; want: string; n: number; people: Set<string>; got: Record<string, number> }>();
+  for (const { r, x } of runs) {
+    if (!x.f || !x.w) continue;
+    const k = `${x.s}|${x.o}|${x.f}|${x.w}`, h = slips.get(k) ?? { side: x.s, opening: x.o, line: x.l, fen: x.f, want: x.w, n: 0, people: new Set(), got: {} };
+    h.n++; h.people.add(r.visitor); if (x.g) h.got[x.g] = (h.got[x.g] || 0) + 1; slips.set(k, h);
+  }
+  const hardest = [...slips.values()].map((h) => ({ ...h, people: h.people.size, got: Object.entries(h.got).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
+    share: Math.min(1, h.n / Math.max(1, ops.get(`${h.side}|${h.opening}`)?.lines.get(h.line)?.runs ?? h.n)) }))
+    .sort((a, b) => b.n - a.n || b.share - a.share).slice(0, 8);
+  // Errors the site met, the last 30 days, most often first.
+  const errs = new Map<string, { n: number; last: string; people: Set<string> }>();
+  for (const r of rows) if (r.kind === 'error' && r.target && ago(r.at) < 30) { const e = errs.get(r.target) ?? { n: 0, last: r.at, people: new Set() }; e.n++; e.last = r.at; e.people.add(r.visitor); errs.set(r.target, e); }
+  const lookups = rows.filter((r) => r.kind === 'profile' && ago(r.at) < 30);
+  return {
+    overview: { now: span(0, 7), before: span(7, 14) }, funnel, retention,
+    sites: { chesscom: lookups.filter((r) => r.target?.startsWith('cc:')).length, lichess: lookups.filter((r) => !r.target?.startsWith('cc:')).length },
+    openings2, hardest, errors: [...errs.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 20).map(([text, e]) => ({ text, n: e.n, last: e.last, people: e.people.size })),
+  };
+}
+// insights:end
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   const token = req.headers.get('x-lichess-token');
@@ -99,6 +169,7 @@ Deno.serve(async (req) => {
   for (const r of recent) if (r.user_name) logins[r.user_name] = { n: (logins[r.user_name]?.n || 0) + 1, last: r.at };
 
   return json({
+    ...insights(rows),
     days: DAYS,
     totals: {
       today: visitors.filter((w) => day(w.last) === today).length, newToday: visitors.filter((w) => day(w.first) === today).length,

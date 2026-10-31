@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261031161304';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261031161304';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261031161304';
-import { NAMED_TRAPS } from './traps.js?v=20261031161304';
-import { GUIDE } from './guide.js?v=20261031161304';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261031161304';
-import { maia3Move } from './maia3.js?v=20261031161304';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261031161304';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261031161304';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261031161304';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261031161304';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261031163039';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261031163039';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261031163039';
+import { NAMED_TRAPS } from './traps.js?v=20261031163039';
+import { GUIDE } from './guide.js?v=20261031163039';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261031163039';
+import { maia3Move } from './maia3.js?v=20261031163039';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261031163039';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261031163039';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261031163039';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261031163039';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -70,6 +70,8 @@ let wrongSq = null;
 let lastMove = null;
 let misses = 0;      // mistakes in this run
 let missesHere = 0;  // mistakes on the current move
+let firstMiss = null; // the run's first slip, for the admin page: the position, the move wanted and the move played
+let lineSent = false; // this run of the line has been counted (trackLine)
 let busy = false;
 
 function load(key, fallback) {
@@ -1566,6 +1568,7 @@ function lineTips() {
 
 // ---------- Game ----------
 function start(op, keepTraps = false) {
+  if (!lineSent && ply > 0) trackLine('left'); // the line in progress, before the new opening replaces it
   if (needTree(() => start(op, keepTraps))) return;
   if (!keepTraps) trapRun = null; // choosing an opening ends trap training
   if (mode === 'explore') setMode('learn', false);
@@ -1576,7 +1579,7 @@ function start(op, keepTraps = false) {
   $('#depth-ask').hidden = true;
   showGo(false);
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
-  misses = 0; missesHere = 0; busy = true;
+  misses = 0; missesHere = 0; busy = true; firstMiss = null; lineSent = false;
   $('#op-title').textContent = (isVs(op) ? 'vs ' : '') + op.name;
   $('#op-eco').textContent = op.eco;
   // How the opening goes at a rating, as a win/draw/loss bar, with a slider to try other ratings.
@@ -1659,6 +1662,7 @@ $('#depth').addEventListener('click', () => askDepth(allLines.length));
 // again: the same line once more after a slip in Practice, which keeps it from counting as cleared.
 function play(i, again = false) {
   if (drill && lineFor(drill.now ?? '') !== i) drill = null; // another line chosen: the drill ends
+  if (!again && !lineSent && ply > 0) trackLine('left');
   lineIdx = i;
   if (mode === 'time') { pauseTrial(); if (trial) trial.lineStart = null; }
   else $('#line-board').hidden = true;
@@ -1671,6 +1675,7 @@ function play(i, again = false) {
   closeMoment();
   $('#op-more').open = mode === 'learn' && i === 0; // the opening's story goes with its first line
   misses = again ? misses : 0; missesHere = 0; busy = false; hintUsed = false; ideaAsked = false;
+  if (!again) { firstMiss = null; lineSent = false; }
   gameGen++; // ignore an opponent reply still on its way from the previous game
   playing = false; opponent = saidOpponent = null;
   premove = null; notes = []; betters = []; lineDone = ''; view = null;
@@ -2802,6 +2807,7 @@ function tryMove(from, to) {
     // and the clock waits for your first move.
     game.undo();
     const want = new Chess(game.fen()).move(line[ply]).san, st = stats[statKey(cur.id)], record = (st.timeBest || 0) > 0 && trial.score > st.timeBest;
+    trackLine('wrong', { f: game.fen(), w: want, g: m.san, n: ply }, 1);
     st.timeBest = Math.max(st.timeBest || 0, trial.score); store(STORE, stats);
     trialFlash('Wrong', false);
     const right = new Chess(game.fen()).move(line[ply]);
@@ -2818,6 +2824,7 @@ function tryMove(from, to) {
   if (clean(m.san) !== line[ply] && !moved) {
     game.undo();
     misses++; missesHere++;
+    firstMiss ??= { f: game.fen(), w: expectedMove().san, g: m.san, n: ply };
     wrongSq = to; sel = null;
     renderBoard();
     shake(boardEl);
@@ -2924,9 +2931,16 @@ function guide() {
   // A card beside the board (Punished!, a trap's story) does not stop the arrow; only a card that draws its own arrows does.
   goodMove().then((m) => { if (m && game.fen() === at && userTurn() && !momentArrows) { hintSq = [m.from, m.to]; renderBoard(); } });
 }
-// A line played through, for the admin page: which openings people finish, and in which mode
-// (the opening was counted when it was opened, as 'practise' with its name alone).
-const trackDone = () => cur && window.track?.('practise', `done ${mode} · ${cur.side === 'b' ? 'Black' : 'White'}: ${(isVs(cur) ? 'vs ' : '') + cur.name}`);
+// One run of a line, for the admin page, once: how it ended (done, left for another line or the page
+// closed, wrong in Time), the mode, the opening and line, the mistakes, how far it got and the first slip
+// (the position, the move wanted, the move played). The opening was counted when opened ('practise').
+function trackLine(k, miss = firstMiss, x = misses) {
+  if (!cur || lineSent || !lines[lineIdx]) return;
+  lineSent = true;
+  window.track?.('line', JSON.stringify({ k, m: mode, s: cur.side, o: (isVs(cur) ? 'vs ' : '') + cur.name, l: lineName(lines[lineIdx]), x, p: ply, ...(assisted ? { h: 1 } : {}), ...(miss || {}) }));
+}
+const trackDone = () => trackLine('done');
+addEventListener('pagehide', () => { if (ply > 0) trackLine('left'); });
 // A star a line has just earned (green in Learn, gold in Practice, diamond in Time): shown big in the
 // middle of the screen, then it flies into its place in the lines list (hidden there until it lands).
 // With reduced motion it only fades in and out in the middle.

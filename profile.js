@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031161304';
-import { STYLE_OF } from './styles.js?v=20261031161304';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031161304';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031163039';
+import { STYLE_OF } from './styles.js?v=20261031163039';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031163039';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1835,6 +1835,7 @@ function failed(name, err) {
   const net = err instanceof TypeError && NET.test(err.message);
   if (net && !retried.has(name.toLowerCase())) { retried.add(name.toLowerCase()); setTimeout(() => run(name), 1500); return; }
   if (net) err = new Error(`Could not reach ${siteOf(name)}: the connection dropped.`);
+  window.trackError?.(`${name}: ${err.message || err}`);
   $('#profile .pf-skeleton')?.remove(); // the loading outline, never a card already drawn
   $('#profile-msg').innerHTML = `${esc(err.message || String(err))} <button type="button" class="link" data-retry>Try again</button>`;
   $('[data-retry]').addEventListener('click', () => run(name));

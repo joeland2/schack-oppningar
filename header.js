@@ -23,9 +23,19 @@
   window.track = (kind, target = null) => {
     if (local || own()) return;
     fetch(API, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'text/plain' }, // plain text: no preflight, so it still goes as the page closes
-      body: JSON.stringify({ kind, page, target: target && String(target).slice(0, 80), visitor, user_name: user(), source: kind === 'view' ? source : null }) }).catch(() => {});
+      body: JSON.stringify({ kind, page, target: target && String(target).slice(0, kind === 'line' ? 400 : kind === 'error' ? 160 : 80), visitor, user_name: user(), source: kind === 'view' ? source : null }) }).catch(() => {});
   };
   window.track('view');
+  // Errors the page meets, so the admin page shows what breaks: each message once, at most five a page.
+  // Errors from other sites' scripts come as a bare "Script error." and say nothing, so they are left out.
+  const said = new Set();
+  window.trackError = (msg) => {
+    msg = String(msg || '').trim().slice(0, 160);
+    if (!msg || /^Script error\.?$/.test(msg) || said.has(msg) || said.size >= 5) return;
+    said.add(msg); window.track('error', msg);
+  };
+  addEventListener('error', (e) => window.trackError(e.message));
+  addEventListener('unhandledrejection', (e) => window.trackError(e.reason?.message || e.reason));
   // The admin's own menu has an Admin link (the page itself checks the login with Lichess).
   addEventListener('DOMContentLoaded', () => {
     // The scorebug: your rating on every page (Openings has its own, editable one), to your profile.

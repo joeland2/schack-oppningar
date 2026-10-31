@@ -77,3 +77,9 @@ create table if not exists public.user_data (
 );
 alter table public.user_data enable row level security;
 -- No policies: only the Edge Function (service role) reads and writes it.
+
+-- Added 2026-10-31: one event per line practised (kind 'line': how the run ended, the mode, the opening
+-- and line, the mistakes and the first slip, as JSON) and the errors the site met (kind 'error'). Their
+-- targets are longer than 80 characters.
+alter table public.events drop constraint if exists events_target_check;
+alter table public.events add constraint events_target_check check (char_length(target) <= 600);

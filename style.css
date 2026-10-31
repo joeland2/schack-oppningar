@@ -2272,3 +2272,57 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-peek-end { position: absolute; top: -14px; left: 12px; display: flex; align-items: center; gap: 5px; padding: 4px 10px 4px 7px; border: 3px solid #fff; border-radius: 99px; background: #141414; color: #fff; font: 400 14px/1 var(--font-poster); letter-spacing: .03em; text-transform: uppercase; box-shadow: 0 4px 8px rgb(0 0 0 / .35); transform: rotate(-4deg); }
 .pf-peek.as-b .pf-peek-end { background: #f4efe6; color: #141414; }
 .pf-peek-end .ico { width: 15px; height: 15px; }
+
+/* Admin: the week against the week before, how far visitors get, and who comes back */
+.ad-week dd { font: 400 clamp(30px, 4vw, 40px)/1.1 var(--font-poster); margin: 6px 0 2px; }
+.ad-ch { color: var(--muted); font-size: 12px; } .ad-ch.up { color: var(--good); } .ad-ch.down { color: var(--bad); }
+.ad-funnel { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ad-funnel li { display: grid; grid-template-columns: minmax(9em, 12em) 1fr auto; gap: 12px; align-items: center; font-size: 14px; }
+.ad-funnel i { height: 12px; border-radius: 0 3px 3px 0; background: var(--data); min-width: 3px; }
+.ad-funnel b { font-weight: 600; font-variant-numeric: tabular-nums; } .ad-funnel b small { font-weight: 400; color: var(--muted); }
+.ad-foot { margin: 12px 0 0; font-size: 12px; color: var(--muted); }
+.ad-ret { width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 13px; }
+.ad-ret th { font-weight: 500; font-size: 12px; color: var(--muted); text-align: center; } .ad-ret th:first-child, .ad-ret td:first-child { text-align: left; }
+.ad-ret td { padding: 6px; text-align: center; font-variant-numeric: tabular-nums; }
+.ad-ret td[style] { border-radius: 3px; background: color-mix(in srgb, var(--good) calc(var(--v) * 160%), transparent); }
+.ad-ret .ad-ret-none { color: var(--muted); }
+@media (max-width: 560px) { .ad-funnel li { grid-template-columns: 1fr auto; } .ad-funnel i { grid-column: 1 / -1; grid-row: 2; } }
+/* Admin: one person, visit by visit */
+.ad-person { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: 24px; padding: 6px 0 18px; }
+.ad-who > b { display: block; font: 400 28px/1.05 var(--font-poster); overflow-wrap: anywhere; }
+.ad-who > small { color: var(--muted); }
+.ad-who dl { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; margin: 14px 0 0; font-size: 13px; } .ad-who dt { color: var(--muted); } .ad-who dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.ad-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+.ad-chip { padding: 3px 8px; border: 1px solid var(--line); border-radius: 4px; font-size: 12px; }
+.ad-visits { list-style: none; margin: 0; padding: 0; max-height: 520px; overflow: auto; }
+.ad-visits > li { padding: 0 0 10px; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
+.ad-visits h3 { display: flex; justify-content: space-between; gap: 10px; margin: 0 0 6px; font-size: 13px; font-weight: 600; } .ad-visits h3 small { font-weight: 400; color: var(--muted); }
+.ad-visits ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.ad-visits ul li { display: grid; grid-template-columns: 3.2em 18px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 13px; }
+.ad-visits time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; padding-top: 1px; }
+.ad-visits .ico { width: 16px; height: 16px; color: var(--muted); }
+.ad-visits small { color: var(--muted); } .ad-muted { color: var(--muted); }
+.ad-side { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; vertical-align: -1px; flex: none; }
+.ad-side.w { background: #f4efe6; box-shadow: inset 0 0 0 1px #8a8275; } .ad-side.b { background: #141414; box-shadow: inset 0 0 0 1px #8a8275; }
+@media (max-width: 760px) { .ad-person { grid-template-columns: minmax(0, 1fr); } }
+/* Admin: openings practised, their lines, and the hardest moves */
+.ad-op-wrap { overflow-x: auto; }
+.ad-op { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 13px; }
+.ad-op th { text-align: left; font-weight: 500; font-size: 12px; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.ad-op td { padding: 8px; border-bottom: 1px solid var(--line); }
+.ad-op td.num { font-variant-numeric: tabular-nums; }
+.ad-op-row { cursor: pointer; } .ad-op-row:hover, .ad-op-row[aria-expanded="true"] { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.ad-op-row small, .ad-op-line small { color: var(--muted); }
+.ad-op-line td { padding: 6px 8px; color: var(--muted); } .ad-op-line td:first-child { padding-left: 28px; }
+.ad-done { display: grid; grid-template-columns: minmax(60px, 1fr) 3em; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; }
+.ad-done i { height: 8px; border-radius: 2px; background: var(--line); background-image: linear-gradient(var(--good), var(--good)); background-size: calc(var(--v) * 100%) 100%; background-repeat: no-repeat; }
+.ad-sub { margin: 22px 0 12px; font-size: 14px; } .ad-sub small { font-weight: 400; color: var(--muted); }
+.ad-hard { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 16px; }
+.ad-hard figure { margin: 0; }
+.ad-board { display: grid; grid-template-columns: repeat(8, 1fr); aspect-ratio: 1; border-radius: 3px; overflow: hidden; }
+.ad-board i { display: block; aspect-ratio: 1; } .ad-board i.l { background: #f0d9b5; } .ad-board i.d { background: #b58863; }
+.ad-board img { display: block; width: 100%; height: 100%; }
+.ad-hard figcaption { margin-top: 8px; font-size: 12.5px; line-height: 1.4; } .ad-hard figcaption small { display: block; color: var(--muted); margin-top: 2px; }
+.ad-hard-n { font: 400 22px/1 var(--font-poster); color: var(--bad); margin-right: 2px; }
+.ad-kpis.ad-week { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 760px) { .ad-kpis.ad-week { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

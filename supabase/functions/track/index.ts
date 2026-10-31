@@ -5,7 +5,8 @@
 // the device is read from the browser's user agent; the source is the site the visit came from.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const KINDS = ['view', 'profile', 'compare', 'analyse', 'practise', 'card', 'login'];
+const KINDS = ['view', 'profile', 'compare', 'analyse', 'practise', 'card', 'login', 'line', 'error'];
+const LONG: Record<string, number> = { card: 600, line: 400, error: 160 }; // the longest target per kind; 80 for the rest
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type' };
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 const cut = (s: unknown, n: number) => (typeof s === 'string' && s ? s.slice(0, n) : null);
@@ -45,7 +46,7 @@ Deno.serve(async (req) => {
   const { cloud, ...place } = await placeOf(ip);
   if (cloud) return new Response('skipped', { status: 202, headers: cors });
   const { error } = await db.from('events').insert({
-    kind: e.kind, page: cut(e.page, 40), target: cut(e.target, e.kind === 'card' ? 600 : 80), visitor: cut(e.visitor, 40), user_name: cut(e.user_name, 30),
+    kind: e.kind, page: cut(e.page, 40), target: cut(e.target, LONG[e.kind as string] ?? 80), visitor: cut(e.visitor, 40), user_name: cut(e.user_name, 30),
     ip: anonymise(ip), ...place, device: deviceOf(req.headers.get('user-agent') || ''), source: cut(e.source, 80),
   });
   return new Response(error ? 'error' : 'ok', { status: error ? 500 : 201, headers: cors });
