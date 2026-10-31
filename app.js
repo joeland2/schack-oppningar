@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261031190826';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261031190826';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261031190826';
-import { NAMED_TRAPS } from './traps.js?v=20261031190826';
-import { GUIDE } from './guide.js?v=20261031190826';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261031190826';
-import { maia3Move } from './maia3.js?v=20261031190826';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261031190826';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261031190826';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261031190826';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261031190826';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261031191430';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261031191430';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261031191430';
+import { NAMED_TRAPS } from './traps.js?v=20261031191430';
+import { GUIDE } from './guide.js?v=20261031191430';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261031191430';
+import { maia3Move } from './maia3.js?v=20261031191430';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261031191430';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261031191430';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261031191430';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261031191430';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -26,7 +26,7 @@ const THEORY_GROUPS = [6, 7, 8]; // 2000+
 const TRAP_SHARE = 0.05, TRAP_SCORE = 0.38, TRAP_GAMES = 30;
 const MIN_GAMES = 20;     // below this, real-game data is too thin to trust
 const MAX_PLY = 20;       // data/explorer-*.json goes this deep
-const DATA = '2026-10-28-k8c'; // version of data/explorer-*.json
+const DATA = '2026-10-31-k20'; // version of data/explorer-*.json
 const BUCKETS = [0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]; // Lichess explorer rating groups
 // The strong players your own Lichess games are judged against: 2200+ in blitz; 2000+ in classical, where 2200+ games are scarce.
 const STRONG = { blitz: [7, 8], classical: [6, 7, 8] };
@@ -137,11 +137,17 @@ const POPULAR = {};   // popularOpenings() per time control and rating; it takes
 // built by tools/make_explorer.py. Loaded once per time control.
 async function loadTree() {
   // DATA is bumped whenever the data is rebuilt, so no browser keeps an old file
-  TREES[speed] ??= (await fetch(`data/explorer-${speed}.json?v=${DATA}`).then((r) => r.json())).tree;
+  TREES[speed] ??= await fetch(`data/explorer-${speed}.json?v=${DATA}`).then((r) => r.json()).then((d) => pad(d.tree, d.buckets.length));
   TREE = TREES[speed];
   console.assert(explore(['e4'], [3]).moves.some((m) => m.san === 'c5'), `data/explorer-${speed}.json is not in the expected format`);
 }
 
+// The files leave off each group array's trailing zeros (tools/make_explorer.py): put them back.
+function pad(node, nb) {
+  for (let i = 0; i < 3; i++) while (node[i].length < nb) node[i].push(0);
+  if (node[3]) for (const k in node[3]) pad(node[3][k], nb);
+  return node;
+}
 // The opening list for each rating band, worked out beforehand (data/popular/<speed>-<groups>.json, made
 // with ?make-popular, see the end of this file): the list shows at once from a few hundred KB, and the
 // large tree loads behind it, needed only once an opening is opened. Missing: computed from the tree.

@@ -15,7 +15,7 @@ from bisect import bisect_right
 URL = 'https://database.lichess.org/standard/lichess_db_standard_rated_2026-09.pgn.zst'
 BUCKETS = [0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]  # same groups as the Lichess explorer
 MAX_PLY = 20
-KEEP = 8             # drop sequences seen in fewer games than this
+KEEP = 20            # drop sequences seen in fewer games than this: the app's MIN_GAMES, so nothing it uses is lost
 PRUNE_EVERY = 500_000  # games per lossy-counting bucket: a kept sequence is undercounted by at most one per bucket
 COMMENT = re.compile(r'\{[^}]*\}')
 NUMBER = re.compile(r'^\d+\.+$')
@@ -94,10 +94,20 @@ def main():
         if len(node) == 3:
             node.append({})
         node[3][last] = split(counts[key])
+    trim(root)
     assert sum(root[0]) == games and all(sum(c[0]) <= sum(root[0]) and sum(c[1]) + sum(c[2]) <= sum(c[0]) for c in root[3].values())
     with open(f'data/explorer-{speed}.json', 'w') as f:
         json.dump({'speed': speed, 'buckets': BUCKETS, 'games': games, 'source': URL, 'tree': root}, f, separators=(',', ':'))
     print(f'wrote {games:,} games', file=sys.stderr)
+
+
+# Each group array without its trailing zeros (the top rating groups are often empty); app.js pads them back.
+def trim(node):
+    for i in range(3):
+        while node[i] and not node[i][-1]:
+            node[i].pop()
+    for child in (node[3].values() if len(node) > 3 else []):
+        trim(child)
 
 
 if __name__ == '__main__':

@@ -46,7 +46,7 @@ def main():
                     break
             if node is None:
                 continue
-            games, wins, draws = node[0], node[1], node[2]
+            games, wins, draws = (node[i] + [0] * (len(src['buckets']) - len(node[i])) for i in range(3))  # trailing zeros are left off
             fams[fam] = [games, [round((w + d / 2) / g, 3) if g else None for g, w, d in zip(games, wins, draws)]]
         out[speed] = fams
         print(speed, len(fams), "families")
