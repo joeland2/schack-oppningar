@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031185023';
-import { STYLE_OF } from './styles.js?v=20261031185023';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031185023';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031190229';
+import { STYLE_OF } from './styles.js?v=20261031190229';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031190229';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -890,8 +890,9 @@ function bindAnalyse(name) {
 // ---------- The page ----------
 function cache() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
 const myName = () => account()?.name || (() => { try { return JSON.parse(localStorage.getItem('opening-book-v2-lichess-name')); } catch { return null; } })();
-// Your other accounts (Lichess or Chess.com), linked on your own profile in this browser: all read as you,
-// the byline over the name jumps between them, and Combined reads them together, leaving out any you switch off.
+// Your other accounts (Lichess or Chess.com), linked on your own profile: all read as you, the byline over
+// the name jumps between them, and Combined reads them together, leaving out any you switch off. Kept under
+// opening-book-v2 keys, so header.js syncs them to your Lichess login and every device shows the same.
 const LINK_KEY = 'opening-book-v2-linked', OFF_KEY = 'opening-book-v2-off';
 const readKept = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -1068,7 +1069,8 @@ const accountsRow = (name) => {
 // On your own profile: add an account on either site, by name (no password).
 const linkForm = (name, open = false) => (isMe(name) && !proOf(name) ? `<form class="pf-link" data-link><label for="pf-link-in">${open ? 'Add an account:' : 'Play on another account too?'}</label>
   <select name="site" aria-label="Site"><option value="cc"${isCC(name) ? '' : ' selected'}>Chess.com</option><option value="li"${isCC(name) ? ' selected' : ''}>Lichess</option></select>
-  <input id="pf-link-in" name="u" autocomplete="off" spellcheck="false" placeholder="Username" required><button type="submit" class="ghost">Link</button><span class="pf-link-msg" role="status"></span></form>` : '');
+  <input id="pf-link-in" name="u" autocomplete="off" spellcheck="false" placeholder="Username" required><button type="submit" class="ghost">Link</button><span class="pf-link-msg" role="status"></span>${account() ? '' : '<small class="pf-link-note">Kept in this browser only: <button type="button" class="link" data-link-login>log in with Lichess</button> to have it on every device.</small>'}</form>` : '');
+document.addEventListener('click', (e) => { if (e.target.closest('[data-link-login]')) login(); });
 // On Combined: which accounts count, each switched on or off (a game account you play badly on stays out), or unlinked.
 const comboRow = () => `<div class="pf-combo"><p class="pf-combo-k">Counts the games of</p><div class="pf-combo-list">${combo.map((n) => `<span class="pf-combo-acct">
   <button type="button" data-off="${esc(n)}" aria-pressed="${!isOff(n)}"><i aria-hidden="true"></i><small>${siteOf(n)}</small>${esc(nick(n))}</button>${same(n, myName()) ? '' : `<button type="button" class="link" data-unlink="${esc(n)}" aria-label="Unlink ${esc(nick(n))}" title="Unlink">×</button>`}</span>`).join('')}</div>${linkForm(myName(), true)}</div>`;

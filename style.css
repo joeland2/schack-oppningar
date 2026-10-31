@@ -2442,3 +2442,4 @@ main.profile:has(#admin) { max-width: 1320px; }
 /* Skills over time */
 .pf-trend-pick { flex-wrap: wrap; }
 .pf-trend .pf-line circle { fill: var(--data); }
+.pf-link-note { flex-basis: 100%; font-size: 12px; }
