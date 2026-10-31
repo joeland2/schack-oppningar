@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031150905';
-import { STYLE_OF } from './styles.js?v=20261031150905';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031150905';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031152131';
+import { STYLE_OF } from './styles.js?v=20261031152131';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031152131';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1508,20 +1508,25 @@ function render(name, at, full) {
 
 addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('details.pf-help[open]').forEach((d) => { d.open = false; d.querySelector('summary').focus(); }); });
 // The lead story under the card: recent form (the last ten results) and the one thing to train now.
-// The same last 10 games as the form row above: openings, colours, how they ended, accuracy.
+// The same last 10 games as the form row above: a won/drawn/lost bar per colour, then the openings,
+// how the decided games ended and the accuracy as chips.
 function recentFacts(rs, p) {
-  const n = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`, wins = (xs) => xs.filter((r) => r.result === 1).length;
+  const wins = (xs) => xs.filter((r) => r.result === 1).length;
   const fams = Object.entries(rs.reduce((m, r) => ({ ...m, [r.family]: [...(m[r.family] || []), r] }), {})).sort((a, b) => b[1].length - a[1].length);
-  const how = { mate: 'by mate', resign: 'by resignation', outoftime: 'on time', timeout: 'on time' };
-  const ends = (xs) => { const c = xs.reduce((m, r) => ({ ...m, [how[r.status] || 'other ways']: (m[how[r.status] || 'other ways'] || 0) + 1 }), {}); return Object.entries(c).sort((a, b) => b[1] - a[1])[0]; };
-  const won = rs.filter((r) => r.result === 1), lost = rs.filter((r) => r.result === 0), w = rs.filter((r) => r.side === 'w'), b = rs.filter((r) => r.side === 'b');
+  const how = { mate: 'Mated', resign: 'Resigned', outoftime: 'On time', timeout: 'On time' };
+  const decided = rs.filter((r) => r.result !== 0.5);
+  const end = Object.entries(decided.reduce((m, r) => ({ ...m, [how[r.status] || 'Other']: (m[how[r.status] || 'Other'] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1])[0];
   const acc = rs.filter((r) => r.acc !== null);
-  return [
-    fams.length && ['Openings', fams[0][1].length > 1 ? `${opLink(fams[0][1][0].side, fams[0][0])} ${fams[0][1].length} times, ${n(wins(fams[0][1]), 'win')}${fams[1] ? `; also ${opLink(fams[1][1][0].side, fams[1][0])}` : ''}` : `${fams.length} different openings, none twice`],
-    ['Colours', `${n(wins(w), 'win')} in ${w.length} as White, ${wins(b)} in ${b.length} as Black`],
-    (won.length || lost.length) && ['Endings', [won.length && `${ends(won)[1]} of ${n(won.length, 'win')} ${ends(won)[0]}`, lost.length && `${ends(lost)[1]} of ${n(lost.length, 'loss').replace('losss', 'losses')} ${ends(lost)[0]}`].filter(Boolean).join(', ')],
-    acc.length >= 3 && p.acc !== null && ['Accuracy', `${Math.round(sum(acc, (r) => r.acc) / acc.length)}% in the ${acc.length} analysed, against ${p.acc}% usually`],
+  const side = (k, label) => { const xs = rs.filter((r) => r.side === k); return xs.length ? `<span>${label}</span>${bar({ win: wins(xs) / xs.length, score: sum(xs, (r) => r.result) / xs.length })}<span class="num">${wins(xs)} of ${xs.length}</span>` : ''; };
+  const chip = (html) => `<span class="pf-chip">${html}</span>`;
+  const chips = [
+    ...fams.slice(0, 2).filter(([, xs], i) => i === 0 || xs.length > 1).map(([fam, xs]) => chip(`${opLink(xs[0].side, fam)} <small>×${xs.length}${xs.length > 1 ? ` · ${wins(xs)} won` : ''}</small>`)),
+    end && chip(`${end[0]} <small>${end[1]} of ${decided.length} decided</small>`),
+    acc.length >= 3 && p.acc !== null && chip(`Accuracy ${Math.round(sum(acc, (r) => r.acc) / acc.length)}% <small>usually ${p.acc}%</small>`),
   ].filter(Boolean);
+  return `<div class="pf-facts"><div class="pf-split">${side('w', 'White')}${side('b', 'Black')}</div>
+    <p class="pf-split-key"><span><i class="w"></i>Won</span><span><i class="d"></i>Drawn</span><span><i class="l"></i>Lost</span></p>
+    <div class="pf-chips">${chips.join('')}</div></div>`;
 }
 function leadStory(name, p, skills, me) {
   const games = storedGames(name) || [], low = name.toLowerCase(), say = me ? (x) => x : they;
@@ -1541,7 +1546,7 @@ function leadStory(name, p, skills, me) {
       <div class="pf-fetch-row">
       <button type="button" class="ghost pf-fetch" data-fetch title="Fetch the games played on Lichess since this profile was read"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg> New games</button>
       ${shown?.[1] ? `<small class="pf-fetched" id="pf-fetched">Updated ${ago(shown[1])}</small>` : ''}</div>
-      ${last.length ? `<dl class="pf-facts">${recentFacts(last.map((g) => readGame(g, name.toLowerCase())), p).map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''}
+      ${last.length ? recentFacts(last.map((g) => readGame(g, name.toLowerCase())), p) : ''}
     </div>
   </section>`;
 }

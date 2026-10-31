@@ -1264,10 +1264,17 @@ a { text-underline-offset: .18em; }
 .pf-more-head span { color: var(--muted); font-size: 13.5px; }
 .account .acct-stat input:read-only { border-bottom-color: transparent; cursor: default; }
 /* Profile: facts about the last 10 games, under the form row */
-.pf-facts { margin: 14px 0 0; display: grid; gap: 8px; }
-.pf-facts div { display: grid; grid-template-columns: 6.5em 1fr; gap: 12px; align-items: baseline; }
-.pf-facts dt { font: 700 11.5px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-.pf-facts dd { margin: 0; font-size: 15px; }
+.pf-facts { margin: 14px 0 0; }
+/* The last ten by colour: a won/drawn/lost bar each, then the rest as chips */
+.pf-split { display: grid; grid-template-columns: auto 1fr auto; gap: 10px 12px; align-items: center; font-size: 14px; }
+.pf-split .wdl { height: 12px; border-radius: 3px; }
+.pf-split .num { color: var(--muted); font-variant-numeric: tabular-nums; }
+.pf-split-key { display: flex; gap: 14px; margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+.pf-split-key i { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 2px; }
+.pf-split-key .w { background: var(--good); } .pf-split-key .d { background: var(--muted); opacity: .55; } .pf-split-key .l { background: var(--bad); opacity: .75; }
+.pf-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.pf-chip { padding: 5px 10px; border: 1px solid var(--line); border-radius: 4px; font-size: 13px; font-weight: 600; }
+.pf-chip small { margin-left: 4px; color: var(--muted); font-weight: 500; font-size: 12.5px; }
 a.pf-res { text-decoration: none; transition: transform .12s; }
 a.pf-res:hover, a.pf-res:focus-visible { transform: translateY(-2px); outline: 2px solid var(--ink); outline-offset: 1px; }
 /* Skills: the scale, in its own small box under the six */
@@ -1295,7 +1302,6 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
   /* Ten results always on one row; each square stays a full-height tap target */
   .pf-form-row { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
   .pf-form-row .pf-res { width: auto; height: 44px; } /* ten across the width, tall enough for a thumb */
-  .pf-facts div { grid-template-columns: 1fr; gap: 2px; }
 }
 .pf-more-body .pf-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 16px; }
 /* Latest on its own: rating and form on the left, the facts about those games on the right */

@@ -3,10 +3,10 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261031150905';
-import { account } from './lichess.js?v=20261031150905';
-import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261031150905';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261031150905';
+import { drawBoard } from './board.js?v=20261031152131';
+import { account } from './lichess.js?v=20261031152131';
+import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261031152131';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261031152131';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
