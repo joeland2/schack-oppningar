@@ -1,4 +1,4 @@
-import { drill } from './drill.js?v=20261031172650';
+import { drill } from './drill.js?v=20261031173432';
 
 // Each lesson is a small position with one right move. Kings are always on the board so the position is legal.
 const LESSONS = [

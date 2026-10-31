@@ -2361,3 +2361,26 @@ main.profile:has(#admin) { max-width: 1320px; }
 .ad-live-did .ico { width: 14px; height: 14px; flex: none; align-self: center; }
 .ad-line .ad-grid { stroke: var(--line); stroke-dasharray: 2 4; }
 .ad-line .ad-tick { font-variant-numeric: tabular-nums; }
+
+/* Play styles: every style and strength as a card, with players who have it */
+.ps-lead { max-width: 70ch; }
+.ps-jump { display: flex; gap: 8px; margin: 12px 0 0; }
+.ps-jump a, .pf-all-styles { color: var(--hot); font-weight: 600; font-size: 14px; }
+.pf-all-styles { display: inline-block; margin-top: 6px; }
+.ps-group { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 32px 0 14px; font: 400 clamp(28px, 4vw, 40px)/1 var(--font-poster); text-transform: uppercase; scroll-margin-top: 80px; }
+.ps-group small { font: 400 14px var(--font-body); text-transform: none; color: var(--muted); }
+.ps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.ps-card { background: var(--surface); border-top: 3px solid var(--rule); padding: 18px 20px; display: grid; gap: 10px; align-content: start; scroll-margin-top: 90px; min-width: 0; }
+.ps-card.you, .ps-card:target { border-top-color: var(--hot); box-shadow: inset 0 0 0 2px var(--hot); }
+.ps-card h3 { margin: 0; display: flex; align-items: center; gap: 10px; font: 400 26px/1 var(--font-poster); text-transform: uppercase; }
+.ps-card h3 .ico { width: 24px; height: 24px; color: var(--hot); }
+.ps-you { margin-left: auto; padding: 3px 8px; border-radius: 4px; background: var(--hot); color: #fff; font: 600 11px var(--font-body); letter-spacing: .08em; }
+.ps-card p { margin: 0; font-size: 14px; line-height: 1.5; }
+.ps-how { color: var(--muted); font-size: 13px !important; } .ps-how b { color: var(--ink); font-weight: 600; }
+.ps-players { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.ps-player { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 4px; font-size: 13px; color: var(--ink); text-decoration: none; }
+.ps-player:hover { border-color: var(--hot); }
+.ps-player small { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ps-more { color: var(--muted); font-size: 12.5px; align-self: center; }
+.lb-type a { color: inherit; text-decoration: none; } .lb-type a:hover { color: var(--hot); text-decoration: underline; }
+.ps-player .pf-flag { position: static; display: inline-block; width: 16px; height: 11px; flex: none; transform: none; background-size: cover; border-radius: 2px; box-shadow: none; }

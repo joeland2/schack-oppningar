@@ -1,7 +1,7 @@
 // The leaderboard: everyone logged in here with Lichess who has opened their profile (see the profile), ranked within a time control
 // and a rating band, by the card's overall number or one of its skills.
-import { flagHtml, loadFlags, bandColor, proClass, keptTypes } from './profile.js?v=20261031172650';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261031172650';
+import { flagHtml, loadFlags, bandColor, proClass, keptTypes } from './profile.js?v=20261031173432';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261031173432';
 const BOARD = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -15,6 +15,7 @@ const BY = [['overall', 'Overall', (r) => r.overall], ...['Attack', 'Defense', '
 // One row: the place, a small player card as on the profile (overall, style, piece, rating, name and the
 // six skills, the ranked one marked), and beside it the name, style + strength and the openings played most.
 const practise = (side, fam) => `./?practise=${side}~${encodeURIComponent(fam.replace(/^vs /, ''))}`;
+const slugOf = (n) => n.toLowerCase().replace(/\W+/g, '-'); // a style's place on playstyles.html
 const PIECE = { n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
 function row(r, i, value) {
   const top = (side) => (r.openings || []).filter((o) => o.side === side).sort((a, b) => b.n - a.n)[0];
@@ -25,7 +26,7 @@ function row(r, i, value) {
       <p class="pf-pcard-name">${esc(nick(r.name))}</p>
       <div class="pf-pcard-bars">${Object.entries(ABBR).map(([k, a]) => `<div${state.by === k ? ' class="on"' : ''}><span>${a}</span><i style="--v:${r.skills?.[k] ?? 0}%"></i><b>${r.skills?.[k] ?? '–'}</b></div>`).join('')}</div></div></a>
     <div class="lb-info"><a class="lbd-name" href="${href}">${esc(nick(r.name))}</a>
-      <p class="lb-type">${esc(r.style || '')}${r.strength ? ` <span>+ ${esc(r.strength)}</span>` : ''}</p>
+      <p class="lb-type">${r.style ? `<a href="playstyles.html#${slugOf(r.style)}">${esc(r.style)}</a>` : ''}${r.strength ? ` <span>+ <a href="playstyles.html#${slugOf(r.strength)}">${esc(r.strength)}</a></span>` : ''}</p>
       <p class="lb-ops">${w ? `<span><small>Most played as White</small> <a class="lb-op" href="${practise('w', w.fam)}">${esc(w.fam)}</a></span>` : ''}${bl ? `<span><small>Most played as Black</small> <a class="lb-op" href="${practise('b', bl.fam)}">${esc(bl.fam)}</a></span>` : ''}</p>
       <p class="lb-value">${state.by === 'stars' ? `Stars: <b>${value}</b> <small>(${r.stars.green || 0} learned · ${r.stars.gold || 0} cleared · ${r.stars.diamond || 0} perfect in Time)</small>` : `${BY.find(([k]) => k === state.by)[1]}: <b>${value ?? '–'}</b>`} <small>· ${r.rating} ${esc(r.speed)}${isCC(r.name) ? ' on Chess.com' : ''} · ${r.games} games</small></p></div></li>`;
 }

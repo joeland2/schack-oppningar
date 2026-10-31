@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Play Styles</title>
+  <meta name="description" content="Every play style and strength a Chess Trainer card can show: what each means, how it is read from your games, and players who have it.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="style.css?v=20261031173432">
+  <script src="header.js?v=20261031173432" defer></script>
+  <script src="theme.js?v=20261031173432"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-in">
+      <a class="brand" href="./">Chess<span>Trainer</span></a>
+      <nav class="top-nav" aria-label="Sections"><a href="./#openings">Openings</a><a href="practice.html">My practice</a><a href="profile.html">Profile</a></nav>
+      <form class="top-search" action="profile.html" role="search"><input name="u" type="search" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="Find a player" aria-label="Find a player on Lichess or Chess.com" title="A Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false"></form>
+      <details class="top-players"><summary title="Your starred players" aria-label="Your starred players"><svg class="ico ico-solid" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></summary><div class="top-players-menu"></div></details>
+      <button id="theme" class="ghost theme" type="button" aria-label="Switch theme"></button>
+    </div>
+  </header>
+
+  <main class="wrap profile ps">
+    <h1 class="pf-h1">Play styles</h1>
+    <p class="info ps-lead">Every card names a <b>style</b>, how someone plays, and usually a <b>strength</b>, where they beat players at their own level. Both are read from their last games, and the players under each are from the <a href="leaderboard.html">leaderboard</a>. <a href="profile.html">Find your own</a>.</p>
+    <nav class="ps-jump" aria-label="Parts"><a href="#styles">9 styles</a><a href="#strengths">12 strengths</a></nav>
+    <p id="ps-msg" class="info" aria-live="polite"></p>
+    <div id="ps"></div>
+  </main>
+
+  <script type="module" src="playstyles.js?v=20261031173432"></script>
+</body>
+</html>

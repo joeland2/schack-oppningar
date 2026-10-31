@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031172650';
-import { STYLE_OF } from './styles.js?v=20261031172650';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031172650';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031173432';
+import { STYLE_OF } from './styles.js?v=20261031173432';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031173432';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1449,7 +1449,7 @@ function render(name, at, full) {
         <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h2 class="pf-h1">${esc(t[0].name)}</h2>
-        ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}</div>${tasteLine(p.styleMix, me)}</div>
+        ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}<a class="pf-all-styles" href="playstyles.html?s=${encodeURIComponent(t[0].name)}${t[1] ? `&t=${encodeURIComponent(t[1].name)}` : ''}">See all styles →</a></div>${tasteLine(p.styleMix, me)}</div>
         <p class="pf-portrait">${portrait(name, p, skills, me)}</p>
         <div class="pf-why-type">
           <div class="pf-about">${t.map((x) => `<p><b>${esc(x.name)}.</b> ${esc(TYPE_ABOUT[x.name] || '')} <span>${esc(say(x.why))}</span></p>`).join('')}</div>
@@ -1627,16 +1627,22 @@ const starIcon = (kind) => `<svg class="line-star ${kind}" viewBox="0 0 24 24" a
 // A face for each kind of opponent: a clock, a sword, a shield, an arrow up or down.
 const OPP_ICON = { 'Fast movers': 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l3 2M9 2h6', Attackers: 'M14 3h7v7l-9 9-4-4zM3 21l5-5', 'Solid players': 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
   'Stronger players': 'M12 19V5M6 11l6-6 6 6', 'Weaker players': 'M12 5v14M6 13l6 6 6-6' };
+const SURE_OPP = 20; // games against one kind of opponent before the headline names it
 function opponentsCard(p, me, name) {
   const rows = (p.opponents || []).slice().sort((a, b) => a.gain - b.gain);
   if (!rows.length) return '';
-  const exp = (x) => pct(x.score - x.gain), who = me ? 'You' : esc(nick(name));
-  const worst = rows[0], best = rows.at(-1);
+  // The headline speaks only of groups with 20 games or more; smaller ones are listed as few games.
+  const exp = (x) => pct(x.score - x.gain), you = (t) => (me ? t : t.replace(/\byou\b/g, 'them')), sure = rows.filter((x) => x.n >= SURE_OPP);
+  const worst = sure[0], best = sure.at(-1);
+  const against = (x) => you(/^rated/.test(x.about) ? `players ${x.about}` : `opponents who ${x.about}`);
+  const head = !worst ? `Not enough games against any one kind of opponent to say yet: each needs ${SURE_OPP}.`
+    : worst.gain <= -0.04 ? `Against ${against(worst)}, ${me ? 'you' : 'they'} scored ${pct(worst.score)} in ${worst.n} games. With those rating gaps ${me ? 'you' : 'they'}'d expect about ${exp(worst)}, so ${me ? 'you drop' : 'they drop'} more points than ${me ? 'you' : 'they'} should.`
+    : `No kind of opponent gives ${me ? 'you' : 'them'} trouble: the results are close to what the ratings predict, or better.`;
   return `<section class="pf-card pf-opps"><h2>Who ${me ? 'you struggle' : 'they struggle'} against</h2>
-    <p class="info">${worst.gain <= -0.04 ? `${who} struggle${me ? '' : 's'} most against <b>${worst.name.toLowerCase()}</b>: ${pct(worst.score)} in ${worst.n} games, where the ratings predicted ${exp(worst)}.` : `No kind of opponent gives ${me ? 'you' : 'them'} trouble: the results are close to what the ratings predict, or better.`}${best !== worst && best.gain >= 0.04 ? ` Best against <b>${best.name.toLowerCase()}</b>: ${pct(best.score)}, with ${exp(best)} expected.` : ''}</p>
+    <p class="info">${head}${best && best !== worst && best.gain >= 0.04 ? ` Best against ${against(best)}: ${pct(best.score)}, where about ${exp(best)} was expected.` : ''}</p>
     <ul class="pf-opp-list">${rows.map((x) => { const v = x.gain <= -0.04 ? ['bad', 'Struggles'] : x.gain >= 0.04 ? ['good', 'Strong'] : ['', 'As expected'];
-      return `<li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${OPP_ICON[x.name]}"/></svg><span><b>${x.name}</b><small>${me ? x.about : x.about.replace(/\byou\b/, 'them')}</small><small class="num">${pct(x.score)} · expected ${exp(x)} · ${games(x.n)}</small></span><span class="pf-verdict ${v[0]}">${v[1]}</span></li>`; }).join('')}</ul>
-    <p class="pf-skill-scale">Expected: what the rating gaps say ${me ? 'you' : 'they'} should score against these opponents. A game can count in more than one group; groups with fewer than 10 games are left out.</p></section>`;
+      return `<li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${OPP_ICON[x.name]}"/></svg><span><b>${x.name}</b><small>${me ? x.about : x.about.replace(/\byou\b/, 'them')}</small><small class="num">${pct(x.score)} · expected ${exp(x)} · ${games(x.n)}${x.n < SURE_OPP ? ' · few games so far' : ''}</small></span><span class="pf-verdict ${v[0]}">${v[1]}</span></li>`; }).join('')}</ul>
+    <p class="pf-skill-scale">Expected: what the rating gaps say ${me ? 'you' : 'they'} should score against these opponents. A game can count in more than one group; groups with fewer than 10 games are left out, and under 20 is too few to read much into.</p></section>`;
 }
 function starsCard() {
   const { ops, sum } = starCounts();
@@ -1843,7 +1849,7 @@ function failed(name, err) {
 
 // A profile from games already fetched (Lichess's shape), without fetching: for checking the types on many players.
 const profileFromRaw = async (name, raw) => (await loadScores(), profileOf(raw.map((g) => readGame(g, name.toLowerCase()))));
-export { keptTypes, cardImage, playerCard, flagHtml, loadFlags, bandColor, tierOf, TIERS_AT, proClass, proOf, PROS, boardCard, fineSkillsOf, gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
+export { TYPE_ABOUT, keptTypes, cardImage, playerCard, flagHtml, loadFlags, bandColor, tierOf, TIERS_AT, proClass, proOf, PROS, boardCard, fineSkillsOf, gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
 // ---------- The games themselves ----------
 // The newest games as a list; each opens on game.html with the board, how it went and the key moves.
 const STATUS = { mate: 'mate', resign: 'resignation', outoftime: 'time', timeout: 'time', draw: 'agreement', stalemate: 'stalemate', aborted: 'abort' };

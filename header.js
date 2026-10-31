@@ -56,7 +56,7 @@
     if (!user()) document.querySelector('.top-nav a[href="practice.html"]:not([aria-current])')?.remove(); // your practice plan needs your games
     const practice = document.querySelector('.top-nav a[href="practice.html"]');
     if (practice) practice.innerHTML = '<span class="wide-only">My&nbsp;</span>practice'; // phones: the sections fit one row
-    const board = `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a>`;
+    const board = `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a><a href="playstyles.html"${page === 'playstyles.html' ? ' aria-current="page"' : ''}>Styles</a>`;
     if (prof?.isConnected) prof.insertAdjacentHTML('beforebegin', board); else document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', board);
     if (ADMINS.includes(user()?.toLowerCase())) document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', `<a href="admin.html"${page === 'admin.html' ? ' aria-current="page"' : ''}>Admin</a>`);
   });
