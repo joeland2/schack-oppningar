@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031205015';
-import { STYLE_OF } from './styles.js?v=20261031205015';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031205015';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031213127';
+import { STYLE_OF } from './styles.js?v=20261031213127';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031213127';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1551,7 +1551,7 @@ function render(name, at, full) {
   $('#profile').innerHTML = `
     ${accountsRow(name)}${combo ? comboRow() : ''}${nameRow(name)}${proLine(name)}
     <section class="pf-hero">
-      <div class="pf-card-col">${playerCard(name, p, t, skills)}${combo ? '' : speedBar(name, full, sp, avail)}${me ? starsStrip() : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
+      <div class="pf-card-col">${playerCard(name, p, t, skills)}${combo ? '' : speedBar(name, full, sp, avail)}${combo ? '' : `<p class="pf-ago">${me ? 'Your' : 'The'} card from ${AGO.map(([m, t]) => `<a href="${agoLink(name, m)}">${t.replace(' ago', '')}</a>`).join(' · ')} ago</p>`}${me ? starsStrip() : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
         <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h2 class="pf-h1">${esc(t[0].name)}</h2>

@@ -2467,3 +2467,5 @@ main.profile:has(#admin) { max-width: 1320px; }
 @media (max-width: 420px) { .ps-gw { grid-template-columns: 1fr; } }
 #profile .pf-seg a { color: var(--muted); font: 600 12px var(--font-body); padding: 6px 10px; min-height: 32px; display: inline-flex; align-items: center; text-decoration: none; }
 #profile .pf-seg a[aria-current="true"] { background: var(--ink); color: var(--bg); }
+.pf-ago { margin: 10px 0 0; font: 600 13px var(--font-body); color: var(--muted); text-align: center; }
+#profile .pf-ago a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; padding: 6px 2px; }
