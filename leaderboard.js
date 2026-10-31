@@ -1,7 +1,7 @@
 // The leaderboard: everyone logged in here with Lichess who has opened their profile (see the profile), ranked within a time control
 // and a rating band, by the card's overall number or one of its skills.
-import { flagHtml, loadFlags, bandColor, proClass, keptTypes } from './profile.js?v=20261031175122';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261031175122';
+import { flagHtml, loadFlags, bandColor, proClass, keptTypes } from './profile.js?v=20261031175712';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261031175712';
 const BOARD = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -21,7 +21,7 @@ function row(r, i, value) {
   const top = (side) => (r.openings || []).filter((o) => o.side === side).sort((a, b) => b.n - a.n)[0];
   const w = top('w'), bl = top('b'), href = `profile.html?u=${encodeURIComponent(r.name)}`;
   return `<li class="lb-row${i === null ? ' unranked' : ''}"><span class="lb-rank">${i === null ? '–' : i + 1}</span>
-    <a class="lb-card" href="${href}" aria-label="${esc(nick(r.name))}'s profile"><div class="pf-pcard${proClass(r.name)}" style="--band:${bandColor(level(r))}">${flagHtml(r.name)}<div class="pf-pcard-top"><div><b class="pf-ovr">${r.overall ?? '–'}</b><span class="pf-pos">${esc(r.style || '')}</span>${r.strength ? `<span class="pf-str">+ ${esc(r.strength)}</span>` : ''}</div>
+    <a class="lb-card" href="${href}" aria-label="${esc(nick(r.name))}'s profile"><div class="pf-pcard${proClass(r.name)}" style="--band:${bandColor(level(r))}">${flagHtml(r.name)}<span class="pf-site">${isCC(r.name) ? 'Chess.com' : 'Lichess'}</span><div class="pf-pcard-top"><div><b class="pf-ovr">${r.overall ?? '–'}</b><span class="pf-pos">${esc(r.style || '')}</span>${r.strength ? `<span class="pf-str">+ ${esc(r.strength)}</span>` : ''}</div>
       <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(r.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(r.piece || 'n').toUpperCase()}.svg" alt="" title="Most important piece: the ${PIECE[r.piece || 'n']}"><span class="pf-pcard-rating">${r.rating} <small>${esc(r.speed)}</small></span></div></div>
       <p class="pf-pcard-name">${esc(nick(r.name))}</p>
       <div class="pf-pcard-bars">${Object.entries(ABBR).map(([k, a]) => `<div${state.by === k ? ' class="on"' : ''}><span>${a}</span><i style="--v:${r.skills?.[k] ?? 0}%"></i><b>${r.skills?.[k] ?? '–'}</b></div>`).join('')}</div></div></a>

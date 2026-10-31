@@ -2393,3 +2393,6 @@ main.profile:has(#admin) { max-width: 1320px; }
 #profile .pf-acct[aria-current] { background: none; color: var(--hot); }
 #profile .pf-acct[aria-current] small { color: var(--muted); opacity: 1; }
 #profile .pf-accts-more summary { padding: 0 4px; border: 0; color: var(--muted); }
+/* The site the card's rating is from: a tilted sticker on the top edge, after the PRO / VIP tag when there is one */
+.pf-site { position: absolute; top: -13px; left: 14px; z-index: 2; padding: 4px 11px 3px; border: 3px solid #fff; border-radius: 999px; background: #141414; color: #f4efe6; font: 400 13px/1 var(--font-poster); letter-spacing: .1em; text-transform: uppercase; transform: rotate(-4deg); box-shadow: 0 3px 8px rgb(0 0 0 / .3); pointer-events: none; }
+.pf-pcard.pro .pf-site, .pf-pcard.vip .pf-site { left: 70px; }

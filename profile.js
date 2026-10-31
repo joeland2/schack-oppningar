@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031175122';
-import { STYLE_OF } from './styles.js?v=20261031175122';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031175122';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031175712';
+import { STYLE_OF } from './styles.js?v=20261031175712';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031175712';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1103,17 +1103,19 @@ async function loadFlags(names) {
 }
 // The flag as an image for the downloaded cards (null without one).
 const flagImage = (name) => { const c = FLAGS.get(String(name).toLowerCase()); return c ? new Promise((ok) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => ok(im); im.onerror = () => ok(null); im.src = flagSrc(c); }) : Promise.resolve(null); };
+// The site the rating is from, as a sticker on the card's top edge, so 1221 on Lichess is not read as Chess.com.
+const siteTag = (name) => `<span class="pf-site">${isCC(name) ? 'Chess.com' : 'Lichess'}</span>`;
 function playerCard(name, p, t, skills) {
   const known = skills.filter((x) => x.v !== null);
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
   const main = p.speeds[0];
-  return `<div class="pf-pcard${proClass(name)}" style="--band:${bandColor(level(name, main))}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}
+  return `<div class="pf-pcard${proClass(name)}" style="--band:${bandColor(level(name, main))}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}${siteTag(name)}
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span>${t[1] ? `<span class="pf-str">+ ${esc(t[1].name)}</span>` : ''}</div>
       <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title=""${esc(nick(name))}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'chosen' ? `chosen by ${esc(nick(name))}` : p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
         ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
     <p class="pf-pcard-name">${esc(nick(name))}</p>
     ${cardBars(skills.map((x) => [ABBR[x.label], x.v]))}
-    <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES${isCC(name) ? ' · CHESS.COM' : ''}</p>
+    <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
   </div>`;
 }
 // Where a rating ranks among all Lichess players of that time control this week: "Top 27%".
@@ -1166,6 +1168,15 @@ function drawCard(ctx, x, y, name, p, t, skills, piece, flag = null) {
     ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 7;
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(-52, -38, 104, 76, 10); ctx.fill(); ctx.shadowColor = 'transparent';
     ctx.beginPath(); ctx.roundRect(-46, -32, 92, 64, 5); ctx.clip(); ctx.drawImage(flag, -46, -32, 92, 64); ctx.restore();
+  }
+  { // the site sticker on the top edge, after the PRO tag on a pro's card (as .pf-site)
+    const label = (isCC(name) ? 'Chess.com' : 'Lichess').toUpperCase();
+    ctx.save(); ctx.font = '400 26px Anton'; ctx.letterSpacing = '2px'; const w = ctx.measureText(label).width + 40;
+    ctx.translate((proKind(name) ? 140 : 36) + w / 2, 2); ctx.rotate(-4 * Math.PI / 180);
+    ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 5;
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(-w / 2 - 6, -26, w + 12, 52, 26); ctx.fill(); ctx.shadowColor = 'transparent';
+    ctx.fillStyle = '#141414'; ctx.beginPath(); ctx.roundRect(-w / 2, -20, w, 40, 20); ctx.fill();
+    ctx.fillStyle = '#f4efe6'; ctx.textAlign = 'center'; ctx.fillText(label, 1, 10); ctx.restore();
   }
   if (main) {
     ctx.textAlign = 'right'; ctx.font = '400 26px Anton'; ctx.fillStyle = CARD.muted; const sp = main.speed.toUpperCase(); ctx.fillText(sp, 560, 232);
