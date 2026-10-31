@@ -64,14 +64,16 @@ export async function fetchCC(name, onGame, since, perf, max) {
   if (res.status === 404) throw new Error(`Chess.com has no player called ${nick(name)}.`);
   if (res.status === 429) throw new Error('Chess.com is busy right now. Try again in a minute.');
   if (!res.ok) throw new Error(`Chess.com answered with an error (${res.status}).`);
-  const months = ((await res.json()).archives || []).reverse(), names = await openingNames(), games = [];
+  // chess.com now and then answers with an empty body: a month that cannot be read is skipped.
+  const list = await res.json().catch(() => null);
+  if (!list) throw new Error('Chess.com did not answer properly. Try again in a minute.');
+  const months = (list.archives || []).reverse(), names = await openingNames(), games = [];
   for (const url of months) {
     if (games.length >= max) break;
     const [y, mo] = url.split('/').slice(-2).map(Number);
     if (since && Date.UTC(y, mo, 1) < since) break; // the month ended before the newest game kept
-    const r = await fetch(url);
-    if (!r.ok) continue;
-    for (const g of ((await r.json()).games || []).reverse()) {
+    const month = await fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    for (const g of (month?.games || []).reverse()) {
       if (games.length >= max) break;
       if (!g.rated || g.rules !== 'chess' || !want.has(g.time_class) || !g.pgn || (since && g.end_time * 1000 < since)) continue;
       games.push(convert(g, names)); onGame(games.length, games);
