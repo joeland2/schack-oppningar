@@ -2406,3 +2406,15 @@ main.profile:has(#admin) { max-width: 1320px; }
   .ad-visitor summary > :nth-child(3), .ad-visitor summary > :nth-child(4), .ad-visitor summary > :nth-child(5) { order: 3; font-size: 12px; color: var(--muted); }
   .ad-visitor summary > :nth-child(3):not(:has(a)) { display: none; }
 }
+/* The line's end as a scoreboard: the score, its bar, how it compares, Stockfish and the next move */
+.go-score { display: flex; align-items: baseline; gap: 12px; }
+.go-score b { font: 400 56px/1 var(--font-poster); color: var(--good); font-variant-numeric: tabular-nums; }
+.go-score b.low { color: var(--hot); }
+.go-score span { color: var(--muted); font-size: 13px; line-height: 1.3; max-width: 22ch; }
+.go-sum .wdl { margin-top: 4px; }
+.go-vs { font-size: 14px; }
+.go-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px !important; }
+.go-sf { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; }
+.go-move { border-left: 3px solid var(--hot); padding: 2px 0 2px 10px; font-size: 14px; }
+.go-why summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 4px 0; }
+.go-why[open] summary { margin-bottom: 6px; }

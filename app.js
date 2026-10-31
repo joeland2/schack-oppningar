@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261031181215';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261031181215';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261031181215';
-import { NAMED_TRAPS } from './traps.js?v=20261031181215';
-import { GUIDE } from './guide.js?v=20261031181215';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261031181215';
-import { maia3Move } from './maia3.js?v=20261031181215';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261031181215';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261031181215';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261031181215';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261031181215';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261031182942';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261031182942';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261031182942';
+import { NAMED_TRAPS } from './traps.js?v=20261031182942';
+import { GUIDE } from './guide.js?v=20261031182942';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261031182942';
+import { maia3Move } from './maia3.js?v=20261031182942';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261031182942';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261031182942';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261031182942';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261031182942';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1262,7 +1262,7 @@ function askGo() {
   // Every way on is here, Next line first, so nothing outside the card is needed.
   const done = mode === 'try' && !misses && !assisted ? 'Line cleared' : mode === 'try' ? 'Line done' : 'Line learned';
   // What the line gave you before the choice: where you stand at your level, and where to take the game.
-  const sum = `<div class="go-sum"><p class="go-k">Where you stand</p>${lineFacts()}${lineWhy()}</div>`;
+  const sum = `<div class="go-sum">${lineScore()}<details class="go-why"><summary>Why, and where to take the game</summary>${lineWhy()}</details></div>`;
   $('#go-ask').innerHTML = `<div class="depth-card go-card" role="dialog" aria-labelledby="go-title"><button type="button" class="go-close" data-go="close" aria-label="Close and see the board">×</button><p class="depth-k go-k-${done === 'Line cleared' ? 'gold' : done === 'Line learned' ? 'green' : 'plain'}">${done}</p><p class="depth-q" id="go-title">${lineName(lines[lineIdx])}</p>${sum}<p class="go-ask-q">How do you want to go on?</p>
     <button type="button" class="cta go-next" data-go="next">${$('#restart').textContent}<small>${$('#restart').textContent === 'Try again' ? 'this line once more, from memory, to clear it' : mode === 'try' ? 'the next line to practise' : 'learn the next line, with arrows'}</small></button>
     <div class="go-grid" role="group" aria-label="Or go on with this line">
@@ -1425,7 +1425,6 @@ function resultsAt(moves) {
   const win = cur.side === 'w' ? whiteWin : 1 - whiteWin - draw;
   return { n, win, draw, loss: 1 - win - draw };
 }
-// The facts box at the end of a line: how games at your level went from the last position with enough games.
 // Results at your level from the line's end (or the last position of it with enough games).
 function endResults() {
   let k = line.length, r = null;
@@ -1438,11 +1437,22 @@ function learnedFacts() {
   const l = lines[lineIdx], mine = Math.ceil(l.moves.length / 2), t = l.trap;
   return `<p class="done-learned">You know ${plural(mine, 'move')} of this line${t ? `, and how to punish ${trapMove(t)}` : ''}.</p>`;
 }
-function lineFacts() {
+
+// The line's end as a scoreboard: your score from here (a draw counts half) against the opening's own
+// average at your level, so a line that scores below it reads as a warning, not a win. Then the
+// win/draw/loss bar, Stockfish's verdict and the move to play next.
+function lineScore() {
   const r = endResults();
   if (!r) return '';
-  const cell = (v, label) => `<div><b>${v}</b><span>${label}</span></div>`;
-  return `<div class="facts" aria-label="From here at your level">${cell(pct(r.win), 'you win')}${cell(pct(r.draw), 'draws')}${cell(pct(r.loss), 'you lose')}${cell(r.n.toLocaleString('en'), 'games at your level')}</div>`;
+  const score = r.win + r.draw / 2, o = resultsAt(cur.root.split(' ')), avg = o && o.win + o.draw / 2;
+  const vs = avg == null ? '' : score < avg - 0.03 ? `Below the ${pct(avg)} this opening scores. Opponents do well here, so knowing the next moves matters most.`
+    : score > avg + 0.03 ? `Above the ${pct(avg)} this opening scores on average.` : `About what this opening scores on average (${pct(avg)}).`;
+  const e = EVALS.get(evalKey(game.fen())), cp = e && game.turn() === cur.side ? toCp(e) : null;
+  const sf = cp == null ? '' : cp >= 80 ? 'clearly better for you' : cp >= 30 ? 'a little better for you' : cp > -30 ? 'equal' : cp > -100 ? `a small edge for ${sideName(cur.side === 'w' ? 'b' : 'w')}` : `better for ${sideName(cur.side === 'w' ? 'b' : 'w')}`;
+  const next = game.turn() === cur.side ? lineTips()[0] : null;
+  return `<div class="go-score"><b class="${avg != null && score < avg - 0.03 ? 'low' : ''}">${pct(score)}</b><span>your score from here, in ${plural(r.n, 'game')} at your level</span></div>
+    ${wdl({ win: r.win, draw: r.draw }, 'w')}${vs ? `<p class="go-vs">${vs}</p>` : ''}
+    ${sf || next ? `<p class="go-tags">${sf ? `<span class="go-sf">Stockfish: ${sf}</span>` : ''}${next ? `<span class="go-move">Next: <b>${next.move.san}</b></span>` : ''}</p>` : ''}`;
 }
 
 // The end of the line, read off the board: development, kings, material and open files, for both sides.

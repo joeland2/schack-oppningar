@@ -1,7 +1,7 @@
 // Play styles: every style and strength a card can show, what it means, how the card reads it from
 // the games, and the leaderboard's players who have it. ?s= and ?t= mark the visitor's own (from the profile).
-import { TYPE_ABOUT, flagHtml, loadFlags, proClass, keptTypes } from './profile.js?v=20261031181215';
-import { nick } from './chesscom.js?v=20261031181215';
+import { TYPE_ABOUT, flagHtml, loadFlags, proClass, keptTypes } from './profile.js?v=20261031182942';
+import { nick } from './chesscom.js?v=20261031182942';
 
 const BOARD = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard';
 const $ = (s) => document.querySelector(s);
