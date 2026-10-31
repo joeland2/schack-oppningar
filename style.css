@@ -2443,3 +2443,5 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-trend-pick { flex-wrap: wrap; }
 .pf-trend .pf-line circle { fill: var(--data); }
 .pf-link-note { flex-basis: 100%; font-size: 12px; }
+.pf-pcard-rating2 { display: block; margin-top: 3px; font: 400 15px/1 var(--font-poster); letter-spacing: .02em; text-align: right; opacity: .8; }
+.pf-pcard-rating2 small { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }

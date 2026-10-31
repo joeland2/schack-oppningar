@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031190229';
-import { STYLE_OF } from './styles.js?v=20261031190229';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031190229';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031190826';
+import { STYLE_OF } from './styles.js?v=20261031190826';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031190826';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1161,7 +1161,7 @@ function playerCard(name, p, t, skills) {
   return `<div class="pf-pcard${proClass(name)}" style="--band:${bandColor(level(name, main))}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}${siteTag(name)}
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span>${t[1] ? `<span class="pf-str">+ ${esc(t[1].name)}</span>` : ''}</div>
       <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title=""${esc(nick(name))}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'chosen' ? `chosen by ${esc(nick(name))}` : p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
-        ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
+        ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}${p.also ? `<span class="pf-pcard-rating2">${p.also.rating} <small>${p.also.site}</small></span>` : ''}</div></div>
     <p class="pf-pcard-name">${esc(nick(name))}</p>
     ${cardBars(skills.map((x) => [ABBR[x.label], x.v]))}
     <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
@@ -1229,7 +1229,9 @@ function drawCard(ctx, x, y, name, p, t, skills, piece, flag = null) {
   }
   if (main) {
     ctx.textAlign = 'right'; ctx.font = '400 26px Anton'; ctx.fillStyle = CARD.muted; const sp = main.speed.toUpperCase(); ctx.fillText(sp, 560, 232);
-    const w = ctx.measureText(sp).width; ctx.font = '400 52px Anton'; ctx.fillStyle = CARD.ink; ctx.fillText(String(main.rating), 560 - w - 10, 232); ctx.textAlign = 'left';
+    const w = ctx.measureText(sp).width; ctx.font = '400 52px Anton'; ctx.fillStyle = CARD.ink; ctx.fillText(String(main.rating), 560 - w - 10, 232);
+    if (p.also) { ctx.font = '400 22px Anton'; ctx.fillStyle = CARD.muted; const s2 = p.also.site.toUpperCase(); ctx.fillText(s2, 560, 268); const w2 = ctx.measureText(s2).width; ctx.font = '400 32px Anton'; ctx.fillStyle = CARD.ink; ctx.fillText(String(p.also.rating), 560 - w2 - 8, 268); }
+    ctx.textAlign = 'left';
   }
   ctx.fillStyle = CARD.line; ctx.fillRect(40, 292, 520, 2); ctx.fillRect(40, 392, 520, 2);
   ctx.fillStyle = CARD.ink; ctx.textAlign = 'center'; fit(ctx, nick(name).toUpperCase(), '400 #px Anton', 60, 520); ctx.fillText(nick(name).toUpperCase(), 300, 366); ctx.textAlign = 'left';
@@ -1953,6 +1955,9 @@ async function combined(name) {
     const who = games.some((g) => g.acct === owner && g.speed === x.speed) ? owner : most(x.speed), gs = games.filter((g) => g.acct === who && g.speed === x.speed);
     Object.assign(x, { rating: gs[0].rating + gs[0].diff, change: gs[0].rating + gs[0].diff - gs.at(-1).rating });
   }
+  // The other site's rating too, never mixed in: its switched-on account with the most games in the main time control.
+  const sp0 = full.speeds[0].speed, other = on.filter((n) => isCC(n) !== isCC(owner)).map((n) => games.filter((g) => g.acct === n && g.speed === sp0)).filter((gs) => gs.length).sort((a, b) => b.length - a.length)[0];
+  full.also = other ? { site: siteOf(other[0].acct), rating: other[0].rating + other[0].diff } : null;
   full.type = typeOf(full);
   comboGames = games;
   render(owner, Date.now(), full);
