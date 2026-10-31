@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031133914';
-import { STYLE_OF } from './styles.js?v=20261031133914';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031133914';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031134102';
+import { STYLE_OF } from './styles.js?v=20261031134102';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031134102';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1561,7 +1561,7 @@ function opponentsCard(p, me, name) {
   const worst = rows[0], best = rows.at(-1);
   return `<section class="pf-card pf-opps"><h2>Who ${me ? 'you struggle' : 'they struggle'} against</h2>
     <p class="info">${worst.gain <= -0.04 ? `${who} struggle${me ? '' : 's'} most against <b>${worst.name.toLowerCase()}</b>: ${pct(worst.score)} in ${worst.n} games, ${pts(worst)}.` : `No kind of opponent gives ${me ? 'you' : 'them'} trouble: the results are close to what the ratings predict, or better.`}${best !== worst && best.gain >= 0.04 ? ` Best against <b>${best.name.toLowerCase()}</b>: ${pts(best)}.` : ''}</p>
-    <ul class="pf-rows">${rows.map((x) => `<li><span>${x.name} <small>${me ? x.about : x.about.replace(/\byou\b/, 'them')}</small></span><small>${x.n} games · ${pct(x.score)} · <b class="${x.gain <= -0.04 ? 'pf-bad' : x.gain >= 0.04 ? 'pf-good' : ''}">${x.gain >= 0 ? '+' : '−'}${Math.abs(Math.round(x.gain * 100))}</b> vs expected</small></li>`).join('')}</ul>
+    <ul class="pf-rows pf-opp-rows"><li class="pf-opp-head" aria-hidden="true"><span></span><small>Games</small><small>Score</small><small>vs expected</small></li>${rows.map((x) => `<li><span>${x.name} <small>${me ? x.about : x.about.replace(/\byou\b/, 'them')}</small></span><small><span class="visually-hidden">${x.n} games</span><span aria-hidden="true">${x.n}</span></small><small>${pct(x.score)}</small><b class="${x.gain <= -0.04 ? 'pf-bad' : x.gain >= 0.04 ? 'pf-good' : ''}">${({ 1: '+', '-1': '−', 0: '±' })[Math.sign(Math.round(x.gain * 100))]}${Math.abs(Math.round(x.gain * 100))}<span class="visually-hidden"> vs expected</span></b></li>`).join('')}</ul>
     <p class="pf-skill-scale">Points per 100 games against what the rating gaps predict. A game can count in more than one group; groups with fewer than 10 games are left out.</p></section>`;
 }
 function starsCard() {
