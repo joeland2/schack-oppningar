@@ -2469,9 +2469,11 @@ main.profile:has(#admin) { max-width: 1320px; }
 #profile .pf-seg a[aria-current="true"] { background: var(--ink); color: var(--bg); }
 .pf-ago { margin: 10px 0 0; font: 600 13px var(--font-body); color: var(--muted); text-align: center; }
 #profile .pf-ago a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; padding: 6px 2px; }
-/* Admin's sections do not fit one phone row: they scroll sideways instead, Admin last */
+/* Admin on phones: a chart icon, and the sections a little smaller, so all six still fit one row */
+.nav-admin .narrow-only { display: none; }
 @media (max-width: 560px) {
-  .top-nav:has(.nav-admin) { overflow-x: auto; scrollbar-width: none; justify-content: flex-start; }
-  .top-nav:has(.nav-admin)::-webkit-scrollbar { display: none; }
-  .top-nav:has(.nav-admin) a { flex: 0 0 auto; padding-inline: 8px; }
+  .nav-admin .wide-only { display: none; }
+  .nav-admin .narrow-only { display: block; width: 20px; height: 20px; }
+  .top-nav:has(.nav-admin) a { font-size: clamp(13px, 4vw, 17px); padding-inline: 4px; }
+  .top-nav .nav-admin { flex: 0 0 auto; display: grid; place-items: center; padding-inline: 8px; }
 }
