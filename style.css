@@ -2268,3 +2268,7 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-peek p { margin: 4px 0 0; }
 .pf-peek .r-W { color: #226039; } .pf-peek .r-L { color: #b42318; } .pf-peek .r-D { color: #62594c; }
 .pf-peek.as-b .r-W { color: #5fc48a; } .pf-peek.as-b .r-L { color: #ff6b6b; } .pf-peek.as-b .r-D { color: #a8a093; }
+/* How it ended, as a stamp on the card's top edge in the colour opposite the card */
+.pf-peek-end { position: absolute; top: -14px; left: 12px; display: flex; align-items: center; gap: 5px; padding: 4px 10px 4px 7px; border: 3px solid #fff; border-radius: 99px; background: #141414; color: #fff; font: 400 14px/1 var(--font-poster); letter-spacing: .03em; text-transform: uppercase; box-shadow: 0 4px 8px rgb(0 0 0 / .35); transform: rotate(-4deg); }
+.pf-peek.as-b .pf-peek-end { background: #f4efe6; color: #141414; }
+.pf-peek-end .ico { width: 15px; height: 15px; }

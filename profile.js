@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031160704';
-import { STYLE_OF } from './styles.js?v=20261031160704';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031160704';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031161304';
+import { STYLE_OF } from './styles.js?v=20261031161304';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031161304';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1588,16 +1588,17 @@ function leadStory(name, p, skills, me) {
 }
 // Hovering one of the last ten: the final position, seen from this player's side, with the colour and the opening.
 const PEEK = new Map();
-const ENDING = { W: { mate: 'by checkmate', resign: 'by resignation', outoftime: 'on time', timeout: 'on time' },
-  L: { mate: 'to checkmate', resign: 'by resigning', outoftime: 'on time', timeout: 'on time' }, D: { stalemate: 'by stalemate' } };
+// How the game ended, as a sticker on the card's edge: [word, icon path]
+const KING = 'M12 2v4M10 4h4M7 21h10M8 21l-1-8h10l-1 8M7 13c-2-3 0-6 5-5 5-1 7 2 5 5', CLOCK = 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l3 2M9 2h6';
+const ENDING = { mate: ['Checkmate', KING], stalemate: ['Stalemate', KING], resign: ['Resigned', 'M5 21V4M5 4h11l-2 4 2 4H5'], outoftime: ['On time', CLOCK], timeout: ['On time', CLOCK] };
 function peekCard(a) {
   const { g, me, res } = PEEK.get(a.dataset.peek), white = g.players.white.user?.id === me, c = new Chess();
   for (const m of (g.moves || '').split(' ').filter(Boolean)) { try { c.move(m); } catch { break; } }
   const rows = c.board(), order = (xs) => (white ? xs : [...xs].reverse());
   const sqs = order(rows).map((row, r) => order(row).map((p, f) => `<i class="${(r + f) % 2 ? 'd' : 'l'}">${p ? `<img src="pieces/${p.color}${p.type.toUpperCase()}.svg" alt="">` : ''}</i>`).join('')).join('');
   const opp = nick(g.players[white ? 'black' : 'white'].user?.id || 'anonymous');
-  const [fam, line] = (g.opening?.name || 'Opening unknown').split(/:\s*/);
-  return `<div class="pf-peek-board">${sqs}</div><b class="pf-peek-op">${esc(fam)}</b><small>${esc(line || '')}&nbsp;</small><p><b class="r-${res}">${{ W: 'Won', L: 'Lost', D: 'Drew' }[res]}</b>${ENDING[res][g.status] ? ` ${ENDING[res][g.status]}` : ''} vs ${esc(opp)}</p>`;
+  const [fam, line] = (g.opening?.name || 'Opening unknown').split(/:\s*/), end = ENDING[g.status];
+  return `<div class="pf-peek-board">${sqs}</div><b class="pf-peek-op">${esc(fam)}</b><small>${esc(line || '')}&nbsp;</small><p><b class="r-${res}">${{ W: 'Won', L: 'Lost', D: 'Drew' }[res]}</b> vs ${esc(opp)}</p>${end ? `<span class="pf-peek-end"><svg class="ico" viewBox="0 0 24 24"><path d="${end[1]}"/></svg>${end[0]}</span>` : ''}`;
 }
 function showPeek(e) {
   const a = e.target.closest?.('a[data-peek]');
