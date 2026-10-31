@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031193717';
-import { STYLE_OF } from './styles.js?v=20261031193717';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031193717';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031195251';
+import { STYLE_OF } from './styles.js?v=20261031195251';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031195251';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1531,8 +1531,7 @@ function trendCard(full) {
   };
   const n = pts[0].from + TREND.win, day = (t) => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   el.innerHTML = `<div class="pf-chart-head">${head}<p class="pf-tr-span"><b>Last ${n} games</b> · ${day(games[n - 1].at)} – ${day(games[0].at)} · each point is ${TREND.win} games in a row</p></div>
-    <div class="pf-tr-rows"><div class="pf-tr-row pf-tr-hdr"><span>Skill</span><span>Over these ${n} games</span><span>Now</span><span>Change</span></div>${names.map(row).join('')}</div>
-    <p class="info pf-note">Each point is ${me ? 'your' : 'their'} card worked out from ${TREND.win} games in a row. Red: the low. Green: the high. The last dot is ${me ? 'your' : 'their'} card now; Change is against the first.</p>`;
+    <div class="pf-tr-rows"><div class="pf-tr-row pf-tr-hdr"><span>Skill</span><span>Over these ${n} games</span><span>Now</span><span>Change</span></div>${names.map(row).join('')}</div>`;
 }
 let shownP = null;
 function render(name, at, full) {
