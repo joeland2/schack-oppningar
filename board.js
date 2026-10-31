@@ -10,6 +10,9 @@ const BOOK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c3-1.5 5.
 // arrows: several [from, to, colour] at once (e.g. every move you are offered).
 export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint = [], wrong = null, arrow = null, arrows = [], mark = null, dests = null, pre = [] } = {}) {
   planAnim(el, game, side);
+  const fen = game.fen();
+  if (el._fen && el._fen !== fen) el._shapes = []; // as on Lichess, drawn shapes go once a move is played
+  el._fen = fen;
   const targets = sel ? dests || game.moves({ square: sel, verbose: true }).map((m) => m.to) : [];
   let html = '';
   for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {

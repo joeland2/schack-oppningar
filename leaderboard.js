@@ -1,6 +1,6 @@
 // The leaderboard: everyone logged in here with Lichess who has opened their profile (see the profile), ranked within a time control
 // and a rating band, by the card's overall number or one of its skills.
-import { flagHtml, loadFlags, bandColor, proClass, keptTypes } from './profile.js?v=20261031122506';
+import { flagHtml, loadFlags, bandColor, proClass, keptTypes } from './profile.js?v=20261031133428';
 const BOARD = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/leaderboard';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
