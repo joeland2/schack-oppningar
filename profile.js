@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031155952';
-import { STYLE_OF } from './styles.js?v=20261031155952';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031155952';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031160430';
+import { STYLE_OF } from './styles.js?v=20261031160430';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031160430';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1594,14 +1594,17 @@ function peekCard(a) {
   const rows = c.board(), order = (xs) => (white ? xs : [...xs].reverse());
   const sqs = order(rows).map((row, r) => order(row).map((p, f) => `<i class="${(r + f) % 2 ? 'd' : 'l'}">${p ? `<img src="pieces/${p.color}${p.type.toUpperCase()}.svg" alt="">` : ''}</i>`).join('')).join('');
   const opp = nick(g.players[white ? 'black' : 'white'].user?.id || 'anonymous');
-  return `<div class="pf-peek-board">${sqs}</div><p><b>${{ W: 'Won', L: 'Lost', D: 'Drew' }[res]}</b> as <i class="pf-side ${white ? 'w' : 'b'}"></i> ${white ? 'White' : 'Black'} vs ${esc(opp)}</p><small title="${esc(g.opening?.name || '')}">${esc(g.opening?.name || 'Opening unknown')}</small>`;
+  const [fam, line] = (g.opening?.name || 'Opening unknown').split(/:\s*/);
+  return `<div class="pf-peek-board">${sqs}</div><b class="pf-peek-op">${esc(fam)}</b><small>${esc(line || '')}&nbsp;</small><p><b class="r-${res}">${{ W: 'Won', L: 'Lost', D: 'Drew' }[res]}</b> vs ${esc(opp)}</p>`;
 }
 function showPeek(e) {
   const a = e.target.closest?.('a[data-peek]');
   let el = document.getElementById('pf-peek');
   if (!a || !PEEK.has(a.dataset.peek)) { if (el) el.hidden = true; return; }
   if (!el) { el = Object.assign(document.createElement('div'), { id: 'pf-peek', className: 'pf-peek' }); el.setAttribute('aria-hidden', 'true'); document.body.append(el); }
+  const { g, me } = PEEK.get(a.dataset.peek);
   el.innerHTML = peekCard(a); el.hidden = false;
+  el.classList.toggle('as-b', g.players.white.user?.id !== me); // the card is the colour this player had
   const r = a.getBoundingClientRect(), w = el.offsetWidth;
   el.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + scrollX}px`;
   el.style.top = `${a.closest('.pf-form-row').getBoundingClientRect().top - el.offsetHeight - 8 + scrollY}px`; // above the row, so the dates and the row stay in view

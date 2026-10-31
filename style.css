@@ -2255,13 +2255,16 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-verdict.good { background: color-mix(in srgb, var(--good) 20%, transparent); color: var(--good); }
 .pf-opps .pf-skill-scale { margin: 14px 0 0; color: var(--muted); font-size: 12px; max-width: 720px; }
 
-/* The hover card over one of the last ten games */
-.pf-peek { position: absolute; z-index: 50; width: 220px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); box-shadow: 0 8px 24px rgb(0 0 0 / .35); pointer-events: none; font-size: 13px; }
+/* The hover card over one of the last ten games: the final position, the opening as its title, the result; cream if they had White, black if Black */
+.pf-peek { position: absolute; z-index: 50; width: 220px; padding: 8px; border-radius: 6px; background: #f4efe6; color: #141414; box-shadow: 0 8px 24px rgb(0 0 0 / .4); pointer-events: none; font-size: 13px; }
+.pf-peek.as-b { background: #141414; color: #f4efe6; border: 1px solid #3a352f; }
 .pf-peek-board { display: grid; grid-template-columns: repeat(8, 1fr); aspect-ratio: 1; border-radius: 3px; overflow: hidden; }
 .pf-peek-board i { display: block; aspect-ratio: 1; }
 .pf-peek-board i.l { background: #f0d9b5; } .pf-peek-board i.d { background: #b58863; }
 .pf-peek-board img { display: block; width: 100%; height: 100%; }
-.pf-peek p, .pf-peek small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* one line each, so every card is the same size */
-.pf-peek p { margin: 8px 0 2px; line-height: 1.35; }
-.pf-peek p .pf-side { vertical-align: -1px; margin: 0 2px; }
-.pf-peek small { color: var(--muted); font-size: 12px; }
+.pf-peek-op, .pf-peek small, .pf-peek p { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* one line each, so every card is the same size */
+.pf-peek-op { margin-top: 8px; font: 400 18px/1.1 var(--font-poster); text-transform: uppercase; }
+.pf-peek small { font-size: 12px; color: #62594c; } .pf-peek.as-b small { color: #a8a093; }
+.pf-peek p { margin: 4px 0 0; }
+.pf-peek .r-W { color: #226039; } .pf-peek .r-L { color: #b42318; } .pf-peek .r-D { color: #62594c; }
+.pf-peek.as-b .r-W { color: #5fc48a; } .pf-peek.as-b .r-L { color: #ff6b6b; } .pf-peek.as-b .r-D { color: #a8a093; }
