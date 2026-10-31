@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261031171529';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261031171529';
+import { account, login, finishLogin } from './lichess.js?v=20261031171941';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261031171941';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -119,19 +119,23 @@ const ease = (vs, k) => vs.map((_, i) => { const w = vs.slice(Math.max(0, i - k)
 const SMOOTH = () => (span === 30 ? 3 : span === 7 ? 1 : 0); // hours on each side
 function visitorLine(ds) {
   const sv = { visitors: ease(ds.map((d) => d.visitors), SMOOTH()), fresh: ease(ds.map((d) => d.fresh), SMOOTH()), back: ease(ds.map((d) => Math.max(0, d.visitors - d.fresh)), SMOOTH()) };
-  const top = Math.max(1, Math.ceil(Math.max(...sv.visitors))), x = (i) => (i / (ds.length - 1)) * W, y = (v) => H - (v / top) * (H - 10);
+  // The scale: a round step with about four lines up to just above the highest point, each line numbered on the left.
+  const high = Math.max(1, ...sv.visitors), p = 10 ** Math.floor(Math.log10(high / 4 || 1)), f = high / 4 / p;
+  const step = Math.max(1, (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p), top = Math.ceil(high / step) * step;
+  ds.top = top;
+  const x = (i) => (i / (ds.length - 1)) * W, y = (v) => H - (v / top) * (H - 10);
   const pts = (k) => sv[k].map((v, i) => [x(i), y(v)]);
   ds.forEach((d, i) => { d.drawn = sv.visitors[i]; }); // where the hover dot sits
   const at = new Map(ds.map((d, i) => [d.key, i]));
   const marks = notes().map((nt, k) => [nt, at.get(noteKey(nt.t)), k]).filter(([, i]) => i !== undefined);
-  return `<svg class="ad-line" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Visitors ${hourly() ? `per hour over ${ds.length} hours` : `per day over ${ds.length} days`}: ${ds.reduce((t, d) => t + d.fresh, 0)} new">
-    <line class="ad-axis" x1="0" y1="${H}" x2="${W}" y2="${H}"></line>
+  return `<svg class="ad-line" viewBox="-34 0 ${W + 34} ${H + 22}" role="img" aria-label="Visitors ${hourly() ? `per hour over ${ds.length} hours` : `per day over ${ds.length} days`}: ${ds.reduce((t, d) => t + d.fresh, 0)} new">
+    ${Array.from({ length: top / step + 1 }, (_, k) => k * step).map((v) => `<line class="${v ? 'ad-grid' : 'ad-axis'}" x1="0" y1="${y(v)}" x2="${W}" y2="${y(v)}"></line><text class="ad-tick" x="-8" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
     ${span === 7 || span === 30 ? ds.map((d, i) => { const date = new Date(d.key.slice(0, 10)); // a midnight each day in 1W, each Monday in 1M
       return i && d.key.endsWith(' 00') && x(i) < W - 60 && (span === 7 || date.getDay() === 1) ? `<line class="ad-midnight" x1="${x(i)}" y1="0" x2="${x(i)}" y2="${H}"></line><text x="${x(i) + 4}" y="${H + 16}">${date.toLocaleDateString('en-GB', span === 7 ? { weekday: 'short' } : { day: 'numeric', month: 'short' })}</text>` : ''; }).join('') : ''}
     ${marks.map(([nt, i]) => `<g class="ad-note"><line x1="${x(i)}" y1="6" x2="${x(i)}" y2="${H}"></line><circle cx="${x(i)}" cy="6" r="4"></circle></g>`).join('')}
     <path class="ad-area" d="${curve(pts('fresh'))}L${W},${H}L0,${H}Z"></path><path class="ad-curve" d="${curve(pts('visitors'))}"></path><path class="ad-curve-back" d="${curve(pts('back'))}"></path>
     <line class="ad-cross" x1="0" y1="0" x2="0" y2="${H}" visibility="hidden"></line><circle class="ad-dot" r="4" visibility="hidden"></circle>
-    <text x="0" y="${H + 16}">${span === 'today' ? '00:00' : day(ds[0].key.slice(0, 10))}</text><text x="${W}" y="${H + 16}" text-anchor="end">${hourly() ? 'Now' : 'Today'}</text><text x="4" y="12">${top}</text></svg>
+    <text x="0" y="${H + 16}">${span === 'today' ? '00:00' : day(ds[0].key.slice(0, 10))}</text><text x="${W}" y="${H + 16}" text-anchor="end">${hourly() ? 'Now' : 'Today'}</text></svg>
     <div class="ad-tip" hidden></div>
     <p class="ad-key"><span class="ad-k-line"></span>Visitors <span class="ad-k-area"></span>New (first visit) <span class="ad-k-back"></span>Came back <span class="ad-k-note"></span>Note</p>`;
 }
@@ -139,16 +143,16 @@ function bindLine(body) {
   const ds = spanPoints(body), box = $('#ad-line');
   box.innerHTML = visitorLine(ds);
   const svg = box.querySelector('svg'), cross = svg.querySelector('.ad-cross'), dot = svg.querySelector('.ad-dot'), tip = box.querySelector('.ad-tip');
-  const top = Math.max(1, Math.ceil(Math.max(...ds.map((d) => d.drawn))));
+  const top = ds.top;
   svg.addEventListener('pointermove', (e) => {
-    const r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(ds.length - 1, Math.round(((e.clientX - r.left) / r.width) * (ds.length - 1)))), d = ds[i];
+    const r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(ds.length - 1, Math.round((((e.clientX - r.left) / r.width) * (W + 34) - 34) / W * (ds.length - 1)))), d = ds[i];
     const cx = (i / (ds.length - 1)) * W, cy = H - (d.drawn / top) * (H - 10);
     cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.setAttribute('visibility', 'visible');
     dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('visibility', 'visible');
     const here = notes().filter((nt) => noteKey(nt.t) === d.key);
     tip.hidden = false;
     tip.innerHTML = `<b>${d.label}</b><br>${d.visitors} visitor${d.visitors === 1 ? '' : 's'} · ${d.fresh} new · ${Math.max(0, d.visitors - d.fresh)} came back<br><small>${d.views} page views</small>${here.map((nt) => `<br><span class="ad-tip-note">${esc(nt.text)}</span>`).join('')}`;
-    const px = (cx / W) * r.width;
+    const px = ((cx + 34) / (W + 34)) * r.width; // the numbers on the left take 34 units
     tip.style.left = `${Math.min(Math.max(px, 60), r.width - 60)}px`;
   });
   svg.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.hidden = true; });

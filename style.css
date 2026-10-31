@@ -2359,3 +2359,5 @@ main.profile:has(#admin) { max-width: 1320px; }
 .ad-live-did { display: flex; gap: 8px; align-items: baseline; min-width: 0; color: var(--muted); }
 .ad-live-did time { flex: none; font-variant-numeric: tabular-nums; }
 .ad-live-did .ico { width: 14px; height: 14px; flex: none; align-self: center; }
+.ad-line .ad-grid { stroke: var(--line); stroke-dasharray: 2 4; }
+.ad-line .ad-tick { font-variant-numeric: tabular-nums; }
