@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261031163039';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261031163039';
+import { account, login, finishLogin } from './lichess.js?v=20261031165255';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261031165255';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -260,7 +260,8 @@ function boardHtml(fen, white) {
 const doneBar = (t) => `<span class="ad-done"><i style="--v:${t.runs ? t.done / t.runs : 0}"></i>${pctOf(t.runs ? t.done / t.runs : null)}</span>`;
 const modes = (t) => `<small title="Lines finished in Learn, Practice and Time">L ${t.learn} · P ${t.try} · T ${t.time}</small>`;
 function openingsHtml(s) {
-  if (!(s.openings2 || []).length) return '';
+  if (!(s.openings2 || []).length) return `<section class="pf-card"><div class="ad-head"><h2>Openings practised <small>last 30 days</small></h2></div>
+    <p class="info">Nothing yet. Each line practised is counted from 31 Oct 2026; the table, each opening's lines and the hardest moves fill in as people practise.</p></section>`;
   const row = (t) => `<td class="num">${t.people}</td><td class="num">${t.runs}</td><td>${doneBar(t)}</td><td class="num">${(t.misses / Math.max(1, t.runs)).toFixed(1)}</td>`;
   return `<section class="pf-card"><div class="ad-head"><h2>Openings practised <small>last 30 days</small></h2><small>A run is one go at a line. Click an opening for its lines.</small></div>
     <div class="ad-op-wrap"><table class="ad-op"><thead><tr><th>Opening</th><th>People</th><th>Runs</th><th>Finished</th><th>Mistakes a run</th><th>Finished in</th></tr></thead>
