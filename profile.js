@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031183854';
-import { STYLE_OF } from './styles.js?v=20261031183854';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031183854';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031185023';
+import { STYLE_OF } from './styles.js?v=20261031185023';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031185023';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -890,17 +890,26 @@ function bindAnalyse(name) {
 // ---------- The page ----------
 function cache() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
 const myName = () => account()?.name || (() => { try { return JSON.parse(localStorage.getItem('opening-book-v2-lichess-name')); } catch { return null; } })();
-// Your other site's account, linked on your own profile (this browser only): both read as you, and the
-// byline over the name jumps between them.
-const LINK_KEY = 'opening-book-v2-linked';
-const linkedOf = (name) => { try { return JSON.parse(localStorage.getItem(LINK_KEY))?.[String(name).toLowerCase()] || null; } catch { return null; } };
-function setLink(a, b) {
-  let m = {}; try { m = JSON.parse(localStorage.getItem(LINK_KEY)) || {}; } catch {}
-  for (const k of Object.keys(m)) if ([a, b].some((x) => x && (k === x.toLowerCase() || m[k].toLowerCase() === x.toLowerCase()))) delete m[k];
-  if (a && b) { m[a.toLowerCase()] = b; m[b.toLowerCase()] = a; }
-  try { localStorage.setItem(LINK_KEY, JSON.stringify(m)); } catch {}
+// Your other accounts (Lichess or Chess.com), linked on your own profile in this browser: all read as you,
+// the byline over the name jumps between them, and Combined reads them together, leaving out any you switch off.
+const LINK_KEY = 'opening-book-v2-linked', OFF_KEY = 'opening-book-v2-off';
+const readKept = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+const groupOf = (name) => { const g = readKept(LINK_KEY, {})[String(name).toLowerCase()]; return Array.isArray(g) && g.length > 1 ? g : null; };
+function setGroup(names) {
+  const m = readKept(LINK_KEY, {});
+  for (const n of names) if (names.length > 1) m[n.toLowerCase()] = names; else delete m[n.toLowerCase()];
+  keep(LINK_KEY, m);
 }
-const isMe = (name) => !!myName() && [myName(), linkedOf(myName())].some((x) => x && name.toLowerCase() === x.toLowerCase());
+const linkAccount = (a, b) => setGroup([...(groupOf(a) || [a]), ...(groupOf(b) || [b])].filter((n, i, xs) => xs.findIndex((x) => same(x, n)) === i));
+function unlinkAccount(n) {
+  const rest = (groupOf(n) || []).filter((x) => !same(x, n));
+  setGroup([n]); setGroup(rest); // one left is no group
+}
+const isOff = (n) => readKept(OFF_KEY, []).includes(n.toLowerCase());
+const setOff = (n, off) => keep(OFF_KEY, [...readKept(OFF_KEY, []).filter((x) => x !== n.toLowerCase()), ...(off ? [n.toLowerCase()] : [])]);
+const isMe = (name) => !!myName() && (groupOf(myName()) || [myName()]).some((x) => same(x, name));
 // Someone else's profile reads in the third person: "you score" becomes "they score".
 const they = (t) => t.replace(/\b(Y|y)our\b/g, (_, y) => (y === 'Y' ? 'Their' : 'their')).replace(/\b(Y|y)ou\b/g, (_, y) => (y === 'Y' ? 'They' : 'they'));
 console.assert(they('You score 50%; your games, you were') === 'They score 50%; their games, they were', 'they');
@@ -1049,39 +1058,45 @@ const proKind = (name) => (PROS.has(String(name).toLowerCase()) ? 'pro' : VIPS.h
 // Under it, the account's site and the same person's other accounts as buttons, the one shown pressed;
 // each account keeps its own card. Anyone else gets the site alone, so it is always clear which one this is.
 const accountsRow = (name) => {
-  const who = proOf(name), all = Object.entries({ ...PRO_NAMES, ...VIP_NAMES });
-  const others = who ? all.filter(([n, w]) => w === who && n.toLowerCase() !== String(name).toLowerCase()).map(([n]) => n) : [];
-  if (!who && linkedOf(name)) others.push(linkedOf(name));
+  const who = proOf(name), all = Object.entries({ ...PRO_NAMES, ...VIP_NAMES }), group = !who && isMe(name) && groupOf(myName());
+  const others = who ? all.filter(([n, w]) => w === who && !same(n, name)).map(([n]) => n) : group ? group.filter((n) => combo || !same(n, name)) : [];
   if (!others.length) return linkForm(name); // only there to jump between one player's accounts
   const pill = (n, on) => `<a class="pf-acct" data-name="${esc(n)}" href="${profileLink(n)}"${on ? ' aria-current="page"' : ''}><small>${siteOf(n)}</small>${esc(nick(n))}</a>`;
-  const unlink = !who && isMe(name) ? '<button type="button" class="link pf-unlink" data-unlink>Unlink</button>' : '';
-  return `<nav class="pf-accts" aria-label="${others.length ? 'Their accounts' : 'Site'}">${[pill(name, true), ...others.map((n) => pill(n, false))].join('')}<details class="pf-accts-more" hidden><summary></summary><div class="pf-accts-menu"></div></details>${unlink}</nav>`;
+  const both = group ? `<a class="pf-acct pf-acct-all" href="${profileLink(myName())}&all=1"${combo ? ' aria-current="page"' : ''}><small>All</small>Combined</a>` : '';
+  return `<nav class="pf-accts" aria-label="${group ? 'Your accounts' : 'Their accounts'}">${[...(combo ? [] : [pill(name, true)]), ...others.map((n) => pill(n, false))].join('')}<details class="pf-accts-more" hidden><summary></summary><div class="pf-accts-menu"></div></details>${both}</nav>`;
 };
-// On your own profile, with no other account linked: add the other site's, by name (no password).
-const linkForm = (name) => (isMe(name) && !proOf(name) ? `<form class="pf-link" data-link><label for="pf-link-in">Play on ${isCC(name) ? 'Lichess' : 'Chess.com'} too?</label>
-  <input id="pf-link-in" name="u" autocomplete="off" spellcheck="false" placeholder="Your ${isCC(name) ? 'Lichess' : 'Chess.com'} name" required><button type="submit" class="ghost">Link</button><span class="pf-link-msg" role="status"></span></form>` : '');
+// On your own profile: add an account on either site, by name (no password).
+const linkForm = (name, open = false) => (isMe(name) && !proOf(name) ? `<form class="pf-link" data-link><label for="pf-link-in">${open ? 'Add an account:' : 'Play on another account too?'}</label>
+  <select name="site" aria-label="Site"><option value="cc"${isCC(name) ? '' : ' selected'}>Chess.com</option><option value="li"${isCC(name) ? ' selected' : ''}>Lichess</option></select>
+  <input id="pf-link-in" name="u" autocomplete="off" spellcheck="false" placeholder="Username" required><button type="submit" class="ghost">Link</button><span class="pf-link-msg" role="status"></span></form>` : '');
+// On Combined: which accounts count, each switched on or off (a game account you play badly on stays out), or unlinked.
+const comboRow = () => `<div class="pf-combo"><p class="pf-combo-k">Counts the games of</p><div class="pf-combo-list">${combo.map((n) => `<span class="pf-combo-acct">
+  <button type="button" data-off="${esc(n)}" aria-pressed="${!isOff(n)}"><i aria-hidden="true"></i><small>${siteOf(n)}</small>${esc(nick(n))}</button>${same(n, myName()) ? '' : `<button type="button" class="link" data-unlink="${esc(n)}" aria-label="Unlink ${esc(nick(n))}" title="Unlink">×</button>`}</span>`).join('')}</div>${linkForm(myName(), true)}</div>`;
 document.addEventListener('submit', async (e) => {
   if (!e.target.matches('[data-link]')) return;
   e.preventDefault();
-  const name = shown?.[0], typed = e.target.u.value.trim().replace(/^cc:/i, ''), msg = e.target.querySelector('.pf-link-msg');
-  if (!name || !typed) return;
+  const typed = e.target.u.value.trim().replace(/^cc:/i, ''), msg = e.target.querySelector('.pf-link-msg'), cc = e.target.site.value === 'cc';
+  if (!shown || !typed) return;
   msg.textContent = 'Checking…';
-  const other = isCC(name) ? typed : `cc:${typed}`;
-  const ok = isCC(other) ? !!(await ccUser(other)) : await fetch(`https://lichess.org/api/user/${encodeURIComponent(typed)}`).then((r) => r.ok).catch(() => false);
+  const other = cc ? `cc:${typed}` : typed;
+  const ok = cc ? !!(await ccUser(other)) : await fetch(`https://lichess.org/api/user/${encodeURIComponent(typed)}`).then((r) => r.ok).catch(() => false);
   if (!ok) { msg.textContent = `No ${siteOf(other)} player called ${typed}.`; return; }
-  setLink(name, other);
-  render(...shown);
+  if ((groupOf(myName()) || [myName()]).some((n) => same(n, other))) { msg.textContent = 'Already linked.'; return; }
+  linkAccount(myName(), other);
+  combo ? combined(myName()) : render(...shown);
 });
 document.addEventListener('click', (e) => {
-  if (!e.target.closest('[data-unlink]') || !shown || !confirm(`Unlink ${siteOf(linkedOf(shown[0]))} · ${nick(linkedOf(shown[0]))} from this profile?`)) return;
-  setLink(shown[0], null);
-  if (!isMe(shown[0])) location.href = profileLink(myName()); else render(...shown);
+  const off = e.target.closest('[data-off]'), un = e.target.closest('[data-unlink]');
+  if (off) { setOff(off.dataset.off, !isOff(off.dataset.off)); return void combined(myName()); }
+  if (!un || !confirm(`Unlink ${siteOf(un.dataset.unlink)} · ${nick(un.dataset.unlink)}?`)) return;
+  unlinkAccount(un.dataset.unlink);
+  groupOf(myName()) ? combined(myName()) : (location.href = profileLink(myName()));
 });
 // One row, never scrolling: the accounts that do not fit (from the end, never the one shown) move to a +N menu.
 function fitAccounts() {
   const nav = $('.pf-accts'), more = nav?.querySelector('.pf-accts-more');
   if (!more) return;
-  const pills = [...nav.querySelectorAll(':scope > .pf-acct')];
+  const pills = [...nav.querySelectorAll(':scope > .pf-acct[data-name]')];
   pills.forEach((x) => { x.hidden = false; });
   more.hidden = true;
   if (nav.scrollWidth <= nav.clientWidth) return;
@@ -1104,7 +1119,7 @@ async function seenOf(names) {
 // The other accounts, the one played on most recently first; then fitted to the row.
 async function arrangeAccounts() {
   fitAccounts();
-  const nav = $('.pf-accts'), pills = nav ? [...nav.querySelectorAll(':scope > .pf-acct')].slice(1) : [];
+  const nav = $('.pf-accts'), pills = nav ? [...nav.querySelectorAll(':scope > .pf-acct[data-name]')].slice(combo ? 0 : 1) : [];
   if (!pills.length) return;
   await seenOf(pills.map((x) => x.dataset.name));
   if (!nav.isConnected) return;
@@ -1437,14 +1452,15 @@ function speedsOf(name, full) {
   }).filter(([, n, all]) => n > 0 || all > 0);
 }
 function forSpeed(name, full, sp) {
-  if (sp === 'all') { full.type = stableType(name, 'all', full); return full; }
+  if (sp === 'all') { shownGames = storedGames(name) ? recordsOf(name, storedGames(name)) : []; full.type = stableType(name, 'all', full); return full; }
   const own = storedGames(speedKey(name, sp)), mixed = storedGames(name);
   const done = new Map(mixed.filter((g) => g.analysis).map((g) => [g.id, g])); // analysed among all the player's games
   // Games played since the time control's own were fetched come in with the player's newest (Refresh and
   // every visit fetch those), so the card always ends on the latest game and rating.
   const newer = own ? mixed.filter((g) => g.speed === sp && g.createdAt > (own[0]?.createdAt || 0)) : [];
   const games = own ? [...newer, ...own].slice(0, MAX).map((g) => (!g.analysis && done.get(g.id)) || g) : mixed;
-  const p = profileOf(recordsOf(name, games).filter((g) => g.speed === sp));
+  shownGames = recordsOf(name, games).filter((g) => g.speed === sp);
+  const p = profileOf(shownGames);
   p.type = stableType(name, sp, p);
   return p;
 }
@@ -1472,14 +1488,53 @@ function speedBar(name, full, sp, avail) {
     `<button type="button" data-pf-speed="${k}" aria-pressed="${k === sp}"${all > n && n < MAX ? ` title="Pick it to fetch the last ${Math.min(MAX, all)} ${k} games (${n} are among the last ${MAX} of all)"` : k === full.speeds[0]?.speed ? ' title="Played most"' : ''}>${k === full.speeds[0]?.speed ? '<i class="pf-speed-star" aria-label="played most">★</i>' : ''}<span>${k === 'all' ? 'All' : k[0].toUpperCase() + k.slice(1)}</span><small>${k === sp ? n : Math.max(n, Math.min(MAX, all))}</small></button>`).join('')}</div>`;
 }
 let shownCode = ''; // render: the card on screen as a short code (cardCode)
+let shownGames = [], trendGames = []; // the games behind the card on screen, newest first
+// How the skills moved: each point reads 100 games in a row, as the card would, moving 25 games at a
+// time from the oldest of the games read to the latest 100. One skill at a time, Overall first.
+const TREND = { win: 100, step: 25 };
+let trendPick = 'Overall';
+function trendOf(games, full) {
+  const pts = [];
+  for (let i = games.length - TREND.win; i > -TREND.step; i -= TREND.step) {
+    const from = Math.max(0, i), sk = fineSkillsOf(profileOf(games.slice(from, from + TREND.win)), full), known = sk.filter((x) => x.v !== null);
+    pts.push({ from, at: games[from].at, v: { Overall: known.length ? Math.round(sum(known, (x) => x.v) / known.length) : null, ...Object.fromEntries(sk.map((x) => [x.label, x.v === null ? null : Math.round(x.v)])) } });
+    if (!from) break;
+  }
+  return pts;
+}
+function trendCard(full) {
+  const el = $('#pf-trend'), games = trendGames;
+  if (!el) return;
+  const me = isMe(shown[0]), head = `<h2>How ${me ? 'your' : 'their'} skills changed</h2>`;
+  if (games.length < TREND.win + TREND.step) { el.innerHTML = `${head}<p class="info">Needs at least ${TREND.win + TREND.step} games: each point reads ${TREND.win} in a row.</p>`; return; }
+  const pts = trendOf(games, full), names = Object.keys(pts[0].v).filter((k) => pts.filter((q) => q.v[k] !== null).length >= 2);
+  if (!names.includes(trendPick)) trendPick = names[0];
+  const draw = () => {
+    const ps = pts.filter((q) => q.v[trendPick] !== null), vs = ps.map((q) => q.v[trendPick]);
+    const W = 760, H = 200, L = 40, R = 16, T = 14, B = 26, lo = Math.floor((Math.min(...vs) - 4) / 5) * 5, hi = Math.ceil((Math.max(...vs) + 4) / 5) * 5;
+    const x = (q) => L + (1 - q.from / pts[0].from) * (W - L - R), y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+    const ticks = [lo, Math.round((lo + hi) / 2), hi], d = vs.at(-1) - vs[0];
+    el.innerHTML = `<div class="pf-chart-head">${head}<div class="pf-seg pf-trend-pick" role="group" aria-label="Skill">${names.map((k) => `<button type="button" data-trend="${k}" aria-pressed="${k === trendPick}">${k}</button>`).join('')}</div></div>
+      <p class="pf-chart-now"><b>${vs.at(-1)}</b> <span class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '+' : '−'}${Math.abs(d)}</span> <small>${trendPick} in ${me ? 'your' : 'their'} latest ${TREND.win} games, against the oldest ${TREND.win} of the last ${ps[0].from + TREND.win}</small></p>
+      <svg class="pf-line" viewBox="0 0 ${W} ${H}" role="img" aria-label="${trendPick} from ${vs[0]} to ${vs.at(-1)} over the last ${pts[0].from + TREND.win} games">
+        ${ticks.map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
+        <text class="ax" x="${L}" y="${H - 6}">${pts[0].from + TREND.win} games ago</text><text class="ax" x="${W - R}" y="${H - 6}" text-anchor="end">Latest ${TREND.win}</text>
+        <path class="ln" d="${ps.map((q, k) => `${k ? 'L' : 'M'}${x(q).toFixed(1)},${y(q.v[trendPick]).toFixed(1)}`).join('')}"/>
+        ${ps.map((q) => `<circle cx="${x(q).toFixed(1)}" cy="${y(q.v[trendPick]).toFixed(1)}" r="4"><title>${trendPick} ${q.v[trendPick]}: games ${q.from + 1}–${q.from + TREND.win} back, to ${fmtDay(q.at)}</title></circle>`).join('')}
+      </svg><p class="info pf-note">Each point reads ${TREND.win} games in a row the way the card does, moving ${TREND.step} games at a time; the right end is ${me ? 'your' : 'their'} card now.</p>`;
+    el.querySelectorAll('[data-trend]').forEach((b) => b.addEventListener('click', () => { trendPick = b.dataset.trend; draw(); }));
+  };
+  draw();
+}
 let shownP = null;
 function render(name, at, full) {
   shown = [name, at, full];
   if (full.n > 0) window.rememberPlayer?.(name);
-  const avail = speedsOf(name, full), main = full.speeds[0]?.speed;
+  const avail = combo ? [] : speedsOf(name, full), main = full.speeds[0]?.speed;
   // A time control with no games read yet has no card of its own: the main one shows until its games come.
   const sp = pfSpeed && (pfSpeed === 'all' || avail.some(([k, n]) => k === pfSpeed && n > 0)) ? pfSpeed : avail.some(([k]) => k === main) ? main : 'all';
-  const p = forSpeed(name, full, sp);
+  const p = combo ? full : forSpeed(name, full, sp);
+  trendGames = combo ? comboGames : shownGames;
   if (sp !== 'all') chartState.speed = sp;
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
   shownCode = cardCode(p, t, skills); // the card as drawn, for the lookup's event
@@ -1487,9 +1542,9 @@ function render(name, at, full) {
   document.title = me ? 'Your Profile' : `${nick(name)} · Profile`;
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
-    ${accountsRow(name)}${nameRow(name)}${proLine(name)}
+    ${accountsRow(name)}${combo ? comboRow() : ''}${nameRow(name)}${proLine(name)}
     <section class="pf-hero">
-      <div class="pf-card-col">${playerCard(name, p, t, skills)}${speedBar(name, full, sp, avail)}${me ? starsStrip() : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
+      <div class="pf-card-col">${playerCard(name, p, t, skills)}${combo ? '' : speedBar(name, full, sp, avail)}${me ? starsStrip() : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
         <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h2 class="pf-h1">${esc(t[0].name)}</h2>
@@ -1511,7 +1566,8 @@ function render(name, at, full) {
       ${skillBars(skills, say, me)}
       <p class="pf-skill-scale">All against opponents within ${PEER} of ${me ? 'your' : 'their'} rating; the mark on each bar is as good as them.</p>
     </section>
-    ${sp === 'all' ? analysePanel(name, full, p) : analysePanel(name, p, p, sp)}
+    <section class="pf-card pf-trend" id="pf-trend"></section>
+    ${combo ? '' : sp === 'all' ? analysePanel(name, full, p) : analysePanel(name, p, p, sp)}
     <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From ${sp === 'all' ? `all ${p.n} games` : `${p.n} ${sp} games`}</span></div>
       <div class="pf-two pf-more-body">
         <section><h3>By colour and time control</h3>
@@ -1545,7 +1601,7 @@ function render(name, at, full) {
     await run(name);
     if (e.target.isConnected) Object.assign(e.target, { disabled: false, textContent: 'Read them again' });
   });
-  if (me) {
+  if (me && !combo) {
     sendCard(name, full, sp);
   }
   // Dark or light: remembered, and the menu stays open to pick what to download.
@@ -1560,8 +1616,8 @@ function render(name, at, full) {
     if (k !== 'card') await cardPng(name, p, t, skills, true, b);
   }));
   bindSearch();
-  bindAnalyse(name);
-  quickLook(name);
+  if (!combo) { bindAnalyse(name); quickLook(name); }
+  setTimeout(() => trendCard(full));
   $('.pf-card-help a[href="#pf-skills"]')?.addEventListener('click', (e) => { e.preventDefault(); $('#pf-skills').scrollIntoView({ behavior: 'smooth' }); });
   document.querySelectorAll('[data-pf-speed]').forEach((b) => b.addEventListener('click', async () => {
     const sp = b.dataset.pfSpeed, redraw = () => { const y = scrollY; render(...shown); scrollTo(0, y); };
@@ -1839,6 +1895,7 @@ function ask() {
 let runs = 0; // a newer look-up wins over one still reading games
 async function run(name) {
   await gamesReady;
+  combo = null;
   const mine = ++runs, c = cache()[name.toLowerCase()];
   await loadScores(); // a saved profile is drawn without reading the games, but its time controls are read again
   if (shown && shown[0].toLowerCase() !== name.toLowerCase()) pfSpeed = null; // another player starts on their own main time control
@@ -1870,6 +1927,35 @@ async function run(name) {
     if (mine === runs) failed(name, err);
   } finally { clearTimeout(slow); }
 }
+// Combined: the games of every linked account that is switched on, read together. Ratings are never
+// mixed: the card is drawn as the account with the most games in the time control played most, with
+// its rating and site, and each time control's rating is that account's (or the one with most games in it).
+let combo = null; // the accounts on the Combined profile, or null
+async function combined(name) {
+  const group = groupOf(name);
+  if (!group || !isMe(name)) { combo = null; return show(name, false); }
+  const mine = ++runs, on = group.filter((n) => !isOff(n));
+  combo = group;
+  await gamesReady; await loadScores();
+  quiet = true;
+  try {
+    for (const n of on) { $('#profile-msg').textContent = `Fetching ${nick(n)}'s games from ${siteOf(n)}…`; await build(n); }
+  } catch (err) { if (mine === runs) failed(name, err); return; } finally { quiet = false; }
+  if (mine !== runs) return;
+  $('#profile-msg').textContent = on.length ? '' : 'Every account is switched off: switch one on to see the card.';
+  const games = on.flatMap((n) => recordsOf(n, storedGames(n) || []).map((g) => ({ ...g, acct: n }))).sort((a, b) => b.at - a.at);
+  if (!games.length) { $('#profile').innerHTML = comboRow(); return; }
+  const full = profileOf(games), most = (sp) => on.map((n) => [n, games.filter((g) => g.acct === n && g.speed === sp).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const owner = most(full.speeds[0].speed);
+  for (const x of full.speeds) {
+    const who = games.some((g) => g.acct === owner && g.speed === x.speed) ? owner : most(x.speed), gs = games.filter((g) => g.acct === who && g.speed === x.speed);
+    Object.assign(x, { rating: gs[0].rating + gs[0].diff, change: gs[0].rating + gs[0].diff - gs.at(-1).rating });
+  }
+  full.type = typeOf(full);
+  comboGames = games;
+  render(owner, Date.now(), full);
+}
+let comboGames = [];
 // The time control the card opens on reads its own last 500 games, fetched once after the player's
 // games are in, as picking it does: not just its share of the last 500 of all.
 async function ownSpeed(name) {
@@ -2175,6 +2261,8 @@ function start() {
   const q = new URLSearchParams(location.search), name = q.get('u') || myName();
   if (name && q.has('vs') && !q.get('vs')) return comparePick(name); // compare with someone still to pick
   if (name && q.get('vs') && q.get('vs').toLowerCase() !== name.toLowerCase()) return compare(name, q.get('vs')); // the same name twice: just the profile
+  combo = null;
+  if (name && q.has('all')) return combined(name);
   if (name) show(name, false); else ask();
 }
 if ($('#profile')) addEventListener('popstate', () => start());

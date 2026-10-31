@@ -2425,3 +2425,20 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-link-msg:empty { display: none; }
 #profile > .pf-link + .pf-name-row { margin-top: 6px; }
 .pf-accts .pf-unlink { font-size: 12px; color: var(--muted); }
+/* Combined profile: the accounts it counts, each switched on or off */
+.pf-acct-all small { color: var(--hot); }
+.pf-combo { display: grid; gap: 8px; margin: 10px 0 4px; }
+.pf-combo-k { margin: 0; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.pf-combo-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.pf-combo-acct { display: inline-flex; align-items: center; gap: 2px; }
+.pf-combo-acct [data-off] { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--muted); font: 600 14px var(--font-body); cursor: pointer; text-decoration: line-through; }
+.pf-combo-acct [data-off] small { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; font-weight: 500; }
+.pf-combo-acct [data-off] i { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid currentColor; }
+.pf-combo-acct [data-off][aria-pressed="true"] { color: var(--ink); border-color: var(--ink); text-decoration: none; }
+.pf-combo-acct [data-off][aria-pressed="true"] i { background: var(--hot); border-color: var(--hot); }
+.pf-combo-acct [data-unlink] { padding: 4px 6px; font-size: 16px; color: var(--muted); }
+.pf-combo .pf-link { margin: 0; }
+.pf-link select { padding: 5px 6px; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+/* Skills over time */
+.pf-trend-pick { flex-wrap: wrap; }
+.pf-trend .pf-line circle { fill: var(--data); }
