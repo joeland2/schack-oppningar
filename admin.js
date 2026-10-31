@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261031171941';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261031171941';
+import { account, login, finishLogin } from './lichess.js?v=20261031172650';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261031172650';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -82,7 +82,7 @@ const KIND = { profile: 'Looked up a profile', compare: 'Comparisons', analyse: 
 // drawn as a smooth curve through a short moving average (the tooltip has each hour's own numbers).
 // Days without visits are zero. Moving the mouse along the graph shows that point's numbers and notes.
 const SPANS = [['Today', 'today'], ['1W', 7], ['1M', 30], ['6M', 182], ['1Y', 365], ['All', Infinity]];
-let span = 30;
+let span = 'today';
 const hourly = () => span === 'today' || span === 7 || span === 30; // these spans are drawn per hour
 const W = 760, H = 180;
 const TZ = 'Europe/Stockholm';
