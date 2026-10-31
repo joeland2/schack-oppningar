@@ -2199,3 +2199,8 @@ main.profile:has(#admin) { max-width: 1320px; }
 #admin .ad-pair dd { display: flex; gap: clamp(16px, 4vw, 28px); }
 #admin .ad-pair dd span { display: flex; flex-direction: column; }
 #admin .ad-pair dd small { font-family: var(--font-body); }
+/* Profile: who you struggle against. */
+.pf-opps .pf-bad { color: var(--hot); }
+.pf-opps .pf-good { color: var(--good); }
+.pf-opps .pf-rows span small { display: block; color: var(--muted); font-size: 12.5px; }
+.pf-opps .pf-rows li { display: block; }

@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031090028';
-import { STYLE_OF } from './styles.js?v=20261031090028';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031090932';
+import { STYLE_OF } from './styles.js?v=20261031090932';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -102,6 +102,10 @@ function readGame(g, me) {
     oppBlunders: theirs.analysis?.blunder ?? null,
     states: statesOf(g, pov, myPly),
     oppLowTime: end && end[1 - myPly] != null && g.clock ? end[1 - myPly] / 100 < Math.max(10, g.clock.initial * 0.1) : false,
+    // How the opponent played this game, for "who you struggle against": the opening they chose, and
+    // whether they had 15% of the start time more than you at move 15 (early, before the result shows on the clock).
+    oppOpening: blacksName((g.opening?.name || '').split(':')[0]) !== (side === 'b') ? (g.opening?.name || 'Unknown').split(':')[0] : null,
+    oppFaster: !!(at15Of(g) && g.clock && (at15Of(g)[1 - myPly] - at15Of(g)[myPly]) / 100 >= g.clock.initial * 0.15),
   };
 }
 
@@ -197,6 +201,7 @@ export function profileOf(games) {
     badStarts: share(an.filter((g) => g.after12 !== null), (g) => g.after12 <= -150),
     openings: { w: byOpening('w'), b: byOpening('b') },
     styleMix: { w: styleMix(games, 'w'), b: styleMix(games, 'b') },
+    opponents: opponentsOf(games),
     ...pieceOf(games, an.length),
     peer: peerOf(games),
     // Rating after each game, oldest first, per time control: the graph's fallback when Lichess's
@@ -206,6 +211,23 @@ export function profileOf(games) {
   p.type = typeOf(p);
   return p;
 }
+
+// Who you struggle against: your games split by how the opponent played, each group's points per game
+// against what the rating gaps predict (Elo), so stronger opponents do not just look hard.
+const OPP_KINDS = [
+  ['Attackers', 'chose a gambit or an attacking opening', (g) => g.oppOpening && !/^Queen's Gambit/.test(g.oppOpening) && styleOf(g.oppOpening).includes('attacking')],
+  ['Solid players', 'chose a solid or positional opening', (g) => styleOf(g.oppOpening || '').some((x) => x === 'solid' || x === 'positional')],
+  ['Fast movers', 'had more time left than you at move 15', (g) => g.oppFaster],
+  ['Stronger players', 'rated 100+ above you', (g) => g.them && g.them - g.rating >= 100],
+  ['Weaker players', 'rated 100+ below you', (g) => g.them && g.rating - g.them >= 100],
+];
+function opponentsOf(games) {
+  const exp = (g) => 1 / (1 + 10 ** (((g.them || g.rating) - g.rating) / 400));
+  return OPP_KINDS.map(([name, about, is]) => { const gs = games.filter(is);
+    return { name, about, n: gs.length, score: gs.length ? sum(gs, (g) => g.result) / gs.length : 0, gain: gs.length ? sum(gs, (g) => g.result - exp(g)) / gs.length : 0 }; })
+    .filter((x) => x.n >= 10);
+}
+console.assert(opponentsOf(Array(10).fill({ result: 0, rating: 1500, them: 1500, oppOpening: "King's Gambit" }))[0].gain === -0.5, 'opponentsOf');
 
 // What each type means, shown above the evidence from the games.
 const TYPE_ABOUT = {
@@ -485,6 +507,8 @@ async function fetchGames(name, onGame, since = null, perf = 'bullet,blitz,rapid
 // Each player's games are kept (packed small: the analysis as numbers), so a later visit or Refresh
 // fetches only the games played since. Kept for the 3 players looked at last.
 const GAMES = 'opening-book-v2-games'; // { [lower-case name]: { at, games: [packed game, newest first] } }
+// Both clocks at move 15 (White's, Black's), kept with the game; older kept games have none.
+const at15Of = (g) => g.at15 || (g.clocks?.length > 31 ? g.clocks.slice(30, 32) : null);
 const endClocks = (cl) => (cl?.length ? [cl.filter((_, i) => i % 2 === 0).at(-1) ?? null, cl.filter((_, i) => i % 2 === 1).at(-1) ?? null] : null);
 const player = (x) => ({ user: x.user ? { id: x.user.id } : undefined, rating: x.rating, ratingDiff: x.ratingDiff, analysis: x.analysis });
 const J = { B: 'Blunder', M: 'Mistake', I: 'Inaccuracy' };
@@ -492,7 +516,7 @@ function pack(g) {
   const an = g.analysis;
   return { id: g.id, variant: 'standard', speed: g.speed, createdAt: g.createdAt, status: g.status, winner: g.winner, moves: g.moves,
     opening: g.opening ? { name: g.opening.name } : undefined, clock: g.clock ? { initial: g.clock.initial } : undefined,
-    end: g.end || endClocks(g.clocks), ours: g.ours || undefined, at12: g.at12 ?? undefined, players: { white: player(g.players.white), black: player(g.players.black) },
+    end: g.end || endClocks(g.clocks), at15: at15Of(g) || undefined, ours: g.ours || undefined, at12: g.at12 ?? undefined, players: { white: player(g.players.white), black: player(g.players.black) },
     an: an && { cp: an.map((x) => cpOf(x) ?? 0), j: an.map((x) => x.judgment?.name?.[0] || '.').join(''),
       best: Object.fromEntries(an.flatMap((x, i) => (x.best ? [[i, x.best]] : []))), v: Object.fromEntries(an.flatMap((x, i) => (x.variation ? [[i, x.variation]] : []))) } };
 }
@@ -1383,6 +1407,7 @@ function render(name, at, full) {
       ${skillBars(skills, say, me)}
       <p class="pf-skill-scale">All against opponents within ${PEER} of ${me ? 'your' : 'their'} rating; the mark on each bar is as good as them.</p>
     </section>
+    ${opponentsCard(p, me, name)}
     ${sp === 'all' ? analysePanel(name, full, p) : analysePanel(name, p, p, sp)}
     <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From ${sp === 'all' ? `all ${p.n} games` : `${p.n} ${sp} games`}</span></div>
       <div class="pf-two pf-more-body">
@@ -1502,6 +1527,17 @@ function leadStory(name, p, skills, me) {
 // without a slip in the time trial; and the openings with the most, each linking to its lines.
 const STAR_PATH = 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z';
 const starIcon = (kind) => `<svg class="line-star ${kind}" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_PATH}"/></svg>`;
+// Who you struggle against, worst first; the headline names the worst when it is clearly below par.
+function opponentsCard(p, me, name) {
+  const rows = (p.opponents || []).slice().sort((a, b) => a.gain - b.gain);
+  if (!rows.length) return '';
+  const pts = (x) => `${Math.abs(Math.round(x.gain * 100))} points ${x.gain < 0 ? 'below' : 'above'} what the ratings predict`, who = me ? 'You' : esc(name);
+  const worst = rows[0], best = rows.at(-1);
+  return `<section class="pf-card pf-opps"><h2>Who ${me ? 'you struggle' : 'they struggle'} against</h2>
+    <p class="info">${worst.gain <= -0.04 ? `${who} struggle${me ? '' : 's'} most against <b>${worst.name.toLowerCase()}</b>: ${pct(worst.score)} in ${worst.n} games, ${pts(worst)}.` : `No kind of opponent gives ${me ? 'you' : 'them'} trouble: the results are close to what the ratings predict, or better.`}${best !== worst && best.gain >= 0.04 ? ` Best against <b>${best.name.toLowerCase()}</b>: ${pts(best)}.` : ''}</p>
+    <ul class="pf-rows">${rows.map((x) => `<li><span>${x.name} <small>${me ? x.about : x.about.replace(/\byou\b/, 'them')}</small></span><small>${x.n} games · ${pct(x.score)} · <b class="${x.gain <= -0.04 ? 'pf-bad' : x.gain >= 0.04 ? 'pf-good' : ''}">${x.gain >= 0 ? '+' : '−'}${Math.abs(Math.round(x.gain * 100))}</b> vs expected</small></li>`).join('')}</ul>
+    <p class="pf-skill-scale">Points per 100 games against what the rating gaps predict. A game can count in more than one group; groups with fewer than 10 games are left out.</p></section>`;
+}
 function starsCard() {
   const { ops, sum } = starCounts();
   if (!ops.length) return `<section class="pf-card pf-stars"><h2>Your stars</h2><p class="info">Learn a line in the <a href="./">Openings trainer</a> for your first green star; clear it in Practice for gold, and play it without a slip in the time trial for a diamond.</p></section>`;
