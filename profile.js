@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031182942';
-import { STYLE_OF } from './styles.js?v=20261031182942';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031182942';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031183854';
+import { STYLE_OF } from './styles.js?v=20261031183854';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031183854';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -890,7 +890,17 @@ function bindAnalyse(name) {
 // ---------- The page ----------
 function cache() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
 const myName = () => account()?.name || (() => { try { return JSON.parse(localStorage.getItem('opening-book-v2-lichess-name')); } catch { return null; } })();
-const isMe = (name) => !!myName() && name.toLowerCase() === myName().toLowerCase();
+// Your other site's account, linked on your own profile (this browser only): both read as you, and the
+// byline over the name jumps between them.
+const LINK_KEY = 'opening-book-v2-linked';
+const linkedOf = (name) => { try { return JSON.parse(localStorage.getItem(LINK_KEY))?.[String(name).toLowerCase()] || null; } catch { return null; } };
+function setLink(a, b) {
+  let m = {}; try { m = JSON.parse(localStorage.getItem(LINK_KEY)) || {}; } catch {}
+  for (const k of Object.keys(m)) if ([a, b].some((x) => x && (k === x.toLowerCase() || m[k].toLowerCase() === x.toLowerCase()))) delete m[k];
+  if (a && b) { m[a.toLowerCase()] = b; m[b.toLowerCase()] = a; }
+  try { localStorage.setItem(LINK_KEY, JSON.stringify(m)); } catch {}
+}
+const isMe = (name) => !!myName() && [myName(), linkedOf(myName())].some((x) => x && name.toLowerCase() === x.toLowerCase());
 // Someone else's profile reads in the third person: "you score" becomes "they score".
 const they = (t) => t.replace(/\b(Y|y)our\b/g, (_, y) => (y === 'Y' ? 'Their' : 'their')).replace(/\b(Y|y)ou\b/g, (_, y) => (y === 'Y' ? 'They' : 'they'));
 console.assert(they('You score 50%; your games, you were') === 'They score 50%; their games, they were', 'they');
@@ -1041,10 +1051,32 @@ const proKind = (name) => (PROS.has(String(name).toLowerCase()) ? 'pro' : VIPS.h
 const accountsRow = (name) => {
   const who = proOf(name), all = Object.entries({ ...PRO_NAMES, ...VIP_NAMES });
   const others = who ? all.filter(([n, w]) => w === who && n.toLowerCase() !== String(name).toLowerCase()).map(([n]) => n) : [];
-  if (!others.length) return ''; // only there to jump between one player's accounts
+  if (!who && linkedOf(name)) others.push(linkedOf(name));
+  if (!others.length) return linkForm(name); // only there to jump between one player's accounts
   const pill = (n, on) => `<a class="pf-acct" data-name="${esc(n)}" href="${profileLink(n)}"${on ? ' aria-current="page"' : ''}><small>${siteOf(n)}</small>${esc(nick(n))}</a>`;
-  return `<nav class="pf-accts" aria-label="${others.length ? 'Their accounts' : 'Site'}">${[pill(name, true), ...others.map((n) => pill(n, false))].join('')}<details class="pf-accts-more" hidden><summary></summary><div class="pf-accts-menu"></div></details></nav>`;
+  const unlink = !who && isMe(name) ? '<button type="button" class="link pf-unlink" data-unlink>Unlink</button>' : '';
+  return `<nav class="pf-accts" aria-label="${others.length ? 'Their accounts' : 'Site'}">${[pill(name, true), ...others.map((n) => pill(n, false))].join('')}<details class="pf-accts-more" hidden><summary></summary><div class="pf-accts-menu"></div></details>${unlink}</nav>`;
 };
+// On your own profile, with no other account linked: add the other site's, by name (no password).
+const linkForm = (name) => (isMe(name) && !proOf(name) ? `<form class="pf-link" data-link><label for="pf-link-in">Play on ${isCC(name) ? 'Lichess' : 'Chess.com'} too?</label>
+  <input id="pf-link-in" name="u" autocomplete="off" spellcheck="false" placeholder="Your ${isCC(name) ? 'Lichess' : 'Chess.com'} name" required><button type="submit" class="ghost">Link</button><span class="pf-link-msg" role="status"></span></form>` : '');
+document.addEventListener('submit', async (e) => {
+  if (!e.target.matches('[data-link]')) return;
+  e.preventDefault();
+  const name = shown?.[0], typed = e.target.u.value.trim().replace(/^cc:/i, ''), msg = e.target.querySelector('.pf-link-msg');
+  if (!name || !typed) return;
+  msg.textContent = 'Checking…';
+  const other = isCC(name) ? typed : `cc:${typed}`;
+  const ok = isCC(other) ? !!(await ccUser(other)) : await fetch(`https://lichess.org/api/user/${encodeURIComponent(typed)}`).then((r) => r.ok).catch(() => false);
+  if (!ok) { msg.textContent = `No ${siteOf(other)} player called ${typed}.`; return; }
+  setLink(name, other);
+  render(...shown);
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-unlink]') || !shown || !confirm(`Unlink ${siteOf(linkedOf(shown[0]))} · ${nick(linkedOf(shown[0]))} from this profile?`)) return;
+  setLink(shown[0], null);
+  if (!isMe(shown[0])) location.href = profileLink(myName()); else render(...shown);
+});
 // One row, never scrolling: the accounts that do not fit (from the end, never the one shown) move to a +N menu.
 function fitAccounts() {
   const nav = $('.pf-accts'), more = nav?.querySelector('.pf-accts-more');

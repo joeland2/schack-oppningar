@@ -2418,3 +2418,10 @@ main.profile:has(#admin) { max-width: 1320px; }
 .go-move { border-left: 3px solid var(--hot); padding: 2px 0 2px 10px; font-size: 14px; }
 .go-why summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 4px 0; }
 .go-why[open] summary { margin-bottom: 6px; }
+/* Your own profile: link your account on the other site, or unlink it */
+.pf-link { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+.pf-link input { width: min(200px, 100%); padding: 5px 9px; font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 6px; }
+.pf-link button { padding: 5px 12px; font-size: 13px; }
+.pf-link-msg:empty { display: none; }
+#profile > .pf-link + .pf-name-row { margin-top: 6px; }
+.pf-accts .pf-unlink { font-size: 12px; color: var(--muted); }
