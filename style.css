@@ -762,7 +762,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
    analyse + skills, the players bar + hero, the small print + what next) */
 #profile { --flow: 40px; --tight: 12px; display: grid; gap: var(--flow); }
 @media (max-width: 560px) { #profile { --flow: 28px; --tight: 10px; } }
-#profile > .pf-chart + .pf-kpis, #profile > .pf-skills-card + .pf-analyse, #profile > .pf-players + .pf-hero, #profile > .pf-name-row + .pf-hero, #profile > .pf-about-data + .pf-next { margin-top: calc(var(--tight) - var(--flow)); }
+#profile > .pf-chart + .pf-kpis, #profile > .pf-skills-card + .pf-analyse, #profile > .pf-players + .pf-hero, #profile > .pf-name-row + .pf-hero, #profile > .pf-accts + .pf-hero, #profile > .pf-about-data + .pf-next { margin-top: calc(var(--tight) - var(--flow)); }
 #profile-msg:empty { display: none; }
 .pf-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px 24px; flex-wrap: wrap; }
 .pf-bar .info { max-width: 60ch; font-size: 14px; }
@@ -2078,8 +2078,14 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-pro-line b { font-weight: 700; }
 .pf-pro-title { padding: 3px 7px; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); font: 700 .7em/1 var(--font-body); letter-spacing: .08em; }
 @media (max-width: 640px) { #profile > .pf-pro-line { justify-content: center; margin-top: -14px; } }
-#profile > .pf-also { margin: 8px 0 0; color: var(--muted); font-size: .95rem; }
-@media (max-width: 640px) { #profile > .pf-also { text-align: center; } }
+/* The account's site, and a known player's other accounts, as buttons under the name */
+#profile > .pf-accts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: calc(var(--tight) - var(--flow)); }
+#profile .pf-acct { display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); font-size: 13px; font-weight: 600; text-decoration: none; }
+.pf-acct small { font: 700 9px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.pf-acct:hover { background: var(--raised); }
+#profile .pf-acct[aria-current] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.pf-acct[aria-current] small { color: inherit; opacity: .7; }
+@media (max-width: 640px) { #profile > .pf-accts { justify-content: center; } }
 /* A known streamer's card: the same frame and tag in pink, VIP */
 .pf-pcard.vip { box-shadow: 0 0 0 3px #e0459b, 0 0 0 5px rgb(20 20 20 / .6), 0 22px 44px rgb(20 20 20 / .25); }
 .pf-pcard.vip::before { content: 'VIP'; position: absolute; top: -11px; left: 16px; z-index: 2; padding: 3px 8px 2px; border-radius: 3px; background: #e0459b; color: #fff; font: 400 13px/1 var(--font-poster); letter-spacing: .12em; box-shadow: 0 2px 4px rgb(0 0 0 / .3); }

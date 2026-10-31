@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031140911';
-import { STYLE_OF } from './styles.js?v=20261031140911';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031140911';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031142529';
+import { STYLE_OF } from './styles.js?v=20261031142529';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031142529';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1036,14 +1036,13 @@ const VIP_NAMES = { agadmator: 'Antonio Radić', tigerlilov: 'IM Valeri Lilov', 
 const VIPS = new Map(Object.entries(VIP_NAMES).map(([k, v]) => [k.toLowerCase(), v]));
 const proOf = (name) => PROS.get(String(name).toLowerCase()) || VIPS.get(String(name).toLowerCase()) || null;
 const proKind = (name) => (PROS.has(String(name).toLowerCase()) ? 'pro' : VIPS.has(String(name).toLowerCase()) ? 'vip' : '');
-// Under it, the same person's other accounts, kept apart (each its own card): "Also X on Lichess · Y on Chess.com".
-const alsoLine = (name) => {
-  const who = proOf(name);
-  if (!who) return '';
-  const others = Object.entries({ ...PRO_NAMES, ...VIP_NAMES }).filter(([n, w]) => w === who && n.toLowerCase() !== String(name).toLowerCase()).map(([n]) => n);
-  const on = (site) => others.filter((n) => siteOf(n) === site).map((n) => `<a href="${profileLink(n)}">${esc(nick(n))}</a>`).join(', ');
-  const parts = ['Lichess', 'Chess.com'].map((site) => (on(site) ? `${on(site)} on ${site}` : '')).filter(Boolean);
-  return parts.length ? `<p class="pf-also">Also ${parts.join(' · ')}</p>` : '';
+// Under it, the account's site and the same person's other accounts as buttons, the one shown pressed;
+// each account keeps its own card. Anyone else gets the site alone, so it is always clear which one this is.
+const accountsRow = (name) => {
+  const who = proOf(name), all = Object.entries({ ...PRO_NAMES, ...VIP_NAMES });
+  const others = who ? all.filter(([n, w]) => w === who && n.toLowerCase() !== String(name).toLowerCase()).map(([n]) => n) : [];
+  const pill = (n, on) => `<a class="pf-acct" href="${profileLink(n)}"${on ? ' aria-current="page"' : ''}><small>${siteOf(n)}</small>${esc(nick(n))}</a>`;
+  return `<nav class="pf-accts" aria-label="${others.length ? 'Their accounts' : 'Site'}">${[pill(name, true), ...others.map((n) => pill(n, false))].join('')}</nav>`;
 };
 const proClass = (name) => (proKind(name) ? ` ${proKind(name)}` : '');
 // For the player search's suggestions (header.js): the known accounts, found by the person's name too.
@@ -1409,7 +1408,7 @@ function render(name, at, full) {
   document.title = me ? 'Your Profile' : `${nick(name)} · Profile`;
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
-    ${nameRow(name)}${proLine(name)}${alsoLine(name)}
+    ${nameRow(name)}${proLine(name)}${accountsRow(name)}
     <section class="pf-hero">
       <div class="pf-card-col">${playerCard(name, p, t, skills)}${speedBar(name, full, sp, avail)}${me ? starsStrip() : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
         <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
@@ -1557,12 +1556,12 @@ const starIcon = (kind) => `<svg class="line-star ${kind}" viewBox="0 0 24 24" a
 function opponentsCard(p, me, name) {
   const rows = (p.opponents || []).slice().sort((a, b) => a.gain - b.gain);
   if (!rows.length) return '';
-  const pts = (x) => `${Math.abs(Math.round(x.gain * 100))} points ${x.gain < 0 ? 'below' : 'above'} what the ratings predict`, who = me ? 'You' : esc(nick(name));
+  const exp = (x) => pct(x.score - x.gain), who = me ? 'You' : esc(nick(name));
   const worst = rows[0], best = rows.at(-1);
   return `<section class="pf-card pf-opps"><h2>Who ${me ? 'you struggle' : 'they struggle'} against</h2>
-    <p class="info">${worst.gain <= -0.04 ? `${who} struggle${me ? '' : 's'} most against <b>${worst.name.toLowerCase()}</b>: ${pct(worst.score)} in ${worst.n} games, ${pts(worst)}.` : `No kind of opponent gives ${me ? 'you' : 'them'} trouble: the results are close to what the ratings predict, or better.`}${best !== worst && best.gain >= 0.04 ? ` Best against <b>${best.name.toLowerCase()}</b>: ${pts(best)}.` : ''}</p>
-    <ul class="pf-rows pf-opp-rows"><li class="pf-opp-head" aria-hidden="true"><span></span><small>Games</small><small>Score</small><small>vs expected</small></li>${rows.map((x) => `<li><span>${x.name} <small>${me ? x.about : x.about.replace(/\byou\b/, 'them')}</small></span><small><span class="visually-hidden">${x.n} games</span><span aria-hidden="true">${x.n}</span></small><small>${pct(x.score)}</small><b class="${x.gain <= -0.04 ? 'pf-bad' : x.gain >= 0.04 ? 'pf-good' : ''}">${({ 1: '+', '-1': '−', 0: '±' })[Math.sign(Math.round(x.gain * 100))]}${Math.abs(Math.round(x.gain * 100))}<span class="visually-hidden"> vs expected</span></b></li>`).join('')}</ul>
-    <p class="pf-skill-scale">Points per 100 games against what the rating gaps predict. A game can count in more than one group; groups with fewer than 10 games are left out.</p></section>`;
+    <p class="info">${worst.gain <= -0.04 ? `${who} struggle${me ? '' : 's'} most against <b>${worst.name.toLowerCase()}</b>: ${pct(worst.score)} in ${worst.n} games, where the ratings predicted ${exp(worst)}.` : `No kind of opponent gives ${me ? 'you' : 'them'} trouble: the results are close to what the ratings predict, or better.`}${best !== worst && best.gain >= 0.04 ? ` Best against <b>${best.name.toLowerCase()}</b>: ${pct(best.score)}, with ${exp(best)} expected.` : ''}</p>
+    <ul class="pf-rows pf-opp-rows"><li class="pf-opp-head" aria-hidden="true"><span></span><small>Games</small><small>Expected</small><small>Scored</small></li>${rows.map((x) => `<li><span>${x.name} <small>${me ? x.about : x.about.replace(/\byou\b/, 'them')}</small></span><small><span class="visually-hidden">${x.n} games, expected </span><span aria-hidden="true">${x.n}</span></small><small>${exp(x)}</small><b class="${x.gain <= -0.04 ? 'pf-bad' : x.gain >= 0.04 ? 'pf-good' : ''}"><span class="visually-hidden">, scored </span>${pct(x.score)}</b></li>`).join('')}</ul>
+    <p class="pf-skill-scale">Expected: what the rating gaps say ${me ? 'you' : 'they'} should score against these opponents. Red is below it, green above. A game can count in more than one group; groups with fewer than 10 games are left out.</p></section>`;
 }
 function starsCard() {
   const { ops, sum } = starCounts();
@@ -1754,8 +1753,13 @@ async function ownSpeed(name) {
   if (await fetchSpeed(name, sp).catch(() => false) && shown?.[0].toLowerCase() === name.toLowerCase()) { const y = scrollY; render(...shown); scrollTo(0, y); }
 }
 // Something went wrong: say what, and offer to try again (reading the games afresh).
+const retried = new Set(), NET = /Failed to fetch|Load failed|NetworkError/i;
 function failed(name, err) {
   console.error(err);
+  // A dropped connection (common on phones) is tried again once by itself before it is shown.
+  const net = err instanceof TypeError && NET.test(err.message);
+  if (net && !retried.has(name.toLowerCase())) { retried.add(name.toLowerCase()); setTimeout(() => run(name), 1500); return; }
+  if (net) err = new Error(`Could not reach ${siteOf(name)}: the connection dropped.`);
   $('#profile .pf-skeleton')?.remove(); // the loading outline, never a card already drawn
   $('#profile-msg').innerHTML = `${esc(err.message || String(err))} <button type="button" class="link" data-retry>Try again</button>`;
   $('[data-retry]').addEventListener('click', () => run(name));
