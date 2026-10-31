@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031153224';
-import { STYLE_OF } from './styles.js?v=20261031153224';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031153224';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031153437';
+import { STYLE_OF } from './styles.js?v=20261031153437';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031153437';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1041,9 +1041,44 @@ const proKind = (name) => (PROS.has(String(name).toLowerCase()) ? 'pro' : VIPS.h
 const accountsRow = (name) => {
   const who = proOf(name), all = Object.entries({ ...PRO_NAMES, ...VIP_NAMES });
   const others = who ? all.filter(([n, w]) => w === who && n.toLowerCase() !== String(name).toLowerCase()).map(([n]) => n) : [];
-  const pill = (n, on) => `<a class="pf-acct" href="${profileLink(n)}"${on ? ' aria-current="page"' : ''}><small>${siteOf(n)}</small>${esc(nick(n))}</a>`;
-  return `<nav class="pf-accts" aria-label="${others.length ? 'Their accounts' : 'Site'}">${[pill(name, true), ...others.map((n) => pill(n, false))].join('')}</nav>`;
+  const pill = (n, on) => `<a class="pf-acct" data-name="${esc(n)}" href="${profileLink(n)}"${on ? ' aria-current="page"' : ''}><small>${siteOf(n)}</small>${esc(nick(n))}</a>`;
+  return `<nav class="pf-accts" aria-label="${others.length ? 'Their accounts' : 'Site'}">${[pill(name, true), ...others.map((n) => pill(n, false))].join('')}<details class="pf-accts-more" hidden><summary></summary><div class="pf-accts-menu"></div></details></nav>`;
 };
+// One row, never scrolling: the accounts that do not fit (from the end, never the one shown) move to a +N menu.
+function fitAccounts() {
+  const nav = $('.pf-accts'), more = nav?.querySelector('.pf-accts-more');
+  if (!more) return;
+  const pills = [...nav.querySelectorAll(':scope > .pf-acct')];
+  pills.forEach((x) => { x.hidden = false; });
+  more.hidden = true;
+  if (nav.scrollWidth <= nav.clientWidth) return;
+  more.hidden = false;
+  more.querySelector('summary').textContent = `+${pills.length}`; // widest it gets, while measuring
+  for (let i = pills.length - 1; i > 0 && nav.scrollWidth > nav.clientWidth; i--) pills[i].hidden = true;
+  const hid = pills.filter((x) => x.hidden);
+  more.querySelector('summary').textContent = `+${hid.length}`;
+  more.querySelector('summary').setAttribute('aria-label', `${hid.length} more accounts`);
+  more.querySelector('.pf-accts-menu').innerHTML = hid.map((x) => x.outerHTML.replace(' hidden=""', '')).join('');
+}
+addEventListener('resize', fitAccounts);
+// When each account was last on its site (Lichess's seenAt, chess.com's last_online), for the order.
+const SEEN = new Map();
+async function seenOf(names) {
+  await loadFlags(names);
+  await Promise.all(names.filter((n) => isCC(n) && !SEEN.has(n.toLowerCase())).map((n) => fetch(`https://api.chess.com/pub/player/${encodeURIComponent(nick(n).toLowerCase())}`)
+    .then((r) => (r.ok ? r.json() : null)).catch(() => null).then((u) => SEEN.set(n.toLowerCase(), (u?.last_online || 0) * 1000))));
+}
+// The other accounts, the one played on most recently first; then fitted to the row.
+async function arrangeAccounts() {
+  fitAccounts();
+  const nav = $('.pf-accts'), pills = nav ? [...nav.querySelectorAll(':scope > .pf-acct')].slice(1) : [];
+  if (!pills.length) return;
+  await seenOf(pills.map((x) => x.dataset.name));
+  if (!nav.isConnected) return;
+  const at = (x) => SEEN.get(x.dataset.name.toLowerCase()) || 0;
+  pills.sort((a, b) => at(b) - at(a)).forEach((x) => nav.insertBefore(x, nav.querySelector('.pf-accts-more')));
+  fitAccounts();
+}
 const proClass = (name) => (proKind(name) ? ` ${proKind(name)}` : '');
 // For the player search's suggestions (header.js): the known accounts, found by the person's name too.
 window.knownPlayers = Object.entries({ ...PRO_NAMES, ...VIP_NAMES }).map(([name, who]) => ({ id: name.toLowerCase(), name, who: who.replace(/^(GM|IM) /, ''), title: /^(GM|IM) /.exec(who)?.[1] || null, kind: proKind(name) }));
@@ -1062,7 +1097,7 @@ async function loadFlags(names) {
     const part = todo.slice(i, i + 300);
     const users = await fetch('https://lichess.org/api/users', { method: 'POST', body: part.join(',') }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
     part.forEach((n) => FLAGS.set(n, null));
-    for (const u of users) FLAGS.set(u.id, flagCode(u.profile?.flag));
+    for (const u of users) { FLAGS.set(u.id, flagCode(u.profile?.flag)); SEEN.set(u.id, u.seenAt || 0); }
   }
 }
 // The flag as an image for the downloaded cards (null without one).
@@ -1504,6 +1539,7 @@ function render(name, at, full) {
     e.currentTarget.textContent = showSkillText ? 'Hide explanations' : 'What each one means';
   });
   ratingChart(name, p);
+  arrangeAccounts();
 }
 
 addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('details.pf-help[open]').forEach((d) => { d.open = false; d.querySelector('summary').focus(); }); });

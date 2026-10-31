@@ -2092,13 +2092,20 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-pro-title { padding: 3px 7px; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); font: 700 .7em/1 var(--font-body); letter-spacing: .08em; }
 @media (max-width: 640px) { #profile > .pf-pro-line { justify-content: center; margin-top: -14px; } }
 /* The account's site, and a known player's other accounts, as buttons under the name */
-#profile > .pf-accts { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px; min-width: 0; margin-top: calc(var(--tight) - var(--flow)); }
+#profile > .pf-accts { position: relative; display: flex; flex-wrap: nowrap; gap: 6px; min-width: 0; margin-top: calc(var(--tight) - var(--flow)); }
 #profile .pf-acct { display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); font-size: 13px; font-weight: 600; text-decoration: none; }
 .pf-acct small { font: 700 9px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .pf-acct:hover { background: var(--raised); }
 #profile .pf-acct[aria-current] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 .pf-acct[aria-current] small { color: inherit; opacity: .7; }
 #profile .pf-acct { flex: none; white-space: nowrap; }
+#profile .pf-acct[hidden], .pf-accts-more[hidden] { display: none; }
+/* The accounts that did not fit: +N, opening a list under the row */
+.pf-accts-more { flex: none; }
+.pf-accts-more summary { list-style: none; cursor: pointer; padding: 5px 11px; border: 1px solid var(--line); border-radius: 4px; font-size: 13px; font-weight: 700; color: var(--ink); }
+.pf-accts-more summary::-webkit-details-marker { display: none; }
+.pf-accts-more[open] summary { background: var(--raised); }
+.pf-accts-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: grid; gap: 6px; padding: 8px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 12px 28px rgb(0 0 0 / .3); }
 @media (max-width: 640px) { #profile > .pf-accts { justify-content: safe center; } }
 /* A known streamer's card: the same frame and tag in pink, VIP */
 .pf-pcard.vip { box-shadow: 0 0 0 3px #e0459b, 0 0 0 5px rgb(20 20 20 / .6), 0 22px 44px rgb(20 20 20 / .25); }
