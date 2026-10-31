@@ -1269,11 +1269,18 @@ a { text-underline-offset: .18em; }
 .pf-split { display: grid; grid-template-columns: auto 1fr auto; gap: 10px 12px; align-items: center; font-size: 14px; }
 .pf-split .wdl { height: 12px; border-radius: 3px; }
 .pf-split .num { color: var(--muted); font-variant-numeric: tabular-nums; }
-.pf-split-key { display: flex; gap: 14px; margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+.pf-split-key { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 10px 0 0; font-size: 12px; color: var(--muted); }
 .pf-split-key i { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 2px; }
 .pf-split-key .w { background: var(--good); } .pf-split-key .d { background: var(--muted); opacity: .55; } .pf-split-key .l { background: var(--bad); opacity: .75; }
 .pf-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
 .pf-chip { padding: 5px 10px; border: 1px solid var(--line); border-radius: 4px; font-size: 13px; font-weight: 600; }
+/* An opening played: a dot for the colour, the name, one square per game (won, drawn, lost) */
+.pf-op-chip { display: inline-flex; align-items: center; gap: 8px; }
+.pf-split-key i.pf-side, .pf-side { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.pf-side.w { background: #f4efe6; box-shadow: inset 0 0 0 1px #8a8275; } .pf-side.b { background: #141414; box-shadow: inset 0 0 0 1px #8a8275; }
+.pf-res-dots { display: inline-flex; gap: 3px; }
+.pf-res-dots i { width: 9px; height: 9px; border-radius: 2px; }
+.pf-res-dots .w { background: var(--good); } .pf-res-dots .d { background: var(--muted); opacity: .55; } .pf-res-dots .l { background: var(--bad); opacity: .75; }
 .pf-chip small { margin-left: 4px; color: var(--muted); font-weight: 500; font-size: 12.5px; }
 a.pf-res { text-decoration: none; transition: transform .12s; }
 a.pf-res:hover, a.pf-res:focus-visible { transform: translateY(-2px); outline: 2px solid var(--ink); outline-offset: 1px; }
