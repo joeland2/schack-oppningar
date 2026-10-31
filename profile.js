@@ -3,8 +3,8 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031090932';
-import { STYLE_OF } from './styles.js?v=20261031090932';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031091442';
+import { STYLE_OF } from './styles.js?v=20261031091442';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1407,7 +1407,6 @@ function render(name, at, full) {
       ${skillBars(skills, say, me)}
       <p class="pf-skill-scale">All against opponents within ${PEER} of ${me ? 'your' : 'their'} rating; the mark on each bar is as good as them.</p>
     </section>
-    ${opponentsCard(p, me, name)}
     ${sp === 'all' ? analysePanel(name, full, p) : analysePanel(name, p, p, sp)}
     <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From ${sp === 'all' ? `all ${p.n} games` : `${p.n} ${sp} games`}</span></div>
       <div class="pf-two pf-more-body">
@@ -1425,6 +1424,7 @@ function render(name, at, full) {
           <h3>Openings as Black</h3>${openingRows(p.openings.b, 'b')}</section>
       </div>
     </section>
+    ${opponentsCard(p, me, name)}
     <section class="pf-card" id="pf-games"></section>
     <section class="pf-about-data">
       <h2>About these numbers</h2>
