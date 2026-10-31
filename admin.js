@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261031165255';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261031165255';
+import { account, login, finishLogin } from './lichess.js?v=20261031171105';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261031171105';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -220,14 +220,43 @@ const side = (c) => `<i class="ad-side ${c === 'b' ? 'b' : 'w'}" title="As ${c =
 const EV_ICON = { view: 'M4 6h16M4 12h16M4 18h10', profile: 'M11 17a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM20 20l-4.5-4.5', line: 'M5 12.5l4.5 4.5L19 7.5', left: 'M6 6l12 12M18 6L6 18',
   card: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4', analyse: 'M4 19h16M5 15l4-5 4 3 6-7', compare: 'M7 4v16M17 4v16M4 8h6M14 16h6', practise: 'M5 4h11l3 3v13H5zM9 12h6M9 16h6', login: 'M10 17l5-5-5-5M15 12H3M14 4h5v16h-5', error: 'M12 8v5M12 17h.01M10.3 3.9L2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z' };
 const evIcon = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${EV_ICON[k] || EV_ICON.view}"/></svg>`;
+// How one run of a line went: the mode, how it ended and the mistakes.
+const runHow = (x) => `${MODE[x.m] || esc(x.m)} · ${x.k === 'done' ? 'finished' : x.k === 'wrong' ? `wrong on move ${Math.floor(x.n / 2) + 1}` : `left at move ${Math.ceil((x.p || 0) / 2)}`}${x.x ? ` · ${x.x} mistake${x.x === 1 ? '' : 's'}` : ''}`;
+// A visitor by their Lichess name, else by where they were.
+const personName = (v) => (v.name ? `<a href="profile.html?u=${encodeURIComponent(v.name)}">${esc(v.name)}</a>` : `<span class="ad-muted">${flag(v.country)}${esc(v.city || 'Visitor')}</span>`);
+// Icons for the groups and the cards' titles.
+const IC = { ...EV_ICON, people: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1M16 3.1a4 4 0 0 1 0 7.8M22 21v-1a6 6 0 0 0-4-5.6',
+  globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18', pin: 'M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12zM12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+  link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1', phone: 'M7 2h10v20H7zM11 18h2',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2', calendar: 'M4 5h16v16H4zM4 10h16M8 3v4M16 3v4', bolt: 'M13 2L4 14h7l-1 8 9-12h-7z',
+  plus: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 5 2.7M19 14v6M16 17h6', target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01',
+  home: 'M3 11l9-7 9 7M5 9.5V20h14V9.5' };
+const ic = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[k]}"/></svg>`;
+const GROUPS = [['overview', 'Overview', 'home', 'the week at a glance'], ['openings', 'Openings', 'practise', 'what is practised, and by whom'], ['people', 'People', 'people', 'who comes and what they do'],
+  ['traffic', 'Traffic', 'globe', 'where they come from'], ['errors', 'Errors', 'error', 'what broke']];
+const group = (id) => { const [, t, i, sub] = GROUPS.find((g) => g[0] === id); return `<h2 class="ad-group" id="ad-${id}">${ic(i)}${t}<small>${sub}</small></h2>`; };
+
+// Who practises what: every run of a line in the visitor list, by person, and the newest runs.
+function runsOf(s) {
+  return s.visitors.flatMap((v) => v.events.filter((e) => e.kind === 'line').map((e) => ({ v, at: e.at, x: runOf(e.target) }))).filter((r) => r.x?.o).sort((a, b) => b.at.localeCompare(a.at));
+}
+function practiceHtml(s) {
+  const runs = runsOf(s), people = new Map(), none = '<p class="info">Nobody yet. Runs are counted from 31 Oct 2026.</p>';
+  for (const r of runs) {
+    const k = r.v.name || r.v.id, p = people.get(k) ?? { v: r.v, runs: 0, done: 0, last: r.at, ops: new Map() }, o = `${r.x.s}|${r.x.o}`;
+    p.runs++; if (r.x.k === 'done') p.done++; p.ops.set(o, (p.ops.get(o) || 0) + 1); people.set(k, p);
+  }
+  return `<section class="pf-card"><h2>${ic('people')}Who practises <small>${people.size} ${people.size === 1 ? 'person' : 'people'}</small></h2>${people.size ? `<ul class="pf-rows ad-who-list">${[...people.values()].sort((a, b) => b.runs - a.runs).map((p) => `<li><span>${personName(p.v)} <small>${p.runs} run${p.runs === 1 ? '' : 's'} · ${p.done} finished · ${short(p.last)}</small>
+      <span class="ad-who-ops">${[...p.ops.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `<span class="ad-chip">${side(k[0])}${esc(k.slice(2))}${n > 1 ? ` ×${n}` : ''}</span>`).join('')}</span></span></li>`).join('')}</ul>` : none}</section>
+    <section class="pf-card"><h2>${ic('line')}Latest runs <small>newest first</small></h2>${runs.length ? `<ul class="pf-rows ad-recent">${runs.slice(0, 40).map(({ v, at, x }) => `<li><span>${side(x.s)}<b>${esc(x.o)}</b> · ${esc(x.l)} <small>${runHow(x)}</small></span><small>${personName(v)} · ${short(at)}</small></li>`).join('')}</ul>` : none}</section>`;
+}
 function eventRow(e) {
   const t = `<time>${new Date(e.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</time>`;
   if (e.kind === 'line') {
     const x = runOf(e.target);
     if (!x) return '';
-    const how = x.k === 'done' ? 'finished' : x.k === 'wrong' ? `wrong on move ${Math.floor(x.n / 2) + 1}` : `left at move ${Math.ceil((x.p || 0) / 2)}`;
     const slip = x.w ? ` · played ${esc(x.g || '?')}, the line has ${esc(x.w)}` : '';
-    return `<li>${t}${evIcon(x.k === 'done' ? 'line' : 'left')}<span>${side(x.s)}${esc(x.o)} · ${esc(x.l)} <small>${MODE[x.m] || esc(x.m)} · ${how}${x.x ? ` · ${x.x} mistake${x.x === 1 ? '' : 's'}` : ''}${slip}</small></span></li>`;
+    return `<li>${t}${evIcon(x.k === 'done' ? 'line' : 'left')}<span>${side(x.s)}${esc(x.o)} · ${esc(x.l)} <small>${runHow(x)}${slip}</small></span></li>`;
   }
   if (e.kind === 'view') return `<li>${t}${evIcon('view')}<span class="ad-muted">Opened ${esc(pageName(e.page))}</span></li>`;
   return `<li>${t}${evIcon(e.kind)}<span>${esc(KIND[e.kind] || e.kind)}${e.target ? `: <b>${targetHtml(e.kind, e.target)}</b>` : ''}</span></li>`;
@@ -260,17 +289,22 @@ function boardHtml(fen, white) {
 const doneBar = (t) => `<span class="ad-done"><i style="--v:${t.runs ? t.done / t.runs : 0}"></i>${pctOf(t.runs ? t.done / t.runs : null)}</span>`;
 const modes = (t) => `<small title="Lines finished in Learn, Practice and Time">L ${t.learn} · P ${t.try} · T ${t.time}</small>`;
 function openingsHtml(s) {
-  if (!(s.openings2 || []).length) return `<section class="pf-card"><div class="ad-head"><h2>Openings practised <small>last 30 days</small></h2></div>
+  if (!(s.openings2 || []).length) return `<section class="pf-card"><div class="ad-head"><h2>${ic('practise')}Openings practised <small>last 30 days</small></h2></div>
     <p class="info">Nothing yet. Each line practised is counted from 31 Oct 2026; the table, each opening's lines and the hardest moves fill in as people practise.</p></section>`;
+  const by = new Map();
+  for (const { v, x } of runsOf(s)) { const k = `${x.s}|${x.o}`, m = by.get(k) ?? new Map(), p = v.name || v.id; m.set(p, { v, n: (m.get(p)?.n || 0) + 1 }); by.set(k, m); }
+  // The logged-in players by name; the rest only as a count, so a busy opening stays one line.
+  const who = (o) => { const ps = [...(by.get(`${o.side}|${o.name}`) || new Map()).values()].sort((a, b) => b.n - a.n), anon = ps.filter((p) => !p.v.name).length;
+    return [...ps.filter((p) => p.v.name).map((p) => `${personName(p.v)}${p.n > 1 ? ` <small>×${p.n}</small>` : ''}`), ...(anon ? [`${anon} not logged in`] : [])].join(' · '); };
   const row = (t) => `<td class="num">${t.people}</td><td class="num">${t.runs}</td><td>${doneBar(t)}</td><td class="num">${(t.misses / Math.max(1, t.runs)).toFixed(1)}</td>`;
-  return `<section class="pf-card"><div class="ad-head"><h2>Openings practised <small>last 30 days</small></h2><small>A run is one go at a line. Click an opening for its lines.</small></div>
+  return `<section class="pf-card"><div class="ad-head"><h2>${ic('practise')}Openings practised <small>last 30 days</small></h2><small>A run is one go at a line. Click an opening for its lines and who practised it.</small></div>
     <div class="ad-op-wrap"><table class="ad-op"><thead><tr><th>Opening</th><th>People</th><th>Runs</th><th>Finished</th><th>Mistakes a run</th><th>Finished in</th></tr></thead>
     ${s.openings2.map((o) => `<tbody class="ad-op-group"><tr class="ad-op-row" tabindex="0" aria-expanded="false"><td>${side(o.side)}<b>${esc(o.name)}</b> <small>${o.lines.length} line${o.lines.length === 1 ? '' : 's'}</small></td>${row(o)}<td>${modes(o)}</td></tr>
-      ${o.lines.map((l) => `<tr class="ad-op-line" hidden><td>${esc(l.name)}</td>${row(l)}<td>${modes(l)}</td></tr>`).join('')}</tbody>`).join('')}</table></div>
-    ${(s.hardest || []).length ? `<h3 class="ad-sub">Hardest moves <small>where most runs slip first</small></h3><div class="ad-hard">${s.hardest.map((h) => `<figure>${boardHtml(h.fen, h.side !== 'b')}
+      ${o.lines.map((l) => `<tr class="ad-op-line" hidden><td>${esc(l.name)}</td>${row(l)}<td>${modes(l)}</td></tr>`).join('')}${who(o) ? `<tr class="ad-op-line ad-op-who" hidden><td colspan="6">${ic('people')}${who(o)}</td></tr>` : ''}</tbody>`).join('')}</table></div>
+    ${(s.hardest || []).length ? `<h3 class="ad-sub">${ic('target')}Hardest moves <small>where most runs slip first</small></h3><div class="ad-hard">${s.hardest.map((h) => `<figure>${boardHtml(h.fen, h.side !== 'b')}
       <figcaption><b class="ad-hard-n">${pctOf(h.share)}</b> of runs slip here · the move is <b>${esc(h.want)}</b>${h.got ? `, most play ${esc(h.got)}` : ''}<small>${side(h.side)}${esc(h.opening)} · ${esc(h.line)} · ${h.n} slip${h.n === 1 ? '' : 's'}, ${h.people} ${h.people === 1 ? 'person' : 'people'}</small></figcaption></figure>`).join('')}</div>` : ''}</section>`;
 }
-const errorsHtml = (s) => `<section class="pf-card"><div class="ad-head"><h2>Errors <small>last 30 days</small></h2><small>What broke for visitors: profiles that could not be read, and errors in the pages.</small></div>
+const errorsHtml = (s) => `<section class="pf-card"><div class="ad-head"><h2>${ic('error')}Errors <small>last 30 days</small></h2><small>What broke for visitors: profiles that could not be read, and errors in the pages.</small></div>
   ${(s.errors || []).length ? `<ul class="pf-rows ad-recent">${s.errors.map((e) => `<li><span>${esc(e.text)}</span><small>${e.n}× · ${e.people} ${e.people === 1 ? 'person' : 'people'} · last ${short(e.last)}</small></li>`).join('')}</ul>` : '<p class="info">None. Errors are counted from 31 Oct 2026.</p>'}</section>`;
 
 function render(s) {
@@ -278,19 +312,26 @@ function render(s) {
   $('#admin').innerHTML = `
     <header class="pr-head"><h1 class="pf-h1">Admin</h1><p class="info">How Chess Trainer is used. A visitor is a browser, counted once in each period; a new visitor came for the first time in it. The admins' own visits and automated browsers are not counted.</p>
       <p class="ad-demo-row"><span class="seg" role="group" aria-label="Which numbers"><button type="button" data-real aria-pressed="${!s.demo}">Real</button><button type="button" data-demo aria-pressed="${!!s.demo}">Demo</button></span>
-        ${s.demo ? '<b class="ad-demo-tag">Demo data</b> Made up test visitors, to see how the page looks with many.' : ''}</p></header>
+        ${s.demo ? '<b class="ad-demo-tag">Demo data</b> Made up test visitors, to see how the page looks with many.' : ''}</p>
+      <nav class="ad-jump" aria-label="Parts">${GROUPS.map(([id, t, i]) => `<a href="#ad-${id}">${ic(i)}${t}</a>`).join('')}</nav></header>
     <dl class="pf-kpis ad-kpis">
       ${[['Today', t.today, t.newToday], ['7 days', t.week, t.new7], [`${s.days} days`, t.month, t.new30, `${Math.round(t.mobile * 100)}% on a phone`],
         ['All time', t.all, t.all, `${t.all ? (t.views / t.all).toFixed(1) : 0} pages a visitor`]].map(([dt, all, fresh, more]) => `<div class="ad-pair"><dt>${dt}</dt>
         <dd><span>${all}<small>visitors</small></span><span>${fresh}<small>new visitors</small></span></dd>${more ? `<small>${more}</small>` : ''}</div>`).join('')}
       <div><dt>Profiles created</dt><dd>${t.registered}</dd><small>logged in with Lichess</small></div>
     </dl>
+    ${group('overview')}
     ${overviewHtml(s)}
-    <section class="pf-card"><div class="ad-head"><h2>Visitors</h2><div class="seg" role="group" aria-label="Time span" id="ad-span">${SPANS.map(([l, n]) => `<button type="button" data-span="${n}" aria-pressed="${n === span}">${l}</button>`).join('')}</div></div>
+    <section class="pf-card"><div class="ad-head"><h2>${ic('analyse')}Visitors</h2><div class="seg" role="group" aria-label="Time span" id="ad-span">${SPANS.map(([l, n]) => `<button type="button" data-span="${n}" aria-pressed="${n === span}">${l}</button>`).join('')}</div></div>
       <div id="ad-line" class="ad-line-box"></div><div id="ad-notes" class="ad-notes"></div></section>
+    ${group('openings')}
     ${openingsHtml(s)}
-    ${errorsHtml(s)}
-    <section class="pf-card"><div class="ad-head"><h2>Unique visitors · ${s.visitors.length}</h2><small>Every visitor once, newest first. IP addresses without their last part. Click one to see what they did.</small></div>
+    <div class="ad-three">${practiceHtml(s)}
+      <section class="pf-card"><h2>${ic('practise')}Openings opened <small>before lines were counted one by one</small></h2>
+        ${(s.openings || []).length ? `<ul class="pf-rows ad-recent">${s.openings.map((o) => `<li><span>${esc(o.name)}</span><small>opened ${o.opened} · ${o.people} ${o.people === 1 ? 'person' : 'people'} · done <b title="Learn">${o.learn}</b> L · <b title="Practice">${o.try}</b> P · <b title="Time challenge">${o.time}</b> T</small></li>`).join('')}</ul>` : rows(s.practised)}</section>
+    </div>
+    ${group('people')}
+    <section class="pf-card"><div class="ad-head"><h2>${ic('people')}Unique visitors · ${s.visitors.length}</h2><small>Every visitor once, newest first. IP addresses without their last part. Click one to see what they did.</small></div>
       ${s.visitors.length ? `<div class="ad-visitors"><div class="ad-v-head"><span>Location</span><span>IP</span><span>Lichess</span><span>Device</span><span>Visits</span><span>Last seen</span></div>${s.visitors.map((v) => `<details class="ad-visitor"><summary>
           <span class="ad-v-where">${flag(v.country)}${esc(v.country ? land(v.country).replace(/ \(..\)$/, '') : 'Unknown')}${v.city ? ` · ${esc(v.city)}` : ''}</span>
           <span class="num">${esc((v.ip || '–').replace(/\.0$/, '.x').replace(/::$/, ':x'))}</span>
@@ -301,37 +342,34 @@ function render(s) {
           ${personHtml(v, s.visitors)}</details>`).join('')}</div>
       ${s.visitors.length > 10 ? `<button type="button" class="ghost ad-more" data-more aria-expanded="false">Show all ${s.visitors.length}</button>` : ''}`
       : '<p class="info">Nobody yet.</p>'}</section>
-    <div class="pf-two">
-      <section class="pf-card"><div class="ad-head"><h2>Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
-      ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${actionRows(s.recentActions).slice(0, 15).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
-      <section class="pf-card"><div class="ad-head"><h2>Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
-      ${(s.recentProfiles || []).length ? `<ul class="pf-rows ad-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: (r.target || '').split(' #')[0] })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
-    </div>
-    <div class="pf-two">
-      <section class="pf-card"><h2>Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>
-      <section class="pf-card"><h2>Logged-in players · ${s.days} days</h2>${s.users.length
+    <div class="ad-three">
+      <section class="pf-card"><h2>${ic('login')}Logged-in players · ${s.days} days</h2>${s.users.length
         ? `<ul class="pf-rows ad-rows">${s.users.map((u) => `<li><span>${link(u)}</span><small>${u.n} actions · last ${when(u.last)}</small></li>`).join('')}</ul>` : '<p class="info">Nobody yet.</p>'}</section>
+      <section class="pf-card"><h2>${ic('plus')}Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="ad-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
+      <section class="pf-card"><h2>${ic('profile')}Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>
     </div>
     <div class="ad-three">
-      <section class="pf-card"><h2>Most visited pages</h2>${bars(s.pages, (x) => esc(pageName(x.name)), (x) => ` <small>${x.unique} unique</small>`)}</section>
-      <section class="pf-card"><h2>Where visitors come from</h2>${bars(s.sources || [])}</section>
-      <section class="pf-card"><h2>Devices <small>unique visitors</small></h2>${bars(s.devices || [])}</section>
+      <section class="pf-card"><div class="ad-head"><h2>${ic('profile')}Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
+      ${(s.recentProfiles || []).length ? `<ul class="pf-rows ad-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: (r.target || '').split(' #')[0] })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
+      <section class="pf-card"><div class="ad-head"><h2>${ic('card')}Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
+      ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${actionRows(s.recentActions).slice(0, 15).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
+      <section class="pf-card"><h2>${ic('compare')}Comparisons</h2>${rows(s.compares, (x) => targetHtml('compare', x.name))}</section>
     </div>
-    <div class="pf-two">
-      <section class="pf-card"><h2>Countries <small>unique visitors</small></h2>${bars(s.countries || [], (x) => flag(x.name) + esc(land(x.name)))}</section>
-      <section class="pf-card"><h2>Cities <small>unique visitors</small></h2>${bars(s.cities || [], (x) => flag(x.name.split(', ')[1]) + esc(x.name))}</section>
+    ${group('traffic')}
+    <div class="ad-four">
+      <section class="pf-card"><h2>${ic('globe')}Countries <small>unique visitors</small></h2>${bars(s.countries || [], (x) => flag(x.name) + esc(land(x.name)))}</section>
+      <section class="pf-card"><h2>${ic('pin')}Cities <small>unique visitors</small></h2>${bars(s.cities || [], (x) => flag(x.name.split(', ')[1]) + esc(x.name))}</section>
+      <section class="pf-card"><h2>${ic('link')}Where visitors come from</h2>${bars(s.sources || [])}</section>
+      <section class="pf-card"><h2>${ic('phone')}Devices <small>unique visitors</small></h2>${bars(s.devices || [])}</section>
     </div>
-    <div class="ad-three">
-      <section class="pf-card"><h2>Time of day <small>Swedish time</small></h2>${cols(s.hours, s.hours.map((_, i) => String(i).padStart(2, '0')), 3)}</section>
-      <section class="pf-card"><h2>Weekday</h2>${cols(s.weekdays, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])}</section>
-      <section class="pf-card"><h2>What people do</h2>${rows(s.usage, (x) => KIND[x.name] || esc(x.name))}</section>
+    <div class="ad-four">
+      <section class="pf-card"><h2>${ic('view')}Most visited pages</h2>${bars(s.pages, (x) => esc(pageName(x.name)), (x) => ` <small>${x.unique} unique</small>`)}</section>
+      <section class="pf-card"><h2>${ic('bolt')}What people do</h2>${rows(s.usage, (x) => KIND[x.name] || esc(x.name))}</section>
+      <section class="pf-card"><h2>${ic('clock')}Time of day <small>Swedish time</small></h2>${cols(s.hours, s.hours.map((_, i) => String(i).padStart(2, '0')), 3)}</section>
+      <section class="pf-card"><h2>${ic('calendar')}Weekday</h2>${cols(s.weekdays, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])}</section>
     </div>
-    <div class="ad-three">
-      <section class="pf-card"><h2>Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="ad-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
-      <section class="pf-card"><h2>Comparisons</h2>${rows(s.compares, (x) => targetHtml('compare', x.name))}</section>
-      <section class="pf-card"><h2>Openings opened <small>before lines were counted one by one</small></h2>
-        ${(s.openings || []).length ? `<ul class="pf-rows ad-recent">${s.openings.map((o) => `<li><span>${esc(o.name)}</span><small>opened ${o.opened} · ${o.people} ${o.people === 1 ? 'person' : 'people'} · done <b title="Learn">${o.learn}</b> L · <b title="Practice">${o.try}</b> P · <b title="Time challenge">${o.time}</b> T</small></li>`).join('')}</ul>` : rows(s.practised)}</section>
-    </div>
+    ${group('errors')}
+    ${errorsHtml(s)}
 `;
 }
 

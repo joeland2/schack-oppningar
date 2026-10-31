@@ -2020,7 +2020,7 @@ main .learn-from a.lf-link { font-size: 14px; }
 /* Admin: wider, cards in a row keep their own height, and long lists scroll inside their card. */
 main.profile:has(#admin) { max-width: 1320px; }
 /* Every card in a row is the same fixed height; what does not fit scrolls inside the card. */
-#admin .pf-two > .pf-card, #admin .ad-three > .pf-card { height: 360px; display: flex; flex-direction: column; min-width: 0; }
+#admin .pf-two > .pf-card, #admin .ad-three > .pf-card { height: 320px; display: flex; flex-direction: column; min-width: 0; }
 #admin .pf-two > .pf-card > :last-child, #admin .ad-three > .pf-card > :last-child { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; align-content: start; }
 #admin .ad-three > .pf-card > svg.ad-cols { flex: 0 1 auto; }
 .range2-me { position: absolute; top: -6px; bottom: -6px; width: 2px; margin-left: -1px; background: var(--ink); border-radius: 1px; }
@@ -2317,7 +2317,7 @@ main.profile:has(#admin) { max-width: 1320px; }
 .ad-done { display: grid; grid-template-columns: minmax(60px, 1fr) 3em; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; }
 .ad-done i { height: 8px; border-radius: 2px; background: var(--line); background-image: linear-gradient(var(--good), var(--good)); background-size: calc(var(--v) * 100%) 100%; background-repeat: no-repeat; }
 .ad-sub { margin: 22px 0 12px; font-size: 14px; } .ad-sub small { font-weight: 400; color: var(--muted); }
-.ad-hard { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 16px; }
+.ad-hard { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 190px)); gap: 16px; }
 .ad-hard figure { margin: 0; }
 .ad-board { display: grid; grid-template-columns: repeat(8, 1fr); aspect-ratio: 1; border-radius: 3px; overflow: hidden; }
 .ad-board i { display: block; aspect-ratio: 1; } .ad-board i.l { background: #f0d9b5; } .ad-board i.d { background: #b58863; }
@@ -2326,3 +2326,24 @@ main.profile:has(#admin) { max-width: 1320px; }
 .ad-hard-n { font: 400 22px/1 var(--font-poster); color: var(--bad); margin-right: 2px; }
 .ad-kpis.ad-week { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 760px) { .ad-kpis.ad-week { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Admin: parts under a heading with an icon, a menu to jump between them, and shorter cards in fours */
+.ad-jump { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; }
+.ad-jump a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); text-decoration: none; font-size: 13px; font-weight: 600; }
+.ad-jump a:hover { border-color: var(--hot); }
+.ad-jump .ico { width: 15px; height: 15px; color: var(--hot); }
+.ad-group { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 26px 0 -4px; padding-top: 14px; border-top: 1px solid var(--line); font: 400 clamp(26px, 3vw, 34px)/1 var(--font-poster); text-transform: uppercase; scroll-margin-top: 80px; }
+.ad-group .ico { width: 24px; height: 24px; align-self: center; color: var(--hot); }
+.ad-group small { font: 400 13px var(--font-body); text-transform: none; color: var(--muted); }
+#admin .pf-card h2 .ico, #admin .ad-sub .ico { width: 14px; height: 14px; margin-right: 7px; vertical-align: -2px; color: var(--hot); }
+.ad-four { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1100px) { .ad-four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .ad-four { grid-template-columns: minmax(0, 1fr); } }
+#admin .ad-four > .pf-card { height: 300px; display: flex; flex-direction: column; min-width: 0; }
+#admin .ad-four > .pf-card > :last-child { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; align-content: start; padding-right: 14px; margin-right: -14px; scrollbar-width: thin; scrollbar-color: var(--data) transparent; }
+#admin .ad-four > .pf-card > svg.ad-cols { flex: 0 1 auto; }
+.ad-who-list li { display: block; }
+.ad-who-ops { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.ad-who-ops .ad-chip { display: inline-flex; align-items: center; gap: 2px; padding: 2px 6px; font-size: 11.5px; }
+.ad-op-who td { font-size: 13px; color: var(--muted); }
+.ad-op-who .ico { width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; }
