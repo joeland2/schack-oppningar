@@ -2195,3 +2195,7 @@ main.profile:has(#admin) { max-width: 1320px; }
 .intro-about { font-size: 14px; line-height: 1.55; }
 .intro-about p { margin: 0 0 8px; }
 .intro-about ul { margin: 0 0 8px; padding-left: 18px; }
+/* Admin: each period's visitors and new visitors side by side. */
+#admin .ad-pair dd { display: flex; gap: clamp(16px, 4vw, 28px); }
+#admin .ad-pair dd span { display: flex; flex-direction: column; }
+#admin .ad-pair dd small { font-family: var(--font-body); }

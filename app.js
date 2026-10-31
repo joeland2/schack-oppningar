@@ -1,14 +1,14 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261030235851';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261030235851';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261030235851';
-import { NAMED_TRAPS } from './traps.js?v=20261030235851';
-import { GUIDE } from './guide.js?v=20261030235851';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261030235851';
-import { maia3Move } from './maia3.js?v=20261030235851';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261030235851';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261030235851';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261030235851';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261031090028';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261031090028';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261031090028';
+import { NAMED_TRAPS } from './traps.js?v=20261031090028';
+import { GUIDE } from './guide.js?v=20261031090028';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261031090028';
+import { maia3Move } from './maia3.js?v=20261031090028';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261031090028';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261031090028';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261031090028';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -317,10 +317,29 @@ function buildLines(op) {
   // your level fall for it when the games say; a slip found in the games that one of them covers goes.
   const named = namedTraps(op), same = (l) => named.some((n) => n.trap.ply === l.trap.ply && lineKey(n.moves.slice(0, n.trap.ply + 1)) === lineKey(l.moves.slice(0, l.trap.ply + 1)));
   const rest = built.filter((l) => !(l.trap && same(l)) && !named.some((n) => lineKey(n.moves) === lineKey(l.moves))), k = Math.max(1, rest.filter((l) => l.theory).length); // never before the first line
-  return [...rest.slice(0, k), ...named, ...rest.slice(k)];
+  return [...rest.slice(0, k), ...named, ...avoidTraps(op), ...rest.slice(k)];
 }
+const fenAfter = (moves) => { const g = new Chess(); moves.forEach((m) => g.move(m)); return g.fen(); };
 console.assert(NAMED_TRAPS.every((t) => { const g = new Chess(); try { t.moves.forEach((m) => g.move(m)); } catch { return false; }
-  return t.slip % 2 === (t.side === 'w' ? 1 : 0) && (!t.moves.at(-1).endsWith('#') || g.isCheckmate()); }), 'named traps: legal moves, the slip is the opponent\'s, mate where marked');
+  return t.slip % 2 === (t.side === 'w' ? 1 : 0) && (!t.moves.at(-1).endsWith('#') || g.isCheckmate())
+    && (!t.avoid || (t.avoid.ply % 2 === t.slip % 2 && new Chess(fenAfter(t.moves.slice(0, t.avoid.ply))).move(t.avoid.safe))); }), 'named traps: legal moves, the slip is the opponent\'s, mate where marked, a legal safe move');
+// The known traps set against your side in this opening, as lines that play the safe move instead.
+function avoidTraps(op) {
+  const starts = op.roots ? op.roots.map((r) => r.moves) : [op.root.split(' ')];
+  return NAMED_TRAPS.filter((t) => t.avoid && t.side !== op.side && starts.some((r) => lineKey(t.moves.slice(0, r.length)) === lineKey(r))).map((t) => {
+    const { ply, safe, note } = t.avoid, pre = t.moves.slice(0, ply), x = gamesAt(pre), m = x.moves.find((y) => y.san === t.moves[ply]);
+    // Lines end on the opponent's move, and not on a capture (that reads as material given): the most played moves on.
+    const moves = [...pre, safe], reply = gamesAt(moves).moves[0];
+    if (reply) moves.push(reply.san);
+    for (let i = 0; i < 2 && moves.at(-1).includes('x'); i++) {
+      const mine = gamesAt(moves).moves[0], theirs = mine && gamesAt([...moves, mine.san]).moves[0];
+      if (!theirs) break;
+      moves.push(mine.san, theirs.san);
+    }
+    return { moves, share: 0, name: `Avoid the ${t.name}`, branch: 0, theory: false,
+      avoid: { ply, san: t.moves[ply], safe, name: t.name, note, ...(m && m.n >= MIN_GAMES ? { score: scoreFor(m, op.side), share: m.n / x.total } : {}) } };
+  });
+}
 function namedTraps(op) {
   const starts = op.roots ? op.roots.map((r) => r.moves) : [op.root.split(' ')], them = op.side === 'w' ? 'b' : 'w';
   return NAMED_TRAPS.filter((t) => t.side === op.side && starts.some((r) => lineKey(t.moves.slice(0, r.length)) === lineKey(r))).map((t) => {
@@ -1317,14 +1336,16 @@ function renderWhy() {
   // Before the first move, an introduction: what the opening is about and which line this is.
   if (!hist.length && lines[lineIdx]) {
     const l = lines[lineIdx];
-    parts.push(`<p class="intro">This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>${l.trap?.kind === 'named' ? '' : `, ${l.theory ? 'known theory: the replies strong players choose' : 'a way players at your level often answer'}${bigShare(l.share) ? ` (${bigShare(l.share)} of games at your level go this way)` : ''}`}. It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap ? ` ${l.trap.kind === 'named' ? '' : `<b>${l.trap.kind === 'mistake' ? 'A common mistake' : 'A blunder to punish'}.</b> `}${trapStory(l)}` : ''}</p>`);
+    parts.push(`<p class="intro">This is line ${lineIdx + 1} of ${lines.length}: <b>${lineName(l)}</b>${l.trap?.kind === 'named' || l.avoid ? '' : `, ${l.theory ? 'known theory: the replies strong players choose' : 'a way players at your level often answer'}${bigShare(l.share) ? ` (${bigShare(l.share)} of games at your level go this way)` : ''}`}. It runs to move ${Math.ceil(l.moves.length / 2)}.${l.trap ? ` ${l.trap.kind === 'named' ? '' : `<b>${l.trap.kind === 'mistake' ? 'A common mistake' : 'A blunder to punish'}.</b> `}${trapStory(l)}` : ''}${l.avoid ? ` ${avoidStory(l.avoid)}` : ''}</p>`);
   }
   // First what to play and why (Learn), then a quiet line on the last move, then the other replies
   // folded away: the board and the move to make come first.
   if (mode === 'learn' && userTurn() && ply < line.length) {
     parts.push(`<p class="why-now"><b>Why</b> ${why(line.slice(0, ply), line[ply])}</p>`);
     const c = careful(line.slice(0, ply), line[ply]);
-    if (c) parts.push(`<p class="careful"><b>Careful:</b> many players at your level play ${c.san} here and score only ${pct(scoreFor(c, cur.side))}. Don't fall for it.</p>`);
+    const a = lines[lineIdx]?.avoid;
+    if (a && ply === a.ply) parts.push(`<p class="careful"><b>Careful: the ${a.name}.</b> ${badMove(a)} here is the mistake. ${a.note}</p>`);
+    else if (c) parts.push(`<p class="careful"><b>Careful:</b> many players at your level play ${c.san} here and score only ${pct(scoreFor(c, cur.side))}. Don't fall for it.</p>`);
   }
   if (hist.length) {
     const n = hist.length - 1;
@@ -2395,6 +2416,7 @@ const moveLabel = (i, san) => `${Math.floor(i / 2) + 1}${i % 2 ? '...' : '.'}${s
 // line itself: its last moves).
 function lineTag(l) {
   if (l.trap) return `if they play ${trapMove(l.trap)}`;
+  if (l.avoid) return `don't play ${badMove(l.avoid)}`;
   const main = lines[0]?.moves || [];
   const i = l.moves.findIndex((m, k) => m !== main[k]);
   if (l === lines[0] || i < 0) return lineEnd(l);
@@ -2406,6 +2428,8 @@ function lineTag(l) {
 // The line's last two moves with their real move numbers, e.g. "5.O-O d6", so same-named lines can be told apart.
 // A line's trap: the opponent's natural-looking slip, how well you do after it, and the move that
 // punishes it with what that move does.
+const badMove = (a) => `${moveLabel(a.ply, a.san)}?`;
+const avoidStory = (a) => `The ${a.name}, a known trap against you. ${a.share ? `About 1 in ${Math.round(1 / a.share)} players at your level walk into it with <b>${badMove(a)}</b>${a.score != null ? ` and score ${pct(a.score)} after it` : ''}. ` : `It starts with <b>${badMove(a)}</b>. `}This line shows how to stay out of it.`;
 const trapMove = (t) => `${Math.floor(t.ply / 2) + 1}${t.ply % 2 ? '...' : '.'}${t.san}?`;
 // The punishing move as a green arrow, in Learn only (in Practice you find it yourself).
 function punishArrow(t) {
@@ -2529,6 +2553,7 @@ function renderLineBox() {
       : s.played?.includes(lineKey(l.moves)) ? '<p class="lb-status"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>You have learned this line</p>' : ''}
     <div class="lb-stats">
       ${l.trap ? `<div class="lb-trap"><b>${trapMove(l.trap)}</b><span>${l.trap.kind === 'named' ? `the ${l.trap.name}: it gives you ${l.trap.win}` : `the ${trapWord(l.trap).toLowerCase()}`}${l.trap.kind === 'named' ? '' : l.trap.win ? `: it loses ${l.trap.win}` : `: you score ${pct(1 - l.trap.score)} after it`}</span></div>` : bigShare(l.share) ? `<div><b>${bigShare(l.share)}</b><span>of games in this opening go this way</span></div>` : ''}
+      ${l.avoid ? `<div class="lb-trap"><b>${badMove(l.avoid)}</b><span>the ${l.avoid.name}: play ${moveLabel(l.avoid.ply, l.avoid.safe)} instead</span></div>` : ''}
       <div><b>${played}/${n}</b><span>lines learned</span></div>
       <div><b>${done}/${n}</b><span>lines cleared${due ? `, ${due} due for review` : ''}</span></div>
     </div>
@@ -2557,7 +2582,7 @@ function renderLines() {
   // Every line, in course order, under the depth it belongs to; those past your depth are paler.
   const group = (i) => (all.length > DEPTHS[0][1] ? DEPTHS.find(([, d], k) => i === (k ? DEPTHS[k - 1][1] : 0)) : null);
   $('#lines-list').innerHTML = $('#m-lines-pop').innerHTML = all.map((l, i) => `${group(i) ? `<li class="line-group">${group(i)[0]}</li>` : ''}<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}${i >= lines.length ? ' beyond' : ''}" data-i="${i}">
-      <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? `<span class="trap-tag${l.trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(l.trap)}</span> ` : l.theory ? '<span class="trap-tag theory">Theory</span> ' : ''}${lineName(l)}<small>${lineTag(l)}</small></span>
+      <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? `<span class="trap-tag${l.trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(l.trap)}</span> ` : l.avoid ? '<span class="trap-tag">Trap</span> ' : l.theory ? '<span class="trap-tag theory">Theory</span> ' : ''}${lineName(l)}<small>${lineTag(l)}</small></span>
       <span class="line-share">${bigShare(l.share)}</span><span class="line-ok">${star(l)}</span>
     </button></li>`).join('');
   // The phone picks the line from the same list, stars and all, opened from the bar over the board.
@@ -2596,7 +2621,7 @@ function renderTree() {
   const label = (ply, san, first) => (ply % 2 === 0 ? `${ply / 2 + 1}.${san}` : first ? `${(ply + 1) / 2}...${san}` : san);
   const end = (i) => {
     const k = lineKey(lines[i].moves), st = done.includes(k) ? 'cleared' : learned.includes(k) ? 'learned' : 'new';
-    return `<button type="button" class="tree-end ${st}${i === lineIdx ? ' now' : ''}" data-i="${i}">${lines[i].trap ? `<span class="trap-tag${lines[i].trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(lines[i].trap)}</span> ` : ''}Line ${i + 1}<small>${st === 'new' ? 'not played' : st}</small></button>`;
+    return `<button type="button" class="tree-end ${st}${i === lineIdx ? ' now' : ''}" data-i="${i}">${lines[i].trap ? `<span class="trap-tag${lines[i].trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(lines[i].trap)}</span> ` : lines[i].avoid ? '<span class="trap-tag">Trap</span> ' : ''}Line ${i + 1}<small>${st === 'new' ? 'not played' : st}</small></button>`;
   };
   // One branch: its moves up to the next fork or line end, then what follows.
   const branch = (san, node, ply) => {

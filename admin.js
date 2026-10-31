@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261030235851';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261030235851';
+import { account, login, finishLogin } from './lichess.js?v=20261031090028';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261031090028';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -124,7 +124,7 @@ function visitorLine(ds) {
   ds.forEach((d, i) => { d.drawn = sv.visitors[i]; }); // where the hover dot sits
   const at = new Map(ds.map((d, i) => [d.key, i]));
   const marks = notes().map((nt, k) => [nt, at.get(noteKey(nt.t)), k]).filter(([, i]) => i !== undefined);
-  return `<svg class="ad-line" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Visitors ${hourly() ? `per hour over ${ds.length} hours` : `per day over ${ds.length} days`}: ${ds.reduce((t, d) => t + d.fresh, 0)} unique">
+  return `<svg class="ad-line" viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="Visitors ${hourly() ? `per hour over ${ds.length} hours` : `per day over ${ds.length} days`}: ${ds.reduce((t, d) => t + d.fresh, 0)} new">
     <line class="ad-axis" x1="0" y1="${H}" x2="${W}" y2="${H}"></line>
     ${span === 7 || span === 30 ? ds.map((d, i) => { const date = new Date(d.key.slice(0, 10)); // a midnight each day in 1W, each Monday in 1M
       return i && d.key.endsWith(' 00') && x(i) < W - 60 && (span === 7 || date.getDay() === 1) ? `<line class="ad-midnight" x1="${x(i)}" y1="0" x2="${x(i)}" y2="${H}"></line><text x="${x(i) + 4}" y="${H + 16}">${date.toLocaleDateString('en-GB', span === 7 ? { weekday: 'short' } : { day: 'numeric', month: 'short' })}</text>` : ''; }).join('') : ''}
@@ -133,7 +133,7 @@ function visitorLine(ds) {
     <line class="ad-cross" x1="0" y1="0" x2="0" y2="${H}" visibility="hidden"></line><circle class="ad-dot" r="4" visibility="hidden"></circle>
     <text x="0" y="${H + 16}">${span === 'today' ? '00:00' : day(ds[0].key.slice(0, 10))}</text><text x="${W}" y="${H + 16}" text-anchor="end">${hourly() ? 'Now' : 'Today'}</text><text x="4" y="12">${top}</text></svg>
     <div class="ad-tip" hidden></div>
-    <p class="ad-key"><span class="ad-k-line"></span>Visitors <span class="ad-k-area"></span>Unique (first visit) <span class="ad-k-note"></span>Note</p>`;
+    <p class="ad-key"><span class="ad-k-line"></span>Visitors <span class="ad-k-area"></span>New (first visit) <span class="ad-k-note"></span>Note</p>`;
 }
 function bindLine(body) {
   const ds = spanPoints(body), box = $('#ad-line');
@@ -147,7 +147,7 @@ function bindLine(body) {
     dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('visibility', 'visible');
     const here = notes().filter((nt) => noteKey(nt.t) === d.key);
     tip.hidden = false;
-    tip.innerHTML = `<b>${d.label}</b><br>${d.visitors} visitor${d.visitors === 1 ? '' : 's'} · ${d.fresh} unique<br><small>${d.views} page views</small>${here.map((nt) => `<br><span class="ad-tip-note">${esc(nt.text)}</span>`).join('')}`;
+    tip.innerHTML = `<b>${d.label}</b><br>${d.visitors} visitor${d.visitors === 1 ? '' : 's'} · ${d.fresh} new<br><small>${d.views} page views</small>${here.map((nt) => `<br><span class="ad-tip-note">${esc(nt.text)}</span>`).join('')}`;
     const px = (cx / W) * r.width;
     tip.style.left = `${Math.min(Math.max(px, 60), r.width - 60)}px`;
   });
@@ -187,14 +187,13 @@ const pageName = (p) => PAGE[p] || p;
 function render(s) {
   const link = (x) => `<a href="profile.html?u=${encodeURIComponent(x.name)}">${esc(x.name)}</a>`, t = s.totals;
   $('#admin').innerHTML = `
-    <header class="pr-head"><h1 class="pf-h1">Admin</h1><p class="info">How Chess Trainer is used. A visitor is a browser, counted once: on the day they first came. The admins' own visits and automated browsers are not counted.</p>
+    <header class="pr-head"><h1 class="pf-h1">Admin</h1><p class="info">How Chess Trainer is used. A visitor is a browser, counted once in each period; a new visitor came for the first time in it. The admins' own visits and automated browsers are not counted.</p>
       <p class="ad-demo-row"><span class="seg" role="group" aria-label="Which numbers"><button type="button" data-real aria-pressed="${!s.demo}">Real</button><button type="button" data-demo aria-pressed="${!!s.demo}">Demo</button></span>
         ${s.demo ? '<b class="ad-demo-tag">Demo data</b> Made up test visitors, to see how the page looks with many.' : ''}</p></header>
     <dl class="pf-kpis ad-kpis">
-      <div><dt>Visitors today</dt><dd>${t.today}</dd><small>${t.newToday} unique (first visit)</small></div>
-      <div><dt>Visitors, 7 days</dt><dd>${t.week}</dd><small>${t.new7} unique</small></div>
-      <div><dt>Visitors, ${s.days} days</dt><dd>${t.month}</dd><small>${t.new30} unique · ${Math.round(t.mobile * 100)}% on a phone</small></div>
-      <div><dt>Visitors, all time</dt><dd>${t.all}</dd><small>${t.all ? (t.views / t.all).toFixed(1) : 0} pages a visitor</small></div>
+      ${[['Today', t.today, t.newToday], ['7 days', t.week, t.new7], [`${s.days} days`, t.month, t.new30, `${Math.round(t.mobile * 100)}% on a phone`],
+        ['All time', t.all, t.all, `${t.all ? (t.views / t.all).toFixed(1) : 0} pages a visitor`]].map(([dt, all, fresh, more]) => `<div class="ad-pair"><dt>${dt}</dt>
+        <dd><span>${all}<small>visitors</small></span><span>${fresh}<small>new visitors</small></span></dd>${more ? `<small>${more}</small>` : ''}</div>`).join('')}
       <div><dt>Profiles created</dt><dd>${t.registered}</dd><small>logged in with Lichess</small></div>
     </dl>
     <section class="pf-card"><div class="ad-head"><h2>Visitors</h2><div class="seg" role="group" aria-label="Time span" id="ad-span">${SPANS.map(([l, n]) => `<button type="button" data-span="${n}" aria-pressed="${n === span}">${l}</button>`).join('')}</div></div>
