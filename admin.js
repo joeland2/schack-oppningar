@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261031171105';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261031171105';
+import { account, login, finishLogin } from './lichess.js?v=20261031171509';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261031171509';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -118,7 +118,7 @@ console.assert(curve([[0, 0], [1, 1]]).startsWith('M0.0,0.0C'), 'curve');
 const ease = (vs, k) => vs.map((_, i) => { const w = vs.slice(Math.max(0, i - k), i + k + 1); return w.reduce((t, v) => t + v, 0) / w.length; });
 const SMOOTH = () => (span === 30 ? 3 : span === 7 ? 1 : 0); // hours on each side
 function visitorLine(ds) {
-  const sv = { visitors: ease(ds.map((d) => d.visitors), SMOOTH()), fresh: ease(ds.map((d) => d.fresh), SMOOTH()) };
+  const sv = { visitors: ease(ds.map((d) => d.visitors), SMOOTH()), fresh: ease(ds.map((d) => d.fresh), SMOOTH()), back: ease(ds.map((d) => Math.max(0, d.visitors - d.fresh)), SMOOTH()) };
   const top = Math.max(1, Math.ceil(Math.max(...sv.visitors))), x = (i) => (i / (ds.length - 1)) * W, y = (v) => H - (v / top) * (H - 10);
   const pts = (k) => sv[k].map((v, i) => [x(i), y(v)]);
   ds.forEach((d, i) => { d.drawn = sv.visitors[i]; }); // where the hover dot sits
@@ -129,11 +129,11 @@ function visitorLine(ds) {
     ${span === 7 || span === 30 ? ds.map((d, i) => { const date = new Date(d.key.slice(0, 10)); // a midnight each day in 1W, each Monday in 1M
       return i && d.key.endsWith(' 00') && x(i) < W - 60 && (span === 7 || date.getDay() === 1) ? `<line class="ad-midnight" x1="${x(i)}" y1="0" x2="${x(i)}" y2="${H}"></line><text x="${x(i) + 4}" y="${H + 16}">${date.toLocaleDateString('en-GB', span === 7 ? { weekday: 'short' } : { day: 'numeric', month: 'short' })}</text>` : ''; }).join('') : ''}
     ${marks.map(([nt, i]) => `<g class="ad-note"><line x1="${x(i)}" y1="6" x2="${x(i)}" y2="${H}"></line><circle cx="${x(i)}" cy="6" r="4"></circle></g>`).join('')}
-    <path class="ad-area" d="${curve(pts('fresh'))}L${W},${H}L0,${H}Z"></path><path class="ad-curve" d="${curve(pts('visitors'))}"></path>
+    <path class="ad-area" d="${curve(pts('fresh'))}L${W},${H}L0,${H}Z"></path><path class="ad-curve" d="${curve(pts('visitors'))}"></path><path class="ad-curve-back" d="${curve(pts('back'))}"></path>
     <line class="ad-cross" x1="0" y1="0" x2="0" y2="${H}" visibility="hidden"></line><circle class="ad-dot" r="4" visibility="hidden"></circle>
     <text x="0" y="${H + 16}">${span === 'today' ? '00:00' : day(ds[0].key.slice(0, 10))}</text><text x="${W}" y="${H + 16}" text-anchor="end">${hourly() ? 'Now' : 'Today'}</text><text x="4" y="12">${top}</text></svg>
     <div class="ad-tip" hidden></div>
-    <p class="ad-key"><span class="ad-k-line"></span>Visitors <span class="ad-k-area"></span>New (first visit) <span class="ad-k-note"></span>Note</p>`;
+    <p class="ad-key"><span class="ad-k-line"></span>Visitors <span class="ad-k-area"></span>New (first visit) <span class="ad-k-back"></span>Came back <span class="ad-k-note"></span>Note</p>`;
 }
 function bindLine(body) {
   const ds = spanPoints(body), box = $('#ad-line');
@@ -147,7 +147,7 @@ function bindLine(body) {
     dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('visibility', 'visible');
     const here = notes().filter((nt) => noteKey(nt.t) === d.key);
     tip.hidden = false;
-    tip.innerHTML = `<b>${d.label}</b><br>${d.visitors} visitor${d.visitors === 1 ? '' : 's'} · ${d.fresh} new<br><small>${d.views} page views</small>${here.map((nt) => `<br><span class="ad-tip-note">${esc(nt.text)}</span>`).join('')}`;
+    tip.innerHTML = `<b>${d.label}</b><br>${d.visitors} visitor${d.visitors === 1 ? '' : 's'} · ${d.fresh} new · ${Math.max(0, d.visitors - d.fresh)} came back<br><small>${d.views} page views</small>${here.map((nt) => `<br><span class="ad-tip-note">${esc(nt.text)}</span>`).join('')}`;
     const px = (cx / W) * r.width;
     tip.style.left = `${Math.min(Math.max(px, 60), r.width - 60)}px`;
   });
@@ -250,6 +250,41 @@ function practiceHtml(s) {
       <span class="ad-who-ops">${[...p.ops.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `<span class="ad-chip">${side(k[0])}${esc(k.slice(2))}${n > 1 ? ` ×${n}` : ''}</span>`).join('')}</span></span></li>`).join('')}</ul>` : none}</section>
     <section class="pf-card"><h2>${ic('line')}Latest runs <small>newest first</small></h2>${runs.length ? `<ul class="pf-rows ad-recent">${runs.slice(0, 40).map(({ v, at, x }) => `<li><span>${side(x.s)}<b>${esc(x.o)}</b> · ${esc(x.l)} <small>${runHow(x)}</small></span><small>${personName(v)} · ${short(at)}</small></li>`).join('')}</ul>` : none}</section>`;
 }
+// Getting better: the mistakes a run by how many times that person had tried that line before,
+// then each person who ran a line more than once, from their first run to their latest.
+function betterHtml(s) {
+  const tries = new Map(), byNth = [];
+  for (const r of runsOf(s).slice().reverse()) {
+    const k = `${r.v.name || r.v.id}|${r.x.o}|${r.x.l}`, t = tries.get(k) ?? { v: r.v, x: r.x, runs: [] };
+    t.runs.push(r.x.x || 0); tries.set(k, t);
+    const nth = Math.min(t.runs.length, 5) - 1; (byNth[nth] ??= []).push(r.x.x || 0);
+  }
+  const avg = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const curve = byNth.map((xs, i) => ({ name: i === 4 ? '5th try or later' : `${['1st', '2nd', '3rd', '4th'][i]} try`, n: avg(xs), runs: xs.length })).filter((c) => c.runs);
+  const top = Math.max(0.1, ...curve.map((c) => c.n));
+  const people = [...tries.values()].filter((t) => t.runs.length > 1).sort((a, b) => (b.runs[0] - b.runs.at(-1)) - (a.runs[0] - a.runs.at(-1)) || b.runs.length - a.runs.length);
+  return `<section class="pf-card"><h2>${ic('target')}Getting better <small>mistakes a run, by try</small></h2>${curve.length ? `<div><ul class="ad-list">${curve.map((c) => `<li><span>${c.name} <small class="ad-muted">${c.runs} run${c.runs === 1 ? '' : 's'}</small></span><b>${c.n.toFixed(1)}</b><i style="width:${(c.n / top) * 100}%"></i></li>`).join('')}</ul>
+    ${people.length ? `<h3 class="ad-sub">From the first run to the latest</h3><ul class="pf-rows ad-recent">${people.map((t) => { const a = t.runs[0], b = t.runs.at(-1);
+      return `<li><span>${personName(t.v)} · ${side(t.x.s)}${esc(t.x.o)} <small>${esc(t.x.l)} · ${t.runs.length} runs</small></span><small class="${b < a ? 'ad-up' : b > a ? 'ad-down' : ''}">${a} → ${b} mistake${b === 1 ? '' : 's'}</small></li>`; }).join('')}</ul>` : ''}</div>`
+    : '<p class="info">Nothing yet. Runs are counted from 31 Oct 2026.</p>'}</section>`;
+}
+
+// Downloaded cards: which kind, which look, and the player types on them.
+function cardsHtml(s) {
+  const cs = s.visitors.flatMap((v) => v.events.filter((e) => e.kind === 'card' && e.target)), count = (xs) => Object.entries(xs.reduce((m, x) => ({ ...m, [x]: (m[x] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ name, n }));
+  const parts = cs.map((e) => { const [head, code] = e.target.split(' #'), bits = head.split(' · '); return { kind: bits.includes('style') ? 'Style card' : head.includes(' vs ') ? 'Comparison' : 'Card', look: bits.find((b) => b === 'light' || b === 'dark'), type: code && TYPE_CODES[code.split('/')[1]] }; });
+  const block = (t, xs) => (xs.length ? `<h3 class="ad-sub">${t}</h3>${bars(xs)}` : '');
+  return `<section class="pf-card"><h2>${ic('card')}Cards downloaded · ${cs.length} <small>by kind, look and player type</small></h2>${cs.length ? `<div>${block('Kind', count(parts.map((p) => p.kind)))}${block('Look', count(parts.map((p) => (p.look ? `${p.look[0].toUpperCase()}${p.look.slice(1)}` : 'Not known (older)'))))}${block('Player type on the card', count(parts.map((p) => p.type).filter(Boolean)))}</div>` : '<p class="info">None yet.</p>'}</section>`;
+}
+
+// Live: who was here in the last 15 minutes, and the last thing each did. Drawn when the page loads.
+function liveHtml(s) {
+  const now = Date.now(), ago = (iso) => Math.round((now - Date.parse(iso)) / 6e4), here = s.visitors.filter((v) => ago(v.last) < 15), hour = s.visitors.filter((v) => ago(v.last) < 60).length;
+  const doing = (v) => { const e = v.events[0]; return e ? eventRow(e).replace(/^<li>|<\/li>$/g, '') : ''; };
+  return `<section class="pf-card ad-live"><div class="ad-head"><h2><i class="ad-live-dot" aria-hidden="true"></i>Live now <small>${here.length} in the last 15 min · ${hour} in the last hour</small></h2><small>As of ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. Reload for newer.</small></div>
+    ${here.length ? `<ul class="ad-live-list">${here.map((v) => `<li><span class="ad-live-who">${personName(v)} <small>${esc(v.device || '')} · ${ago(v.last) < 1 ? 'just now' : `${ago(v.last)} min ago`}</small></span><span class="ad-live-did">${doing(v)}</span></li>`).join('')}</ul>` : '<p class="info">Nobody right now.</p>'}</section>`;
+}
+
 function eventRow(e) {
   const t = `<time>${new Date(e.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</time>`;
   if (e.kind === 'line') {
@@ -321,12 +356,14 @@ function render(s) {
       <div><dt>Profiles created</dt><dd>${t.registered}</dd><small>logged in with Lichess</small></div>
     </dl>
     ${group('overview')}
+    ${liveHtml(s)}
     ${overviewHtml(s)}
     <section class="pf-card"><div class="ad-head"><h2>${ic('analyse')}Visitors</h2><div class="seg" role="group" aria-label="Time span" id="ad-span">${SPANS.map(([l, n]) => `<button type="button" data-span="${n}" aria-pressed="${n === span}">${l}</button>`).join('')}</div></div>
       <div id="ad-line" class="ad-line-box"></div><div id="ad-notes" class="ad-notes"></div></section>
     ${group('openings')}
     ${openingsHtml(s)}
-    <div class="ad-three">${practiceHtml(s)}
+    <div class="ad-three">${practiceHtml(s)}${betterHtml(s)}</div>
+    <div class="pf-two">${cardsHtml(s)}
       <section class="pf-card"><h2>${ic('practise')}Openings opened <small>before lines were counted one by one</small></h2>
         ${(s.openings || []).length ? `<ul class="pf-rows ad-recent">${s.openings.map((o) => `<li><span>${esc(o.name)}</span><small>opened ${o.opened} · ${o.people} ${o.people === 1 ? 'person' : 'people'} · done <b title="Learn">${o.learn}</b> L · <b title="Practice">${o.try}</b> P · <b title="Time challenge">${o.time}</b> T</small></li>`).join('')}</ul>` : rows(s.practised)}</section>
     </div>
@@ -465,16 +502,17 @@ function demoData() {
     for (let i = 0; i < fresh && visitors.length < 300 && d < 60; i++) {
       const [country, city] = pick(PLACES), first = t + rnd() * 864e5 * 0.9, name = rnd() < 0.25 ? pick(NAMES) : null;
       const events = Array.from({ length: 2 + Math.floor(rnd() * 8) }, (_, k) => {
-        const kind = k === 0 ? 'view' : pick(['view', 'view', 'view', 'practise', 'line', 'line', 'profile', 'analyse', 'compare']);
+        const kind = k === 0 ? 'view' : pick(['view', 'view', 'view', 'practise', 'line', 'line', 'profile', 'analyse', 'compare', 'card']);
         const [sd, o, l] = pick(DEMO_LINES), x = rnd() < 0.6 ? 0 : 1 + Math.floor(rnd() * 3);
         const run = { k: rnd() < 0.7 ? 'done' : 'left', m: pick(['learn', 'try', 'try', 'time']), s: sd, o, l, x, p: 8 + Math.floor(rnd() * 10), ...(x ? { f: DEMO_HARD[0].fen, w: 'c5', g: 'Bf5', n: 5 } : {}) };
-        return { at: iso(first + k * 90e3), kind, page: kind === 'view' ? pick(PAGES) : 'index.html', target: kind === 'practise' ? pick(OPS) : kind === 'line' ? JSON.stringify(run) : kind === 'profile' ? pick(NAMES) : kind === 'compare' ? `${pick(NAMES)} vs ${pick(NAMES)}` : null };
+        return { at: iso(first + k * 90e3), kind, page: kind === 'view' ? pick(PAGES) : 'index.html', target: kind === 'practise' ? pick(OPS) : kind === 'line' ? JSON.stringify(run) : kind === 'profile' ? pick(NAMES) : kind === 'compare' ? `${pick(NAMES)} vs ${pick(NAMES)}` : kind === 'card' ? `${pick(NAMES)} · ${pick(['card', 'card', 'style'])} · ${pick(['dark', 'dark', 'light'])} #72/${Math.floor(rnd() * 21)}/3/60.55.70.45.65.50/1650bl/K` : null };
       }).reverse();
       visitors.push({ id: `demo-${visitors.length}`, ip: `${Math.floor(rnd() * 200) + 20}.${Math.floor(rnd() * 255)}.${Math.floor(rnd() * 255)}.0`, country, city, device: pick(DEVICES), source: pick(SOURCES), name,
         views: events.filter((e) => e.kind === 'view').length, first: iso(first), last: events[0].at, events });
     }
   }
   visitors.sort((a, b) => b.last.localeCompare(a.last));
+  visitors.slice(0, 4).forEach((v, i) => { v.last = v.events[0].at = iso(now - i * 4 * 6e4); }); // a few here right now
   const count = (xs) => Object.entries(xs.reduce((m, x) => ({ ...m, [x]: (m[x] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([name, n]) => ({ name, n }));
   const sum = (n, k) => perDay.slice(-n).reduce((t, d) => t + d[k], 0), events = visitors.flatMap((v) => v.events);
   const registered = [...new Set(visitors.map((v) => v.name).filter(Boolean))];
