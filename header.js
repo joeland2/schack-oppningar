@@ -58,7 +58,7 @@
     if (practice) practice.innerHTML = '<span class="wide-only">My&nbsp;</span>practice'; // phones: the sections fit one row
     const board = `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a><a href="playstyles.html"${page === 'playstyles.html' ? ' aria-current="page"' : ''}>Styles</a>`;
     if (prof?.isConnected) prof.insertAdjacentHTML('beforebegin', board); else document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', board);
-    if (ADMINS.includes(user()?.toLowerCase())) document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', `<a href="admin.html"${page === 'admin.html' ? ' aria-current="page"' : ''}>Admin</a>`);
+    if (ADMINS.includes(user()?.toLowerCase())) document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', `<a class="nav-admin" href="admin.html"${page === 'admin.html' ? ' aria-current="page"' : ''}>Admin</a>`);
   });
 })();
 

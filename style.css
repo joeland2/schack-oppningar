@@ -2469,3 +2469,9 @@ main.profile:has(#admin) { max-width: 1320px; }
 #profile .pf-seg a[aria-current="true"] { background: var(--ink); color: var(--bg); }
 .pf-ago { margin: 10px 0 0; font: 600 13px var(--font-body); color: var(--muted); text-align: center; }
 #profile .pf-ago a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; padding: 6px 2px; }
+/* Admin's sections do not fit one phone row: they scroll sideways instead, Admin last */
+@media (max-width: 560px) {
+  .top-nav:has(.nav-admin) { overflow-x: auto; scrollbar-width: none; justify-content: flex-start; }
+  .top-nav:has(.nav-admin)::-webkit-scrollbar { display: none; }
+  .top-nav:has(.nav-admin) a { flex: 0 0 auto; padding-inline: 8px; }
+}
