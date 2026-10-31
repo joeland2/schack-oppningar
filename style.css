@@ -2377,13 +2377,7 @@ main.profile:has(#admin) { max-width: 1320px; }
 .ps-you { margin-left: auto; padding: 3px 8px; border-radius: 4px; background: var(--hot); color: #fff; font: 600 11px var(--font-body); letter-spacing: .08em; }
 .ps-card p { margin: 0; font-size: 14px; line-height: 1.5; }
 .ps-how { color: var(--muted); font-size: 13px !important; } .ps-how b { color: var(--ink); font-weight: 600; }
-.ps-players { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
-.ps-player { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 4px; font-size: 13px; color: var(--ink); text-decoration: none; }
-.ps-player:hover { border-color: var(--hot); }
-.ps-player small { color: var(--muted); font-variant-numeric: tabular-nums; }
-.ps-more { color: var(--muted); font-size: 12.5px; align-self: center; }
 .lb-type a { color: inherit; text-decoration: none; } .lb-type a:hover { color: var(--hot); text-decoration: underline; }
-.ps-player .pf-flag { position: static; display: inline-block; width: 16px; height: 11px; flex: none; transform: none; background-size: cover; border-radius: 2px; box-shadow: none; }
 /* The account sits above the name as a small byline: the site, then the name; a pro's other accounts beside it */
 #profile > .pf-accts { margin-top: 0; gap: 18px; }
 #profile > .pf-accts + .pf-name-row { margin-top: 6px; }
@@ -2464,3 +2458,10 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-tr-v { fill: var(--ink); font: 600 10px var(--font-body); }
 @media (max-width: 560px) { .pf-tr-row { grid-template-columns: 78px minmax(0, 1fr) 34px 42px; gap: 8px; } .pf-tr-row > b { font-size: 20px; } }
 .pf-trend .pf-line { width: auto; max-width: 100%; height: auto; }
+/* Play styles: what each wins with and what it costs, side by side */
+.ps-gw { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.ps-gw p { padding-left: 10px; border-left: 3px solid var(--good); font-size: 13.5px !important; }
+.ps-gw p.ps-watch { border-left-color: var(--bad); }
+.ps-gw b { display: block; margin-bottom: 3px; font: 700 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.ps-vs { color: var(--muted); font-size: 13px !important; } .ps-vs a { color: var(--ink); font-weight: 600; }
+@media (max-width: 420px) { .ps-gw { grid-template-columns: 1fr; } }
