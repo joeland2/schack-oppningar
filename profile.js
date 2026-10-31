@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031152131';
-import { STYLE_OF } from './styles.js?v=20261031152131';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031152131';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031152714';
+import { STYLE_OF } from './styles.js?v=20261031152714';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031152714';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1558,6 +1558,9 @@ function leadStory(name, p, skills, me) {
 const STAR_PATH = 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z';
 const starIcon = (kind) => `<svg class="line-star ${kind}" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_PATH}"/></svg>`;
 // Who you struggle against, worst first; the headline names the worst when it is clearly below par.
+// A face for each kind of opponent: a clock, a sword, a shield, an arrow up or down.
+const OPP_ICON = { 'Fast movers': 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l3 2M9 2h6', Attackers: 'M14 3h7v7l-9 9-4-4zM3 21l5-5', 'Solid players': 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
+  'Stronger players': 'M12 19V5M6 11l6-6 6 6', 'Weaker players': 'M12 5v14M6 13l6 6 6-6' };
 function opponentsCard(p, me, name) {
   const rows = (p.opponents || []).slice().sort((a, b) => a.gain - b.gain);
   if (!rows.length) return '';
@@ -1565,8 +1568,9 @@ function opponentsCard(p, me, name) {
   const worst = rows[0], best = rows.at(-1);
   return `<section class="pf-card pf-opps"><h2>Who ${me ? 'you struggle' : 'they struggle'} against</h2>
     <p class="info">${worst.gain <= -0.04 ? `${who} struggle${me ? '' : 's'} most against <b>${worst.name.toLowerCase()}</b>: ${pct(worst.score)} in ${worst.n} games, where the ratings predicted ${exp(worst)}.` : `No kind of opponent gives ${me ? 'you' : 'them'} trouble: the results are close to what the ratings predict, or better.`}${best !== worst && best.gain >= 0.04 ? ` Best against <b>${best.name.toLowerCase()}</b>: ${pct(best.score)}, with ${exp(best)} expected.` : ''}</p>
-    <ul class="pf-rows pf-opp-rows"><li class="pf-opp-head" aria-hidden="true"><span></span><small>Games</small><small>Expected</small><small>Scored</small></li>${rows.map((x) => `<li><span>${x.name} <small>${me ? x.about : x.about.replace(/\byou\b/, 'them')}</small></span><small><span class="visually-hidden">${x.n} games, expected </span><span aria-hidden="true">${x.n}</span></small><small>${exp(x)}</small><b class="${x.gain <= -0.04 ? 'pf-bad' : x.gain >= 0.04 ? 'pf-good' : ''}"><span class="visually-hidden">, scored </span>${pct(x.score)}</b></li>`).join('')}</ul>
-    <p class="pf-skill-scale">Expected: what the rating gaps say ${me ? 'you' : 'they'} should score against these opponents. Red is below it, green above. A game can count in more than one group; groups with fewer than 10 games are left out.</p></section>`;
+    <ul class="pf-opp-list">${rows.map((x) => { const v = x.gain <= -0.04 ? ['bad', 'Struggles'] : x.gain >= 0.04 ? ['good', 'Strong'] : ['', 'As expected'];
+      return `<li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${OPP_ICON[x.name]}"/></svg><span><b>${x.name}</b><small>${me ? x.about : x.about.replace(/\byou\b/, 'them')}</small><small class="num">${pct(x.score)} · expected ${exp(x)} · ${games(x.n)}</small></span><span class="pf-verdict ${v[0]}">${v[1]}</span></li>`; }).join('')}</ul>
+    <p class="pf-skill-scale">Expected: what the rating gaps say ${me ? 'you' : 'they'} should score against these opponents. A game can count in more than one group; groups with fewer than 10 games are left out.</p></section>`;
 }
 function starsCard() {
   const { ops, sum } = starCounts();

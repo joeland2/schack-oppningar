@@ -2225,15 +2225,14 @@ main.profile:has(#admin) { max-width: 1320px; }
 #admin .ad-pair dd span { display: flex; flex-direction: column; }
 #admin .ad-pair dd small { font-family: var(--font-body); }
 /* Profile: who you struggle against. */
-.pf-opps .pf-bad { color: var(--hot); }
-.pf-opps .pf-good { color: var(--good); }
-/* A small table: the group and what it means, then games, score and the gain, in columns. */
-.pf-opps .pf-opp-rows { gap: 0; max-width: 720px; }
-.pf-opps .pf-opp-rows li { grid-template-columns: minmax(0, 1fr) 4.5em 4.5em 6.5em; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
-.pf-opps .pf-opp-rows li > :not(:first-child) { text-align: right; }
-.pf-opps .pf-opp-rows li > span small { display: block; color: var(--muted); font-size: 12.5px; }
-.pf-opps .pf-opp-rows li > b { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
-.pf-opps .pf-opp-head { padding: 0 0 6px; border-top: 0; }
-.pf-opps .pf-opp-head small { font: 600 11px var(--font-body); letter-spacing: .1em; text-transform: uppercase; }
-@media (max-width: 480px) { .pf-opps .pf-opp-rows li { grid-template-columns: minmax(0, 1fr) 3em 3.4em 4.6em; gap: 2px 8px; } .pf-opps .pf-opp-head small { font-size: 9.5px; letter-spacing: .04em; } }
+/* One row per kind of opponent: its icon, what it means and the numbers, and a verdict */
+.pf-opp-list { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; max-width: 720px; }
+.pf-opp-list li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 14px; background: var(--raised); }
+.pf-opp-list .ico { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pf-opp-list b { display: block; font-weight: 600; }
+.pf-opp-list small { display: block; color: var(--muted); font-size: 12.5px; }
+.pf-opp-list small.num { color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.pf-verdict { padding: 5px 9px; border-radius: 4px; background: var(--line); color: var(--muted); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.pf-verdict.bad { background: color-mix(in srgb, var(--bad) 22%, transparent); color: var(--hot); }
+.pf-verdict.good { background: color-mix(in srgb, var(--good) 20%, transparent); color: var(--good); }
 .pf-opps .pf-skill-scale { margin: 14px 0 0; color: var(--muted); font-size: 12px; max-width: 720px; }
