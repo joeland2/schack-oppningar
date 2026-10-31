@@ -3,13 +3,13 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031122014';
-import { STYLE_OF } from './styles.js?v=20261031122014';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser } from './chesscom.js?v=20261031122014';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031122506';
+import { STYLE_OF } from './styles.js?v=20261031122506';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031122506';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
-const PV = 37;
+const PV = 38;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -94,7 +94,7 @@ function readGame(g, me) {
     chosen: blacksName((g.opening?.name || '').split(':')[0]) === (side === 'b'),
     answer: answerOf(moves, (g.opening?.name || 'Unknown').split(':')[0], side),
     first: side === 'w' ? moves[0] : moves.slice(0, 2).join(' '), // the player's first move (Black: with White's before it)
-    expect: expectOf((g.opening?.name || 'Unknown').split(':')[0], side, mine.rating, g.speed), diff: mine.ratingDiff || 0, them: theirs.rating,
+    expect: expectOf((g.opening?.name || 'Unknown').split(':')[0], side, isCC(me) ? asLichess(mine.rating, g.speed) : mine.rating, g.speed), diff: mine.ratingDiff || 0, them: theirs.rating,
     castled, queensOff, endgame: endgameAt !== null, pieces, played,
     analysed: v.length > 0, ours: !!g.ours, acc: mine.analysis?.accuracy ?? null, blunders: mine.analysis?.blunder ?? null, mistakes: mine.analysis?.mistake ?? null,
     best: v.length ? Math.max(...v) : null, worst: v.length ? Math.min(...v) : null, after12: v.length > 23 ? v[23] : g.at12 != null ? g.at12 * pov : null, slips,
@@ -563,7 +563,6 @@ const sig = (g) => `${g.ours ? 1 : 0}|${g.at12 ?? ''}`;
 const extra = (g) => { const t = pack(g); return { ours: g.ours || undefined, at12: g.at12 ?? undefined, an: g.ours ? t.an : undefined, pa: g.ours ? [g.players.white.analysis, g.players.black.analysis] : undefined }; };
 function pull(name) {
   const me = name.toLowerCase();
-  if (isCC(name)) return Promise.resolve(new Map()); // the analyses function keeps Lichess names and ids only
   if (!PULLS.has(me)) PULLS.set(me, fetch(`${SYNC}?u=${encodeURIComponent(me)}`).then((r) => (r.ok ? r.json() : [])).catch(() => []).then((rows) => {
     const m = new Map(rows.map((r) => [r.id, r.data]));
     for (const [id, d] of m) SENT.set(`${me}|${id}`, sig(d));
@@ -587,7 +586,7 @@ function stableType(name, sp, p) {
   if (p.pieceAuto === undefined) { p.pieceAuto = p.piece; p.pieceWhyAuto = p.pieceWhy; } // the one the games give, kept to go back to
   if (pc) { p.piece = pc; p.pieceWhy = 'chosen'; } else { p.piece = p.pieceAuto; p.pieceWhy = p.pieceWhyAuto; } // the player's own pick for their card
   const now = { style: t[0]?.name, strength: t[1]?.name || null };
-  if (!drawingEarly && !isCC(name) && p.n >= MIN_GAMES && (!keep || keep.style !== now.style || keep.strength !== now.strength)) {
+  if (!drawingEarly && p.n >= MIN_GAMES && (!keep || keep.style !== now.style || keep.strength !== now.strength)) {
     STABLE.set(k, now);
     fetch(SYNC, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ player: name.toLowerCase(), rows: [{ id: typeId(sp), data: now }] }) }).catch(() => {});
   }
@@ -623,7 +622,6 @@ async function mergeRemote(name, games) {
 }
 async function push(name, games) {
   const me = name.toLowerCase();
-  if (isCC(name)) return;
   await pull(name);
   const rows = games.filter((g) => (g.ours || g.at12 != null) && SENT.get(`${me}|${g.id}`) !== sig(g)).map((g) => ({ id: g.id, data: extra(g) }));
   for (let i = 0; i < rows.length; i += 200) { // shortcut: no retry; what fails goes again with the next save
@@ -998,6 +996,8 @@ const TIERS_AT = [[0, 'Grey', '#858a91'], [800, 'Green', '#3f9a4e'], [1100, 'Tea
   [2000, 'Orange', '#e2711c'], [2300, 'Red', '#d63a3a'], [2600, 'Deep red', '#a8122a'], [2900, 'Elite', '#d4a017']];
 const tierOf = (r) => TIERS_AT.findLastIndex(([at]) => (r || 1500) >= at);
 const bandColor = (r) => TIERS_AT[tierOf(r)][2];
+// The rating the band is coloured by: a chess.com rating as the Lichess one of the same strength.
+const level = (name, main) => (isCC(name) ? asLichess(main?.rating, main?.speed) : main?.rating);
 console.assert(bandColor(1226) === '#1aa3a8' && bandColor(3263) === '#d4a017' && bandColor(500) === '#858a91' && tierOf(1400) === 3, 'bandColor');
 const darker = (hex) => `#${[1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.78).toString(16).padStart(2, '0')).join('')}`; // as CSS's 78% mix with black
 // The six skills as bars, so a player's shape reads before the numbers; [label, value] pairs.
@@ -1060,7 +1060,7 @@ function playerCard(name, p, t, skills) {
   const known = skills.filter((x) => x.v !== null);
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
   const main = p.speeds[0];
-  return `<div class="pf-pcard${proClass(name)}" style="--band:${bandColor(main?.rating)}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}
+  return `<div class="pf-pcard${proClass(name)}" style="--band:${bandColor(level(name, main))}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span>${t[1] ? `<span class="pf-str">+ ${esc(t[1].name)}</span>` : ''}</div>
       <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title=""${esc(nick(name))}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'chosen' ? `chosen by ${esc(nick(name))}` : p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
         ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}</div></div>
@@ -1099,7 +1099,7 @@ function wrap(ctx, text, x, y, max, lh, lines = 99, indent = 0) {
 // One card, 600 x 780 units, top left at (x, y).
 function drawCard(ctx, x, y, name, p, t, skills, piece, flag = null) {
   const known = skills.filter((k) => k.v !== null), ovr = known.length ? String(Math.round(sum(known, (k) => k.v) / known.length)) : '–', main = p.speeds[0];
-  const band = CARD.band(main?.rating);
+  const band = CARD.band(level(name, main));
   ctx.save(); ctx.translate(x, y);
   ctx.fillStyle = CARD.bg; ctx.beginPath(); ctx.roundRect(0, 0, 600, 780, 10); ctx.fill();
   ctx.fillStyle = band; ctx.beginPath(); ctx.roundRect(0, 0, 600, 14, [10, 10, 0, 0]); ctx.fill();

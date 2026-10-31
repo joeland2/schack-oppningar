@@ -88,3 +88,22 @@ export async function ccUser(name) {
   const n = (x) => (x ? x.win + x.loss + x.draw : 0);
   return { flag: pl?.country?.split('/').pop(), games: Object.fromEntries([...SPEEDS.map((sp) => [sp, n(st[`chess_${sp}`]?.record)]), ['classical', 0]]) };
 }
+
+// A chess.com rating as the Lichess rating of the same strength, in the same time control, for what is
+// measured against Lichess's players (what players score in an opening, the card's colour band). From
+// chessgoals.com's rating comparison (a survey of players on both): chess.com is lower, by about 450 at
+// 800 and less higher up; blitz meets around 2200. Between the points straight, beyond them the end's gap.
+const LEVELS = {
+  bullet: [[760, 1240], [920, 1375], [1100, 1515], [1385, 1735], [1690, 1970], [1900, 2135], [2110, 2300], [2425, 2550]],
+  blitz: [[800, 1290], [1000, 1425], [1200, 1555], [1500, 1755], [1800, 1950], [2000, 2080], [2200, 2210], [2500, 2410]],
+  rapid: [[1085, 1490], [1255, 1615], [1420, 1740], [1655, 1905], [1870, 2065], [1995, 2165], [2110, 2260], [2260, 2400]],
+};
+export function asLichess(rating, speed) {
+  const t = LEVELS[speed] || LEVELS.rapid;
+  if (rating == null) return rating;
+  const i = t.findIndex(([c]) => c > rating);
+  if (i === 0 || i === -1) { const [c, l] = t.at(i); return rating + l - c; }
+  const [[c0, l0], [c1, l1]] = [t[i - 1], t[i]];
+  return Math.round(l0 + ((rating - c0) / (c1 - c0)) * (l1 - l0));
+}
+console.assert(asLichess(1000, 'blitz') === 1425 && asLichess(1100, 'blitz') === 1490 && asLichess(600, 'blitz') === 1090 && asLichess(2600, 'blitz') === 2510, 'asLichess');
