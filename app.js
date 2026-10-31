@@ -1,14 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261031134102';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261031134102';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261031134102';
-import { NAMED_TRAPS } from './traps.js?v=20261031134102';
-import { GUIDE } from './guide.js?v=20261031134102';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261031134102';
-import { maia3Move } from './maia3.js?v=20261031134102';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261031134102';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261031134102';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261031134102';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261031134504';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261031134504';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261031134504';
+import { NAMED_TRAPS } from './traps.js?v=20261031134504';
+import { GUIDE } from './guide.js?v=20261031134504';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261031134504';
+import { maia3Move } from './maia3.js?v=20261031134504';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261031134504';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261031134504';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261031134504';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261031134504';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3556,9 +3557,11 @@ async function deepLink() {
 // shown as their player cards (from the leaderboard; their names alone until it answers).
 const ABBR = { Attack: 'ATK', Defense: 'DEF', 'Early game': 'EARLY', 'Late game': 'LATE', Accuracy: 'ACC', Speed: 'SPD' };
 const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-const pcard = (r) => `<div class="pf-pcard${proClass(r.name)}" style="--band:${bandColor(r.rating)}">${flagHtml(r.name)}<div class="pf-pcard-top"><div><b class="pf-ovr">${r.overall ?? '–'}</b><span class="pf-pos">${esc(r.style)}</span>${r.strength ? `<span class="pf-str">+ ${esc(r.strength)}</span>` : ''}</div>
+// A chess.com rating counts as the Lichess rating of the same strength for the colour and the rank.
+const lv = (r) => (isCC(r.name) ? asLichess(r.rating, r.speed) : r.rating);
+const pcard = (r) => `<div class="pf-pcard${proClass(r.name)}" style="--band:${bandColor(lv(r))}">${flagHtml(r.name)}<div class="pf-pcard-top"><div><b class="pf-ovr">${r.overall ?? '–'}</b><span class="pf-pos">${esc(r.style)}</span>${r.strength ? `<span class="pf-str">+ ${esc(r.strength)}</span>` : ''}</div>
     <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(r.piece || 'n').toUpperCase()}.svg" alt=""><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(r.piece || 'n').toUpperCase()}.svg" alt=""><span class="pf-pcard-rating">${r.rating} <small>${esc(r.speed)}</small></span></div></div>
-    <p class="pf-pcard-name">${esc(r.name)}</p>
+    <p class="pf-pcard-name">${esc(nick(r.name))}</p>
     <div class="pf-pcard-bars">${Object.entries(ABBR).map(([k, a]) => `<div><span>${a}</span><i style="--v:${r.skills?.[k] ?? 0}%"></i><b>${r.skills?.[k] ?? '–'}</b></div>`).join('')}</div></div>`;
 // The brand opens the landing; the Openings section (./#openings) goes straight to the openings.
 function landing() { $('.hero').hidden = !!account() || location.hash === '#openings' || /[?&](do|practise)=/.test(location.search); } // a declaration: a link straight to a trainer calls it early
@@ -3575,20 +3578,20 @@ if (!account()) Promise.all([fetch('https://duhlvhjtxoofgnjegspa.supabase.co/fun
   // One row of cards from the lowest rated to the highest, as many as fit, spread evenly over the levels so
   // the card colours run through the bands; picked again when the width changes.
   const lvl = (x) => (x < 1000 ? 'Beginner' : x < 1600 ? 'Club player' : x < 2000 ? 'Strong' : x < 2400 ? 'Expert' : x < 2700 ? 'Master' : 'World class');
-  const pool = rows.filter((x) => x.rating && x.skills).sort((a, b) => a.rating - b.rating), ex = $('.hero-ex');
+  const pool = rows.filter((x) => x.rating && x.skills).sort((a, b) => lv(a) - lv(b)), ex = $('.hero-ex');
   const luck = Array.from({ length: 12 }, () => Math.random()); // drawn once per visit, so a resize keeps the cards
   const draw = () => {
     const gap = parseFloat(getComputedStyle(ex).columnGap) || 0, n = matchMedia('(max-width: 560px)').matches ? 3 : Math.max(1, Math.floor((ex.clientWidth + gap) / (232 + gap))); // columns that fit (CSS: 232px each, three small ones on a phone)
     // One card per rank, never two alike; when more ranks than columns, ranks spread evenly from the
     // lowest to the highest.
-    const ranks = [...new Set(pool.map((x) => tierOf(x.rating)))].sort((a, b) => a - b);
+    const ranks = [...new Set(pool.map((x) => tierOf(lv(x))))].sort((a, b) => a - b);
     const take = n >= ranks.length ? ranks : Array.from({ length: n }, (_, k) => ranks[n === 1 ? ranks.length - 1 : Math.round((k * (ranks.length - 1)) / (n - 1))]);
     // A new player from each rank on every visit (the same ones while the page is open); the top rank
     // shows a known pro when there is one.
-    const picks = take.map((t) => { const all = pool.filter((x) => tierOf(x.rating) === t), pros = all.filter((x) => proClass(x.name));
+    const picks = take.map((t) => { const all = pool.filter((x) => tierOf(lv(x)) === t), pros = all.filter((x) => proClass(x.name));
       const from = t === ranks.at(-1) && pros.length ? pros : all; return from[Math.floor(luck[t] * from.length)]; });
-    picks.sort((a, b) => a.rating - b.rating);
-    ex.innerHTML = picks.map((x) => `<a class="hero-p" href="profile.html?u=${encodeURIComponent(x.name)}" aria-label="${esc(x.name)}, ${lvl(x.rating)}">${pcard(x)}</a>`).join('');
+    picks.sort((a, b) => lv(a) - lv(b));
+    ex.innerHTML = picks.map((x) => `<a class="hero-p" href="profile.html?u=${encodeURIComponent(x.name)}" aria-label="${esc(nick(x.name))}, ${lvl(lv(x))}">${pcard(x)}</a>`).join('');
   };
   if (pool.length) { draw(); let w = innerWidth; addEventListener('resize', () => { if (innerWidth !== w) { w = innerWidth; draw(); } }); }
 }).catch(() => {});
