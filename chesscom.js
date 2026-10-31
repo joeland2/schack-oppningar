@@ -58,7 +58,7 @@ function convert(g, names) {
 
 // The player's last max rated games (newest first), in the time controls asked for, played after since;
 // the same calls as Lichess's fetchGames in profile.js, onGame after each game read.
-export async function fetchCC(name, onGame, since, perf, max) {
+export async function fetchCC(name, onGame, since, perf, max, until = null) {
   const u = nick(name).toLowerCase(), want = new Set(perf.split(','));
   const res = await fetch(`${API}${encodeURIComponent(u)}/games/archives`);
   if (res.status === 404) throw new Error(`Chess.com has no player called ${nick(name)}.`);
@@ -72,10 +72,11 @@ export async function fetchCC(name, onGame, since, perf, max) {
     if (games.length >= max) break;
     const [y, mo] = url.split('/').slice(-2).map(Number);
     if (since && Date.UTC(y, mo, 1) < since) break; // the month ended before the newest game kept
+    if (until && Date.UTC(y, mo - 1, 1) > until) continue; // the month began after the date asked for
     const month = await fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     for (const g of (month?.games || []).reverse()) {
       if (games.length >= max) break;
-      if (!g.rated || g.rules !== 'chess' || !want.has(g.time_class) || !g.pgn || (since && g.end_time * 1000 < since)) continue;
+      if (!g.rated || g.rules !== 'chess' || !want.has(g.time_class) || !g.pgn || (since && g.end_time * 1000 < since) || (until && g.end_time * 1000 > until)) continue;
       games.push(convert(g, names)); onGame(games.length, games);
     }
   }

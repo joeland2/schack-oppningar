@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261031200539';
-import { STYLE_OF } from './styles.js?v=20261031200539';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031200539';
+import { account, login, logout, finishLogin } from './lichess.js?v=20261031205015';
+import { STYLE_OF } from './styles.js?v=20261031205015';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261031205015';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -478,11 +478,11 @@ console.assert(rawSkills({ peer: { analysed: 120, ups: 36, downs: 12, after12: 1
 }
 
 // ---------- Fetching ----------
-async function fetchGames(name, onGame, since = null, perf = 'bullet,blitz,rapid,classical') {
-  if (isCC(name)) return fetchCC(name, onGame, since, perf, MAX);
+async function fetchGames(name, onGame, since = null, perf = 'bullet,blitz,rapid,classical', until = null) {
+  if (isCC(name)) return fetchCC(name, onGame, since, perf, MAX, until);
   const a = account();
   const res = await fetch(`https://lichess.org/api/games/user/${encodeURIComponent(name)}?` + new URLSearchParams({
-    max: MAX, ...(since ? { since } : {}), rated: 'true', perfType: perf, moves: 'true', opening: 'true', clocks: 'true', evals: 'true', accuracy: 'true',
+    max: MAX, ...(since ? { since } : {}), ...(until ? { until } : {}), rated: 'true', perfType: perf, moves: 'true', opening: 'true', clocks: 'true', evals: 'true', accuracy: 'true',
   }), { headers: { Accept: 'application/x-ndjson', ...(a ? { Authorization: `Bearer ${a.token}` } : {}) } });
   if (res.status === 404) throw new Error(`Lichess has no player called ${name}.`);
   if (res.status === 429) throw new Error('Lichess is busy right now. Try again in a minute.');
@@ -1790,6 +1790,7 @@ function nextActions(name, me) {
   return `<section class="pf-next"><h2>What next</h2><div>
     ${me ? '<a class="cta" href="practice.html">Open your training plan</a>' : ''}
     <a class="${me ? 'ghost' : 'cta'}" href="${pickLink(name)}">${me ? 'Compare with someone' : `Compare ${esc(nick(name))}`}</a>
+    <a class="ghost" href="${agoLink(name, 12)}">${me ? 'You now vs a year ago' : 'Now vs a year ago'}</a>
   </div></section>`;
 }
 
@@ -2025,6 +2026,8 @@ function toggleFav(name) {
 }
 const profileLink = (n) => `profile.html?u=${encodeURIComponent(n)}`;
 const compareLink = (a, b) => `profile.html?u=${encodeURIComponent(a)}&vs=${encodeURIComponent(b)}`;
+const agoLink = (a, m) => `profile.html?u=${encodeURIComponent(a)}&ago=${m}`; // a's card now against a's card m months ago (thenNow)
+const AGO = [[6, '6 months ago'], [12, '1 year ago'], [24, '2 years ago']];
 const pickLink = (a) => `profile.html?u=${encodeURIComponent(a)}&vs=`; // compare a with someone to pick (comparePick)
 // The name, with small icons in the corner: star this player, compare with them, them on Lichess.
 function nameRow(name) {
@@ -2106,6 +2109,7 @@ async function comparePick(name) {
   $('#profile').innerHTML = `<header class="cmp-head"><h1 class="pf-h1">Compare <a href="${profileLink(name)}">${esc(nick(name))}</a></h1></header>
     <section class="cmp-pick"><div class="cmp-pick-a" id="cmp-pick-a"><p class="info">Reading ${esc(nick(name))}'s games…</p></div><span class="cmp-pick-vs">VS</span>
       <div class="cmp-pick-b"><h2>With who?</h2>
+        <div class="cmp-pick-g"><p class="cmp-pick-k">${isMe(name) ? 'Your own card from' : `${esc(nick(name))}'s own card from`}</p>${AGO.map(([m, t]) => `<a class="cmp-opt" href="${agoLink(name, m)}"><b>${t}</b><span aria-hidden="true">→</span></a>`).join('')}</div>
         ${mine && mine.toLowerCase() !== name.toLowerCase() ? `<div class="cmp-pick-g"><p class="cmp-pick-k">You</p><a class="cmp-opt" href="${compareLink(name, mine)}"><b>${esc(mine)}</b><span aria-hidden="true">→</span></a></div>` : ''}
         <div class="cmp-pick-g"><p class="cmp-pick-k">Any Lichess player</p><form class="cmp-pick-form" action="profile.html"><input type="hidden" name="u" value="${esc(nick(name))}"><input name="vs" required maxlength="30" pattern="[A-Za-z0-9_\\-]{2,30}" placeholder="Lichess name" aria-label="Any Lichess name" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="cta">Compare</button></form></div>
         ${others.length ? `<div class="cmp-pick-g"><p class="cmp-pick-k">Your starred players</p>${others.map((x) => `<a class="cmp-opt" href="${compareLink(name, x)}"><b>${esc(x)}</b><span aria-hidden="true">→</span></a>`).join('')}</div>` : ''}
@@ -2118,6 +2122,66 @@ async function comparePick(name) {
     await loadFlags([name]);
     $('#cmp-pick-a').innerHTML = playerCard(A.name, A.p, A.p.type, skillsOf(A.p));
   } catch (err) { $('#cmp-pick-a').innerHTML = `<p class="info">${esc(err.message)}</p>`; }
+}
+// The card now next to the card from m months ago, in the main time control: the last MAX games of
+// that time control played before the date, fetched and read like the profile's but not kept.
+async function thenNow(name, m) {
+  const when = AGO.find((x) => x[0] === m)?.[1] || `${m} months ago`;
+  document.title = `${nick(name)} now vs ${when}`;
+  $('#profile').innerHTML = '';
+  const msg = msgEl();
+  try {
+    const A = await profileFor(name), sp = A.p.speeds[0]?.speed;
+    if (!sp) throw new Error(`${nick(name)} has no rated games to compare.`);
+    window.track?.('then-now', `${name} ${m}`);
+    const now = forSpeed(A.name, A.p, sp), until = new Date();
+    until.setMonth(until.getMonth() - m);
+    msg.textContent = `Fetching ${nick(name)}'s ${sp} games from before ${until.toLocaleDateString('en', { month: 'long', year: 'numeric' })}…`;
+    const raw = await fetchGames(name, (k) => { msg.textContent = `Fetching ${nick(name)}'s ${sp} games from ${when}… ${k}`; }, null, sp, +until);
+    if (raw.length < MIN_SPEED) throw new Error(`${nick(name)} played fewer than ${MIN_SPEED} rated ${sp} games before ${until.toLocaleDateString('en', { month: 'long', year: 'numeric' })}, so there is no card from ${when} to compare.`);
+    await loadScores();
+    const then = profileOf(raw.map((g) => readGame(g, name.toLowerCase())));
+    then.type = typeOf(then);
+    msg.textContent = '';
+    await loadFlags([name]);
+    renderThenNow(A.name, now, then, sp, m, when, raw);
+  } catch (err) { msg.textContent = err.message; }
+}
+function renderThenNow(name, now, then, sp, m, when, raw) {
+  const sn = skillsOf(now), st = skillsOf(then), me = isMe(name);
+  const day = (t) => new Date(t).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' });
+  const ra = now.speeds[0]?.rating, rb = then.speeds[0]?.rating, dr = ra && rb ? ra - rb : null;
+  const moved = sn.map((x, i) => ({ label: x.label, d: x.v !== null && st[i].v !== null ? x.v - st[i].v : null })).filter((x) => x.d !== null).sort((a, b) => b.d - a.d);
+  const up = moved[0]?.d > 0 ? moved[0] : null, down = moved.at(-1)?.d < 0 ? moved.at(-1) : null;
+  const story = [
+    dr === null ? '' : dr === 0 ? `<b>Same ${sp} rating</b> as ${when}: ${ra}.` : `<b>${dr > 0 ? 'Up' : 'Down'} ${Math.abs(dr)} rating points</b> in ${sp} since ${when} (${rb} then, ${ra} now).`,
+    up ? `${me ? 'Your' : 'The'} biggest gain is <b>${up.label.toLowerCase()}, +${up.d}</b>.` : '',
+    down ? `${me ? 'Your' : 'The'} biggest drop is <b>${down.label.toLowerCase()}, −${-down.d}</b>.` : '',
+    then.type[0]?.name !== now.type[0]?.name ? `The card read ${me ? 'you' : nick(name)} as ${article(then.type[0]?.name || 'x')} <b>${esc(then.type[0]?.name || '')}</b> then, and ${article(now.type[0]?.name || 'x')} <b>${esc(now.type[0]?.name || '')}</b> now.` : `${me ? 'You are' : `${esc(nick(name))} is`} still ${article(now.type[0]?.name || 'x')} <b>${esc(now.type[0]?.name || '')}</b>.`,
+    'Skills are measured against the opponents of the time, so a rating climb and a flat skill can go together: you beat stronger players by the same margin.',
+  ].filter(Boolean);
+  $('#profile').innerHTML = `
+    <div class="pf-players"><a class="ghost" href="${profileLink(name)}">← ${esc(nick(name))}</a></div>
+    <header class="cmp-head"><h1 class="pf-h1"><a href="${profileLink(name)}">${esc(nick(name))}</a> <span>now vs ${when}</span></h1>
+      <div class="pf-seg cmp-speeds" role="group" aria-label="How long ago">${AGO.map(([k, t]) => `<a href="${agoLink(name, k)}" aria-current="${k === m}">${t}</a>`).join('')}</div>
+      <p class="info cmp-scope">Both cards read ${sp} games only: now the last ${shownGames.length} games, then the ${raw.length} games before ${day(raw[0].createdAt + 1)} (${day(raw.at(-1).createdAt)} – ${day(raw[0].createdAt)}).</p></header>
+    <section class="cmp-cards">
+      <div>${playerCard(name, then, then.type, st)}<p class="cmp-type"><b>${when[0].toUpperCase() + when.slice(1)}</b> · ${then.type.map((x) => esc(x.name)).join(' + ')}</p></div>
+      <div>${playerCard(name, now, now.type, sn)}<p class="cmp-type"><b>Now</b> · ${now.type.map((x) => esc(x.name)).join(' + ')}</p></div>
+    </section>
+    <section class="pf-card cmp-story"><h2>Since then</h2>${story.map((x) => `<p>${x}</p>`).join('')}</section>
+    <section class="pf-card">
+      <h2>Skills</h2>
+      <p class="cmp-key"><span class="cmp-a"></span>${when[0].toUpperCase() + when.slice(1)} <span class="cmp-b"></span>Now</p>
+      <ul class="cmp-skills">${st.map((x, i) => {
+        const y = sn[i], d = x.v !== null && y.v !== null ? y.v - x.v : null;
+        return `<li><span class="cmp-label">${x.label}</span>
+          <div class="cmp-bars" role="img" aria-label="${x.label}: ${when} ${x.v ?? 'no data'}, now ${y.v ?? 'no data'}">
+            <div class="cmp-bar a"><i style="width:calc((100% - 3em) * ${(x.v ?? 0) / 100})"></i><b>${x.v ?? '–'}</b></div>
+            <div class="cmp-bar b"><i style="width:calc((100% - 3em) * ${(y.v ?? 0) / 100})"></i><b>${y.v ?? '–'}</b></div></div>
+          <small>${d === null ? 'Not enough games for both.' : d === 0 ? 'Same.' : `${d > 0 ? '+' : '−'}${Math.abs(d)} since then`}</small></li>`;
+      }).join('')}</ul>
+    </section>`;
 }
 async function profileFor(name) {
   return { name: cache()[name.toLowerCase()]?.name || name, p: await current(name) };
@@ -2269,6 +2333,7 @@ function show(name, push) {
 }
 function start() {
   const q = new URLSearchParams(location.search), name = q.get('u') || myName();
+  if (name && q.get('ago')) return thenNow(name, +q.get('ago'));
   if (name && q.has('vs') && !q.get('vs')) return comparePick(name); // compare with someone still to pick
   if (name && q.get('vs') && q.get('vs').toLowerCase() !== name.toLowerCase()) return compare(name, q.get('vs')); // the same name twice: just the profile
   combo = null;
