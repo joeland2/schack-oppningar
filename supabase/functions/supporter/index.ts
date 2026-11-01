@@ -4,10 +4,12 @@
 // GET ?me: your own { active, frame, customer }. POST { frame }: pick your frame (supporters only).
 // POST ?checkout: a Stripe Checkout page for the subscription, { url }. POST ?portal: Stripe's page to
 // change or cancel it, { url }. POST ?webhook: Stripe's events, which set who is active.
+// Admins only: GET ?all lists every row; POST ?admin { player, active } marks a player a supporter by hand (no Stripe).
 // Secrets (Supabase, set by the owner): STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_ID.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const SITE = 'https://chesslabs.gg';
+const ADMINS = ['joelandersson', 'sicko88'];
 const FRAMES = ['holo', 'prism', 'chrome', 'gold', 'neon', 'ice', 'lava', 'galaxy', 'tilt', 'oil', 'glitch', 'none'];
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'x-lichess-token, content-type, apikey, authorization', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' };
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
@@ -75,6 +77,20 @@ Deno.serve(async (req) => {
   }
   const id = await idOf(req.headers.get('x-lichess-token'));
   if (!id) return json({ error: 'Log in with Lichess first.' }, 401);
+  if (ADMINS.includes(id) && req.method === 'GET' && q.has('all')) {
+    const { data, error } = await db.from('supporters').select('player, active, frame, customer, since').order('since', { ascending: false }).limit(5000);
+    return error ? json({ error: 'error' }, 500) : json(data.map((r) => ({ ...r, customer: !!r.customer })));
+  }
+  if (ADMINS.includes(id) && req.method === 'POST' && q.has('admin')) {
+    let b: { player?: unknown; active?: unknown } = {};
+    try { b = JSON.parse(await req.text()); } catch { return json({ error: 'bad' }, 400); }
+    const player = String(b.player || '').toLowerCase();
+    if (!/^[a-z0-9_-]{2,30}$/.test(player)) return json({ error: 'Not a Lichess name.' }, 400);
+    const { data: had } = await db.from('supporters').select('player').eq('player', player).maybeSingle();
+    const row = { player, active: !!b.active, updated: new Date().toISOString() };
+    const { error } = await (had ? db.from('supporters').update(row).eq('player', player) : db.from('supporters').insert(row));
+    return error ? json({ error: 'error' }, 500) : json({ ok: true });
+  }
   const { data: me } = await db.from('supporters').select('active, frame, customer').eq('player', id).maybeSingle();
   if (req.method === 'GET') return json({ active: !!me?.active, frame: me?.frame || 'holo', customer: !!me?.customer });
   if (req.method !== 'POST') return json({ error: 'bad' }, 405);

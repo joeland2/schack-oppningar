@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261101234046';
-import { api as chatApi, openChat } from './chat.js?v=20261101234046';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101234046';
+import { account, login, finishLogin } from './lichess.js?v=20261101235135';
+import { api as chatApi, openChat } from './chat.js?v=20261101235135';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101235135';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -407,6 +407,7 @@ function render(s) {
       ${(s.recentActions || []).length ? `<ul class="pf-rows adm-recent">${actionRows(s.recentActions).slice(0, 15).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
       <section class="pf-card"><h2>${ic('compare')}Comparisons</h2>${rows(s.compares, (x) => targetHtml('compare', x.name))}</section>
     </div>
+    <section class="pf-card" id="adm-supporters"><p class="info">Loading…</p></section>
     ${group('traffic')}
     <div class="adm-four">
       <section class="pf-card"><h2>${ic('globe')}Countries <small>unique visitors</small></h2>${bars(s.countries || [], (x) => flag(x.name) + esc(land(x.name)))}</section>
@@ -521,6 +522,28 @@ async function threads() {
     ${ts.length ? `<ul class="pf-rows adm-recent">${ts.map((t) => `<li><button type="button" class="link adm-thread" data-thread="${esc(t.player)}"><b>${esc(t.player)}</b> ${t.author === t.player ? '<span class="chip pagar">Waiting</span>' : ''}<small>${esc(t.body.slice(0, 90))}${t.body.length > 90 ? '…' : ''}</small></button><small>${t.n} · ${when(t.at)}</small></li>`).join('')}</ul>` : '<p class="info">No messages yet.</p>'}`;
   el.querySelectorAll('[data-thread]').forEach((b) => b.addEventListener('click', () => { markSeen(); openChat(b.dataset.thread); document.querySelector('dialog.chat')?.addEventListener('close', threads); }));
 }
+// Supporters: who has the heart and frame. Paying ones come from Stripe; here an admin ticks anyone in or out by hand.
+const SUP = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/supporter';
+const supApi = async (q, body) => {
+  const r = await fetch(SUP + q, { method: body ? 'POST' : 'GET', headers: { apikey: 'sb_publishable_6jWrlp6aNe4REB4v-uebxA_giKYde2o', 'x-lichess-token': account()?.token || '', 'content-type': 'application/json' }, body: body && JSON.stringify(body) }).catch(() => null);
+  const x = r ? await r.json().catch(() => ({})) : {};
+  if (!r?.ok) throw new Error(x.error || 'The supporter service did not answer. Is it deployed?');
+  return x;
+};
+async function supporters() {
+  const el = $('#adm-supporters');
+  let xs;
+  try { xs = await supApi('?all'); } catch (e) { el.innerHTML = `<h2>${ic('people')}Supporters</h2><p class="info">${esc(e.message)}</p>`; return; }
+  const on = xs.filter((x) => x.active).length;
+  el.innerHTML = `<div class="adm-head"><h2>${ic('people')}Supporters · ${on}</h2><small>Paid through Stripe, or ticked here by hand.</small></div>
+    <form class="adm-sup-add"><input name="p" required maxlength="30" pattern="[A-Za-z0-9_\\-]{2,30}" placeholder="Lichess name" aria-label="Lichess name to make a supporter" autocomplete="off" spellcheck="false"><button type="submit" class="cta">Make supporter</button></form>
+    ${xs.length ? `<ul class="adm-online adm-sups">${xs.map((x) => `<li><label class="adm-sup"><input type="checkbox" data-sup="${esc(x.player)}"${x.active ? ' checked' : ''}><b>${esc(x.player)}</b></label><small>${x.customer ? 'pays through Stripe' : 'by hand'} · ${esc(x.frame || 'holo')}</small></li>`).join('')}</ul>` : '<p class="info">No supporters yet.</p>'}
+    <p class="chat-err" role="alert" hidden></p>`;
+  const fail = (m) => { const p = el.querySelector('.chat-err'); p.textContent = m; p.hidden = false; };
+  const set = async (player, active) => { try { await supApi('?admin', { player, active }); supporters(); } catch (e) { fail(e.message); } };
+  el.querySelectorAll('[data-sup]').forEach((c) => c.addEventListener('change', () => set(c.dataset.sup, c.checked)));
+  el.querySelector('form').addEventListener('submit', (e) => { e.preventDefault(); set(e.target.p.value.trim(), true); });
+}
 function show(body) {
   render(body);
   // Every pro's and VIP's games fetched again and their profiles snapshotted, now (admin-stats starts the GitHub workflow),
@@ -537,6 +560,7 @@ function show(body) {
   });
   watchPros();
   threads();
+  supporters();
   bindCards(body);
   bindLine(body);
   $('#adm-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = b.dataset.span === 'today' ? 'today' : Number(b.dataset.span);

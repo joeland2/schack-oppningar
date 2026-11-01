@@ -3,10 +3,10 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101234046';
-import { STYLE_OF } from './styles.js?v=20261101234046';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101234046';
-import { PEOPLE } from './pros.js?v=20261101234046';
+import { account, login, finishLogin } from './lichess.js?v=20261101235135';
+import { STYLE_OF } from './styles.js?v=20261101235135';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101235135';
+import { PEOPLE } from './pros.js?v=20261101235135';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -327,8 +327,10 @@ const SAME = { 'Endgame artist': 'Late game', 'Time scrambler': 'Speed', Trickst
 // Where each style's weight lies for an ordinary player: the median and the top tenth among 42 players
 // checked (their main time control). A style counts by how far above the median a player is, against
 // that spread, so a style the player is below the usual on (29 moves where 36 is usual) never wins.
+// Explorer's top is set higher than measured (0.39), and a player leaning on two openings (top2 0.3+) counts a
+// quarter, so only a really wide repertoire makes one.
 const PAR = { Striker: [0.74, 1.3], 'Solid builder': [0.66, 1.4], 'Endgame artist': [0.76, 0.92], 'Time scrambler': [0.63, 1.07],
-  Trickster: [0.53, 1.15], Specialist: [0.72, 0.98], Explorer: [0.22, 0.39], Marathoner: [0.75, 0.87], Guardian: [0.11, 1.33] };
+  Trickster: [0.53, 1.15], Specialist: [0.72, 0.98], Explorer: [0.25, 0.6], Marathoner: [0.75, 0.87], Guardian: [0.11, 1.33] };
 function traitsOf(p) {
   const q = p.peer || {}, rating = p.speeds?.[0]?.rating, raw = rawSkills(p), def = raw.find((x) => x.label === 'Defense');
   const styles = [
@@ -343,7 +345,7 @@ function traitsOf(p) {
       why: `You win ${pct(q.quickW ?? 0)} of your games within 25 moves, your opponents at your level ${pct(q.quickL ?? 0)}: your traps and tricks land.` },
     // most club players lean on two openings (about 0.75 in 25 checked), so Specialist needs nearly all
     { name: 'Specialist', w: (p.top2 ?? 0) / 0.9, why: `Your two main openings are ${pct(p.top2 ?? 0)} of the openings you choose: you know your lines deeply.` },
-    { name: 'Explorer', w: (p.families ?? 0) / 18 * ((p.top2 ?? 1) < 0.3 ? 1 : 0.5), why: `You play ${p.families ?? 0} different openings at least three times each: you like variety.` },
+    { name: 'Explorer', w: (p.families ?? 0) / 18 * ((p.top2 ?? 1) < 0.3 ? 1 : 0.25), why: `You play ${p.families ?? 0} different openings at least three times each: you like variety.` },
     { name: 'Marathoner', w: (p.moves / usualMoves(rating)) / 1.2, why: `Your games last ${p.moves} moves on average, where about ${usualMoves(rating)} is usual at your level.` },
     // The counterpart of Striker: a player whose Defense (solid openings, holding against attacks, saving
     // bad positions, rarely letting opponents get ahead) is clearly above their own opponents'.
@@ -2314,12 +2316,13 @@ async function thenNow(name, m) {
     const A = await profileFor(name), sp = A.p.speeds[0]?.speed;
     if (!sp) throw new Error(`${nick(name)} has no rated games to compare.`);
     window.track?.('then-now', `${name} ${m}`);
+    msg.textContent = `Reading ${nick(name)}'s ${sp} games…`;
+    await Promise.all([loadSpeed(name, sp).done, loadScores()]); // read as the profile's card reads them: the time control's own last 500, scored
     const now = forSpeed(A.name, A.p, sp), until = new Date();
     until.setMonth(until.getMonth() - m);
     msg.textContent = `Fetching ${nick(name)}'s ${sp} games from before ${until.toLocaleDateString('en', { month: 'long', year: 'numeric' })}…`;
     const raw = await fetchGames(name, (k) => { msg.textContent = `Fetching ${nick(name)}'s ${sp} games from ${when}… ${k}`; }, null, sp, +until);
     if (raw.length < MIN_SPEED) throw new Error(`${nick(name)} played fewer than ${MIN_SPEED} rated ${sp} games before ${until.toLocaleDateString('en', { month: 'long', year: 'numeric' })}, so there is no card from ${when} to compare.`);
-    await loadScores();
     const then = profileOf(raw.map((g) => readGame(g, name.toLowerCase())));
     then.type = typeOf(then);
     msg.textContent = '';

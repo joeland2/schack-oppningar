@@ -2788,3 +2788,9 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .adm-actions { width: min(900px, calc(100vw - 32px)); }
 .adm-actions .chat-head a { margin-left: auto; margin-right: 14px; font-size: 13px; }
 .adm-actions-body { padding: 16px 18px; overflow-y: auto; }
+/* Admin: supporters ticked by hand */
+.adm-sup-add { display: flex; gap: 8px; margin: 0 0 12px; flex-wrap: wrap; }
+.adm-sup-add input { flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: inherit; }
+.adm-sup { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1; min-width: 0; }
+.adm-sup input { width: 18px; height: 18px; accent-color: var(--hot); }
+.adm-sups small { color: var(--muted); font-size: 12px; }
