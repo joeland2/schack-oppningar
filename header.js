@@ -231,4 +231,14 @@ addEventListener('DOMContentLoaded', () => {
     list.addEventListener('mousedown', (e) => { const li = e.target.closest('[data-i]'); if (li) { e.preventDefault(); go(items[+li.dataset.i].name); } });
   };
   if (input) playerSuggest(input, (name) => { location.href = `profile.html?u=${encodeURIComponent(name)}`; });
+  // Enter on a name typed as is: the account played on most lately, when it is on both Lichess and Chess.com.
+  form?.addEventListener('submit', async (e) => {
+    const t = input.value.trim();
+    if (/^cc:/i.test(t) || !form.checkValidity()) return;
+    e.preventDefault();
+    const [li, cc] = await Promise.all([fetch(`https://lichess.org/api/user/${encodeURIComponent(t)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`https://api.chess.com/pub/player/${encodeURIComponent(t.toLowerCase())}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
+    const onCC = cc && (!li || li.disabled || (cc.last_online || 0) * 1000 > (li.seenAt || 0));
+    location.href = `profile.html?u=${encodeURIComponent(onCC ? `cc:${cc.username || t}` : t)}`;
+  });
 })();
