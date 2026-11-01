@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101231512';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101231512';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101231512';
-import { NAMED_TRAPS } from './traps.js?v=20261101231512';
-import { GUIDE } from './guide.js?v=20261101231512';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101231512';
-import { maia3Move } from './maia3.js?v=20261101231512';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101231512';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101231512';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101231512';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101231512';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101232209';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101232209';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101232209';
+import { NAMED_TRAPS } from './traps.js?v=20261101232209';
+import { GUIDE } from './guide.js?v=20261101232209';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101232209';
+import { maia3Move } from './maia3.js?v=20261101232209';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101232209';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101232209';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101232209';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101232209';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2970,7 +2970,7 @@ function transpose() {
   const theirs = line[ply + 2] === san && gamesAt([...line.slice(0, ply), san]).moves.find((m) => m.san === line[ply + 1]);
   // Strong players must make that reply in your order too: at 1000–1599 2.e3 Bg4 is common and scores
   // well, but it drops the bishop to Qxg4, and the line's 3.Nf3 would not take it.
-  const strong = theirs && explore([...line.slice(0, ply), san], THEORY_GROUPS), top = strong?.moves.find((m) => m.san === line[ply + 1]);
+  const strong = theirs && explore([...line.slice(0, ply), san], THEORY_GROUPS), top = strong?.moves?.find((m) => m.san === line[ply + 1]);
   const sound = theirs && !BAD_SWAPS.has(`${lineKey(line.slice(0, ply))}|${san}|${line[ply]}`) && theirs.n >= MIN_GAMES && scoreFor(theirs, cur.side === 'w' ? 'b' : 'w') > TRAP_SCORE && top && top.n >= 3 && top.n / strong.total >= MIN_SHARE;
   if (sound) {
     const g = new Chess(game.fen());
