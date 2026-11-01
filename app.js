@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101081832';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101081832';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101081832';
-import { NAMED_TRAPS } from './traps.js?v=20261101081832';
-import { GUIDE } from './guide.js?v=20261101081832';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101081832';
-import { maia3Move } from './maia3.js?v=20261101081832';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101081832';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101081832';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101081832';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101081832';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101093101';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101093101';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101093101';
+import { NAMED_TRAPS } from './traps.js?v=20261101093101';
+import { GUIDE } from './guide.js?v=20261101093101';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101093101';
+import { maia3Move } from './maia3.js?v=20261101093101';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101093101';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101093101';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101093101';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101093101';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2417,7 +2417,7 @@ function nextLine() {
   // when one of them is cleared; within the set, the line you missed last comes first, then the others
   // in turn, never the one you just played if another is waiting.
   const open = practiceSet();
-  if (!open.length) return lineIdx;
+  if (!open.length) return (lineIdx + 1) % lines.length; // all cleared, none due: go round them in order, not the same one again
   const missed = open.filter((i) => s.rep?.[key(lines[i])] && i !== lineIdx);
   const next = open.find((i) => i > lineIdx) ?? open[0];
   return missed[0] ?? (open.length > 1 && next === lineIdx ? open.find((i) => i !== lineIdx) : next);
