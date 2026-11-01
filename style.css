@@ -2207,6 +2207,8 @@ main.profile:has(#admin) { max-width: 1320px; }
 .ts-title { font-size: 12px; color: var(--hot); }
 .ts-on { width: 7px; height: 7px; margin-left: auto; border-radius: 50%; background: var(--good); }
 .ts-who { font-weight: 500; color: var(--muted); }
+.ts-site { padding: 0 5px; border: 1px solid var(--line); border-radius: 3px; font: 600 10px var(--font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.ts-site.cc { color: #5d9948; border-color: currentColor; }
 .ts-tag { margin-left: auto; padding: 1px 5px; border-radius: 3px; font: 700 10px var(--font-body); letter-spacing: .08em; color: #141414; background: #d9a514; }
 .ts-tag.vip { background: #e86fa8; }
 .star-fly { position: fixed; z-index: 200; display: grid; justify-items: center; gap: 6px; pointer-events: none; transform-origin: 50% calc(50% - 16px); }

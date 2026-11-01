@@ -186,10 +186,11 @@ addEventListener('DOMContentLoaded', () => {
     input.parentElement.append(list);
     input.setAttribute('aria-controls', id); input.setAttribute('aria-autocomplete', 'list');
     let items = [], at = -1, seq = 0;
+    const found = (x) => x.kind === 'lichess' || x.kind === 'chesscom';
     const draw = () => {
       list.hidden = !items.length;
-      list.innerHTML = items.map((x, i) => `${!i || x.kind !== items[i - 1].kind ? `<li class="top-suggest-k" role="presentation">${{ recent: 'Opened before', known: 'Pros and streamers', chesscom: 'On Chess.com' }[x.kind] || 'On Lichess'}</li>` : ''}
-        <li role="option" id="${id}-${i}" data-i="${i}" aria-selected="${i === at}">${x.title ? `<b class="ts-title">${esc(x.title)}</b> ` : ''}${esc(x.name.replace(/^cc:/i, ''))}${x.kind !== 'chesscom' && /^cc:/i.test(x.name) ? '<small class="ts-who">Chess.com</small>' : ''}${x.who ? `<small class="ts-who">${esc(x.who)}</small><span class="ts-tag ${x.tag.toLowerCase()}">${x.tag}</span>` : ''}${x.online ? '<i class="ts-on" title="Online"></i>' : ''}</li>`).join('');
+      list.innerHTML = items.map((x, i) => `${!i || (x.kind !== items[i - 1].kind && !(found(x) && found(items[i - 1]))) ? `<li class="top-suggest-k" role="presentation">${{ recent: 'Opened before', known: 'Pros and streamers' }[x.kind] || 'Players'}</li>` : ''}
+        <li role="option" id="${id}-${i}" data-i="${i}" aria-selected="${i === at}">${x.title ? `<b class="ts-title">${esc(x.title)}</b> ` : ''}${esc(x.name.replace(/^cc:/i, ''))}<small class="ts-site${/^cc:/i.test(x.name) ? ' cc' : ''}">${/^cc:/i.test(x.name) ? 'Chess.com' : 'Lichess'}</small>${x.who ? `<small class="ts-who">${esc(x.who)}</small><span class="ts-tag ${x.tag.toLowerCase()}">${x.tag}</span>` : ''}${x.online ? '<i class="ts-on" title="Online"></i>' : ''}</li>`).join('');
       input.setAttribute('aria-expanded', String(!list.hidden));
       if (at >= 0) input.setAttribute('aria-activedescendant', `${id}-${at}`); else input.removeAttribute('aria-activedescendant');
     };
@@ -201,15 +202,16 @@ addEventListener('DOMContentLoaded', () => {
         .slice(0, 6).map((k) => ({ name: k.name, who: k.who, title: k.title, kind: 'known', tag: k.kind.toUpperCase() }));
       const old = [...recent().filter((x) => !t || x.toLowerCase().includes(t)).slice(0, 3).map((name) => ({ name, kind: 'recent' })),
         ...known].filter((x, i, a) => a.findIndex((y) => y.name.toLowerCase() === x.name.toLowerCase()) === i);
-      // The name as typed on chess.com, before Lichess's: chess.com has no name search to suggest from.
-      const cc = /^[a-z0-9_-]{3,30}$/.test(t) && !old.some((x) => x.name.toLowerCase() === `cc:${t}`) ? [{ name: `cc:${t}`, kind: 'chesscom' }] : [];
-      items = [...old, ...cc]; at = -1; draw();
+      items = old; at = -1; draw();
       clearTimeout(timer);
       if (t.length < 3) return;
       timer = setTimeout(async () => {
         try {
-          const r = await fetch(`https://lichess.org/api/player/autocomplete?term=${encodeURIComponent(t)}&object=true`);
+          // Chess.com has no name search: the name as typed, shown when that player exists there.
+          const [r, ccp] = await Promise.all([fetch(`https://lichess.org/api/player/autocomplete?term=${encodeURIComponent(t)}&object=true`),
+            /^[a-z0-9_-]{3,30}$/.test(t) && !old.some((x) => x.name.toLowerCase() === `cc:${t}`) ? fetch(`https://api.chess.com/pub/player/${t}`).then((x) => (x.ok ? x.json() : null)).catch(() => null) : null]);
           const found = r.ok ? (await r.json()).result || [] : [];
+          const cc = ccp ? [{ name: `cc:${ccp.username || t}`, title: ccp.title, kind: 'chesscom' }] : [];
           if (mine !== seq) return;
           const seen = new Set(old.map((x) => x.name.toLowerCase()));
           items = [...old, ...cc, ...found.filter((p) => !seen.has(p.name.toLowerCase())).slice(0, 7).map((p) => ({ name: p.name, title: p.title, online: p.online, kind: 'lichess' }))];

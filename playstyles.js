@@ -1,6 +1,6 @@
 // Play styles: every style and strength a card can show, what it means, how the card reads it from
 // the games, and what it wins with and loses to. ?s= and ?t= mark the visitor's own (from the profile).
-import { TYPE_ABOUT } from './profile.js?v=20261101121705';
+import { TYPE_ABOUT } from './profile.js?v=20261101121823';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
