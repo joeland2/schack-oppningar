@@ -2,8 +2,8 @@
 // a blunder. Pick it. From the slips Find my mistakes and your analysed games have found (the puzzles
 // on mistakes.html), with the game's moves from the games kept in this browser.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261101212412';
-import { THEMES } from './mistakes.js?v=20261101212412';
+import { drawBoard } from './board.js?v=20261101214056';
+import { THEMES } from './mistakes.js?v=20261101214056';
 
 const SEEN = 'opening-book-v2-blunder-seen'; // the ones already shown, so the next is a new one while any are left
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);

@@ -1871,11 +1871,21 @@ p, li, dd, small { text-wrap: pretty; }
 .lb-later { padding: 18px 0 6px; font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
 .lb-row.unranked { opacity: .55; }
 /* Fetching a player's games: a thin bar at the top of the page, filling as they come */
-.pf-load { position: sticky; top: 0; z-index: 30; margin: 0 0 12px; padding: 8px 0 6px; background: var(--bg); }
-.pf-load-track { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
-.pf-load i { display: block; height: 100%; width: 0; background: var(--data); border-radius: 4px; transition: width .3s ease-out; }
-.pf-load-k { margin: 6px 0 0; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-@media (prefers-reduced-motion: reduce) { .pf-load i { transition: none; } }
+.pf-load { position: sticky; top: 0; z-index: 30; margin: 0 0 16px; padding: 14px 16px 16px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--data); border-radius: 6px; box-shadow: 0 10px 24px rgb(0 0 0 / .18); transition: opacity .18s ease-out, transform .18s ease-out; }
+.pf-load.out { opacity: 0; transform: translateY(-6px); }
+.pf-load-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+/* One line whatever it says, so nothing below moves while the text changes */
+.pf-load-k { flex: 1; min-width: 0; margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-load-n { flex: none; min-width: 3.2em; text-align: right; font: 400 24px/1 var(--font-poster); color: var(--hot); font-variant-numeric: tabular-nums; }
+.pf-load-track { height: 12px; background: var(--line); border-radius: 6px; overflow: hidden; }
+.pf-load i { display: block; height: 100%; width: 0; border-radius: 6px; transition: width .3s ease-out;
+  background: repeating-linear-gradient(-45deg, var(--data) 0 10px, color-mix(in srgb, var(--data) 78%, #fff) 10px 20px); background-size: 28px 28px; animation: pf-load-run .8s linear infinite; }
+@keyframes pf-load-run { to { background-position: 28px 0; } }
+/* A first look-up's page comes up into place when its card is in */
+.pf-rise > * { animation: pf-rise .45s cubic-bezier(.2, .8, .2, 1) both; }
+.pf-rise > :nth-child(2) { animation-delay: .04s; } .pf-rise > :nth-child(3) { animation-delay: .08s; } .pf-rise > :nth-child(n+4) { animation-delay: .12s; }
+@keyframes pf-rise { from { opacity: 0; transform: translateY(28px); } }
+@media (prefers-reduced-motion: reduce) { .pf-load, .pf-load i { transition: none; animation: none; } .pf-rise > * { animation: none; } }
 .pf-fetch-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0 4px; }
 .pf-fetch-row .pf-fetch { padding: 6px 12px; font-size: 13px; }
 

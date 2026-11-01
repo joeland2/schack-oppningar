@@ -3,10 +3,10 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101212412';
-import { STYLE_OF } from './styles.js?v=20261101212412';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101212412';
-import { PEOPLE } from './pros.js?v=20261101212412';
+import { account, login, finishLogin } from './lichess.js?v=20261101214056';
+import { STYLE_OF } from './styles.js?v=20261101214056';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101214056';
+import { PEOPLE } from './pros.js?v=20261101214056';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -690,6 +690,21 @@ const serverGames = (name) => (isCC(name)
   ? fetch(`${PRO_STORE}/cc_${encodeURIComponent(nick(name).toLowerCase())}.json`).then((r) => (r.ok ? r.json() : [])).then(fromCC)
   : fetch(`${PRO_STORE}/${encodeURIComponent(name.toLowerCase())}.ndjson`).then((r) => (r.ok ? r.text() : ''))
     .then((t) => t.split('\n').filter(Boolean).map((l) => JSON.parse(l)).filter((g) => g.variant === 'standard'))).then((gs) => gs.slice(0, MAX)).catch(() => []);
+// The bar over the profile while games come in: one line that never wraps, a percentage, a thick track.
+// It fades out when the card is in (done), and a time control still coming shows it again when picked.
+let holdBar = false; // run keeps the bar up past build, through the main time control's own games
+const loadBar = {
+  el: () => $('#pf-load'),
+  on() { const b = this.el(); return !!b && !b.hidden && !b.classList.contains('out'); },
+  show(say, pct = 0) { const b = this.el(); if (!b) return; b.classList.remove('out'); b.hidden = false; this.step(pct, say); },
+  step(pct, say) {
+    const b = this.el(); if (!b || b.hidden) return;
+    b.querySelector('i').style.width = `${pct}%`; b.querySelector('[role=progressbar]').setAttribute('aria-valuenow', Math.round(pct));
+    b.querySelector('.pf-load-n').textContent = `${Math.round(pct)}%`; if (say) b.querySelector('.pf-load-k').textContent = say;
+  },
+  done() { const b = this.el(); if (!this.on()) return; this.step(100); b.classList.add('out'); setTimeout(() => { if (b.classList.contains('out')) b.hidden = true; }, 200); },
+  off() { const b = this.el(); if (b) { b.hidden = true; b.classList.remove('out'); } },
+};
 async function build(name) {
   const msg = msgEl();
   let have = storedGames(name) || [];
@@ -697,28 +712,29 @@ async function build(name) {
   msg.textContent = have.length ? `Fetching ${nick(name)}'s new games from ${siteOf(name)}…` : `Fetching ${nick(name)}'s last ${MAX} rated games from ${siteOf(name)}…`;
   // Lichess sends about 20-30 games a second, so a first look-up takes a while: the profile is drawn
   // from the first EARLY games as soon as they are in, then drawn again from all of them.
-  const mine = runs, bar = $('#pf-load');
+  const mine = runs;
   let early = false;
   // The bar over the profile on a first look-up: how far the games are, and what happens meanwhile.
-  const step = (pct, say) => { if (!bar || bar.hidden) return; bar.querySelector('i').style.width = `${pct}%`; bar.querySelector('[role=progressbar]').setAttribute('aria-valuenow', Math.round(pct)); bar.querySelector('.pf-load-k').textContent = say; };
-  if (bar && !quiet && !have.length) { bar.hidden = false; step(0, `Asking ${siteOf(name)} for ${nick(name)}'s last ${MAX} rated games…`); }
+  const step = (pct, say) => loadBar.step(pct, say);
+  if (!quiet && !have.length) loadBar.show(`Asking ${siteOf(name)} for ${nick(name)}'s last ${MAX} rated games…`);
+  if (loadBar.on()) msg.textContent = ''; // the bar says it
   // tools/snapshot_pros.py reads a pro from the games kept on our server alone: Lichess's stream can stall for a server.
   const fresh = SNAPSHOT && have.length ? [] : await fetchGames(name, (k, gs) => {
-    msg.textContent = early ? '' : `Fetching ${nick(name)}'s games from ${siteOf(name)}… ${k}`;
-    step((k / MAX) * 95, k < EARLY ? `Fetching games from ${siteOf(name)}: ${k} of up to ${MAX}` : `Fetching games from ${siteOf(name)}: ${k} of up to ${MAX}. The card is drawn from these and fills in as the rest come.`);
+    if (!loadBar.on()) msg.textContent = early ? '' : `Fetching ${nick(name)}'s games from ${siteOf(name)}… ${k}`;
+    step((k / MAX) * 90, `Fetching ${nick(name)}'s games from ${siteOf(name)}: ${k} of up to ${MAX}`);
     if (!have.length && !quiet && (k === EARLY || (early && k % REDRAW === 0))) {
       early = true;
       loadScores().then(() => { if (mine === runs) { const y = scrollY; drawingEarly = true; try { render(name, Date.now(), profileOf(gs.slice().map((g) => readGame(g, name.toLowerCase())))); } finally { drawingEarly = false; } scrollTo(0, y); } }).catch(() => {});
     }
-  }, have.length ? have[0].createdAt + 1 : null).catch((err) => { if (bar) bar.hidden = true; throw err; });
-  step(96, `Reading all ${fresh.length} games for the card…`);
+  }, have.length ? have[0].createdAt + 1 : null).catch((err) => { loadBar.off(); throw err; });
+  step(91, `Reading the games for the card…`);
   const ids = new Set(fresh.map((g) => g.id));
   const raw = [...fresh, ...have.filter((g) => !ids.has(g.id))].slice(0, MAX);
-  if (!raw.length) { if (bar) bar.hidden = true; throw new Error(`${nick(name)} has no rated games on ${siteOf(name)} yet.`); }
+  if (!raw.length) { loadBar.off(); throw new Error(`${nick(name)} has no rated games on ${siteOf(name)} yet.`); }
   merged = await mergeRemote(name, raw);
   saveGames(name, raw);
   RAW = raw; RAW_NAME = name;
-  try { return await readAll(name, raw); } finally { if (bar) bar.hidden = true; }
+  try { return await readAll(name, raw); } catch (err) { loadBar.off(); throw err; } finally { if (!holdBar) loadBar.done(); }
 }
 // The profile every page shows: read just now (within FRESH), else new games fetched and all read again,
 // so the profile, compare and the practice plan always agree and follow new games and analyses.
@@ -735,7 +751,7 @@ async function readAll(name, raw) {
   const me = name.toLowerCase(), games = [];
   for (let i = 0; i < raw.length; i++) {
     games.push(readGame(raw[i], me));
-    if (i % 25 === 24) { msg.textContent = `Reading the games… ${i + 1} of ${raw.length}`; await new Promise((r) => setTimeout(r)); }
+    if (i % 25 === 24) { if (loadBar.on()) loadBar.step(91 + (i / raw.length) * 6, `Reading the games: ${i + 1} of ${raw.length}`); else msg.textContent = `Reading the games… ${i + 1} of ${raw.length}`; await new Promise((r) => setTimeout(r)); }
   }
   RECORDS.set(`${me}:${raw.length}:${raw[0]?.id}:${raw.at(-1)?.id}:${raw.filter((g) => g.analysis).length}`, games); // compare's per-time-control reading reuses these
   const p = profileOf(games);
@@ -1544,15 +1560,13 @@ function forSpeed(name, full, sp) {
 }
 // A time control's own last 500 games, fetched when it is picked and the last 500 of all hold fewer
 // than Lichess has; later picks fetch only the games played since.
-async function fetchSpeed(name, sp) {
+async function fetchSpeed(name, sp, onStep = () => {}) {
   const have = storedGames(speedKey(name, sp)) || [], mixed = (storedGames(name) || []).filter((g) => g.speed === sp);
   const perfs = await perfsOf(name);
   if (!have.length && (!perfs || mixed.length >= Math.min(MAX, perfs[sp]))) return false; // the last 500 of all already hold them
-  const msg = $('#profile-msg');
-  if (!have.length) msg.textContent = `Fetching ${nick(name)}'s last ${Math.min(MAX, perfs[sp])} ${sp} games from ${siteOf(name)}…`;
-  const fresh = await fetchGames(name, (k) => { if (!have.length) msg.textContent = `Fetching ${nick(name)}'s ${sp} games from ${siteOf(name)}… ${k} of ${Math.min(MAX, perfs[sp])}`; },
-    have.length ? have[0].createdAt + 1 : null, sp);
-  msg.textContent = '';
+  const of = Math.min(MAX, perfs?.[sp] || MAX);
+  onStep(0, of);
+  const fresh = await fetchGames(name, (k) => onStep(k, of), have.length ? have[0].createdAt + 1 : null, sp);
   const ids = new Set(fresh.map((g) => g.id)), raw = [...fresh, ...have.filter((g) => !ids.has(g.id))].slice(0, MAX);
   await mergeRemote(name, raw);
   saveGames(speedKey(name, sp), raw);
@@ -1606,6 +1620,7 @@ function trendCard(full) {
     <div class="pf-tr-rows"><div class="pf-tr-row pf-tr-hdr"><span>Skill</span><span>Over these ${n} games</span><span>Now</span><span>Change</span></div>${names.map(row).join('')}</div>`;
 }
 let shownP = null;
+let rise = false; // the next draw comes up into place (a first look-up's first card)
 function render(name, at, full) {
   shown = [name, at, full];
   if (full.n > 0) window.rememberPlayer?.(name);
@@ -1618,7 +1633,7 @@ function render(name, at, full) {
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
   shownCode = cardCode(p, t, skills); // the card as drawn, for the lookup's event
   shownP = p; // the card's profile, for the piece menu
-  document.title = me ? 'Your Profile' : `${nick(name)} · Profile`;
+  document.title = `${me ? 'Your Profile' : nick(name)} · Chess Labs`;
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
     ${accountsRow(name)}${combo && comboOwn ? comboRow() : ''}${nameRow(name)}${proLine(name)}${proBio(name, p)}
@@ -1698,13 +1713,19 @@ function render(name, at, full) {
   }));
   bindSearch();
   if (!combo) { bindAnalyse(name); quickLook(name); }
+  if (rise && !$('#profile .pf-skeleton')) { rise = false; const el = $('#profile'); el.classList.remove('pf-rise'); void el.offsetWidth; el.classList.add('pf-rise'); }
   setTimeout(() => trendCard(full));
   $('.pf-card-help a[href="#pf-skills"]')?.addEventListener('click', (e) => { e.preventDefault(); $('#pf-skills').scrollIntoView({ behavior: 'smooth' }); });
   document.querySelectorAll('[data-pf-speed]').forEach((b) => b.addEventListener('click', async () => {
     const sp = b.dataset.pfSpeed, redraw = () => { const y = scrollY; render(...shown); scrollTo(0, y); };
     pfSpeed = sp; redraw();
-    if (sp === 'all') return;
-    try { if (await fetchSpeed(name, sp) && pfSpeed === sp) redraw(); } catch (err) { $('#profile-msg').textContent = err.message; }
+    if (sp === 'all' || storedGames(speedKey(name, sp))) return;
+    const st = loadSpeed(name, sp);
+    if (!st.over) { barFor = st.key; loadBar.show(st.say(), st.of ? (st.k / st.of) * 100 : 0); }
+    const got = await st.done;
+    if (pfSpeed !== sp) return;
+    loadBar.done();
+    if (got) redraw();
     if (pfSpeed === sp && !speedsOf(name, shown[2]).some(([k, n]) => k === sp && n > 0)) $('#profile-msg').textContent = `${siteOf(name)} gave no ${sp} games for ${nick(name)} to read, so the card stays on the others.`;
   }));
   // Time controls missing from the last 500 games show once Lichess says the player has them.
@@ -2020,6 +2041,7 @@ async function run(name) {
     render(s.name || name, s.at, s.p);
     window.track?.('profile', `${s.name || name} #${shownCode}`);
     PEOPLE.filter(([, w]) => w === proOf(name)).forEach(([n]) => snapOf(n));
+    otherSpeeds(name);
     return;
   }
   const c = cache()[name.toLowerCase()] || (s?.v === PV ? s : null);
@@ -2036,25 +2058,30 @@ async function run(name) {
       if (mine === runs && (merged || after[0]?.id !== top || after.length !== before.length || !before.length)) { const y = scrollY; render(name, Date.now(), p); scrollTo(0, y); }
     } catch {} finally { quiet = false; }
     if (mine === runs) await ownSpeed(name);
+    if (mine === runs) otherSpeeds(name);
     return;
   }
   // A skeleton of the page while the games are read, so it is never blank.
   $('#profile').innerHTML = `<section class="pf-hero pf-skeleton" aria-hidden="true"><div class="pf-card-col"><div class="pf-pcard"><b class="pf-ovr">–</b><p class="pf-pcard-name">${esc(nick(name))}</p></div></div>
     <div class="pf-hero-text"><span class="pf-sk-line w60"></span><span class="pf-sk-line"></span><span class="pf-sk-line"></span><span class="pf-sk-line w80"></span></div></section>`;
-  $('#profile-msg').textContent = `Looking up ${nick(name)} on ${siteOf(name)}…`;
+  $('#profile-msg').textContent = '';
+  loadBar.show(`Looking up ${nick(name)} on ${siteOf(name)}…`);
+  rise = true; // the page comes up when its first card is drawn
   // Lichess can be slow to start sending games; say so instead of leaving the page blank.
-  const slow = setTimeout(() => { if (mine === runs && /Looking up|Fetching/.test($('#profile-msg').textContent)) $('#profile-msg').textContent += ` ${siteOf(name)} is slow right now; still waiting.`; }, 12000);
+  const slow = setTimeout(() => { if (mine === runs && loadBar.on() && !$('#pf-load i').style.width.match(/[1-9]/)) loadBar.step(0, `${siteOf(name)} is slow right now; still waiting for ${nick(name)}'s games…`); }, 12000);
+  holdBar = true; // up through the main time control's own games too
   try {
     const p = await build(name);
     if (mine === runs) render(name, Date.now(), p);
     if (SNAPSHOT) window.snapOut = { ...cache()[name.toLowerCase()], games: MEM.get(name.toLowerCase())?.games }; // for tools/snapshot_pros.py
     window.track?.('profile', `${cache()[name.toLowerCase()]?.name || name} #${shownCode}`);
     if (mine === runs) await ownSpeed(name);
+    if (mine === runs) { holdBar = false; loadBar.done(); otherSpeeds(name); }
   } catch (err) {
     // A name typed without picking "On Chess.com" is looked up on Lichess first; not there, Chess.com's is shown.
     if (mine === runs && !isCC(name) && /no player/.test(err.message) && await ccUser(name)) { history.replaceState(null, '', `?u=${encodeURIComponent(`cc:${name}`)}`); return run(`cc:${name}`); }
     if (mine === runs) failed(name, err);
-  } finally { clearTimeout(slow); }
+  } finally { clearTimeout(slow); if (mine === runs) { holdBar = false; loadBar.done(); } }
 }
 // Combined: the games of every linked account that is switched on, read together. Ratings are never
 // mixed: the card is drawn as the account with the most games in the time control played most, with
@@ -2100,7 +2127,32 @@ let comboGames = [];
 async function ownSpeed(name) {
   const sp = document.querySelector('[data-pf-speed][aria-pressed="true"]')?.dataset.pfSpeed;
   if (SNAPSHOT || !sp || sp === 'all' || storedGames(speedKey(name, sp))) return;
-  if (await fetchSpeed(name, sp).catch(() => false) && shown?.[0].toLowerCase() === name.toLowerCase()) { const y = scrollY; render(...shown); scrollTo(0, y); }
+  const st = loadSpeed(name, sp);
+  if (loadBar.on()) { barFor = st.key; loadBar.step(st.of ? (st.k / st.of) * 100 : 0, st.say()); }
+  if (await st.done && shown?.[0].toLowerCase() === name.toLowerCase()) { const y = scrollY; render(...shown); scrollTo(0, y); }
+}
+// Each time control's own last 500 games, the one shown first and then the others behind the profile,
+// one at a time; one picked while still coming shows the bar until it is in.
+const SPEEDLOAD = new Map(); // `${name}~${sp}` → { done: promise, k, of }
+let barFor = ''; // the time control whose progress the bar shows
+function loadSpeed(name, sp) {
+  const key = `${name.toLowerCase()}~${sp}`;
+  if (!SPEEDLOAD.has(key)) {
+    const st = { k: 0, of: 0 };
+    const say = () => `Fetching ${nick(name)}'s ${sp} games from ${siteOf(name)}: ${st.k} of ${st.of}`;
+    st.done = fetchSpeed(name, sp, (k, of) => { Object.assign(st, { k, of }); if (barFor === key) loadBar.step(of ? (k / of) * 100 : 0, say()); })
+      .catch(() => false).finally(() => { st.over = true; });
+    st.say = say; st.key = key;
+    SPEEDLOAD.set(key, st);
+  }
+  return SPEEDLOAD.get(key);
+}
+async function otherSpeeds(name) {
+  if (SNAPSHOT) return;
+  for (const sp of SPEEDS) {
+    if (shown?.[0].toLowerCase() !== name.toLowerCase() || combo) return; // another player or Combined: stop
+    if (!storedGames(speedKey(name, sp))) await loadSpeed(name, sp).done;
+  }
 }
 // Something went wrong: say what, and offer to try again (reading the games afresh).
 const retried = new Set(), NET = /Failed to fetch|Load failed|NetworkError/i;
@@ -2232,7 +2284,7 @@ function placeActs() {
 // Compare: the player you came from on the left, and on the right the other to pick: you, one of your
 // starred players, or anyone by name.
 async function comparePick(name) {
-  document.title = `Compare ${nick(name)}`;
+  document.title = `Compare ${nick(name)} · Chess Labs`;
   const mine = myName(), others = favs().filter((x) => x.toLowerCase() !== name.toLowerCase() && x.toLowerCase() !== (mine || '').toLowerCase());
   $('#profile').innerHTML = `<header class="cmp-head"><h1 class="pf-h1">Compare <a href="${profileLink(name)}">${esc(nick(name))}</a></h1></header>
     <section class="cmp-pick"><div class="cmp-pick-a" id="cmp-pick-a"><p class="info">Reading ${esc(nick(name))}'s games…</p></div><span class="cmp-pick-vs">VS</span>
@@ -2255,7 +2307,7 @@ async function comparePick(name) {
 // that time control played before the date, fetched and read like the profile's but not kept.
 async function thenNow(name, m) {
   const when = AGO.find((x) => x[0] === m)?.[1] || `${m} months ago`;
-  document.title = `${nick(name)} now vs ${when}`;
+  document.title = `${nick(name)} now vs ${when} · Chess Labs`;
   $('#profile').innerHTML = '';
   const msg = msgEl();
   try {
@@ -2344,7 +2396,7 @@ async function compare(a, b, speed = new URLSearchParams(location.search).get('s
   } catch (err) { $('#profile-msg').textContent = err.message; }
 }
 function renderCompare(A, B, speed = 'all', avail = []) {
-  document.title = `${A.name} vs ${B.name}`;
+  document.title = `${A.name} vs ${B.name} · Chess Labs`;
   const sa = skillsOf(A.p), sb = skillsOf(B.p);
   const num = (v, f = (x) => x) => (v === null || v === undefined ? '–' : f(v));
   const main = (p) => p.speeds[0];
