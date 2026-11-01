@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101134929';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101134929';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101134929';
-import { NAMED_TRAPS } from './traps.js?v=20261101134929';
-import { GUIDE } from './guide.js?v=20261101134929';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101134929';
-import { maia3Move } from './maia3.js?v=20261101134929';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101134929';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101134929';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101134929';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101134929';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101135510';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101135510';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101135510';
+import { NAMED_TRAPS } from './traps.js?v=20261101135510';
+import { GUIDE } from './guide.js?v=20261101135510';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101135510';
+import { maia3Move } from './maia3.js?v=20261101135510';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101135510';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101135510';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101135510';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101135510';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -137,7 +137,7 @@ const POPULAR = {};   // popularOpenings() per time control and rating; it takes
 // built by tools/make_explorer.py. Loaded once per time control.
 // The -top file (lines of 200+ games, a fifth of the size) comes first; the full one replaces it once loaded,
 // so the rarer lines show from the next move on.
-const LOADING = {};
+const LOADING = {}, FULL = {};
 // Kept in the browser's Cache Storage too: a file of one DATA version never changes, so a return visit reads it
 // from disk instead of downloading megabytes again. Files of older versions are dropped.
 const BOX = globalThis.caches?.open('explorer').then(async (box) => {
@@ -156,7 +156,7 @@ async function loadTree() {
   // DATA is bumped whenever the data is rebuilt, so no browser keeps an old file
   LOADING[sp] ??= treeFile(sp, '-top').then((t) => {
     TREES[sp] ??= t;
-    treeFile(sp, '').then((full) => { TREES[sp] = full; if (speed === sp) TREE = full; }).catch(() => {});
+    FULL[sp] = treeFile(sp, '').then((full) => { TREES[sp] = full; if (speed === sp) TREE = full; }).catch(() => {});
   }).catch((e) => { delete LOADING[sp]; throw e; }); // tried again next time
   await LOADING[sp];
   if (speed !== sp) return;
@@ -2055,27 +2055,31 @@ async function engineReply(at) {
       note: `The saved games run out here, so the moves now come from all ${total.toLocaleString('en')} Lichess games at your level in this position.` };
   }
   // Maia 3 at any rating, told it plays someone of your rating; Maia 1 if it cannot load, then Stockfish.
+  // Each gets a time limit: a net that never finishes loading on a slow phone must not freeze the game.
   try {
-    const { move } = await maia3Move(at, game.moves({ verbose: true }), rating, rating);
+    const { move } = await within(20000, maia3Move(at, game.moves({ verbose: true }), rating, rating));
     return { san: move.san, label: `Maia 3 · ${rating}`,
       note: `Real games at your level run out here, so Maia 3 plays the opponent now: a computer trained on Lichess games to play the move a player rated ${rating} most often plays.` };
   } catch (e) { console.warn(e); }
   if (rating < MAIA_MAX + 100) {
     try {
       const h = game.history({ verbose: true });
-      const { move } = await maiaMove(rating, h.length ? [h[0].before, ...h.map((x) => x.after)] : [at], game.moves({ verbose: true }));
+      const { move } = await within(15000, maiaMove(rating, h.length ? [h[0].before, ...h.map((x) => x.after)] : [at], game.moves({ verbose: true })));
       return { san: move.san, label: `Maia ${maiaLevel(rating)}`,
         note: `Real games at your level run out here, so Maia plays the opponent now: a computer trained on Lichess games to play like people rated about ${maiaLevel(rating)}.` };
     } catch (e) { console.warn(e); }
   }
-  const best = await bestMove(at, { depth: opponentDepth() });
+  const best = await within(15000, bestMove(at, { depth: opponentDepth() }));
   return best && { ...best, label: `Stockfish depth ${opponentDepth()}`, note: `Real games at your level run out here, so Stockfish plays the opponent now, looking ${opponentDepth()} moves deep: always its best move at that depth.` };
 }
+const within = (ms, p) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error(`no answer in ${ms / 1000} s`)), ms))]);
 async function opponentPlays() {
   busy = true;
   const gen = gameGen, at = game.fen();
-  // Follow the real games as long as any reach this position: the reply played most there.
-  const real = gamesAt(game.history().map(clean)).moves[0];
+  // Follow the real games as long as any reach this position: the reply played most there. While only the
+  // -top tree is in (lines of 200+ games), the full one is waited for (a few seconds at most) before the engines.
+  let real = gamesAt(game.history().map(clean)).moves[0];
+  if (!real && FULL[speed]) { await within(8000, FULL[speed]).catch(() => {}); real = gamesAt(game.history().map(clean)).moves[0]; }
   let m = real ? { san: real.san, label: `Real games ${levelText()}` } : await engineReply(at).catch((e) => (console.warn(e), null));
   // No engine answered: the opponent stops here rather than play a move nobody chose.
   if (!m && gen === gameGen && game.fen() === at && !game.isGameOver()) say('The opponent could not find a move here (the engines did not answer). Restart, or go back a move and try again.', 'bad');
