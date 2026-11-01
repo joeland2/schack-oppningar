@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261101232209';
-import { api as chatApi, openChat } from './chat.js?v=20261101232209';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101232209';
+import { account, login, finishLogin } from './lichess.js?v=20261101232522';
+import { api as chatApi, openChat } from './chat.js?v=20261101232522';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101232522';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -104,6 +104,7 @@ function spanPoints(body) {
 }
 // Notes on the graph (what was done when: "posted on Reddit"), kept with the admin's account (header.js syncs the key).
 const NOTES_KEY = 'chess-trainer-admin-notes';
+const SEEN_KEY = 'opening-book-v2-admin-messages-seen'; // the newest message this browser has seen
 const notes = () => { try { return JSON.parse(localStorage.getItem(NOTES_KEY)) || []; } catch { return []; } };
 const saveNotes = (xs) => { try { localStorage.setItem(NOTES_KEY, JSON.stringify(xs.sort((a, b) => a.t - b.t))); } catch {} };
 const noteKey = (t) => (hourly() ? hourKey(t) : dayKey(t));
@@ -237,8 +238,8 @@ const IC = { ...EV_ICON, people: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6
   plus: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 5 2.7M19 14v6M16 17h6', target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01',
   home: 'M3 11l9-7 9 7M5 9.5V20h14V9.5' };
 const ic = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[k]}"/></svg>`;
-const GROUPS = [['messages', 'Messages', 'people', 'players writing to the admins'], ['overview', 'Overview', 'home', 'the week at a glance'], ['openings', 'Openings', 'practise', 'what is practised, and by whom'], ['people', 'People', 'people', 'who comes and what they do'],
-  ['traffic', 'Traffic', 'globe', 'where they come from'], ['errors', 'Errors', 'error', 'what broke']];
+const GROUPS = [['overview', 'Overview', 'home', 'the week at a glance'], ['openings', 'Openings', 'practise', 'what is practised, and by whom'], ['people', 'People', 'people', 'who comes and what they do'],
+  ['traffic', 'Traffic', 'globe', 'where they come from'], ['errors', 'Errors', 'error', 'what broke'], ['messages', 'Messages', 'people', 'players writing to the admins']];
 const group = (id) => { const [, t, i, sub] = GROUPS.find((g) => g[0] === id); return `<h2 class="adm-group" id="ad-${id}">${ic(i)}${t}<small>${sub}</small></h2>`; };
 
 // Who practises what: every run of a line in the visitor list, by person, and the newest runs.
@@ -330,7 +331,7 @@ const doneBar = (t) => `<span class="adm-done"><i style="--v:${t.runs ? t.done /
 const modes = (t) => `<small title="Lines finished in Learn, Practice and Time">L ${t.learn} · P ${t.try} · T ${t.time}</small>`;
 function openingsHtml(s) {
   if (!(s.openings2 || []).length) return `<section class="pf-card"><div class="adm-head"><h2>${ic('practise')}Openings practised <small>last 30 days</small></h2></div>
-    <p class="info">Nothing yet. Each line practised is counted from 31 Oct 2026; the table, each opening's lines and the hardest moves fill in as people practise.</p></section>`;
+    <p class="info">Nothing yet. Each line practised is counted from 31 Oct 2026; the table and each opening's lines fill in as people practise.</p></section>`;
   const by = new Map();
   for (const { v, x } of runsOf(s)) { const k = `${x.s}|${x.o}`, m = by.get(k) ?? new Map(), p = v.name || v.id; m.set(p, { v, n: (m.get(p)?.n || 0) + 1 }); by.set(k, m); }
   // The logged-in players by name; the rest only as a count, so a busy opening stays one line.
@@ -341,8 +342,7 @@ function openingsHtml(s) {
     <div class="adm-op-wrap"><table class="adm-op"><thead><tr><th>Opening</th><th>People</th><th>Runs</th><th>Finished</th><th>Mistakes a run</th><th>Finished in</th></tr></thead>
     ${s.openings2.map((o) => `<tbody class="adm-op-group"><tr class="adm-op-row" tabindex="0" aria-expanded="false"><td>${side(o.side)}<b>${esc(o.name)}</b> <small>${o.lines.length} line${o.lines.length === 1 ? '' : 's'}</small></td>${row(o)}<td>${modes(o)}</td></tr>
       ${o.lines.map((l) => `<tr class="adm-op-line" hidden><td>${esc(l.name)}</td>${row(l)}<td>${modes(l)}</td></tr>`).join('')}${who(o) ? `<tr class="adm-op-line adm-op-who" hidden><td colspan="6">${ic('people')}${who(o)}</td></tr>` : ''}</tbody>`).join('')}</table></div>
-    ${(s.hardest || []).length ? `<h3 class="adm-sub">${ic('target')}Hardest moves <small>where most runs slip first</small></h3><div class="adm-hard">${s.hardest.map((h) => `<figure>${boardHtml(h.fen, h.side !== 'b')}
-      <figcaption><b class="adm-hard-n">${pctOf(h.share)}</b> of runs slip here · the move is <b>${esc(h.want)}</b>${h.got ? `, most play ${esc(h.got)}` : ''}<small>${side(h.side)}${esc(h.opening)} · ${esc(h.line)} · ${h.n} slip${h.n === 1 ? '' : 's'}, ${h.people} ${h.people === 1 ? 'person' : 'people'}</small></figcaption></figure>`).join('')}</div>` : ''}</section>`;
+</section>`;
 }
 const errorsHtml = (s) => `<section class="pf-card"><div class="adm-head"><h2>${ic('error')}Errors <small>last 30 days</small></h2><small>What broke for visitors: profiles that could not be read, and errors in the pages.</small></div>
   ${(s.errors || []).length ? `<ul class="pf-rows adm-recent">${s.errors.map((e) => `<li><span>${esc(e.text)}</span><small>${e.n}× · ${e.people} ${e.people === 1 ? 'person' : 'people'} · last ${short(e.last)}</small></li>`).join('')}</ul>` : '<p class="info">None. Errors are counted from 31 Oct 2026.</p>'}</section>`;
@@ -360,8 +360,6 @@ function render(s) {
         <dd><span>${all}<small>visitors</small></span><span>${fresh}<small>new visitors</small></span></dd>${more ? `<small>${more}</small>` : ''}</div>`).join('')}
       <div><dt>Profiles created</dt><dd>${t.registered}</dd><small>logged in with Lichess</small></div>
     </dl>
-    ${group('messages')}
-    <section class="pf-card" id="adm-threads"><p class="info">Loading…</p></section>
     ${group('overview')}
     ${liveHtml(s)}
     ${overviewHtml(s)}
@@ -414,6 +412,8 @@ function render(s) {
     </div>
     ${group('errors')}
     ${errorsHtml(s)}
+    ${group('messages')}
+    <section class="pf-card" id="adm-threads"><p class="info">Loading…</p></section>
 `;
 }
 
@@ -498,9 +498,18 @@ async function threads() {
   let ts;
   try { ts = await chatApi('?threads'); } catch (e) { el.innerHTML = `<p class="info">${esc(e.message)}</p>`; return; }
   const waiting = ts.filter((t) => t.author === t.player).length;
+  // Players' messages newer than the last time this browser looked at the threads: a note at the top that jumps here.
+  const seen = (() => { try { return localStorage.getItem(SEEN_KEY) || ''; } catch { return ''; } })();
+  const fresh = ts.filter((t) => t.author === t.player && t.at > seen).length, newest = ts[0]?.at || seen;
+  const markSeen = () => { try { localStorage.setItem(SEEN_KEY, newest); } catch {} $('#adm-new')?.remove(); };
+  $('#adm-new')?.remove();
+  if (fresh) {
+    $('#admin').insertAdjacentHTML('afterbegin', `<p class="adm-new" id="adm-new" role="status">${ic('people')}<span>${fresh === 1 ? 'A new message' : `${fresh} new messages`} from players</span><button type="button" class="cta">Read</button></p>`);
+    $('#adm-new button').addEventListener('click', () => { markSeen(); $('#ad-messages').scrollIntoView({ behavior: 'smooth' }); });
+  }
   el.innerHTML = `<div class="adm-head"><h2>${ic('people')}Threads · ${ts.length}</h2><small>${waiting ? `${waiting} waiting for an answer` : 'All answered'}</small></div>
     ${ts.length ? `<ul class="pf-rows adm-recent">${ts.map((t) => `<li><button type="button" class="link adm-thread" data-thread="${esc(t.player)}"><b>${esc(t.player)}</b> ${t.author === t.player ? '<span class="chip pagar">Waiting</span>' : ''}<small>${esc(t.body.slice(0, 90))}${t.body.length > 90 ? '…' : ''}</small></button><small>${t.n} · ${when(t.at)}</small></li>`).join('')}</ul>` : '<p class="info">No messages yet.</p>'}`;
-  el.querySelectorAll('[data-thread]').forEach((b) => b.addEventListener('click', () => { openChat(b.dataset.thread); document.querySelector('dialog.chat')?.addEventListener('close', threads); }));
+  el.querySelectorAll('[data-thread]').forEach((b) => b.addEventListener('click', () => { markSeen(); openChat(b.dataset.thread); document.querySelector('dialog.chat')?.addEventListener('close', threads); }));
 }
 function show(body) {
   render(body);

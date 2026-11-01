@@ -2,9 +2,9 @@
 // a blunder. Pick it. From the slips Find my mistakes and your analysed games have found (the puzzles
 // on mistakes.html), with the game's moves from the games kept in this browser.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261101232209';
-import { THEMES, findMistakes, pickPuzzles } from './mistakes.js?v=20261101232209';
-import { storedGames, gamesReady } from './profile.js?v=20261101232209';
+import { drawBoard } from './board.js?v=20261101232522';
+import { THEMES, findMistakes, pickPuzzles } from './mistakes.js?v=20261101232522';
+import { storedGames, gamesReady } from './profile.js?v=20261101232522';
 
 const PUZZLES = 'opening-book-v2-mistakes';
 export const puzzles = () => { try { return JSON.parse(localStorage.getItem(PUZZLES)) || []; } catch { return []; } };

@@ -2671,3 +2671,9 @@ a.st-wk:hover h2 { text-decoration: underline; }
 #mode-learn .path-bar i { background: var(--good); }
 #mode-try .path-bar i { background: #e0b23a; }
 #mode-time .path-bar i { background: #4fb8e0; }
+
+/* Admin: new messages from players, a note at the top that jumps to them */
+.adm-new { position: sticky; top: 64px; z-index: 5; display: flex; align-items: center; gap: 10px; margin: 0 0 16px; padding: 10px 12px 10px 14px; border-radius: 8px; background: var(--surface); box-shadow: inset 3px 0 0 var(--hot), 0 8px 24px rgb(0 0 0 / .25); font-weight: 600; }
+.adm-new .ico { width: 18px; height: 18px; color: var(--hot); flex: none; }
+.adm-new span { flex: 1; min-width: 0; }
+.adm-new .cta { padding: 6px 14px; }
