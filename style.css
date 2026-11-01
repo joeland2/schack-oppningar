@@ -2608,3 +2608,5 @@ a.st-wk:hover h2 { text-decoration: underline; }
 .top-bug .top-me-who small { display: block; font: 700 10.5px var(--font-body); letter-spacing: .08em; opacity: .65; }
 .top-me-chev { font-style: normal; font-size: 11px; opacity: .6; }
 @media (max-width: 760px) { .top-me-who b { max-width: 6.5em; font-size: 13px; } .top-me summary.top-bug { gap: 8px; } }
+/* Endgames: each part of the message (your move and why, their reply, the next move and why) on its own line. */
+.eg-why { display: block; } .eg-why + .eg-why { margin-top: 4px; font-weight: 400; color: var(--ink); }

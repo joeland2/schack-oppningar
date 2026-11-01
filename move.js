@@ -1,11 +1,11 @@
-// The site moved from joeland2.github.io/schack-oppningar to chesslabs.gg. A browser keeps saved progress
+// The site moved from joeland2.github.io/schack-oppningar to chesslabs.gg, and www.chesslabs.gg goes there too. A browser keeps saved progress
 // per address, so the old address hands it over once: it sends this browser's saved keys along in the
 // link's #fragment (never sent to any server) to the same page on the new address, which saves the ones
 // it does not have yet and drops the fragment. Loaded first on every page, before anything reads storage.
 (() => {
   const NEW = 'https://chesslabs.gg', OLD = 'joeland2.github.io', TAG = '#moved=';
   const skip = (k) => k === 'chess-trainer-sync' || /-(sf|games|profiles)$/.test(k); // caches, fetched again
-  if (location.hostname === OLD) {
+  if (location.hostname === OLD || location.hostname === 'www.chesslabs.gg') {
     let data = {};
     try { for (const k of Object.keys(localStorage)) if (!skip(k)) data[k] = localStorage.getItem(k); } catch {}
     const path = location.pathname.replace(/^\/schack-oppningar/, '') || '/';

@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101220132';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101220132';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101220132';
-import { NAMED_TRAPS } from './traps.js?v=20261101220132';
-import { GUIDE } from './guide.js?v=20261101220132';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101220132';
-import { maia3Move } from './maia3.js?v=20261101220132';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101220132';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101220132';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101220132';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101220132';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101222021';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101222021';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101222021';
+import { NAMED_TRAPS } from './traps.js?v=20261101222021';
+import { GUIDE } from './guide.js?v=20261101222021';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101222021';
+import { maia3Move } from './maia3.js?v=20261101222021';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101222021';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101222021';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101222021';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101222021';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -561,6 +561,7 @@ if (matchMedia('(min-width: 1400px)').matches) document.querySelectorAll('.side 
 
 gamesReady.then(() => { if (OPENINGS.length) renderList(); }); // the kept games may load after the first draw; never before the openings
 function renderList() {
+  if (!OPENINGS.length) return; // still loading: the outline stays, never a false "no openings"
   const about = {
     w: (n) => `${sort === 'played' ? 'Most played first' : 'Best results first'}. ${style === 'any'
       ? `The ${n} most played openings among players rated ${levelText()}.`
@@ -582,7 +583,7 @@ function renderList() {
       <div class="olist">${list.map((o) => card(o).replace('</h3>', `<small class="as">you play ${sideName(o.side)}</small></h3>`)).join('')}</div>`;
   } else if (listSide === 'r') {
     body = `<p class="og-about">${favs.length ? `The openings you have starred${played.length ? ', and the ones you play most in your Lichess games' : ''}, from both sides. <button type="button" class="link" data-traps>Practise punishing their blunders</button>` : 'Nothing here yet. Star (★) an opening, or check your Lichess games, and it shows up here.'}</p>
-      <div class="olist">${favs.map((o) => (played.includes(o) ? card(o).replace('<span class="chip ', '<span class="tag played">Played most</span><span class="chip ') : card(o))).join('')}</div>`;
+      <div class="olist">${favs.map((o) => (played.includes(o) ? card(o).replace('<button type="button" class="star"', '<span class="tag played">Played most</span><button type="button" class="star"') : card(o))).join('')}</div>`;
   } else {
     // Your starred openings of this side come first, pinned, even ones the style or the cut would hide.
     const pinned = pinFavs ? mineList.filter((o) => o.side === listSide) : [];

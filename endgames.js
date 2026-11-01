@@ -4,7 +4,7 @@
 // Lichess tablebase (tablebase.lichess.ovh, exact for up to 7 pieces) says what every move is worth
 // and plays the defence. A slip is a move that lets the win go: a draw, stalemate or a piece given away.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake, instruction } from './board.js?v=20261101220132';
+import { drawBoard, enableDrag, shake, instruction } from './board.js?v=20261101222021';
 
 const $ = (s) => document.querySelector(s);
 // { [id]: { learned: 0|1, box, due, times: [your three best ms] } }, synced with your account (header.js). Numbers
@@ -200,7 +200,7 @@ function yourTurn(first = false) {
   showMate(info);
   draw();
   if (mode === 'time' && !first) startTick();
-  if (first) say(mode === 'learn' ? `Mate in ${moves(dist(info))} with best play. Follow the arrow: it shows the quickest way.`
+  if (first) say(mode === 'learn' ? `Mate in ${moves(dist(info))} with best play. Follow the arrow: it shows the quickest way.${best ? ` <span class="eg-why">${whyGood(new Chess(game.fen()).move(best.san))}</span>` : ''}`
     : mode === 'try' ? `Mate in ${moves(dist(info))} with best play. Win it from memory, without letting the win slip.`
     : `Mate as fast as you can. The clock starts on your first move; a slip ends the run.`);
 }
@@ -215,6 +215,40 @@ function stopTick() {
   if (ticking) elapsed += performance.now() - ticking;
   ticking = 0; clearInterval(tickTimer);
   $('#tc-time').textContent = clock(elapsed);
+}
+
+// The squares their king can still reach: from where it stands, step by step over squares no white piece
+// guards (the king itself lifted off, so a rook's line through it counts) and none stands on.
+function box(fen) {
+  const g = new Chess(fen), at = SQUARES.find((q) => { const p = g.get(q); return p && p.type === 'k' && p.color === 'b'; });
+  g.remove(at);
+  const seen = new Set([at]), todo = [at];
+  while (todo.length) {
+    const q = todo.pop();
+    for (const n of SQUARES) if (!seen.has(n) && far(q, n) === 1 && !g.get(n) && !g.isAttacked(n, 'w')) { seen.add(n); todo.push(n); }
+  }
+  return seen.size;
+}
+const kingOf = (g, c) => SQUARES.find((q) => { const p = g.get(q); return p && p.type === 'k' && p.color === c; });
+// Why a good move is good, in the words of the endgame's plan: what it does to their king's box,
+// your king and your pieces. m is a chess.js move (with .before and .after).
+function whyGood(m) {
+  const b = new Chess(m.before), a = new Chess(m.after), bk = kingOf(a, 'b'), wk = kingOf(a, 'w');
+  const was = box(m.before), now = box(m.after), left = `Their king has ${plural(now, 'square')} left.`;
+  if (m.promotion) return 'The pawn becomes a queen. Now mate as in Queen and king: make a box and shrink it.';
+  if (m.piece === 'p') return `The pawn steps forward${far(wk, m.to) === 1 ? ', guarded by your king' : ''}, safe from their king.`;
+  if (m.piece === 'k') {
+    const face = (wk[0] === bk[0] || wk[1] === bk[1]) && far(wk, bk) === 2;
+    if (face) return `The kings face each other with one square between: the opposition. Their king must give way. ${left}`;
+    if (far(wk, bk) < far(kingOf(b, 'w'), bk)) return `Your king walks up to help: ${plural(far(wk, bk), 'step')} from theirs now. ${now < was ? `It also takes squares: ${plural(now, 'square')} left.` : left}`;
+    return `Your king takes the squares your pieces cannot. ${left}`;
+  }
+  if (far(m.from, kingOf(b, 'b')) === 1 && far(m.to, bk) > 1) return `Their king was next to your ${NAME[m.piece]}, so it steps far away and still holds its line. ${left}`;
+  if (a.inCheck()) return `Check: their king is pushed back. ${now < was ? `The box shrinks from ${was} to ${now} squares.` : left}`;
+  if (m.piece === 'q' && Math.abs(fi(m.to) - fi(bk)) * Math.abs(ri(m.to) - ri(bk)) === 2) return `The queen sits a knight's move from their king: a box it cannot leave. ${now < was ? `It shrinks from ${was} to ${now} squares.` : left}`;
+  if (now < was) return `The box shrinks from ${was} to ${now} squares: their king has less room.`;
+  if (m.piece === 'r') return `A waiting move: the rook keeps its line, and their king has to move, toward the facing position. ${left}`;
+  return `This keeps their king shut in. ${left}`;
 }
 
 // Why a move let the win go, in words.
@@ -249,7 +283,7 @@ async function tryMove(from, to) {
   last = m; sel = null; hint = []; arrow = null;
   if (game.isCheckmate()) return finish(), true;
   busy = true; stopTick(); draw();
-  const note = slow ? `Still winning, but mate is now in ${moves(dist(tm))} (it was ${moves(dist(best))}).` : mode === 'learn' ? 'Good.' : '';
+  const note = slow ? `Still winning, but mate is now in ${moves(dist(tm))} (it was ${moves(dist(best))}).` : mode === 'time' ? '' : `Good. ${whyGood(m)}`;
   try {
     const [r] = await Promise.all([probe(game.fen()), new Promise((x) => setTimeout(x, 350))]);
     if (g !== gen) return true;
@@ -261,7 +295,8 @@ async function tryMove(from, to) {
   } catch (e) { busy = false; say(e.message, 'bad'); return true; }
   busy = false;
   yourTurn();
-  if (mode !== 'time') say(`${note} Black plays ${last.san}. ${mode === 'learn' ? 'Follow the arrow.' : `Mate in ${moves(dist(info))}.`}`.trim(), slow ? '' : mode === 'learn' ? 'good' : '');
+  const next = mode === 'learn' && info.moves[0] ? `<span class="eg-why"><b>Next:</b> ${whyGood(new Chess(game.fen()).move(info.moves[0].san))} Follow the arrow.</span>` : `Mate in ${moves(dist(info))}.`;
+  if (mode !== 'time') say(`<span class="eg-why">${note}</span> <span class="eg-why">Black plays ${last.san}.</span> ${next}`, slow ? '' : 'good');
   return true;
 }
 

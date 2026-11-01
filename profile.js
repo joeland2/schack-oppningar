@@ -3,10 +3,10 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101220132';
-import { STYLE_OF } from './styles.js?v=20261101220132';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101220132';
-import { PEOPLE } from './pros.js?v=20261101220132';
+import { account, login, finishLogin } from './lichess.js?v=20261101222021';
+import { STYLE_OF } from './styles.js?v=20261101222021';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101222021';
+import { PEOPLE } from './pros.js?v=20261101222021';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1690,7 +1690,7 @@ function render(name, at, full) {
     </section>
     ${me ? starsCard() : ''}
     ${me && !isCC(name) ? privacyCard() : ''}
-    ${nextActions(name, me)}`;
+    ${nextActions(name, me, skills)}`;
   applyHidden(name, me);
   $('#refresh').addEventListener('click', async (e) => { // a seen player is read again quietly: the button says it is working
     Object.assign(e.target, { disabled: true, textContent: 'Reading…' });
@@ -1909,10 +1909,10 @@ function starCounts() {
   const sum = (k) => ops.reduce((t, o) => t + o[k].size, 0);
   return { ops, sum };
 }
-function nextActions(name, me) {
-  const friend = favs()[0];
+function nextActions(name, me, skills = []) {
+  const weak = skills.filter((x) => x.v !== null && x.href).sort((a, b) => a.v - b.v)[0]; // your weakest skill, trained where its tip points
   return `<section class="pf-next"><h2>What next</h2><div>
-    ${me ? '<a class="cta" href="practice.html">Open your training plan</a>' : ''}
+    ${me ? weak ? `<a class="cta" href="${weak.href}" title="${esc(weak.train)}">Practise your weakest skill: ${esc(weak.label)}</a><a class="ghost" href="practice.html">Your training plan</a>` : '<a class="cta" href="practice.html">Open your training plan</a>' : ''}
     <a class="${me ? 'ghost' : 'cta'}" href="${pickLink(name)}">${me ? 'Compare with someone' : `Compare ${esc(nick(name))}`}</a>
     <a class="ghost" href="${agoLink(name, 12)}">${me ? 'You now vs a year ago' : 'Now vs a year ago'}</a>
   </div></section>`;
