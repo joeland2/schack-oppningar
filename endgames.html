@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Chess Endgames</title>
+  <meta name="description" content="Learn to win the basic endgames all the way to mate: queen, rooks, two bishops, king and pawn. Learn with arrows, practise from memory, then against the clock.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="style.css?v=20261101101035">
+  <script src="header.js?v=20261101101035" defer></script>
+  <script src="theme.js?v=20261101101035"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-in">
+      <a class="brand" href="./">Chess<span>Trainer</span></a>
+      <nav class="top-nav" aria-label="Sections"><a href="./#openings">Openings</a><a href="practice.html">My practice</a><a href="profile.html">Profile</a></nav>
+      <form class="top-search" action="profile.html" role="search"><input name="u" type="search" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="Find a player" aria-label="Find a player on Lichess or Chess.com" title="A Lichess or Chess.com username" autocomplete="off" autocapitalize="off" spellcheck="false"></form>
+      <details class="top-players"><summary title="Your starred players" aria-label="Your starred players"><svg class="ico ico-solid" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></summary><div class="top-players-menu"></div></details>
+      <button id="theme" class="ghost theme" type="button" aria-label="Switch theme"></button>
+    </div>
+  </header>
+
+  <main id="eg" class="wrap layout">
+    <section class="play">
+      <div id="trial-clock" class="trial-clock" hidden aria-live="off">
+        <b id="tc-time">0:00</b><span class="tc-wait">starts on your move</span>
+        <span class="tc-score"><small id="tc-best"></small></span>
+      </div>
+      <div class="progress">
+        <span id="eg-at"></span>
+        <div class="track"><div id="bar" class="fill"></div></div>
+        <span id="eg-mate"></span>
+      </div>
+      <div class="board-frame">
+        <div id="board" class="board" role="group" aria-label="Chessboard"></div>
+        <div id="eg-intro" class="depth-ask" hidden></div>
+      </div>
+      <div class="controls">
+        <button id="hint" type="button">Hint</button>
+        <button id="show" type="button">Show move</button>
+        <button id="restart" type="button">New position</button>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="p-head">
+        <div class="op-head">
+          <p class="meta"><span id="eg-tag" class="eco"></span> You play White</p>
+          <h1 id="eg-title"></h1>
+        </div>
+        <nav class="path" aria-label="How to learn this endgame">
+          <button class="path-step" type="button" data-mode="learn" aria-pressed="true"><span class="path-n">1</span><span><b>Learn</b><small>the best move shown</small></span></button>
+          <svg class="path-arrow ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <button class="path-step" type="button" data-mode="try" aria-pressed="false"><span class="path-n">2</span><span><b>Practice</b><small id="eg-due">from memory</small></span></button>
+          <svg class="path-arrow ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <button class="path-step" type="button" data-mode="time" aria-pressed="false"><span class="path-n">3</span><span><b><span class="wide-only">Time challenge</span><span class="narrow-only">Time</span></b><small>against the clock</small></span></button>
+        </nav>
+      </div>
+      <div class="coach">
+        <img class="coach-face" src="pieces/wK.svg" alt="">
+        <div class="coach-body">
+          <p id="message" class="message" aria-live="polite"></p>
+        </div>
+      </div>
+      <details id="eg-how" class="op-more">
+        <summary>How to think</summary>
+        <div id="eg-plan"></div>
+      </details>
+    </aside>
+
+    <nav id="items" class="list" aria-label="Endgames"></nav>
+  </main>
+
+  <script type="module" src="endgames.js?v=20261101101035"></script>
+</body>
+</html>

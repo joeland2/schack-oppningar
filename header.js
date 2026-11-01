@@ -42,22 +42,32 @@
     let speed = 'blitz', rating = null;
     try { speed = JSON.parse(localStorage.getItem('opening-book-v2-speed')) || speed; rating = JSON.parse(localStorage.getItem(`opening-book-v2-${speed}-rating`)); } catch {}
     const at = document.querySelector('.top-players');
-    if (rating && at && !document.querySelector('.account')) {
+    if (rating && at && !document.querySelector('.account') && !user()) { // logged in, it heads your menu (below)
       const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`), who = user();
       at.insertAdjacentHTML('beforebegin', `<a class="top-bug" href="${who ? `profile.html?u=${encodeURIComponent(who)}` : './'}" title="Your ${speed} rating"><small>${esc(speed)}<br>${esc(who || 'you')}</small><strong>${esc(rating)}</strong></a>`);
     }
-    // Logged out, the Profile section reads Log in: the profile page logs in and comes back to your profile.
-    const prof = document.querySelector('.top-nav a[href="profile.html"]');
-    // Logged out, Log in sits in the top row (Openings has its own button there) instead of the sections.
-    if (!user() && prof) {
-      if (!document.querySelector('#lichess-login')) document.querySelector('.top-players')?.insertAdjacentHTML('beforebegin', '<a class="top-login" href="profile.html?login" title="Log in with Lichess to see your profile">Log in</a>');
-      prof.remove();
+    const nav = document.querySelector('.top-nav');
+    nav?.querySelector('a[href="./#openings"]')?.insertAdjacentHTML('afterend', `<a href="endgames.html"${page === 'endgames.html' ? ' aria-current="page"' : ''}>Endgames</a>`);
+    // Profile and My practice are in the menu under your name, so the sections fit one row on phones.
+    // Logged out, Log in sits in the top row instead (Openings has its own button there).
+    nav?.querySelector('a[href="profile.html"]')?.remove();
+    nav?.querySelector('a[href="practice.html"]')?.remove();
+    if (!user() && !document.querySelector('#lichess-login')) at?.insertAdjacentHTML('beforebegin', '<a class="top-login" href="profile.html?login" title="Log in with Lichess to see your profile">Log in</a>');
+    nav?.insertAdjacentHTML('beforeend', `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a><a href="playstyles.html"${page === 'playstyles.html' ? ' aria-current="page"' : ''}>Styles</a>`);
+    const who = user();
+    if (who) {
+      const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`), btn = document.querySelector('#lichess-login');
+      const cur = (p) => (page === p ? ' aria-current="page"' : '');
+      const head = btn ? `<span class="top-me-name">${esc(who)}</span>` : rating ? `<small>${esc(speed)}<br>${esc(who)}</small><strong>${esc(rating)}</strong>` : `<span class="top-me-name">${esc(who)}</span>`;
+      const menu = `<details class="top-me"><summary class="${rating && !btn ? 'top-bug' : ''}" title="Your profile and practice">${head}</summary><div class="top-me-menu">
+        <a href="profile.html?u=${encodeURIComponent(who)}"${cur('profile.html')}>Profile</a><a href="practice.html"${cur('practice.html')}>My practice</a></div></details>`;
+      if (btn) { btn.insertAdjacentHTML('beforebegin', menu); btn.style.display = 'none'; } // Openings: in place of its name button
+      else at?.insertAdjacentHTML('beforebegin', menu);
+      const me = document.querySelector('.top-me');
+      // Hover opens it where there is a mouse; a tap or click opens it anywhere.
+      if (matchMedia('(hover: hover)').matches) { me.addEventListener('mouseenter', () => { me.open = true; }); me.addEventListener('mouseleave', () => { me.open = false; }); }
+      addEventListener('click', (e) => { if (me.open && !me.contains(e.target)) me.open = false; });
     }
-    if (!user()) document.querySelector('.top-nav a[href="practice.html"]:not([aria-current])')?.remove(); // your practice plan needs your games
-    const practice = document.querySelector('.top-nav a[href="practice.html"]');
-    if (practice) practice.innerHTML = '<span class="wide-only">My&nbsp;</span>practice'; // phones: the sections fit one row
-    const board = `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a><a href="playstyles.html"${page === 'playstyles.html' ? ' aria-current="page"' : ''}>Styles</a>`;
-    if (prof?.isConnected) prof.insertAdjacentHTML('beforebegin', board); else document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', board);
     if (ADMINS.includes(user()?.toLowerCase())) document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', `<a class="nav-admin" href="admin.html"${page === 'admin.html' ? ' aria-current="page"' : ''} aria-label="Admin"><span class="wide-only">Admin</span><svg class="ico narrow-only" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></a>`);
   });
 })();
