@@ -16,7 +16,7 @@ import chess
 
 SYNC = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/analyses'
 MAX, FULL, DEPTH, WORKERS = 500, 300, 10, 8
-UA = {'User-Agent': 'chess-trainer (joeland2.github.io/schack-oppningar)'}
+UA = {'User-Agent': 'chess-labs (chesslabs.gg)'}
 SPEEDS = ['bullet', 'blitz', 'rapid', 'classical']
 
 

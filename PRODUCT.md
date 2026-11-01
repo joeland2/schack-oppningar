@@ -45,7 +45,7 @@ Everything starts from the player's own Lichess games: the profile, the player t
 
 ## Capabilities and Constraints
 
-- Plain static HTML, CSS and JavaScript, no build step; chess.js from jsDelivr. Must be served over HTTP, not `file://`. Hosted on GitHub Pages from `main` (https://joeland2.github.io/schack-oppningar/); every push redeploys. `tools/stamp.sh` versions file links before each commit.
+- Plain static HTML, CSS and JavaScript, no build step; chess.js from jsDelivr. Must be served over HTTP, not `file://`. Hosted on Cloudflare Pages from `main` at https://chesslabs.gg (project `chesslabs`); every push redeploys. The old GitHub Pages address hands saved progress over and sends visitors on (`move.js`). `tools/stamp.sh` versions file links before each commit.
 - Live calls go only to Lichess: a player's public profile and rated games (export API, capped at 500), rating history, single game export, the opening explorer (needs a login), and OAuth. Lichess's opening explorer and rating history no longer answer without a login.
 - Engines run in the browser: Stockfish 18 lite (WebAssembly, `engine/`) for analysis, hints and the strongest opponent; Maia (`engine/maia/`, nine Lichess-trained nets 1100–1900, run in plain JavaScript by `maia.js`) as the human-like opponent.
 - Precomputed data in the repo: `data/explorer-blitz.json` and `data/explorer-classical.json` (Lichess database, September 2026, up to 20 plies; `tools/make_explorer.py`), named opening lines `data/*.tsv` (lichess-org/chess-openings), `data/pros.json` (45 top-player puzzles; `tools/make_pros.py`), `styles.js` (editorial: play styles, opening descriptions and plans).

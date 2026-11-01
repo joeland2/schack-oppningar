@@ -31,7 +31,7 @@ const ACCOUNTS: [string, string, 'pro' | 'vip'][] = [
 ];
 const isCC = (a: string) => a.startsWith('cc:');
 const file = (a: string) => (isCC(a) ? `cc_${a.slice(3).toLowerCase()}.json` : `${a.toLowerCase()}.ndjson`);
-const UA = { 'User-Agent': 'chess-trainer (joeland2.github.io/schack-oppningar)' };
+const UA = { 'User-Agent': 'chess-labs (chesslabs.gg)' };
 
 // One game, the same few fields from either site, for the week.
 type G = { at: number; speed: string; white: boolean; score: number; rating: number; opening: string | null };

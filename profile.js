@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101182256';
-import { STYLE_OF } from './styles.js?v=20261101182256';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101182256';
+import { account, login, finishLogin } from './lichess.js?v=20261101200659';
+import { STYLE_OF } from './styles.js?v=20261101200659';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101200659';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1994,7 +1994,9 @@ async function run(name) {
   hiddenOf(name); // asked at once, so the answer is in before the first draw
   await gamesReady;
   combo = null;
-  const mine = ++runs, c = cache()[name.toLowerCase()];
+  const mine = ++runs;
+  // A known pro or streamer not seen here before: their profile as read by tools/snapshot_pros.py, so the card is there at once.
+  const c = cache()[name.toLowerCase()] || (proOf(name) ? await fetch(`data/pros/${name.toLowerCase().replace(':', '_')}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null) : null);
   await loadScores(); // a saved profile is drawn without reading the games, but its time controls are read again
   if (shown && shown[0].toLowerCase() !== name.toLowerCase()) pfSpeed = null; // another player starts on their own main time control
   // Seen before: show the saved profile at once, then fetch new games quietly and redraw only if there were any.
