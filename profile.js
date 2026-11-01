@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101122946';
-import { STYLE_OF } from './styles.js?v=20261101122946';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261101122946';
+import { account, login, finishLogin } from './lichess.js?v=20261101123313';
+import { STYLE_OF } from './styles.js?v=20261101123313';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261101123313';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1064,10 +1064,11 @@ const proKind = (name) => (PROS.has(String(name).toLowerCase()) ? 'pro' : VIPS.h
 // each account keeps its own card. Anyone else gets the site alone, so it is always clear which one this is.
 const accountsRow = (name) => {
   const who = proOf(name), all = Object.entries({ ...PRO_NAMES, ...VIP_NAMES }), group = !who && isMe(name) && groupOf(myName());
-  const others = who ? all.filter(([n, w]) => w === who && !same(n, name)).map(([n]) => n) : group ? group.filter((n) => combo || !same(n, name)) : [];
+  const others = who ? all.filter(([n, w]) => w === who && (combo || !same(n, name))).map(([n]) => n) : group ? group.filter((n) => combo || !same(n, name)) : [];
   if (!others.length) return linkForm(name); // only there to jump between one player's accounts
   const pill = (n, on) => `<a class="pf-acct" data-name="${esc(n)}" href="${profileLink(n)}"${on ? ' aria-current="page"' : ''}><small>${siteOf(n)}</small>${esc(nick(n))}</a>`;
-  const both = group ? `<a class="pf-acct pf-acct-all" href="${profileLink(myName())}&all=1"${combo ? ' aria-current="page"' : ''}><small>All</small>Combined</a>` : '';
+  // A pro's accounts on both sites can be seen together too, like your own.
+  const both = group || (who && others.some((n) => isCC(n) !== isCC(name)) || combo) ? `<a class="pf-acct pf-acct-all" href="${profileLink(group ? myName() : name)}&all=1"${combo ? ' aria-current="page"' : ''}><small>All</small>Combined</a>` : '';
   return `<nav class="pf-accts" aria-label="${group ? 'Your accounts' : 'Their accounts'}">${[...(combo ? [] : [pill(name, true)]), ...others.map((n) => pill(n, false))].join('')}<details class="pf-accts-more" hidden><summary></summary><div class="pf-accts-menu"></div></details>${both}</nav>`;
 };
 // On your own profile: add an account on either site, by name (no password).
@@ -1548,7 +1549,7 @@ function render(name, at, full) {
   document.title = me ? 'Your Profile' : `${nick(name)} · Profile`;
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
-    ${accountsRow(name)}${combo ? comboRow() : ''}${nameRow(name)}${proLine(name)}
+    ${accountsRow(name)}${combo && comboOwn ? comboRow() : ''}${nameRow(name)}${proLine(name)}
     <section class="pf-hero">
       <div class="pf-card-col">${playerCard(name, p, t, skills)}${combo ? '' : speedBar(name, full, sp, avail)}${combo ? '' : `<p class="pf-ago">${me ? 'Your' : 'The'} card from ${AGO.map(([m, t]) => `<a href="${agoLink(name, m)}">${t.replace(' ago', '')}</a>`).join(' · ')} ago</p>`}${me ? starsStrip() : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
         <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
@@ -1939,12 +1940,13 @@ async function run(name) {
 // Combined: the games of every linked account that is switched on, read together. Ratings are never
 // mixed: the card is drawn as the account with the most games in the time control played most, with
 // its rating and site, and each time control's rating is that account's (or the one with most games in it).
-let combo = null; // the accounts on the Combined profile, or null
+let combo = null, comboOwn = false; // the accounts on the Combined profile, or null; whether they are yours (switches and links) or a pro's
 async function combined(name) {
-  const group = groupOf(name);
-  if (!group || !isMe(name)) { combo = null; return show(name, false); }
-  const mine = ++runs, on = group.filter((n) => !isOff(n));
-  combo = group;
+  const who = !isMe(name) && proOf(name), own = isMe(name);
+  const group = own ? groupOf(name) : who ? Object.entries({ ...PRO_NAMES, ...VIP_NAMES }).filter(([, w]) => w === who).map(([n]) => n) : null;
+  if (!group || group.length < 2) { combo = null; return show(name, false); }
+  const mine = ++runs, on = own ? group.filter((n) => !isOff(n)) : group;
+  combo = group; comboOwn = own;
   await gamesReady; await loadScores();
   quiet = true;
   try {
@@ -1953,7 +1955,7 @@ async function combined(name) {
   if (mine !== runs) return;
   $('#profile-msg').textContent = on.length ? '' : 'Every account is switched off: switch one on to see the card.';
   const games = on.flatMap((n) => recordsOf(n, storedGames(n) || []).map((g) => ({ ...g, acct: n }))).sort((a, b) => b.at - a.at);
-  if (!games.length) { $('#profile').innerHTML = comboRow(); return; }
+  if (!games.length) { $('#profile').innerHTML = own ? comboRow() : ''; return; }
   const full = profileOf(games), most = (sp) => on.map((n) => [n, games.filter((g) => g.acct === n && g.speed === sp).length]).sort((a, b) => b[1] - a[1])[0][0];
   const owner = most(full.speeds[0].speed);
   for (const x of full.speeds) {
