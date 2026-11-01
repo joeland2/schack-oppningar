@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101232522';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101232522';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101232522';
-import { NAMED_TRAPS } from './traps.js?v=20261101232522';
-import { GUIDE } from './guide.js?v=20261101232522';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101232522';
-import { maia3Move } from './maia3.js?v=20261101232522';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101232522';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101232522';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101232522';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101232522';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101232716';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101232716';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101232716';
+import { NAMED_TRAPS } from './traps.js?v=20261101232716';
+import { GUIDE } from './guide.js?v=20261101232716';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101232716';
+import { maia3Move } from './maia3.js?v=20261101232716';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101232716';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101232716';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101232716';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101232716';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1185,6 +1185,9 @@ function renderMoves() {
 
 function say(text, tone = '') {
   if ($('#trainer').hidden) return ($('#pick-msg').textContent = text);
+  // The coach only grows during a line: a shorter text would pull the page up under you as the opponent moves.
+  const coach = msgEl.closest('.coach');
+  if (coach) coach.style.minHeight = `${Math.max(coach.offsetHeight, parseFloat(coach.style.minHeight) || 0)}px`;
   msgEl.textContent = text;
   msgEl.className = 'message ' + tone;
 }
@@ -1733,6 +1736,7 @@ $('#depth').addEventListener('click', () => askDepth(allLines.length));
 
 // again: the same line once more after a slip in Practice, which keeps it from counting as cleared.
 function play(i, again = false) {
+  const coach = msgEl.closest('.coach'); if (coach) coach.style.minHeight = ''; // a new line: the coach fits its text again
   if (drill && lineFor(drill.now ?? '') !== i) drill = null; // another line chosen: the drill ends
   if (!again && !lineSent && ply > 0) trackLine('left');
   lineIdx = i;

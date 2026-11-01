@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261101232522';
-import { api as chatApi, openChat } from './chat.js?v=20261101232522';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101232522';
+import { account, login, finishLogin } from './lichess.js?v=20261101232716';
+import { api as chatApi, openChat } from './chat.js?v=20261101232716';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101232716';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -246,6 +246,15 @@ const group = (id) => { const [, t, i, sub] = GROUPS.find((g) => g[0] === id); r
 function runsOf(s) {
   return s.visitors.flatMap((v) => v.events.filter((e) => e.kind === 'line').map((e) => ({ v, at: e.at, x: runOf(e.target) }))).filter((r) => r.x?.o).sort((a, b) => b.at.localeCompare(a.at));
 }
+// Openings opened: a bar for how often, and the lines done in each step as its star (green Learn, gold Practice, diamond Time).
+const STAR_P = 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z';
+function openedHtml(ops) {
+  const top = Math.max(...ops.map((o) => o.opened), 1);
+  const star = (c, n, t) => `<span class="adm-op-star${n ? '' : ' none'}" title="${n} lines done in ${t}"><svg class="line-star ${c}" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_P}"/></svg>${n}</span>`;
+  return `<ul class="adm-opened">${ops.map((o) => `<li><span class="adm-opened-name">${esc(o.name)}<small>${o.people} ${o.people === 1 ? 'person' : 'people'}</small></span>
+    <span class="adm-opened-bar"><i style="width:${(o.opened / top) * 100}%"></i><b>${o.opened}</b></span>
+    <span class="adm-opened-stars">${star('green', o.learn, 'Learn')}${star('gold', o.try, 'Practice')}${star('diamond', o.time, 'Time')}</span></li>`).join('')}</ul>`;
+}
 function practiceHtml(s) {
   const runs = runsOf(s), people = new Map(), none = '<p class="info">Nobody yet. Runs are counted from 31 Oct 2026.</p>';
   for (const r of runs) {
@@ -253,8 +262,7 @@ function practiceHtml(s) {
     p.runs++; if (r.x.k === 'done') p.done++; p.ops.set(o, (p.ops.get(o) || 0) + 1); people.set(k, p);
   }
   return `<section class="pf-card"><h2>${ic('people')}Who practises <small>${people.size} ${people.size === 1 ? 'person' : 'people'}</small></h2>${people.size ? `<ul class="pf-rows adm-who-list">${[...people.values()].sort((a, b) => b.runs - a.runs).map((p) => `<li><span>${personName(p.v)} <small>${p.runs} run${p.runs === 1 ? '' : 's'} · ${p.done} finished · ${short(p.last)}</small>
-      <span class="adm-who-ops">${[...p.ops.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `<span class="adm-chip">${side(k[0])}${esc(k.slice(2))}${n > 1 ? ` ×${n}` : ''}</span>`).join('')}</span></span></li>`).join('')}</ul>` : none}</section>
-    <section class="pf-card"><h2>${ic('line')}Latest runs <small>newest first</small></h2>${runs.length ? `<ul class="pf-rows adm-recent">${runs.slice(0, 40).map(({ v, at, x }) => `<li><span>${side(x.s)}<b>${esc(x.o)}</b> · ${esc(x.l)} <small>${runHow(x)}</small></span><small>${personName(v)} · ${short(at)}</small></li>`).join('')}</ul>` : none}</section>`;
+      <span class="adm-who-ops">${[...p.ops.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `<span class="adm-chip">${side(k[0])}${esc(k.slice(2))}${n > 1 ? ` ×${n}` : ''}</span>`).join('')}</span></span></li>`).join('')}</ul>` : none}</section>`;
 }
 // Getting better: the mistakes a run by how many times that person had tried that line before,
 // then each person who ran a line more than once, from their first run to their latest.
@@ -367,10 +375,10 @@ function render(s) {
       <div id="adm-line" class="adm-line-box"></div><div id="adm-notes" class="adm-notes"></div></section>
     ${group('openings')}
     ${openingsHtml(s)}
-    <div class="adm-three">${practiceHtml(s)}${betterHtml(s)}</div>
+    ${practiceHtml(s)}
     <div class="pf-two">${cardsHtml(s)}
       <section class="pf-card"><h2>${ic('practise')}Openings opened <small>before lines were counted one by one</small></h2>
-        ${(s.openings || []).length ? `<ul class="pf-rows adm-recent">${s.openings.map((o) => `<li><span>${esc(o.name)}</span><small>opened ${o.opened} · ${o.people} ${o.people === 1 ? 'person' : 'people'} · done <b title="Learn">${o.learn}</b> L · <b title="Practice">${o.try}</b> P · <b title="Time challenge">${o.time}</b> T</small></li>`).join('')}</ul>` : rows(s.practised)}</section>
+        ${(s.openings || []).length ? openedHtml(s.openings) : rows(s.practised)}</section>
     </div>
     ${group('people')}
     <section class="pf-card"><div class="adm-head"><h2>${ic('people')}Unique visitors · ${s.visitors.length}</h2><small>Every visitor once, newest first. IP addresses without their last part. Click one to see what they did.</small></div>

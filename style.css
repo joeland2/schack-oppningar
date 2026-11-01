@@ -2677,3 +2677,17 @@ a.st-wk:hover h2 { text-decoration: underline; }
 .adm-new .ico { width: 18px; height: 18px; color: var(--hot); flex: none; }
 .adm-new span { flex: 1; min-width: 0; }
 .adm-new .cta { padding: 6px 14px; }
+
+/* Admin: openings opened, as bars with the lines done in each step as stars */
+.adm-opened { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.adm-opened li { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.adm-opened-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-opened-name small { margin-left: 6px; color: var(--muted); font-size: 12px; }
+.adm-opened-bar { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.adm-opened-bar i { height: 10px; border-radius: 9px; background: var(--data); min-width: 4px; }
+.adm-opened-bar b { font: 500 13px var(--font-mono); }
+.adm-opened-stars { display: flex; gap: 10px; font: 500 13px var(--font-mono); }
+.adm-op-star { display: inline-flex; align-items: center; gap: 3px; min-width: 38px; }
+.adm-op-star .line-star { width: 15px; height: 15px; }
+.adm-op-star.none { opacity: .35; }
+@media (max-width: 560px) { .adm-opened li { grid-template-columns: minmax(0, 1fr) auto; } .adm-opened-bar { grid-column: 1 / -1; order: 3; } }
