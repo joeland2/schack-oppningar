@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101200659';
-import { STYLE_OF } from './styles.js?v=20261101200659';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101200659';
+import { account, login, finishLogin } from './lichess.js?v=20261101202329';
+import { STYLE_OF } from './styles.js?v=20261101202329';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101202329';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -664,6 +664,7 @@ let quiet = false; // checking for new games behind a profile already shown: no 
 const msgEl = () => (quiet ? { textContent: '' } : $('#profile-msg'));
 // A known pro's or streamer's games, fetched every few hours by the pros function into our own
 // storage: read in one go, so only the games since come from Lichess (which sends ~20 a second).
+const SNAPSHOT = new URLSearchParams(location.search).has('snapshot');
 const PRO_STORE = 'https://duhlvhjtxoofgnjegspa.supabase.co/storage/v1/object/public/pros';
 const serverGames = (name) => (isCC(name)
   ? fetch(`${PRO_STORE}/cc_${encodeURIComponent(nick(name).toLowerCase())}.json`).then((r) => (r.ok ? r.json() : [])).then(fromCC)
@@ -681,7 +682,8 @@ async function build(name) {
   // The bar over the profile on a first look-up: how far the games are, and what happens meanwhile.
   const step = (pct, say) => { if (!bar || bar.hidden) return; bar.querySelector('i').style.width = `${pct}%`; bar.querySelector('[role=progressbar]').setAttribute('aria-valuenow', Math.round(pct)); bar.querySelector('.pf-load-k').textContent = say; };
   if (bar && !quiet && !have.length) { bar.hidden = false; step(0, `Asking ${siteOf(name)} for ${nick(name)}'s last ${MAX} rated games…`); }
-  const fresh = await fetchGames(name, (k, gs) => {
+  // tools/snapshot_pros.py reads a pro from the games kept on our server alone: Lichess's stream can stall for a server.
+  const fresh = SNAPSHOT && have.length ? [] : await fetchGames(name, (k, gs) => {
     msg.textContent = early ? '' : `Fetching ${nick(name)}'s games from ${siteOf(name)}… ${k}`;
     step((k / MAX) * 95, k < EARLY ? `Fetching games from ${siteOf(name)}: ${k} of up to ${MAX}` : `Fetching games from ${siteOf(name)}: ${k} of up to ${MAX}. The card is drawn from these and fills in as the rest come.`);
     if (!have.length && !quiet && (k === EARLY || (early && k % REDRAW === 0))) {

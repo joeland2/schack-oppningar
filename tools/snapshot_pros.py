@@ -29,7 +29,7 @@ def main():
                 page.on('console', lambda m: m.type in ('error', 'warning') and print(f'  console {m.type}: {m.text[:200]}', flush=True))
                 page.on('requestfailed', lambda r: print(f'  request failed: {r.url[:120]} {r.failure}', flush=True))
                 try:
-                    page.goto(f'http://localhost:{PORT}/profile.html?u={a}')
+                    page.goto(f'http://localhost:{PORT}/profile.html?u={a}&snapshot=1')
                     # Done when the profile is saved and no games are still being fetched or read.
                     page.wait_for_function("""([key, me]) => {
                         const c = JSON.parse(localStorage.getItem(key) || '{}')[me], bar = document.querySelector('#pf-load');
