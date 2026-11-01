@@ -1,7 +1,8 @@
 // pros: the known pros' and streamers' games, fetched here so visitors need not wait for Lichess.
-// POST ?refresh=1 (every 10 minutes, from pg_cron): the Lichess account kept longest ago gets its last
-// 1000 rated games fetched again into the public bucket "pros" as <name>.ndjson, the same lines
-// Lichess sends; the profile reads that first and asks Lichess only for the games since.
+// POST ?refresh=1 (every 5 minutes, from pg_cron): the account kept longest ago gets its last 1000 rated
+// games fetched again into the public bucket "pros": a Lichess account as <name>.ndjson, the same lines
+// Lichess sends; a Chess.com one as cc_<name>.json, the games as Chess.com's monthly archives give them.
+// The profile reads that first and asks the site only for the games since.
 // POST ?week=1 (once a day): week.json, each person's last 7 days (games, score, blitz rating change,
 // the opening played most) from their Lichess file and Chess.com's monthly archives.
 // Keep ACCOUNTS in step with PRO_NAMES and VIP_NAMES in profile.js.
@@ -28,17 +29,19 @@ const ACCOUNTS: [string, string, 'pro' | 'vip'][] = [
   ['cc:ChessNetwork', 'Jerry (ChessNetwork)', 'vip'], ['cc:TheChessNerd', 'Zachary Saine', 'vip'],
 ];
 const isCC = (a: string) => a.startsWith('cc:');
-const file = (a: string) => `${a.toLowerCase()}.ndjson`;
+const file = (a: string) => (isCC(a) ? `cc_${a.slice(3).toLowerCase()}.json` : `${a.toLowerCase()}.ndjson`);
+const UA = { 'User-Agent': 'chess-trainer (joeland2.github.io/schack-oppningar)' };
 
 // One game, the same few fields from either site, for the week.
 type G = { at: number; speed: string; white: boolean; score: number; rating: number; opening: string | null };
 
 async function refresh() {
-  const lichess = ACCOUNTS.filter(([a]) => !isCC(a)).map(([a]) => a);
-  const { data: files } = await db.storage.from(BUCKET).list('', { limit: 200 });
+  const all = ACCOUNTS.map(([a]) => a);
+  const { data: files } = await db.storage.from(BUCKET).list('', { limit: 500 });
   const when = new Map((files || []).map((f) => [f.name, Date.parse(f.updated_at || f.created_at || '') || 0]));
-  const a = lichess.sort((x, y) => (when.get(file(x)) || 0) - (when.get(file(y)) || 0))[0];
-  if (Date.now() - (when.get(file(a)) || 0) < 9 * 60e3) return { skipped: a }; // a second call within the 10 minutes does nothing
+  const a = all.sort((x, y) => (when.get(file(x)) || 0) - (when.get(file(y)) || 0))[0];
+  if (Date.now() - (when.get(file(a)) || 0) < 4 * 60e3) return { skipped: a }; // a second call within the 5 minutes does nothing
+  if (isCC(a)) return refreshCC(a);
   const res = await fetch(`https://lichess.org/api/games/user/${a}?` + new URLSearchParams({
     max: String(MAX), rated: 'true', perfType: 'bullet,blitz,rapid,classical', moves: 'true', opening: 'true', clocks: 'true', evals: 'true', accuracy: 'true',
   }), { headers: { Accept: 'application/x-ndjson' } });
@@ -48,6 +51,25 @@ async function refresh() {
   const gs = lichessGames(a, text);
   await db.storage.from(BUCKET).upload(`${a.toLowerCase()}.json`, JSON.stringify(gs), { upsert: true, contentType: 'application/json', cacheControl: '600' });
   return { account: a, games: gs.length, error: error?.message };
+}
+
+// A Chess.com account: its last MAX rated standard games in bullet, blitz and rapid, newest first, from
+// the monthly archives (newest month first), as Chess.com gives them; the profile makes them over itself.
+async function refreshCC(a: string) {
+  const u = a.slice(3).toLowerCase();
+  const list = await fetch(`https://api.chess.com/pub/player/${u}/games/archives`, { headers: UA }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (!list) return { account: a, error: 'archives' };
+  const games: unknown[] = [];
+  for (const url of [...(list.archives || [])].reverse()) {
+    if (games.length >= MAX) break;
+    const month = await fetch(url, { headers: UA }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    for (const g of [...(month?.games || [])].reverse()) {
+      if (games.length >= MAX) break;
+      if (g.rated && g.rules === 'chess' && ['bullet', 'blitz', 'rapid'].includes(g.time_class) && g.pgn) games.push(g);
+    }
+  }
+  const { error } = await db.storage.from(BUCKET).upload(file(a), JSON.stringify(games), { upsert: true, contentType: 'application/json', cacheControl: '600' });
+  return { account: a, games: games.length, error: error?.message };
 }
 
 // The few fields the week needs, of every game in a Lichess file: kept beside it as <name>.json, so the
@@ -67,7 +89,7 @@ async function lichessWeek(a: string, since: number): Promise<G[]> {
 async function ccWeek(a: string, since: number): Promise<G[]> {
   const u = a.slice(3).toLowerCase(), out: G[] = [];
   for (const d of [new Date(), new Date(since)]) {
-    const r = await fetch(`https://api.chess.com/pub/player/${u}/games/${d.getUTCFullYear()}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`, { headers: { 'User-Agent': 'chess-trainer (joeland2.github.io/schack-oppningar)' } });
+    const r = await fetch(`https://api.chess.com/pub/player/${u}/games/${d.getUTCFullYear()}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`, { headers: UA });
     const month = r.ok ? await r.json().catch(() => null) : null;
     for (const g of month?.games || []) {
       if (!g.rated || g.rules !== 'chess' || g.end_time * 1000 < since || out.some((x) => x.at === g.end_time * 1000)) continue;
