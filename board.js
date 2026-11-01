@@ -42,6 +42,7 @@ export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint 
   el.innerHTML = html + (arrow ? arrowSvg(arrow, side) : arrows.map((a) => arrowSvg(a, side)).join('')) + (el.classList.contains('mini') ? '' : '<svg class="shapes" viewBox="0 0 8 8" aria-hidden="true"></svg>');
   el._game = game;
   drawShapes(el);
+  if (el._dragFrom) markDrag(el, el._dragFrom); // redrawn mid-drag (the opponent moved): the held piece stays picked up
   if (el._anim) stepAnim(el, performance.now());
 }
 
@@ -184,6 +185,14 @@ function arrowSvg([from, to, colour], side) {
 
 // Drag and drop on top of click-click moves. canDrag(square) says whether a piece may be picked up;
 // onDrop(from, to) makes the move. The board may be redrawn at any time, so listeners sit on the board element.
+// Like Lichess: the picked-up piece's square and its moves are marked while you drag.
+function markDrag(el, from) {
+  const sq = el.querySelector(`[data-sq="${from}"]`), img = sq?.querySelector('img.pc:not(.fading)');
+  if (img?.getAttribute('src') !== el._dragSrc) return; // the held piece was taken
+  img.classList.add('dragging');
+  sq.classList.add('sel');
+  for (const m of (el._destsFor ? el._destsFor(from) : el._game?.moves({ square: from, verbose: true })) || []) el.querySelector(`[data-sq="${m.to}"]`)?.classList.add(m.captured ? 'cap' : 'dot');
+}
 export function enableDrag(el, { canDrag, onDrop }) {
   let from = null, ghost = null, start = null, moved = false, skipClick = false;
   const place = (e) => {
@@ -222,11 +231,8 @@ export function enableDrag(el, { canDrag, onDrop }) {
       moved = true;
       el.setPointerCapture(e.pointerId); // only once dragging: capturing earlier would steal plain clicks
       document.body.append(ghost);
-      const sq = el.querySelector(`[data-sq="${from}"]`);
-      sq?.querySelector('img.pc')?.classList.add('dragging');
-      // Like Lichess: the picked-up piece's square and its moves are marked while you drag.
-      sq?.classList.add('sel');
-      for (const m of (el._destsFor ? el._destsFor(from) : el._game?.moves({ square: from, verbose: true })) || []) el.querySelector(`[data-sq="${m.to}"]`)?.classList.add(m.captured ? 'cap' : 'dot');
+      el._dragFrom = from; el._dragSrc = ghost.getAttribute('src');
+      markDrag(el, from);
     }
     if (moved) place(e);
   });
@@ -247,7 +253,7 @@ export function enableDrag(el, { canDrag, onDrop }) {
     }
     if (!from) return;
     const was = from;
-    from = null;
+    from = el._dragFrom = null;
     ghost.remove();
     el.querySelector('.dragging')?.classList.remove('dragging');
     if (!moved || e.type === 'pointercancel') return;

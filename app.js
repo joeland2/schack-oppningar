@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261031215843';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261031215843';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261031215843';
-import { NAMED_TRAPS } from './traps.js?v=20261031215843';
-import { GUIDE } from './guide.js?v=20261031215843';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261031215843';
-import { maia3Move } from './maia3.js?v=20261031215843';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261031215843';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261031215843';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261031215843';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261031215843';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101081832';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101081832';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101081832';
+import { NAMED_TRAPS } from './traps.js?v=20261101081832';
+import { GUIDE } from './guide.js?v=20261101081832';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101081832';
+import { maia3Move } from './maia3.js?v=20261101081832';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101081832';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101081832';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101081832';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101081832';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1068,7 +1068,7 @@ $('#pin-favs').addEventListener('click', (e) => {
 
 // ---------- Board ----------
 function renderBoard() {
-  if (boardHeld) { boardDirty = boardEl._noAnim || boardDirty === 'drop' ? 'drop' : true; return; }
+  if (boardHeld && !boardEl._dragFrom) { boardDirty = boardEl._noAnim || boardDirty === 'drop' ? 'drop' : true; return; }
   if (view !== null) { // looking back at a move: its badge; after a slip, the position before it, with
     // the move played in red and the better one in green
     const hist = game.history({ verbose: true }), g = new Chess();
@@ -2127,8 +2127,8 @@ function settleMoment() {
   momentOnBoard = null;
   run();
 }
-// While a piece is held the board is not redrawn (that would swap the piece under your hand, and the
-// dragged piece would stop following the pointer); it is drawn once you let go.
+// While a piece is pressed or just dropped the board is not redrawn (that would swap the piece under your
+// hand); it is drawn once you let go. Mid-drag it is: the opponent's move shows while you hold a premove.
 let boardHeld = false, boardDirty = false;
 boardEl.addEventListener('pointerdown', () => { boardHeld = true; });
 for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, () => {
