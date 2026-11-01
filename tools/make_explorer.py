@@ -6,6 +6,7 @@ and counts how often every move sequence up to MAX_PLY occurs, per Lichess explo
 
 Needs: curl and zstd on PATH.
 Run:   python tools/make_explorer.py <blitz|classical> [games]   (default 2,000,000 games)
+       python tools/make_explorer.py <blitz|classical> --top        (only remake the -top file from the full one)
 Output node format: [games, White wins, draws (each per rating group), {san: child node}];
 the dict is left out on leaves. Black wins are games minus White wins minus draws.
 """
@@ -36,6 +37,8 @@ def moves_of(text):
 
 def main():
     speed = sys.argv[1]
+    if sys.argv[2:] == ['--top']:
+        return write_top(speed)
     want = int(sys.argv[2]) if len(sys.argv) > 2 else 2_000_000
     event = {'blitz': 'Blitz', 'classical': 'Classical'}[speed]
     counts = {}  # 'e4 c5 Nf3' -> [games, white wins, draws] x rating groups, flattened
@@ -99,6 +102,22 @@ def main():
     with open(f'data/explorer-{speed}.json', 'w') as f:
         json.dump({'speed': speed, 'buckets': BUCKETS, 'games': games, 'source': URL, 'tree': root}, f, separators=(',', ':'))
     print(f'wrote {games:,} games', file=sys.stderr)
+    write_top(speed)
+
+
+# data/explorer-<speed>-top.json: the same tree with only lines of at least TOP games, a fifth of the
+# size. app.js shows it first and swaps in the full file once that has loaded.
+TOP = 200
+
+
+def write_top(speed):
+    full = json.load(open(f'data/explorer-{speed}.json'))
+    def cut(node):
+        kids = {k: cut(v) for k, v in (node[3].items() if len(node) > 3 else []) if sum(v[0]) >= TOP}
+        return node[:3] + ([kids] if kids else [])
+    full['tree'] = cut(full['tree'])
+    with open(f'data/explorer-{speed}-top.json', 'w') as f:
+        json.dump(full, f, separators=(',', ':'))
 
 
 # Each group array without its trailing zeros (the top rating groups are often empty); app.js pads them back.

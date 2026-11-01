@@ -12,6 +12,7 @@ const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 const json = (x: unknown, status = 200) => new Response(JSON.stringify(x), { status, headers: { ...cors, 'content-type': 'application/json' } });
 const BUCKET = 'pros', MAX = 1000, DAY = 864e5;
+const KEEP = 500; // games kept for the profile: its own MAX, so nobody downloads games it never reads
 
 // [account, person, kind]; a Chess.com account is cc:name.
 const ACCOUNTS: [string, string, 'pro' | 'vip'][] = [
@@ -47,7 +48,7 @@ async function refresh() {
   }), { headers: { Accept: 'application/x-ndjson' } });
   if (!res.ok) return { account: a, error: res.status };
   const text = await res.text();
-  const { error } = await db.storage.from(BUCKET).upload(file(a), text, { upsert: true, contentType: 'application/x-ndjson', cacheControl: '600' });
+  const { error } = await db.storage.from(BUCKET).upload(file(a), slimLichess(text), { upsert: true, contentType: 'application/x-ndjson', cacheControl: '600' });
   const gs = lichessGames(a, text);
   await db.storage.from(BUCKET).upload(`${a.toLowerCase()}.json`, JSON.stringify(gs), { upsert: true, contentType: 'application/json', cacheControl: '600' });
   return { account: a, games: gs.length, error: error?.message };
@@ -68,9 +69,25 @@ async function refreshCC(a: string) {
       if (g.rated && g.rules === 'chess' && ['bullet', 'blitz', 'rapid'].includes(g.time_class) && g.pgn) games.push(g);
     }
   }
-  const { error } = await db.storage.from(BUCKET).upload(file(a), JSON.stringify(games), { upsert: true, contentType: 'application/json', cacheControl: '600' });
+  const { error } = await db.storage.from(BUCKET).upload(file(a), JSON.stringify(games.slice(0, KEEP).map(slimCC)), { upsert: true, contentType: 'application/json', cacheControl: '600' });
   return { account: a, games: games.length, error: error?.message };
 }
+
+// The stored games without what the profile never reads: Lichess's badges and times beyond the start,
+// Chess.com's PGN headers (its moves and clocks are all the profile takes from the PGN) and board codes.
+function slimLichess(text: string) {
+  return text.split('\n').filter(Boolean).slice(0, KEEP).map((l) => {
+    const g = JSON.parse(l);
+    delete g.lastMoveAt; delete g.source; delete g.tournament; delete g.swiss;
+    for (const p of Object.values(g.players || {}) as { user?: Record<string, unknown> }[]) if (p.user) { delete p.user.flair; delete p.user.patron; delete p.user.patronColor; }
+    return JSON.stringify(g);
+  }).join('\n') + '\n';
+}
+type P = { username: string; rating: number; result: string };
+const slimCC = (g: { url: string; pgn: string; time_control: string; end_time: number; rated: boolean; time_class: string; rules: string; white: P; black: P }) => ({
+  url: g.url, pgn: g.pgn.replace(/^\[.*\]\s*$/gm, '').trim(), time_control: g.time_control, end_time: g.end_time, rated: g.rated, time_class: g.time_class, rules: g.rules,
+  white: { username: g.white.username, rating: g.white.rating, result: g.white.result }, black: { username: g.black.username, rating: g.black.rating, result: g.black.result },
+});
 
 // The few fields the week needs, of every game in a Lichess file: kept beside it as <name>.json, so the
 // week reads small files instead of parsing every account's games again (CPU time is short here).

@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101130648';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101130648';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101130648';
-import { NAMED_TRAPS } from './traps.js?v=20261101130648';
-import { GUIDE } from './guide.js?v=20261101130648';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101130648';
-import { maia3Move } from './maia3.js?v=20261101130648';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101130648';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101130648';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101130648';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101130648';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101133626';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101133626';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101133626';
+import { NAMED_TRAPS } from './traps.js?v=20261101133626';
+import { GUIDE } from './guide.js?v=20261101133626';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101133626';
+import { maia3Move } from './maia3.js?v=20261101133626';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101133626';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101133626';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101133626';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101133626';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -135,9 +135,31 @@ const POPULAR = {};   // popularOpenings() per time control and rating; it takes
 
 // data/explorer-<speed>.json: move counts per rating group from Lichess games of that time control,
 // built by tools/make_explorer.py. Loaded once per time control.
+// The -top file (lines of 200+ games, a fifth of the size) comes first; the full one replaces it once loaded,
+// so the rarer lines show from the next move on.
+const LOADING = {};
+// Kept in the browser's Cache Storage too: a file of one DATA version never changes, so a return visit reads it
+// from disk instead of downloading megabytes again. Files of older versions are dropped.
+const BOX = globalThis.caches?.open('explorer').then(async (box) => {
+  for (const req of await box.keys()) if (!req.url.includes(`v=${DATA}`)) box.delete(req);
+  return box;
+}).catch(() => null);
+async function treeFile(sp, part) {
+  const url = `data/explorer-${sp}${part}.json?v=${DATA}`, box = await BOX;
+  let res = await box?.match(url).catch(() => null);
+  if (!res) { res = await fetch(url); if (res.ok) box?.put(url, res.clone()).catch(() => {}); }
+  const d = await res.json();
+  return pad(d.tree, d.buckets.length);
+}
 async function loadTree() {
+  const sp = speed;
   // DATA is bumped whenever the data is rebuilt, so no browser keeps an old file
-  TREES[speed] ??= await fetch(`data/explorer-${speed}.json?v=${DATA}`).then((r) => r.json()).then((d) => pad(d.tree, d.buckets.length));
+  LOADING[sp] ??= treeFile(sp, '-top').then((t) => {
+    TREES[sp] ??= t;
+    treeFile(sp, '').then((full) => { TREES[sp] = full; if (speed === sp) TREE = full; }).catch(() => {});
+  }).catch((e) => { delete LOADING[sp]; throw e; }); // tried again next time
+  await LOADING[sp];
+  if (speed !== sp) return;
   TREE = TREES[speed];
   console.assert(explore(['e4'], [3]).moves.some((m) => m.san === 'c5'), `data/explorer-${speed}.json is not in the expected format`);
 }
@@ -573,7 +595,9 @@ function renderList() {
     </div>`;
   // Where each card stood, so the cards still listed glide to their new places instead of being redrawn.
   const was = new Map([...listEl.querySelectorAll('.ocard')].map((c) => [c.dataset.id, c.getBoundingClientRect()]));
+  const first = !!listEl.querySelector('.ocard.sk');
   listEl.innerHTML = `${q ? '<h2 class="og-h">Search results</h2>' : `<h2 class="visually-hidden">${listSide === 'r' ? 'Your favorites' : `Openings for ${sideName(listSide)}`}</h2>`}${body}`; // the cards' h3 sit under an h2
+  if (first) listEl.querySelector('.olist')?.classList.add('fade-in');
   seen.disconnect();
   listEl.querySelectorAll('.ocard').forEach((c) => {
     const op = OPENINGS.find((o) => o.id === c.dataset.id);
@@ -3392,7 +3416,9 @@ async function showPicker() {
   $('.choice-search').hidden = !rating;
   if (!rating) return (listEl.innerHTML = $('#side-tabs').innerHTML = '', $('#pick-msg').textContent = 'The openings you see depend on what players at your level actually play.');
   $('#pick-msg').textContent = `Loading ${speed} games…`;
-  try { OPENINGS = POPULAR[`${speed}:${myGroups().join()}`] ??= await popularFor(); } catch { return say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .'); }
+  // An outline of the list on the first load; a list already drawn stays until the new one replaces it.
+  if (!listEl.querySelector('.ocard')) listEl.innerHTML = `<div class="olist" aria-hidden="true">${'<div class="ocard sk"></div>'.repeat(6)}</div>`;
+  try { OPENINGS = POPULAR[`${speed}:${myGroups().join()}`] ??= await popularFor(); } catch { listEl.innerHTML = ''; return say('Could not load the opening data. Serve the folder over HTTP, e.g. npx serve .'); }
   loadTree().catch(() => {}); // in the background, so an opening opens at once
   $('#pick-msg').textContent = `Real ${speed} games by players rated ${levelText()}${style === 'any' ? '' : `, ${STYLES[style].label.toLowerCase()} White openings only`}. Pick one to practise.`;
   renderList();
@@ -3575,7 +3601,7 @@ setMode(mode);
 if (location.search === '?make-popular') {
   const out = {};
   for (const sp of ['blitz', 'classical']) {
-    speed = sp; await loadTree(); out[sp] = {};
+    speed = sp; TREE = TREES[sp] = await treeFile(sp, ''); out[sp] = {}; // the full tree, not the -top one
     for (let lo = 0; lo < EDGES.length - 1; lo++) for (let hi = lo + 1; hi < EDGES.length; hi++) { band = [lo, hi]; out[sp][myGroups().join('.')] = popularOpenings(); }
   }
   document.body.innerHTML = `<pre id="popular">${JSON.stringify(out).replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`)}</pre>`;

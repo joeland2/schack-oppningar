@@ -1238,13 +1238,15 @@ a { text-underline-offset: .18em; }
 .pf-sk-line.w60 { width: 60%; height: 64px; } .pf-sk-line.w80 { width: 80%; }
 @keyframes pf-pulse { 50% { opacity: .5; } }
 @media (prefers-reduced-motion: reduce) { .pf-sk-line { animation: none; } }
-/* Skeleton while the games are read */
-.pf-skeleton .pf-pcard { min-height: 380px; opacity: .55; }
-.pf-skeleton .pf-hero-text { display: grid; gap: 14px; }
-.pf-sk-line { display: block; height: 18px; border-radius: 2px; background: var(--raised); animation: pf-pulse 1.4s ease-in-out infinite; }
-.pf-sk-line.w60 { width: 60%; height: 64px; } .pf-sk-line.w80 { width: 80%; }
-@keyframes pf-pulse { 50% { opacity: .5; } }
-@media (prefers-reduced-motion: reduce) { .pf-sk-line { animation: none; } }
+/* The same pulse on the opening list's and the Pros page's outlines while they load, and what replaces
+   them fades in. */
+.sk { border-radius: var(--radius); background: var(--raised); animation: pf-pulse 1.4s ease-in-out infinite; }
+.ocard.sk { height: 168px; padding: 0; border: 0; }
+.st-wk.sk { min-height: 260px; box-shadow: none; }
+.st-row.sk { height: 52px; }
+.fade-in { animation: fade-in .25s ease-out; }
+@keyframes fade-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sk, .fade-in { animation: none; } }
 /* Compare: the better value in each row, and two cards side by side on phones */
 .cmp-table td.lead { color: var(--good); }
 .cmp-table td.lead::after { content: " ▲"; font-size: .7em; vertical-align: .15em; }

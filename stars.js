@@ -1,7 +1,7 @@
 // Pros & VIPs: the pro and the streamer of the week, each with why and a few words on them, then everyone
 // by when they last played. From week.json, which the pros function writes every 6 hours (see supabase/functions/pros).
-import { BIOS, keptTypes } from './profile.js?v=20261101130648';
-import { nick, isCC } from './chesscom.js?v=20261101130648';
+import { BIOS, keptTypes } from './profile.js?v=20261101133626';
+import { nick, isCC } from './chesscom.js?v=20261101133626';
 const WEEK = 'https://duhlvhjtxoofgnjegspa.supabase.co/storage/v1/object/public/pros/week.json';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -30,7 +30,7 @@ const rowOf = (r) => `<li><a class="st-row" href="${link(r)}"><span class="st-av
 
 (async () => {
   const data = await fetch(WEEK, { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  if (!data) { $('#st-msg').textContent = 'The week is not counted yet. Try again later today.'; return; }
+  if (!data) { $('#st-week').innerHTML = $('#st-rows').innerHTML = ''; $('#st-msg').textContent = 'The week is not counted yet. Try again later today.'; return; }
   // The kept style of each person's main account, as their profile shows it.
   const typed = await keptTypes(data.people.map((r) => ({ name: r.account, speed: 'blitz' }))).catch(() => []);
   const people = data.people.map((r, i) => ({ ...r, style: typed[i]?.style, strength: typed[i]?.strength }));
@@ -39,5 +39,6 @@ const rowOf = (r) => `<li><a class="st-row" href="${link(r)}"><span class="st-av
   $('#st-msg').textContent = `Counted ${ago(data.at)}.`;
   $('#st-week').innerHTML = weekCard(by(data.pick?.pro), 'pro') + weekCard(by(data.pick?.vip), 'vip');
   $('#st-rows').innerHTML = people.sort((a, b) => (b.last || 0) - (a.last || 0)).map(rowOf).join('');
+  for (const el of [$('#st-week'), $('#st-rows')]) { el.removeAttribute('aria-hidden'); el.classList.add('fade-in'); }
 })();
 console.assert(signed(5) === '+5' && signed(-3) === '−3' && initials('Jerry (ChessNetwork)') === 'J' && nick('cc:x') === 'x', 'stars');
