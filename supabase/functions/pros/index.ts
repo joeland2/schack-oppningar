@@ -3,7 +3,7 @@
 // games fetched again into the public bucket "pros": a Lichess account as <name>.ndjson, the same lines
 // Lichess sends; a Chess.com one as cc_<name>.json, the games as Chess.com's monthly archives give them.
 // The profile reads that first and asks the site only for the games since.
-// POST ?week=1 (once a day): week.json, each person's last 7 days (games, score, blitz rating change,
+// POST ?week=1 (every 6 hours): week.json, each person's last 7 days (games, score, blitz rating change,
 // the opening played most) from their Lichess file and Chess.com's monthly archives.
 // Keep ACCOUNTS in step with PRO_NAMES and VIP_NAMES in profile.js.
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -131,11 +131,16 @@ async function week() {
       white: top(p.games.filter((g) => g.white)), black: top(p.games.filter((g) => !g.white)),
       last: p.games.length ? Math.max(...p.games.map((g) => g.at)) : null };
   });
-  // Of the week: the most blitz rating gained, among those with at least 20 blitz games.
-  const pick = (kind: string) => rows.filter((r) => r.kind === kind && r.blitzGames >= 20).sort((x, y) => y.change - x.change || y.games - x.games)[0]?.who ?? null;
-  const out = { at: Date.now(), pro: pick('pro'), vip: pick('vip'), people: rows };
+  // Of the week: the most blitz rating gained in the 7 days before, among those with at least 20 blitz
+  // games; chosen at the first count of each week (from Monday, UTC) and kept, with its numbers, all week.
+  const best = (kind: string) => rows.filter((r) => r.kind === kind && r.blitzGames >= 20).sort((x, y) => y.change - x.change || y.games - x.games)[0] ?? null;
+  const day = new Date(), monday = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate() - (day.getUTCDay() + 6) % 7)).toISOString().slice(0, 10);
+  const { data: old } = await db.storage.from(BUCKET).download('week.json');
+  const kept = old ? JSON.parse(await old.text()).pick : null;
+  const pick = kept?.week === monday ? kept : { week: monday, pro: best('pro'), vip: best('vip') };
+  const out = { at: Date.now(), pick, people: rows };
   const { error } = await db.storage.from(BUCKET).upload('week.json', JSON.stringify(out), { upsert: true, contentType: 'application/json', cacheControl: '600' });
-  return { pro: out.pro, vip: out.vip, people: rows.length, error: error?.message };
+  return { week: pick.week, pro: pick.pro?.who, vip: pick.vip?.who, people: rows.length, error: error?.message };
 }
 
 Deno.serve(async (req) => {
