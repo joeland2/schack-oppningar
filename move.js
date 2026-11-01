@@ -5,8 +5,7 @@
 (() => {
   const NEW = 'https://chesslabs.gg', OLD = 'joeland2.github.io', TAG = '#moved=';
   const skip = (k) => k === 'chess-trainer-sync' || /-(sf|games|profiles)$/.test(k); // caches, fetched again
-  const LIVE = false; // shortcut: on once chesslabs.gg answers, so nobody is sent to an address not yet up
-  if (LIVE && location.hostname === OLD) {
+  if (location.hostname === OLD) {
     let data = {};
     try { for (const k of Object.keys(localStorage)) if (!skip(k)) data[k] = localStorage.getItem(k); } catch {}
     const path = location.pathname.replace(/^\/schack-oppningar/, '') || '/';
