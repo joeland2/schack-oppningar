@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Spot the Blunder · Chess Labs</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta property="og:site_name" content="Chess Labs">
+  <meta property="og:title" content="Spot the Blunder · Chess Labs">
+  <meta property="og:description" content="A few moves from one of your own games play out, and one of yours threw the game away. Spot which one, then see the move that was there.">
+  <meta property="og:image" content="https://chesslabs.gg/og.png">
+  <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="description" content="A few moves from one of your own games play out, and one of yours threw the game away. Spot which one, then see the move that was there.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="style.css?v=20261101230019">
+  <script src="move.js?v=20261101230019"></script>
+  <script src="header.js?v=20261101230019" defer></script>
+  <script src="theme.js?v=20261101230019"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-in">
+      <a class="brand" href="./">Chess<span>Labs</span></a>
+      <nav class="top-nav" aria-label="Sections"><a href="./#openings">Openings</a><a href="practice.html">My practice</a><a href="profile.html">Profile</a></nav>
+      <form class="top-search" action="profile.html" role="search"><input name="u" type="search" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="Find a player" aria-label="Find a player on Lichess or Chess.com" title="A Lichess or Chess.com username" autocomplete="off" autocapitalize="off" spellcheck="false"></form>
+      <details class="top-players"><summary title="Your starred players" aria-label="Your starred players"><svg class="ico ico-solid" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></summary><div class="top-players-menu"></div></details>
+      <button id="theme" class="ghost theme" type="button" aria-label="Switch theme"></button>
+    </div>
+  </header>
+
+  <main id="bd-page" class="wrap layout">
+    <section class="play">
+      <div class="progress">
+        <span>Spot the blunder</span>
+        <div class="track"><div id="bd-bar" class="fill"></div></div>
+        <span id="bd-count"></span>
+      </div>
+      <div class="board-frame">
+        <div id="board" class="board" role="img" aria-label="The game's position"></div>
+      </div>
+      <div class="controls">
+        <button id="bd-replay" type="button">Replay</button>
+        <button id="bd-next" type="button">Next game</button>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="p-head">
+        <div class="op-head">
+          <p class="meta" id="bd-k">From your game</p>
+          <h1>Spot the blunder</h1>
+        </div>
+      </div>
+      <div class="coach">
+        <img class="coach-face" src="pieces/wK.svg" alt="">
+        <div class="coach-body">
+          <p id="message" class="message" aria-live="polite">Loading your games…</p>
+        </div>
+      </div>
+      <ol id="bd-moves" class="bd-moves" aria-label="Your moves in this game"></ol>
+      <details class="op-more">
+        <summary>How it works</summary>
+        <p class="info">A few moves from one of your own games play out on the board. One of your moves there was a blunder: it threw away a good part of the game. Click the move you think it was. Two wrong guesses and the answer is shown, with the move that was there instead. The games come from your analysed games and the mistakes found on <a href="mistakes.html">your puzzles</a>.</p>
+      </details>
+      <p><a href="practice.html">← Back to your plan</a></p>
+    </aside>
+  </main>
+
+  <script type="module" src="blunder-page.js?v=20261101230019"></script>
+</body>
+</html>

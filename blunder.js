@@ -2,9 +2,24 @@
 // a blunder. Pick it. From the slips Find my mistakes and your analysed games have found (the puzzles
 // on mistakes.html), with the game's moves from the games kept in this browser.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261101225854';
-import { THEMES } from './mistakes.js?v=20261101225854';
+import { drawBoard } from './board.js?v=20261101230019';
+import { THEMES, findMistakes, pickPuzzles } from './mistakes.js?v=20261101230019';
+import { storedGames, gamesReady } from './profile.js?v=20261101230019';
 
+const PUZZLES = 'opening-book-v2-mistakes';
+export const puzzles = () => { try { return JSON.parse(localStorage.getItem(PUZZLES)) || []; } catch { return []; } };
+// Puzzles straight from your analysed games (by Lichess or on your profile): every mistake and
+// blunder of yours with the better move, added to the ones Find my mistakes has found. No engine
+// needed, so they are there at once.
+export async function puzzlesFromGames(name) {
+  await gamesReady;
+  const games = (storedGames(name) || []).filter((g) => g.analysis);
+  if (!games.length) return;
+  const found = await findMistakes(games, name, { evaluate: async () => null });
+  const have = puzzles(), seen = new Set(found.map((f) => f.fen));
+  const all = pickPuzzles([...found, ...have.filter((f) => !seen.has(f.fen))]);
+  try { localStorage.setItem(PUZZLES, JSON.stringify(all)); } catch {}
+}
 const SEEN = 'opening-book-v2-blunder-seen'; // the ones already shown, so the next is a new one while any are left
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const gameId = (url) => url.split('/')[3].split('#')[0];
@@ -17,11 +32,14 @@ export function blunders(puzzles, games) {
   return puzzles.filter((f) => (f.loss ?? 15) >= 15 && byId.get(gameId(f.url))?.moves).map((f) => ({ ...f, moves: byId.get(gameId(f.url)).moves.split(' ') }));
 }
 
-// el gets the round; all: from blunders(). The blunder is your 2nd, 3rd or 4th move of five shown.
-export function spotTheBlunder(el, all) {
+// The round on its own page (blunder.html): the page's board, message, move list and buttons.
+// all: from blunders(). The blunder is your 2nd, 3rd or 4th move of five shown.
+export function spotTheBlunder(all) {
+  const $ = (q) => document.querySelector(q);
+  const board = $('#board'), msg = $('#message'), list = $('#bd-moves');
   let seen = [];
   try { seen = JSON.parse(localStorage.getItem(SEEN)) || []; } catch {}
-  let timer;
+  let timer, play = () => {};
   function round() {
     clearTimeout(timer);
     const fresh = all.filter((f) => !seen.includes(f.url));
@@ -29,31 +47,30 @@ export function spotTheBlunder(el, all) {
     const f = pool[Math.floor(Math.random() * pool.length)];
     seen = fresh.length ? [...seen, f.url] : [f.url];
     try { localStorage.setItem(SEEN, JSON.stringify(seen)); } catch {}
+    const left = all.filter((x) => !seen.includes(x.url)).length;
+    $('#bd-count').textContent = `${all.length - left} / ${all.length}`;
+    $('#bd-bar').style.width = `${(100 * (all.length - left)) / all.length}%`;
     const k = Math.min(1 + Math.floor(Math.random() * 3), Math.floor(f.ply / 2)); // your moves before it
     const from = f.ply - 2 * k, plies = f.moves.slice(from, from + 10).map((san, i) => ({ ply: from + i, san }));
     const others = new Set(all.filter((x) => x.url !== f.url && gameId(x.url) === gameId(f.url)).map((x) => x.ply));
     const game = new Chess();
     for (const san of f.moves.slice(0, from)) game.move(san);
     const start = game.fen();
-    el.innerHTML = `<div class="bd">
-      <div class="bd-board board" role="img" aria-label="The game's position"></div>
-      <div class="bd-side">
-        <p class="bd-k">From your game${f.opening ? `: ${esc(f.opening.split(':')[0])}` : ''}</p>
-        <p class="bd-msg" aria-live="polite">Watch the moves. One of yours is a blunder.</p>
-        <ol class="bd-moves">${plies.map((p) => `<li><button type="button" class="chip-btn" data-ply="${p.ply}" ${p.ply % 2 === f.ply % 2 ? '' : 'disabled'} hidden>${esc(label(p.ply, p.san))}</button></li>`).join('')}</ol>
-        <p class="bd-acts"><button type="button" class="ghost bd-replay">Replay</button> <button type="button" class="ghost bd-next">Next game</button></p>
-      </div></div>`;
-    const board = el.querySelector('.bd-board'), msg = el.querySelector('.bd-msg'), chips = [...el.querySelectorAll('.bd-moves button')];
+    $('#bd-k').textContent = `From your game${f.opening ? `: ${f.opening.split(':')[0]}` : ''} · you play ${f.side === 'b' ? 'Black' : 'White'}`;
+    msg.className = 'message';
+    msg.textContent = 'Watch the moves. One of yours is a blunder.';
+    list.innerHTML = plies.map((p) => `<li><button type="button" class="chip-btn" data-ply="${p.ply}" ${p.ply % 2 === f.ply % 2 ? '' : 'disabled'} hidden>${esc(label(p.ply, p.san))}</button></li>`).join('');
+    const chips = [...list.querySelectorAll('button')];
     let done = false, caught = false, misses = 0;
     // The moves one by one, about a second apart, each chip showing as its move is played.
-    function play() {
+    play = () => {
       clearTimeout(timer);
       const g = new Chess(start);
       chips.forEach((c) => { c.hidden = true; });
       drawBoard(board, g, { side: f.side });
       let i = 0;
       const next = () => {
-        if (i >= plies.length) { if (done) reveal(caught); else msg.textContent = 'Which of your moves was the blunder?'; return; }
+        if (i >= plies.length) { if (done) reveal(caught); else msg.textContent = 'Which of your moves was the blunder? Click it.'; return; }
         let m;
         try { m = g.move(plies[i].san); } catch { return; }
         chips[i].hidden = false;
@@ -62,7 +79,7 @@ export function spotTheBlunder(el, all) {
         timer = setTimeout(next, 900);
       };
       timer = setTimeout(next, 600);
-    }
+    };
     // The position before the blunder, with the better move drawn in.
     function reveal(ok) {
       clearTimeout(timer);
@@ -70,7 +87,8 @@ export function spotTheBlunder(el, all) {
       const g = new Chess(f.fen), best = new Chess(f.fen).move(f.best);
       drawBoard(board, g, { side: f.side, arrow: [best.from, best.to] });
       chips.forEach((c) => { c.disabled = true; c.hidden = false; if (+c.dataset.ply === f.ply) c.classList.add('bd-hit'); });
-      msg.innerHTML = `${ok ? '<b>Caught it!</b> ' : ''}<b>${esc(label(f.ply, f.played))}??</b> was the blunder. <b>${esc(f.best)}</b> was the move here. ${esc(THEMES[f.theme]?.tip || '')}`;
+      msg.className = `message ${ok ? 'good' : 'bad'}`;
+      msg.innerHTML = `${ok ? '<b>Caught it!</b> ' : ''}<b>${esc(label(f.ply, f.played))}??</b> was the blunder. <b>${esc(f.best)}</b> was the move here (the arrow). ${esc(THEMES[f.theme]?.tip || '')} Press <b>Next game</b> for another.`;
     }
     chips.forEach((c) => c.addEventListener('click', () => {
       const ply = +c.dataset.ply;
@@ -80,9 +98,9 @@ export function spotTheBlunder(el, all) {
       if (misses >= 2) return reveal(false);
       msg.textContent = others.has(ply) ? 'That one was a slip too, but not the big one. Try again.' : `${c.textContent} was fine. Try again.`;
     }));
-    el.querySelector('.bd-replay').addEventListener('click', play);
-    el.querySelector('.bd-next').addEventListener('click', round);
     play();
   }
+  $('#bd-replay').addEventListener('click', () => play());
+  $('#bd-next').addEventListener('click', round);
   round();
 }

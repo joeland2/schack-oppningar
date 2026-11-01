@@ -2,28 +2,13 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261101225854';
-import { findMistakes, pickPuzzles } from './mistakes.js?v=20261101225854';
-import { blunders, spotTheBlunder } from './blunder.js?v=20261101225854';
-import { current, cache, myName, skillsOf, storedGames, gamesReady } from './profile.js?v=20261101225854';
+import { login } from './lichess.js?v=20261101230019';
+import { blunders, puzzles, puzzlesFromGames } from './blunder.js?v=20261101230019';
+import { current, cache, myName, skillsOf, storedGames } from './profile.js?v=20261101230019';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const pct = (x) => `${Math.round(x * 100)}%`;
-const PUZZLES = 'opening-book-v2-mistakes';
-const puzzles = () => { try { return JSON.parse(localStorage.getItem(PUZZLES)) || []; } catch { return []; } };
-// Puzzles straight from your analysed games (by Lichess or on your profile): every mistake and
-// blunder of yours with the better move, added to the ones Find my mistakes has found. No engine
-// needed, so they are there at once.
-async function puzzlesFromGames(name) {
-  await gamesReady;
-  const games = (storedGames(name) || []).filter((g) => g.analysis);
-  if (!games.length) return;
-  const found = await findMistakes(games, name, { evaluate: async () => null });
-  const have = puzzles(), seen = new Set(found.map((f) => f.fen));
-  const all = pickPuzzles([...found, ...have.filter((f) => !seen.has(f.fen))]);
-  try { localStorage.setItem(PUZZLES, JSON.stringify(all)); } catch {}
-}
 const practise = (side, fam) => `./?practise=${side}~${encodeURIComponent(fam.replace(/^vs /, ''))}`;
 
 // Where each weak skill is trained on this site.
@@ -54,7 +39,7 @@ function render(name, p) {
     : '<p>The positions in your games where you went wrong, as puzzles: blunders, missed wins and missed mates.</p>',
   mine.length ? '<a class="cta" href="mistakes.html">Solve them</a>' : '<a class="cta" href="./?do=mistakes">Find my mistakes</a>']);
   const spot = blunders(mine, storedGames(name) || []);
-  if (spot.length) steps.push(['Spot the blunder', `<p>A few moves from one of your games. One of yours threw the game away: which one? ${spot.length} games to go through.</p><div id="pr-blunder"></div>`, '']);
+  if (spot.length) steps.push(['Spot the blunder', `<p>A few moves from one of your games. One of yours threw the game away: which one? ${spot.length} games to go through.</p>`, '<a class="cta" href="blunder.html">Spot the blunder</a>']);
   const ops = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))]
     .filter((o) => o.n >= 8 && o.score <= 0.47).sort((a, b) => (a.score - 0.5) * Math.sqrt(a.n) - (b.score - 0.5) * Math.sqrt(b.n)).slice(0, 3);
   if (ops.length) {
@@ -75,7 +60,6 @@ function render(name, p) {
     <header class="pr-head"><h1 class="pf-h1">Your plan</h1>
       <p class="info">Built from your last ${p.n} rated Lichess games, ${esc(name)}: the weakest parts of your game first. <a href="profile.html">See your profile</a></p></header>
     <ol class="pr-steps">${steps.map((x, i) => step(i + 1, ...x)).join('')}</ol>`;
-  if (spot.length) spotTheBlunder($('#pr-blunder'), spot);
 }
 
 function ask() {

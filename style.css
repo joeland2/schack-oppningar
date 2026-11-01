@@ -2633,3 +2633,6 @@ a.st-wk:hover h2 { text-decoration: underline; }
 .st-sort { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; justify-self: end; font-size: 14px; color: var(--muted); }
 .st-sort select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; }
 @media (max-width: 760px) { .st-sort { justify-self: stretch; } .st-sort select { flex: 1; } }
+/* Spot the blunder on its own page: your moves as chips under the coach. */
+#bd-page .bd-moves { margin: 0; }
+#bd-page .bd-moves .chip-btn { font-size: 16px; padding: 8px 14px; }
