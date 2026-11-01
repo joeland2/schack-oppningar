@@ -26,6 +26,8 @@ def main():
             browser = p.chromium.launch()
             for a in sys.argv[1:] or accounts():
                 page = browser.new_page()
+                page.on('console', lambda m: m.type in ('error', 'warning') and print(f'  console {m.type}: {m.text[:200]}', flush=True))
+                page.on('requestfailed', lambda r: print(f'  request failed: {r.url[:120]} {r.failure}', flush=True))
                 try:
                     page.goto(f'http://localhost:{PORT}/profile.html?u={a}')
                     # Done when the profile is saved and no games are still being fetched or read.
@@ -39,7 +41,7 @@ def main():
                     print(f'{a}: saved', flush=True)
                 except Exception as err:
                     failed.append(a)
-                    say = page.evaluate("() => (document.querySelector('#pf-load:not([hidden])')?.textContent || '') + ' | ' + (document.querySelector('#profile-msg')?.textContent || '')")
+                    say = page.evaluate("() => (document.querySelector('#pf-load:not([hidden])')?.textContent || '') + ' | ' + (document.querySelector('#profile-msg')?.textContent || '') + ' | ' + (document.querySelector('#profile')?.innerText || '').slice(0, 150)")
                     print(f'{a}: failed ({str(err)[:80]}) page said: {say.strip()[:200]}', flush=True)
                 finally:
                     page.close()
