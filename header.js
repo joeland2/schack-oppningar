@@ -59,13 +59,17 @@
       const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`), btn = document.querySelector('#lichess-login');
       const cur = (p) => (page === p ? ' aria-current="page"' : '');
       const head = btn ? `<span class="top-me-name">${esc(who)}</span>` : rating ? `<span class="top-me-who"><b>${esc(who)}</b><small>Your profile</small></span><strong title="${esc(speed)} rating">${esc(rating)}</strong><i class="top-me-chev" aria-hidden="true">▾</i>` : `<span class="top-me-name">${esc(who)}</span>`;
-      const menu = `<details class="top-me"><summary class="${rating && !btn ? 'top-bug' : ''}" title="Your profile and practice">${head}</summary><div class="top-me-menu">
+      const menu = `<details class="top-me"><summary class="${rating && !btn ? 'top-bug' : ''}" title="Your profile">${head}</summary><div class="top-me-menu">
         <a href="profile.html?u=${encodeURIComponent(who)}"${cur('profile.html')}>Profile</a><a href="practice.html"${cur('practice.html')}>My practice</a><button type="button" class="top-me-out">Log out</button></div></details>`;
       if (btn) { btn.insertAdjacentHTML('beforebegin', menu); btn.style.display = 'none'; } // Openings: in place of its name button
       else at?.insertAdjacentHTML('beforebegin', menu);
       const me = document.querySelector('.top-me');
       // Hover opens it where there is a mouse; a tap or click opens it anywhere.
-      if (matchMedia('(hover: hover)').matches) { me.addEventListener('mouseenter', () => { me.open = true; }); me.addEventListener('mouseleave', () => { me.open = false; }); }
+      if (matchMedia('(hover: hover)').matches) {
+        me.addEventListener('mouseenter', () => { me.open = true; }); me.addEventListener('mouseleave', () => { me.open = false; });
+        // With a mouse the menu is already open on hover, so a click on your name goes straight to your profile.
+        me.querySelector('summary').addEventListener('click', (e) => { e.preventDefault(); location.href = `profile.html?u=${encodeURIComponent(who)}`; });
+      }
       addEventListener('click', (e) => { if (me.open && !me.contains(e.target)) me.open = false; });
       // Log out (as lichess.js logout(), which this plain script cannot import): forget the login, and revoke its token on Lichess.
       me.querySelector('.top-me-out').addEventListener('click', () => {
@@ -251,7 +255,7 @@ addEventListener('DOMContentLoaded', () => {
     const row = document.querySelector('.foot-row');
     if (row) row.insertAdjacentHTML('beforeend', b);
     else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
-    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261101225635')).openChat());
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261101225854')).openChat());
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
 })();
