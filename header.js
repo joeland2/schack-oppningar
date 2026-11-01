@@ -58,7 +58,7 @@
     if (who) {
       const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`), btn = document.querySelector('#lichess-login');
       const cur = (p) => (page === p ? ' aria-current="page"' : '');
-      const head = btn ? `<span class="top-me-name">${esc(who)}</span>` : rating ? `<small>${esc(speed)}<br>${esc(who)}</small><strong>${esc(rating)}</strong>` : `<span class="top-me-name">${esc(who)}</span>`;
+      const head = btn ? `<span class="top-me-name">${esc(who)}</span>` : rating ? `<span class="top-me-who"><b>${esc(who)}</b><small>Your profile</small></span><strong title="${esc(speed)} rating">${esc(rating)}</strong><i class="top-me-chev" aria-hidden="true">▾</i>` : `<span class="top-me-name">${esc(who)}</span>`;
       const menu = `<details class="top-me"><summary class="${rating && !btn ? 'top-bug' : ''}" title="Your profile and practice">${head}</summary><div class="top-me-menu">
         <a href="profile.html?u=${encodeURIComponent(who)}"${cur('profile.html')}>Profile</a><a href="practice.html"${cur('practice.html')}>My practice</a><button type="button" class="top-me-out">Log out</button></div></details>`;
       if (btn) { btn.insertAdjacentHTML('beforebegin', menu); btn.style.display = 'none'; } // Openings: in place of its name button
