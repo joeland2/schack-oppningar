@@ -25,7 +25,7 @@ type Row = { at: string; kind: string; page: string | null; target: string | nul
 type Ev = { at: string; kind: string; target: string | null; visitor: string };
 type Run = { k: string; m: string; s: string; o: string; l: string; x: number; p: number; f?: string; w?: string; g?: string };
 function insights(rows: Ev[], now = Date.now()) {
-  const DAY = 864e5, dayNo = (iso: string) => Math.floor(Date.parse(new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm' }).format(new Date(iso))) / DAY);
+  const DAY = 864e5, F = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm' }), dayNo = (iso: string) => Math.floor(Date.parse(F.format(new Date(iso))) / DAY);
   const today = dayNo(new Date(now).toISOString()), ago = (iso: string) => (now - Date.parse(iso)) / DAY;
   const runOf = (r: Ev): Run | null => { try { return r.kind === 'line' ? JSON.parse(r.target ?? '') : null; } catch { return null; } };
   const done = (r: Ev) => (r.kind === 'line' && runOf(r)?.k === 'done') || (r.kind === 'practise' && !!r.target?.startsWith('done '));
@@ -119,7 +119,9 @@ Deno.serve(async (req) => {
   const early = new Set(rows.filter((r) => r.at < LAUNCH).map((r) => r.visitor));
   rows = rows.filter((r) => !early.has(r.visitor));
 
-  const day = (iso: string) => new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }).format(new Date(iso)); // YYYY-MM-DD, Swedish days
+  // One formatter each, made once: making one per event ran past Supabase's CPU limit (error 546).
+  const F_DAY = new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }), F_HOUR = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', hourCycle: 'h23' }), F_WD = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, weekday: 'short' });
+  const day = (iso: string) => F_DAY.format(new Date(iso)); // YYYY-MM-DD, Swedish days
   const views = rows.filter((r) => r.kind === 'view');
 
   // Each visitor (a browser), all time: where from, the device, the Lichess name, the first and last
@@ -145,7 +147,7 @@ Deno.serve(async (req) => {
   for (const w of visitors) { const d = days[day(w.first)]; if (d) d.fresh++; }
   const today = day(new Date().toISOString());
   // The last DAYS days per hour (Swedish time, keys 'YYYY-MM-DD HH'), for the graph's Today, 1W and 1M.
-  const hourOf = (iso: string) => `${day(iso)} ${new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', hourCycle: 'h23' }).format(new Date(iso))}`;
+  const hourOf = (iso: string) => `${day(iso)} ${F_HOUR.format(new Date(iso))}`;
   const hours48: Record<string, { fresh: number; visitors: Set<string>; views: number }> = {};
   const lately = (iso: string) => Date.now() - Date.parse(iso) < DAYS * 864e5;
   for (const r of views) if (lately(r.at)) { const h = hours48[hourOf(r.at)] ??= { fresh: 0, visitors: new Set(), views: 0 }; h.views++; h.visitors.add(r.visitor); }
@@ -157,13 +159,12 @@ Deno.serve(async (req) => {
   // The lists cover the last DAYS days. [name, count], most first; `unique` counts each visitor once per value.
   const recent = rows.filter((r) => Date.now() - Date.parse(r.at) < DAYS * 864e5), recentViews = recent.filter((r) => r.kind === 'view');
   const recentVisitors = visitors.filter((w) => Date.now() - Date.parse(w.last) < DAYS * 864e5);
-  const count = (xs: (string | null)[]) => Object.entries(xs.reduce((m, x) => (x ? { ...m, [x]: (m[x] || 0) + 1 } : m), {} as Record<string, number>))
+  const count = (xs: (string | null)[]) => Object.entries(xs.reduce((m, x) => { if (x) m[x] = (m[x] || 0) + 1; return m; }, {} as Record<string, number>))
     .sort((a, b) => b[1] - a[1]).slice(0, 15).map(([name, n]) => ({ name, n }));
   const unique = (rs: Row[], key: (r: Row) => string | null) => count([...new Map(rs.map((r) => [`${r.visitor}|${key(r)}`, key(r)])).values()]);
   const visitorsIn = (rs: Row[]) => new Set(rs.map((r) => r.visitor)).size;
-  const local = (iso: string, opt: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-GB', { timeZone: TZ, ...opt }).format(new Date(iso));
   const hours = Array(24).fill(0), weekdays = Array(7).fill(0), WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  for (const r of recentViews) { hours[Number(local(r.at, { hour: '2-digit', hourCycle: 'h23' }))]++; weekdays[WD.indexOf(local(r.at, { weekday: 'short' }))]++; }
+  for (const r of recentViews) { hours[Number(F_HOUR.format(new Date(r.at)))]++; weekdays[WD.indexOf(F_WD.format(new Date(r.at)))]++; }
   const mobile = recentVisitors.filter((w) => /iPhone|Android/.test(w.device || '')).length;
   const logins: Record<string, { n: number; last: string }> = {};
   for (const r of recent) if (r.user_name) logins[r.user_name] = { n: (logins[r.user_name]?.n || 0) + 1, last: r.at };
