@@ -46,6 +46,13 @@
   --good: #5fc48a; --bad: #ff6b6b; --hint: #e8c25a; --rule: #f4efe6; --track: #2e2a25;
   --card: #f4efe6; --card-ink: #141414; --card-hot: #9c330a; color-scheme: dark;
 }
+/* The header is always dark, also in the light theme */
+.top {
+  --bg: #12100e; --surface: #1b1815; --raised: #26221e; --ink: #f4efe6; --muted: #a8a093; --line: #2e2a25;
+  --accent: #f4efe6; --accent-ink: #141414; --data: #ff6a2f; --data-ink: #141414; --hot: #ff7a45;
+  --rule: #f4efe6; --track: #2e2a25; --card: #f4efe6; --card-ink: #141414; --card-hot: #9c330a; color-scheme: dark;
+  color: var(--ink);
+}
 
 * { box-sizing: border-box; }
 body {
