@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101230019';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101230019';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101230019';
-import { NAMED_TRAPS } from './traps.js?v=20261101230019';
-import { GUIDE } from './guide.js?v=20261101230019';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101230019';
-import { maia3Move } from './maia3.js?v=20261101230019';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101230019';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101230019';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101230019';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101230019';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101230242';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101230242';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101230242';
+import { NAMED_TRAPS } from './traps.js?v=20261101230242';
+import { GUIDE } from './guide.js?v=20261101230242';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101230242';
+import { maia3Move } from './maia3.js?v=20261101230242';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101230242';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101230242';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101230242';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101230242';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1678,11 +1678,14 @@ function start(op, keepTraps = false) {
   const s = stats[statKey(op.id)] = { done: [], played: [], ...stats[statKey(op.id)], total: lines.length };
   s.played ??= [];
   store(STORE, stats);
-  // The step to open in: Practice when lines are due for review, Learn while some are unlearned.
-  if (!trapRun && (mode === 'learn' || mode === 'try')) {
-    const due = dueCount(s), unlearned = lines.some((l) => !s.played.includes(lineKey(l.moves)));
-    const want = due ? 'try' : unlearned ? 'learn' : 'try';
+  // Where to open: the first line not yet played through in Learn; with all learned, the first not cleared
+  // in Practice; with all cleared, the first not yet perfect in Time; with everything done, Time from line 1.
+  if (!trapRun && mode !== 'explore') {
+    const k = (i) => lineKey(lines[i].moves), idx = [...lines.keys()];
+    const learn = idx.find((i) => !s.played.includes(k(i)) && !s.done.includes(k(i))), tryIt = idx.find((i) => !s.done.includes(k(i)));
+    const [want, at] = learn !== undefined ? ['learn', learn] : tryIt !== undefined ? ['try', tryIt] : ['time', Math.max(0, idx.find((i) => !(s.timed || []).includes(k(i))) ?? 0)];
     if (want !== mode) setMode(want, false, false);
+    return want === 'time' ? startTrial(at) : play(at);
   }
   if (mode === 'time') startTrial(); else play(nextLine());
 }
