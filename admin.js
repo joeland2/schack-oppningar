@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261101233724';
-import { api as chatApi, openChat } from './chat.js?v=20261101233724';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101233724';
+import { account, login, finishLogin } from './lichess.js?v=20261101234046';
+import { api as chatApi, openChat } from './chat.js?v=20261101234046';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101234046';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -72,6 +72,7 @@ function targetHtml(kind, target) {
 } // the leaderboard, for cards downloaded before their events carried the card
 // Today: the time only; otherwise the day too.
 const short = (iso) => (new Date(iso).toDateString() === new Date().toDateString() ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : when(iso));
+const isOn = (u) => Date.now() - Date.parse(u.last) < 36e5; // active in the last hour
 const when = (iso) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 // A country code as a name: SE is Sweden; – for an unknown country.
 const NAMES = new Intl.DisplayNames(['en'], { type: 'region' });
@@ -394,7 +395,8 @@ function render(s) {
       : '<p class="info">Nobody yet.</p>'}</section>
     <div class="adm-three">
       <section class="pf-card"><h2>${ic('login')}Logged-in players · ${s.days} days</h2>${s.users.length
-        ? `<ul class="pf-rows adm-rows">${s.users.map((u) => `<li><span>${link(u)}</span><small>${u.n} actions · last ${when(u.last)}</small></li>`).join('')}</ul>` : '<p class="info">Nobody yet.</p>'}</section>
+        ? `<p class="adm-online-k">${s.users.filter(isOn).length} active in the last hour</p><ul class="adm-online">${[...s.users].sort((a, b) => b.last.localeCompare(a.last)).map((u) => `<li>
+          <span class="adm-dot${isOn(u) ? ' on' : ''}"></span><button type="button" class="adm-online-who" data-actions="${esc(u.name)}"><b>${esc(u.name)}</b><small>${isOn(u) ? 'active now' : `last ${when(u.last)}`}</small></button><span class="adm-online-n"><b>${u.n}</b> actions</span></li>`).join('')}</ul>` : '<p class="info">Nobody yet.</p>'}</section>
       <section class="pf-card"><h2>${ic('plus')}Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="adm-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
       <section class="pf-card"><h2>${ic('profile')}Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>
     </div>
@@ -539,6 +541,17 @@ function show(body) {
   bindLine(body);
   $('#adm-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = b.dataset.span === 'today' ? 'today' : Number(b.dataset.span);
     $('#adm-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body); });
+  // A logged-in player's name opens what they did: their visits and every action, as under Unique visitors.
+  for (const b of document.querySelectorAll('[data-actions]')) b.onclick = () => {
+    const name = b.dataset.actions.toLowerCase(), v = body.visitors.find((x) => x.name?.toLowerCase() === name);
+    const d = document.createElement('dialog');
+    d.className = 'chat adm-actions';
+    d.innerHTML = `<header class="chat-head"><h2>${esc(b.dataset.actions)}</h2><a href="profile.html?u=${encodeURIComponent(b.dataset.actions)}">Profile</a><button type="button" class="chat-x" aria-label="Close">×</button></header>
+      <div class="adm-actions-body">${v ? personHtml(v, body.visitors) : '<p class="info">No visits recorded for this player.</p>'}</div>`;
+    document.body.append(d); d.showModal();
+    const close = () => { d.close(); d.remove(); };
+    d.querySelector('.chat-x').onclick = close; d.addEventListener('cancel', close);
+  };
   // The visitor list shows the newest 10 until opened.
   $('[data-more]')?.addEventListener('click', (e) => { const b = e.currentTarget, open = $('.adm-visitors').classList.toggle('open');
     b.setAttribute('aria-expanded', open); b.textContent = open ? 'Show the newest 10' : `Show all ${body.visitors.length}`; });

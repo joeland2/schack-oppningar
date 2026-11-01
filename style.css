@@ -2772,3 +2772,19 @@ a.st-wk:hover h2 { text-decoration: underline; }
 .sup-frame .fx-none .sup-mini { outline: 1px dashed var(--muted); outline-offset: 3px; }
 /* The bottom buttons stay at the bottom while a page is still loading: the page is at least a screen tall */
 body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
+
+/* Admin: logged-in players, a green dot for the last hour; a name opens what they did */
+.adm-online-k { margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+.adm-online { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.adm-online li { display: flex; align-items: center; gap: 12px; }
+.adm-dot { flex: none; width: 10px; height: 10px; margin: 0 4px; border-radius: 50%; background: var(--line); }
+.adm-dot.on { background: var(--good); box-shadow: 0 0 0 4px color-mix(in srgb, var(--good) 25%, transparent); }
+.adm-online-who { flex: 1; min-width: 0; display: grid; justify-items: start; padding: 6px 8px; margin-left: -8px; border: 0; border-radius: 6px; background: none; color: var(--ink); text-align: left; font: inherit; cursor: pointer; }
+.adm-online-who:hover { background: var(--raised); }
+.adm-online-who b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-online-who small { color: var(--muted); font-size: 12px; }
+.adm-online-n { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.adm-online-n b { color: var(--ink); font: 400 20px var(--font-poster); margin-right: 3px; }
+.adm-actions { width: min(900px, calc(100vw - 32px)); }
+.adm-actions .chat-head a { margin-left: auto; margin-right: 14px; font-size: 13px; }
+.adm-actions-body { padding: 16px 18px; overflow-y: auto; }
