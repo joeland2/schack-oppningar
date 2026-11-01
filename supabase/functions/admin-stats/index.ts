@@ -98,6 +98,18 @@ Deno.serve(async (req) => {
   if (!me.ok) return json({ error: 'Lichess did not accept the login. Log in again.' }, 401);
   const { id } = await me.json();
   if (!ADMINS.includes(id)) return json({ error: 'This page is for the admins only.' }, 403);
+  // The admin page's "Update all pros now": every pro's and VIP's games fetched again and their profiles
+  // snapshotted, by the GitHub workflow (.github/workflows/snapshot-pros.yml). GH_DISPATCH_TOKEN: a fine-grained
+  // GitHub token with Actions read and write on this repo alone, set with `supabase secrets set`.
+  if (new URL(req.url).searchParams.has('update-pros')) {
+    const gh = Deno.env.get('GH_DISPATCH_TOKEN');
+    if (!gh) return json({ error: 'GH_DISPATCH_TOKEN is not set on Supabase yet.' }, 501);
+    const r = await fetch('https://api.github.com/repos/joeland2/schack-oppningar/actions/workflows/snapshot-pros.yml/dispatches', {
+      method: 'POST', headers: { Authorization: `Bearer ${gh}`, Accept: 'application/vnd.github+json', 'User-Agent': 'chess-labs' },
+      body: JSON.stringify({ ref: 'main', inputs: { refresh: true } }),
+    });
+    return r.ok ? json({ started: true }) : json({ error: `GitHub said ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
+  }
 
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   let rows: Row[] = [];

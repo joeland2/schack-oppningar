@@ -2584,3 +2584,5 @@ a.st-wk:hover h2 { text-decoration: underline; }
 .st-who small { display: block; color: var(--muted); font-size: 12px; }
 .st-tag { padding: 2px 6px 1px; border-radius: 3px; font: 400 11px/1.2 var(--font-poster); letter-spacing: .12em; } .st-tag.pro { background: #d4a017; color: #141414; } .st-tag.vip { background: #e0459b; color: #fff; }
 .st-num { display: grid; justify-items: end; } .st-num b { font: 400 20px var(--font-poster); } .st-num small { font: 500 12px var(--font-mono); } .st-num .up { color: var(--good); } .st-num .dn { color: var(--bad); }
+
+.ad-pros { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0 0 16px; font-size: 14px; color: var(--muted); }

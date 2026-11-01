@@ -5,7 +5,7 @@
 // The profile reads that first and asks the site only for the games since.
 // POST ?week=1 (every 6 hours): week.json, each person's last 7 days (games, score, blitz rating change,
 // the opening played most) from their Lichess file and Chess.com's monthly archives.
-// Keep ACCOUNTS in step with PRO_NAMES and VIP_NAMES in profile.js.
+// The accounts come from pros.js on the site (see loadAccounts).
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type, apikey, authorization', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
@@ -14,21 +14,13 @@ const json = (x: unknown, status = 200) => new Response(JSON.stringify(x), { sta
 const BUCKET = 'pros', MAX = 1000, DAY = 864e5;
 const KEEP = 500; // games kept for the profile: its own MAX, so nobody downloads games it never reads
 
-// [account, person, kind]; a Chess.com account is cc:name.
-const ACCOUNTS: [string, string, 'pro' | 'vip'][] = [
-  ['DrNykterstein', 'Magnus Carlsen', 'pro'], ['DrDrunkenstein', 'Magnus Carlsen', 'pro'], ['DannyTheDonkey', 'Magnus Carlsen', 'pro'], ['manwithavan', 'Magnus Carlsen', 'pro'],
-  ['alireza2003', 'Alireza Firouzja', 'pro'], ['nihalsarin2004', 'Nihal Sarin', 'pro'], ['penguingim1', 'Andrew Tang', 'pro'],
-  ['Zhigalko_Sergei', 'Sergei Zhigalko', 'pro'], ['Vladimirovich9000', 'Dmitry Andreikin', 'pro'], ['may6enexttime', 'Aleksei Sarana', 'pro'], ['Night-King96', 'Oleksandr Bortnyk', 'pro'],
-  ['Konevlad', 'Vladislav Artemiev', 'pro'], ['AnishGiri', 'Anish Giri', 'pro'], ['RebeccaHarris', 'Daniel Naroditsky', 'pro'], ['DanielNaroditsky', 'Daniel Naroditsky', 'pro'],
-  ['EricRosen', 'Eric Rosen', 'pro'], ['Fins', 'John Bartholomew', 'pro'],
-  ['cc:Hikaru', 'Hikaru Nakamura', 'pro'], ['cc:MagnusCarlsen', 'Magnus Carlsen', 'pro'], ['cc:FabianoCaruana', 'Fabiano Caruana', 'pro'], ['cc:DanielNaroditsky', 'Daniel Naroditsky', 'pro'],
-  ['cc:Firouzja2003', 'Alireza Firouzja', 'pro'], ['cc:NihalSarin', 'Nihal Sarin', 'pro'], ['cc:AnishGiri', 'Anish Giri', 'pro'], ['cc:Penguingm1', 'Andrew Tang', 'pro'], ['cc:IMRosen', 'Eric Rosen', 'pro'],
-  ['cc:LachesisQ', 'Ian Nepomniachtchi', 'pro'], ['cc:LevonAronian', 'Levon Aronian', 'pro'], ['cc:Duhless', 'Daniil Dubov', 'pro'], ['cc:FairChess_on_YouTube', 'Dmitry Andreikin', 'pro'],
-  ['cc:GMBenjaminBok', 'Benjamin Bok', 'pro'], ['cc:Jospem', 'Jose Martinez', 'pro'], ['cc:GMHess', 'Robert Hess', 'pro'],
-  ['agadmator', 'Antonio Radić', 'vip'], ['tigerlilov', 'Valeri Lilov', 'vip'], ['cc:agadmator', 'Antonio Radić', 'vip'], ['cc:tigerlilov', 'Valeri Lilov', 'vip'], ['cc:GothamChess', 'Levy Rozman', 'vip'],
-  ['cc:AnnaCramling', 'Anna Cramling', 'vip'], ['cc:AlexandraBotez', 'Alexandra Botez', 'vip'], ['cc:NemsKo', 'Nemo Zhou', 'vip'], ['cc:Chessbrah', 'Eric Hansen', 'vip'],
-  ['cc:ChessNetwork', 'Jerry (ChessNetwork)', 'vip'], ['cc:TheChessNerd', 'Zachary Saine', 'vip'],
-];
+// [account, person, kind]; a Chess.com account is cc:name. Read each call from the site's pros.js, the one
+// list (profile.js imports it), with the person's GM/IM left off as week.json and the bios name them.
+let ACCOUNTS: [string, string, 'pro' | 'vip'][] = [];
+async function loadAccounts() {
+  const t = await fetch('https://chesslabs.gg/pros.js', { headers: UA }).then((r) => (r.ok ? r.text() : Promise.reject(new Error(`pros.js: ${r.status}`))));
+  ACCOUNTS = JSON.parse(t.slice(t.indexOf('= [') + 2, t.lastIndexOf(']') + 1)).map(([a, w, k]: string[]) => [a, w.replace(/^(GM|IM) /, ''), k]);
+}
 const isCC = (a: string) => a.startsWith('cc:');
 const file = (a: string) => (isCC(a) ? `cc_${a.slice(3).toLowerCase()}.json` : `${a.toLowerCase()}.ndjson`);
 const UA = { 'User-Agent': 'chess-labs (chesslabs.gg)' };
@@ -165,6 +157,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   const q = new URL(req.url).searchParams;
   try {
+    await loadAccounts();
     if (q.has('refresh')) return json(await refresh());
     if (q.has('week')) return json(await week());
   } catch (err) { return json({ error: String(err) }, 500); }

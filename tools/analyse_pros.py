@@ -145,8 +145,8 @@ def post(player, rows):
 
 
 def accounts():
-    src = open('supabase/functions/pros/index.ts').read()
-    return [a for a in re.findall(r"\['([^']+)', '[^']+', '(?:pro|vip)'\]", src)]
+    src = open('pros.js').read()  # the one list; the part between the brackets is JSON
+    return [a for a, _, _ in json.loads(src[src.index('= [') + 2:src.rindex(']') + 1])]
 
 
 def main():

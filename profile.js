@@ -3,9 +3,10 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101210724';
-import { STYLE_OF } from './styles.js?v=20261101210724';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101210724';
+import { account, login, finishLogin } from './lichess.js?v=20261101212412';
+import { STYLE_OF } from './styles.js?v=20261101212412';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101212412';
+import { PEOPLE } from './pros.js?v=20261101212412';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -665,6 +666,25 @@ const msgEl = () => (quiet ? { textContent: '' } : $('#profile-msg'));
 // A known pro's or streamer's games, fetched every few hours by the pros function into our own
 // storage: read in one go, so only the games since come from Lichess (which sends ~20 a second).
 const SNAPSHOT = new URLSearchParams(location.search).has('snapshot');
+// Every pro's and VIP's profile with its games, read every 3 hours by tools/snapshot_pros.py into the branch
+// pros-data, so their page draws at once and nothing is fetched from Lichess or Chess.com. index.json: when
+// each account last played, for the order of their accounts.
+// shortcut: served by raw.githubusercontent.com (cached 5 min, no promises on traffic); move behind the site if visits grow large.
+const SNAPS = 'https://raw.githubusercontent.com/joeland2/schack-oppningar/pros-data', SNAP_FRESH = 12 * 36e5;
+const SNAP = new Map();
+const snapOf = (n) => {
+  const f = n.toLowerCase().replace(':', '_');
+  if (!SNAP.has(f)) SNAP.set(f, fetch(`${SNAPS}/${encodeURIComponent(f)}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null));
+  return SNAP.get(f);
+};
+let LAST = {}, lastAsked = null;
+const lastPlayed = () => (lastAsked ??= fetch(`${SNAPS}/index.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})).then((x) => (LAST = x)));
+const freshSnap = (s) => !!s && s.v === PV && Date.now() - s.at < SNAP_FRESH;
+// A snapshot's games kept here as if fetched, unless newer ones are; not sent back as analyses done here.
+function useSnap(name, s) {
+  const me = name.toLowerCase();
+  if (s?.games?.length && !(MEM.get(me)?.at > s.at)) { const v = { at: s.at, games: s.games }; MEM.set(me, v); persist(me, v); }
+}
 const PRO_STORE = 'https://duhlvhjtxoofgnjegspa.supabase.co/storage/v1/object/public/pros';
 const serverGames = (name) => (isCC(name)
   ? fetch(`${PRO_STORE}/cc_${encodeURIComponent(nick(name).toLowerCase())}.json`).then((r) => (r.ok ? r.json() : [])).then(fromCC)
@@ -1045,19 +1065,9 @@ function cardCode(p, t, skills) {
   return [ovr, TYPE_CODES.indexOf(t[0]?.name), t[1] ? TYPE_CODES.indexOf(t[1].name) : '', skills.map((x) => x.v ?? '-').join('.'), main ? `${main.rating}${main.speed.slice(0, 2)}` : '', p.piece || 'n'].join('/');
 }
 // ---------- Pros ----------
-// Known professional players' Lichess accounts (checked: the name on the account, or widely known, as
-// Magnus Carlsen's DrNykterstein): their cards wear a gold PRO frame wherever they show.
-// Keys as Lichess spells them (shown in the search's suggestions); looked up in lower case.
-const PRO_NAMES = { DrNykterstein: 'GM Magnus Carlsen', DrDrunkenstein: 'GM Magnus Carlsen', DannyTheDonkey: 'GM Magnus Carlsen', manwithavan: 'GM Magnus Carlsen',
-  alireza2003: 'GM Alireza Firouzja', nihalsarin2004: 'GM Nihal Sarin', penguingim1: 'GM Andrew Tang',
-  Zhigalko_Sergei: 'GM Sergei Zhigalko', Vladimirovich9000: 'GM Dmitry Andreikin', may6enexttime: 'GM Aleksei Sarana', 'Night-King96': 'GM Oleksandr Bortnyk',
-  Konevlad: 'GM Vladislav Artemiev', AnishGiri: 'GM Anish Giri', RebeccaHarris: 'GM Daniel Naroditsky', DanielNaroditsky: 'GM Daniel Naroditsky',
-  EricRosen: 'IM Eric Rosen', Fins: 'IM John Bartholomew',
-  // On chess.com (cc:), checked against the name and title chess.com gives the account.
-  'cc:Hikaru': 'GM Hikaru Nakamura', 'cc:MagnusCarlsen': 'GM Magnus Carlsen', 'cc:FabianoCaruana': 'GM Fabiano Caruana', 'cc:DanielNaroditsky': 'GM Daniel Naroditsky',
-  'cc:Firouzja2003': 'GM Alireza Firouzja', 'cc:NihalSarin': 'GM Nihal Sarin', 'cc:AnishGiri': 'GM Anish Giri', 'cc:Penguingm1': 'GM Andrew Tang', 'cc:IMRosen': 'IM Eric Rosen',
-  'cc:LachesisQ': 'GM Ian Nepomniachtchi', 'cc:LevonAronian': 'GM Levon Aronian', 'cc:Duhless': 'GM Daniil Dubov', 'cc:FairChess_on_YouTube': 'GM Dmitry Andreikin',
-  'cc:GMBenjaminBok': 'GM Benjamin Bok', 'cc:Jospem': 'GM Jose Martinez', 'cc:GMHess': 'GM Robert Hess' };
+// Known professional players' accounts, from pros.js (checked: the name on the account, or widely known, as
+// Magnus Carlsen's DrNykterstein): their cards wear a gold PRO frame wherever they show. Looked up in lower case.
+const PRO_NAMES = Object.fromEntries(PEOPLE.filter(([, , k]) => k === 'pro').map(([a, w]) => [a, w]));
 const PROS = new Map(Object.entries(PRO_NAMES).map(([k, v]) => [k.toLowerCase(), v]));
 // On a pro's profile, under the name: who the account belongs to.
 const proLine = (name) => {
@@ -1065,9 +1075,7 @@ const proLine = (name) => {
   return who ? `<p class="pf-pro-line ${proKind(name)}"><span class="pf-pro-tag">${proKind(name).toUpperCase()}</span><b>${esc(who.replace(/^(GM|IM) /, ''))}</b>${title ? `<span class="pf-pro-title">${title}</span>` : ''}</p>` : '';
 };
 // Known streamers and chess creators (checked the same way): a VIP frame instead.
-const VIP_NAMES = { agadmator: 'Antonio Radić', tigerlilov: 'IM Valeri Lilov', 'cc:agadmator': 'Antonio Radić', 'cc:tigerlilov': 'IM Valeri Lilov', 'cc:GothamChess': 'IM Levy Rozman',
-  'cc:AnnaCramling': 'Anna Cramling', 'cc:AlexandraBotez': 'Alexandra Botez', 'cc:NemsKo': 'Nemo Zhou', 'cc:Chessbrah': 'GM Eric Hansen',
-  'cc:ChessNetwork': 'Jerry (ChessNetwork)', 'cc:TheChessNerd': 'Zachary Saine' };
+const VIP_NAMES = Object.fromEntries(PEOPLE.filter(([, , k]) => k === 'vip').map(([a, w]) => [a, w]));
 // A few words on each person, shown on their profiles with what their games show: where from, and what
 // they are known for. Keyed by the name in PRO_NAMES / VIP_NAMES without the title.
 const BIOS = {
@@ -1120,9 +1128,12 @@ const accountsRow = (name) => {
   const others = who ? all.filter(([n, w]) => w === who && (combo || !same(n, name))).map(([n]) => n) : group ? group.filter((n) => combo || !same(n, name)) : [];
   if (!others.length) return linkForm(name); // only there to jump between one player's accounts
   const pill = (n, on) => `<a class="pf-acct" data-name="${esc(n)}" href="${profileLink(n)}"${on ? ' aria-current="page"' : ''}><small>${siteOf(n)}</small>${esc(nick(n))}</a>`;
+  // A pro's accounts in one order wherever you are among them: the one played on last first (index.json).
+  const pills = who ? [...new Set([name, ...others].map((n) => all.find(([x]) => same(x, n))?.[0] || n))].sort((a, b) => (LAST[b.toLowerCase()] || 0) - (LAST[a.toLowerCase()] || 0))
+    .filter((n) => !combo || others.some((x) => same(x, n))).map((n) => pill(n, !combo && same(n, name))) : [...(combo ? [] : [pill(name, true)]), ...others.map((n) => pill(n, false))];
   // A pro's accounts on both sites can be seen together too, like your own.
   const both = group || (who && others.some((n) => isCC(n) !== isCC(name)) || combo) ? `<a class="pf-acct pf-acct-all" href="${profileLink(group ? myName() : name)}&all=1"${combo ? ' aria-current="page"' : ''}><small>All</small>Combined</a>` : '';
-  return `<nav class="pf-accts" aria-label="${group ? 'Your accounts' : 'Their accounts'}">${[...(combo ? [] : [pill(name, true)]), ...others.map((n) => pill(n, false))].join('')}<details class="pf-accts-more" hidden><summary></summary><div class="pf-accts-menu"></div></details>${both}</nav>`;
+  return `<nav class="pf-accts" aria-label="${group ? 'Your accounts' : 'Their accounts'}">${pills.join('')}<details class="pf-accts-more" hidden><summary></summary><div class="pf-accts-menu"></div></details>${both}</nav>`;
 };
 // On your own profile: add an account on either site, by name (no password).
 const linkForm = (name, open = false) => (isMe(name) && !proOf(name) ? `<form class="pf-link" data-link><label for="pf-link-in">${open ? 'Add an account:' : 'Play on another account too?'}</label>
@@ -1162,7 +1173,7 @@ function fitAccounts() {
   if (nav.scrollWidth <= nav.clientWidth) return;
   more.hidden = false;
   more.querySelector('summary').textContent = `+${pills.length}`; // widest it gets, while measuring
-  for (let i = pills.length - 1; i > 0 && nav.scrollWidth > nav.clientWidth; i--) pills[i].hidden = true;
+  for (let i = pills.length - 1; i > 0 && nav.scrollWidth > nav.clientWidth; i--) if (!pills[i].hasAttribute('aria-current')) pills[i].hidden = true;
   const hid = pills.filter((x) => x.hidden);
   more.querySelector('summary').textContent = `+${hid.length}`;
   more.querySelector('summary').setAttribute('aria-label', `${hid.length} more accounts`);
@@ -1181,6 +1192,7 @@ async function seenOf(names) {
 // The other accounts, the one played on most recently first; then fitted to the row.
 async function arrangeAccounts() {
   fitAccounts();
+  if (shown && proOf(shown[0])) return; // a pro's come in order already
   const nav = $('.pf-accts'), pills = nav ? [...nav.querySelectorAll(':scope > .pf-acct[data-name]')].slice(combo ? 0 : 1) : [];
   if (!pills.length) return;
   await seenOf(pills.map((x) => x.dataset.name));
@@ -1997,8 +2009,20 @@ async function run(name) {
   await gamesReady;
   combo = null;
   const mine = ++runs;
-  // A known pro or streamer not seen here before: their profile as read by tools/snapshot_pros.py, so the card is there at once.
-  const c = cache()[name.toLowerCase()] || (proOf(name) ? await fetch(`data/pros/${name.toLowerCase().replace(':', '_')}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null) : null);
+  // A known pro or streamer: their profile and games as read by tools/snapshot_pros.py, drawn once with nothing fetched;
+  // their other accounts are fetched behind it, so a switch between them is instant too.
+  const s = proOf(name) && !SNAPSHOT ? (await Promise.all([snapOf(name), lastPlayed()]))[0] : null;
+  if (s) useSnap(name, s);
+  if (freshSnap(s)) {
+    await loadScores();
+    if (mine !== runs) return;
+    if (shown && shown[0].toLowerCase() !== name.toLowerCase()) pfSpeed = null; // another account starts on its own main time control
+    render(s.name || name, s.at, s.p);
+    window.track?.('profile', `${s.name || name} #${shownCode}`);
+    PEOPLE.filter(([, w]) => w === proOf(name)).forEach(([n]) => snapOf(n));
+    return;
+  }
+  const c = cache()[name.toLowerCase()] || (s?.v === PV ? s : null);
   await loadScores(); // a saved profile is drawn without reading the games, but its time controls are read again
   if (shown && shown[0].toLowerCase() !== name.toLowerCase()) pfSpeed = null; // another player starts on their own main time control
   // Seen before: show the saved profile at once, then fetch new games quietly and redraw only if there were any.
@@ -2023,6 +2047,7 @@ async function run(name) {
   try {
     const p = await build(name);
     if (mine === runs) render(name, Date.now(), p);
+    if (SNAPSHOT) window.snapOut = { ...cache()[name.toLowerCase()], games: MEM.get(name.toLowerCase())?.games }; // for tools/snapshot_pros.py
     window.track?.('profile', `${cache()[name.toLowerCase()]?.name || name} #${shownCode}`);
     if (mine === runs) await ownSpeed(name);
   } catch (err) {
@@ -2044,9 +2069,13 @@ async function combined(name) {
   if (!$('#profile .pf-hero')) $('#profile').innerHTML = `<section class="pf-hero pf-skeleton" aria-hidden="true"><div class="pf-card-col"><div class="pf-pcard"><b class="pf-ovr">–</b><p class="pf-pcard-name">${esc(cardName(name))}</p></div></div>
     <div class="pf-hero-text"><span class="pf-sk-line w60"></span><span class="pf-sk-line"></span><span class="pf-sk-line"></span><span class="pf-sk-line w80"></span></div></section>`;
   await gamesReady; await loadScores();
+  // A pro's or VIP's accounts: their snapshots' games, so only a stale one is fetched.
+  const snaps = who && !SNAPSHOT ? (await Promise.all([lastPlayed(), ...on.map(snapOf)])).slice(1) : [];
+  snaps.forEach((s, i) => useSnap(on[i], s));
+  if (mine !== runs) return;
   quiet = true;
   try {
-    for (const n of on) { $('#profile-msg').textContent = `Fetching ${nick(n)}'s games from ${siteOf(n)}…`; await build(n); }
+    for (const [i, n] of on.entries()) { if (freshSnap(snaps[i])) continue; $('#profile-msg').textContent = `Fetching ${nick(n)}'s games from ${siteOf(n)}…`; await build(n); }
   } catch (err) { if (mine === runs) failed(name, err); return; } finally { quiet = false; }
   if (mine !== runs) return;
   $('#profile-msg').textContent = on.length ? '' : 'Every account is switched off: switch one on to see the card.';

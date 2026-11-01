@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261101210724';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101210724';
+import { account, login, finishLogin } from './lichess.js?v=20261101212412';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101212412';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -458,6 +458,15 @@ function bindCards(body) {
 }
 function show(body) {
   render(body);
+  // Every pro's and VIP's games fetched again and their profiles snapshotted, now (admin-stats starts the GitHub workflow).
+  $('#admin').insertAdjacentHTML('afterbegin', `<p class="ad-pros"><button type="button" class="ghost" id="ad-pros">Update all pros &amp; VIPs now</button> <span role="status"></span></p>`);
+  $('#ad-pros').addEventListener('click', async (e) => {
+    const say = e.target.nextElementSibling;
+    e.target.disabled = true; say.textContent = 'Starting…';
+    const r = await fetch(`${FN}?update-pros`, { headers: { 'x-lichess-token': account()?.token } }).then((x) => x.json()).catch((err) => ({ error: err.message }));
+    say.textContent = r.started ? 'Started on GitHub: every account is fetched again, then every profile is redrawn. Done in about 30 minutes.' : r.error;
+    if (!r.started) e.target.disabled = false;
+  });
   bindCards(body);
   bindLine(body);
   $('#ad-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = b.dataset.span === 'today' ? 'today' : Number(b.dataset.span);
