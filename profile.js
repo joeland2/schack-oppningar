@@ -3,10 +3,10 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101223350';
-import { STYLE_OF } from './styles.js?v=20261101223350';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101223350';
-import { PEOPLE } from './pros.js?v=20261101223350';
+import { account, login, finishLogin } from './lichess.js?v=20261101225635';
+import { STYLE_OF } from './styles.js?v=20261101225635';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101225635';
+import { PEOPLE } from './pros.js?v=20261101225635';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1680,6 +1680,9 @@ function render(name, at, full) {
     </section>
     ${opponentsCard(p, me, name)}
     <section class="pf-card" id="pf-games"></section>
+    ${me ? starsCard() : ''}
+    ${me && !isCC(name) ? privacyCard() : ''}
+    ${nextActions(name, me, skills)}
     <section class="pf-about-data">
       <h2>About these numbers</h2>
       <p class="info">Read from ${me ? 'your' : `${esc(nick(name))}'s`} last ${p.n} rated Lichess games, ${ago(at)}. <button id="refresh" class="link" type="button">Read them again</button></p>
@@ -1687,10 +1690,7 @@ function render(name, at, full) {
         Early game uses Stockfish's verdict on the position after move 12 in every game (looked at here once). Accuracy, blunders and the Defense and Accuracy skills (and part of Attack) need a computer's verdict on every move, so they use only the
         ${p.analysed} analysed game${p.analysed === 1 ? '' : 's'} among the ${p.n} shown${p.ours ? ` (${p.ours} analysed here with Stockfish, the rest by Lichess)` : ''}. ${p.todo ? 'Analyse more with the Analyse button under Skills.' : ''}</p>
       <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Win rate counts wins out of all games; an endgame score counts a draw as half.</p>
-    </section>
-    ${me ? starsCard() : ''}
-    ${me && !isCC(name) ? privacyCard() : ''}
-    ${nextActions(name, me, skills)}`;
+    </section>`;
   applyHidden(name, me);
   $('#refresh').addEventListener('click', async (e) => { // a seen player is read again quietly: the button says it is working
     Object.assign(e.target, { disabled: true, textContent: 'Reading…' });
