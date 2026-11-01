@@ -39,7 +39,8 @@ def main():
                     print(f'{a}: saved', flush=True)
                 except Exception as err:
                     failed.append(a)
-                    print(f'{a}: failed ({str(err)[:120]})', flush=True)
+                    say = page.evaluate("() => (document.querySelector('#pf-load:not([hidden])')?.textContent || '') + ' | ' + (document.querySelector('#profile-msg')?.textContent || '')")
+                    print(f'{a}: failed ({str(err)[:80]}) page said: {say.strip()[:200]}', flush=True)
                 finally:
                     page.close()
             browser.close()
