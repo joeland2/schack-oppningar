@@ -2551,7 +2551,20 @@ main.profile:has(#admin) { max-width: 1320px; }
 #eg .op-name small { font: 12px var(--font-mono); color: var(--muted); margin-left: 6px; }
 
 /* Pros & VIPs (stars.html): the pro and the streamer of the week, then everyone by when they last played */
-.st-week { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.st-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; align-items: start; }
+.st-split > .st-tabs { display: none; }
+.st-h2 span { color: var(--muted); }
+.st-col .st-h2 { margin: 12px 0 10px; }
+@media (max-width: 760px) {
+  .st-split { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .st-split .st-why, .st-split .st-bio { display: none; }
+  .st-split > .st-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .st-tabs button { padding: 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--muted); font: 400 18px var(--font-poster); text-transform: uppercase; letter-spacing: .06em; cursor: pointer; }
+  .st-tabs button.pro[aria-selected="true"] { background: #d4a017; border-color: #d4a017; color: #141414; }
+  .st-tabs button.vip[aria-selected="true"] { background: #e0459b; border-color: #e0459b; color: #fff; }
+  .st-split:not([data-tab="vip"]) > .st-vip, .st-split[data-tab="vip"] > .st-pro { display: none; }
+  .st-col .st-h2 { display: none; }
+}
 .st-wk { display: grid; gap: 8px; align-content: start; padding: 16px 18px; border-radius: 6px; background: #12100e; color: #f4efe6; text-decoration: none; }
 a.st-wk:hover h2 { text-decoration: underline; }
 .st-wk.pro { box-shadow: 0 0 0 3px #d4a017; } .st-wk.vip { box-shadow: 0 0 0 3px #e0459b; }

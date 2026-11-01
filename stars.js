@@ -1,8 +1,9 @@
 // Pros & VIPs: the pro and the streamer of the week, each with why and a few words on them, then everyone
 // by when they last played. From week.json, which the pros function writes every 6 hours (see supabase/functions/pros).
-import { BIOS, keptTypes } from './profile.js?v=20261101205731';
-import { nick, isCC } from './chesscom.js?v=20261101205731';
+import { BIOS, keptTypes } from './profile.js?v=20261101210440';
+import { nick, isCC } from './chesscom.js?v=20261101210440';
 const WEEK = 'https://duhlvhjtxoofgnjegspa.supabase.co/storage/v1/object/public/pros/week.json';
+const TAB = 'opening-book-v2-stars-tab'; // the list last shown on a phone
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const pct = (x) => `${Math.round(x * 100)}%`;
@@ -25,20 +26,31 @@ function weekCard(r, kind) {
     <div class="st-stats"><div><b>${r.blitz ?? '–'}</b><small>Blitz</small></div><div><b>${signed(r.change)}</b><small>This week</small></div><div><b>${r.games}</b><small>Games</small></div></div></a>`;
 }
 const rowOf = (r) => `<li><a class="st-row" href="${link(r)}"><span class="st-av ${r.kind}">${esc(initials(r.who))}</span>
-  <span class="st-who"><b>${esc(r.who)}</b> <span class="st-tag ${r.kind}">${r.kind.toUpperCase()}</span><small>${[r.style, r.last ? `played ${ago(r.last)}` : 'no games this week', r.accounts.some(isCC) ? (r.accounts.some((a) => !isCC(a)) ? 'Both sites' : 'Chess.com') : 'Lichess'].filter(Boolean).map(esc).join(' · ')}</small></span>
+  <span class="st-who"><b>${esc(r.who)}</b><small>${[r.style, r.last ? `played ${ago(r.last)}` : 'no games this week', r.accounts.some(isCC) ? (r.accounts.some((a) => !isCC(a)) ? 'Both sites' : 'Chess.com') : 'Lichess'].filter(Boolean).map(esc).join(' · ')}</small></span>
   <span class="st-num"><b>${r.blitz ?? '–'}</b>${r.blitzGames > 1 ? `<small class="${r.change >= 0 ? 'up' : 'dn'}">${signed(r.change)}</small>` : ''}</span></a></li>`;
 
 (async () => {
   const data = await fetch(WEEK, { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  if (!data) { $('#st-week').innerHTML = $('#st-rows').innerHTML = ''; $('#st-msg').textContent = 'The week is not counted yet. Try again later today.'; return; }
+  if (!data) { $('#st-split').innerHTML = ''; $('#st-msg').textContent = 'The week is not counted yet. Try again later today.'; return; }
   // The kept style of each person's main account, as their profile shows it.
   const typed = await keptTypes(data.people.map((r) => ({ name: r.account, speed: 'blitz' }))).catch(() => []);
   const people = data.people.map((r, i) => ({ ...r, style: typed[i]?.style, strength: typed[i]?.strength }));
   // The pro and the streamer of the week stay as chosen on Monday, with that day's numbers; their style as now.
   const by = (r) => { const now = r && people.find((x) => x.who === r.who); return r && { ...r, style: now?.style, strength: now?.strength }; };
   $('#st-msg').textContent = `Counted ${ago(data.at)}.`;
-  $('#st-week').innerHTML = weekCard(by(data.pick?.pro), 'pro') + weekCard(by(data.pick?.vip), 'vip');
-  $('#st-rows').innerHTML = people.sort((a, b) => (b.last || 0) - (a.last || 0)).map(rowOf).join('');
-  for (const el of [$('#st-week'), $('#st-rows')]) { el.removeAttribute('aria-hidden'); el.classList.add('fade-in'); }
+  people.sort((a, b) => (b.last || 0) - (a.last || 0));
+  const pros = people.filter((r) => r.kind === 'pro'), vips = people.filter((r) => r.kind !== 'pro');
+  // Desktop: two columns, each under its card of the week. Phone: both cards, then tabs showing one list.
+  let tab = 'pro';
+  try { tab = localStorage.getItem(TAB) === 'vip' ? 'vip' : 'pro'; } catch {}
+  const col = (kind, list) => `<section class="st-col st-${kind}" role="tabpanel" id="st-${kind}"><h2 class="st-h2">${kind === 'pro' ? 'Pros' : 'VIPs'} <span>· ${list.length}</span></h2><ol class="st-rows">${list.map(rowOf).join('')}</ol></section>`;
+  const btn = (kind, n) => `<button type="button" role="tab" class="${kind}" aria-controls="st-${kind}" data-tab="${kind}">${kind === 'pro' ? 'Pros' : 'VIPs'} · ${n}</button>`;
+  const split = $('#st-split');
+  split.innerHTML = weekCard(by(data.pick?.pro), 'pro') + weekCard(by(data.pick?.vip), 'vip')
+    + `<div class="st-tabs" role="tablist" aria-label="Pros or VIPs">${btn('pro', pros.length)}${btn('vip', vips.length)}</div>` + col('pro', pros) + col('vip', vips);
+  const show = (t) => { split.dataset.tab = t; for (const b of split.querySelectorAll('[data-tab]')) b.setAttribute('aria-selected', b.dataset.tab === t); };
+  show(tab);
+  split.querySelector('.st-tabs').addEventListener('click', (e) => { const t = e.target.closest('[data-tab]')?.dataset.tab; if (!t) return; show(t); try { localStorage.setItem(TAB, t); } catch {} });
+  split.removeAttribute('aria-hidden'); split.classList.add('fade-in');
 })();
 console.assert(signed(5) === '+5' && signed(-3) === '−3' && initials('Jerry (ChessNetwork)') === 'J' && nick('cc:x') === 'x', 'stars');
