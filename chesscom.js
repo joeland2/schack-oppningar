@@ -83,6 +83,9 @@ export async function fetchCC(name, onGame, since, perf, max, until = null) {
   return games;
 }
 
+// Games as Chess.com's archives give them (kept for the known pros by the pros function), made over.
+export async function fromCC(games) { const names = await openingNames(); return games.map((g) => convert(g, names)); }
+
 // Games per time control and the country, as Lichess's user call gives them to perfsOf.
 export async function ccUser(name) {
   const u = encodeURIComponent(nick(name).toLowerCase());

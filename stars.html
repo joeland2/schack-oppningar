@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pros &amp; VIPs</title>
+  <meta name="description" content="The pro and the streamer of the week, and how the best players and chess creators played lately, with their play styles.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="style.css?v=20261101130216">
+  <script src="header.js?v=20261101130216" defer></script>
+  <script src="theme.js?v=20261101130216"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-in">
+      <a class="brand" href="./">Chess<span>Trainer</span></a>
+      <nav class="top-nav" aria-label="Sections"><a href="./#openings">Openings</a><a href="practice.html">My practice</a><a href="profile.html">Profile</a></nav>
+      <form class="top-search" action="profile.html" role="search"><input name="u" type="search" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="Find a player" aria-label="Find a player on Lichess or Chess.com" title="A Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false"></form>
+      <details class="top-players"><summary title="Your starred players" aria-label="Your starred players"><svg class="ico ico-solid" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></summary><div class="top-players-menu"></div></details>
+      <button id="theme" class="ghost theme" type="button" aria-label="Switch theme"></button>
+    </div>
+  </header>
+
+  <main class="wrap profile stars">
+    <h1 class="pf-h1">Pros &amp; VIPs</h1>
+    <p class="info">The best players and the people you watch, Lichess and Chess.com together. The week is the last 7 days.</p>
+    <p id="st-msg" class="info" aria-live="polite">Loading…</p>
+    <div id="st-week" class="st-week"></div>
+    <h2 class="st-h2">Played lately</h2>
+    <p class="info">Who played most lately, their style and how their week went. Tap one for their card.</p>
+    <ol id="st-rows" class="st-rows"></ol>
+  </main>
+
+  <script type="module" src="stars.js?v=20261101130216"></script>
+</body>
+</html>

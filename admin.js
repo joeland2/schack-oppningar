@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261101123846';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101123846';
+import { account, login, finishLogin } from './lichess.js?v=20261101130216';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101130216';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -185,7 +185,7 @@ function cols(values, labels, every = 1) {
     ${labels.map((l, i) => (i % every ? '' : `<text x="${i * bw + bw / 2}" y="${H + 15}" text-anchor="middle">${l}</text>`)).join('')}</svg>`;
 }
 const flag = (c) => (c && /^[A-Z]{2}$/.test(c) ? String.fromCodePoint(...[...c].map((x) => 0x1f1a5 + x.charCodeAt(0))) + ' ' : '');
-const PAGE = { 'index.html': 'Openings', 'practice.html': 'My practice', 'profile.html': 'Profile', 'game.html': 'Game review', 'mistakes.html': 'Mistakes', 'admin.html': 'Admin', 'basics.html': 'Basics', 'pros.html': 'Puzzles' };
+const PAGE = { 'index.html': 'Openings', 'practice.html': 'My practice', 'profile.html': 'Profile', 'game.html': 'Game review', 'mistakes.html': 'Mistakes', 'admin.html': 'Admin', 'basics.html': 'Basics', 'pros.html': 'Puzzles', 'stars.html': 'Pros' };
 const pageName = (p) => PAGE[p] || p;
 
 // The overview: four numbers for the last 7 days with the change against the 7 before, how far that

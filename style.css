@@ -2106,6 +2106,9 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-pro-tag { padding: 4px 9px 3px; border-radius: 3px; background: #d4a017; color: #141414; font: 400 .8em/1 var(--font-poster); letter-spacing: .12em; }
 .pf-pro-line b { font-weight: 700; }
 .pf-pro-title { padding: 3px 7px; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); font: 700 .7em/1 var(--font-body); letter-spacing: .08em; }
+#profile > .pf-bio { max-width: 68ch; margin: calc(var(--tight) - var(--flow)) 0 0; color: var(--muted); font-size: 15px; }
+#profile > .pf-bio b { color: var(--ink); }
+@media (max-width: 640px) { #profile > .pf-bio { text-align: center; margin-inline: auto; } }
 @media (max-width: 640px) { #profile > .pf-pro-line { justify-content: center; margin-top: -14px; } }
 /* The account's site, and a known player's other accounts, as buttons under the name */
 #profile > .pf-accts { position: relative; display: flex; flex-wrap: nowrap; gap: 6px; min-width: 0; margin-top: calc(var(--tight) - var(--flow)); }
@@ -2518,3 +2521,25 @@ main.profile:has(#admin) { max-width: 1320px; }
 .eg-plan b { color: var(--ink); }
 #eg-plan > p { margin: 8px 0 10px; }
 #eg .op-name small { font: 12px var(--font-mono); color: var(--muted); margin-left: 6px; }
+
+/* Pros & VIPs (stars.html): the pro and the streamer of the week, then everyone by when they last played */
+.st-week { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.st-wk { display: grid; gap: 8px; align-content: start; padding: 16px 18px; border-radius: 6px; background: #12100e; color: #f4efe6; text-decoration: none; }
+a.st-wk:hover h2 { text-decoration: underline; }
+.st-wk.pro { box-shadow: 0 0 0 3px #d4a017; } .st-wk.vip { box-shadow: 0 0 0 3px #e0459b; }
+.st-k { font: 400 12px var(--font-poster); letter-spacing: .14em; } .st-wk.pro .st-k { color: #d4a017; } .st-wk.vip .st-k { color: #ff8cc6; }
+.st-wk h2 { margin: 0; font: 400 clamp(26px, 4vw, 32px)/.95 var(--font-poster); text-transform: uppercase; }
+.st-style { margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font: 400 18px var(--font-poster); text-transform: uppercase; }
+.st-style span { font-size: 15px; color: #a8a093; }
+.st-why, .st-bio { margin: 0; font-size: 14px; color: #d9d0c1; } .st-why b { color: #f4efe6; } .st-bio { color: #a8a093; }
+.st-stats { display: flex; gap: 18px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid #2e2a25; }
+.st-stats div { display: grid; } .st-stats b { font: 400 24px/1 var(--font-poster); color: #ff6a2f; } .st-stats small { font-size: 11px; color: #a8a093; text-transform: uppercase; letter-spacing: .08em; }
+.st-h2 { margin: 28px 0 0; font: 400 28px var(--font-poster); text-transform: uppercase; }
+.st-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.st-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; color: var(--ink); text-decoration: none; }
+.st-row:hover { background: var(--raised); }
+.st-av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #1b1815; color: #f4efe6; font: 400 14px var(--font-poster); }
+.st-av.pro { box-shadow: 0 0 0 2px #d4a017; } .st-av.vip { box-shadow: 0 0 0 2px #e0459b; }
+.st-who small { display: block; color: var(--muted); font-size: 12px; }
+.st-tag { padding: 2px 6px 1px; border-radius: 3px; font: 400 11px/1.2 var(--font-poster); letter-spacing: .12em; } .st-tag.pro { background: #d4a017; color: #141414; } .st-tag.vip { background: #e0459b; color: #fff; }
+.st-num { display: grid; justify-items: end; } .st-num b { font: 400 20px var(--font-poster); } .st-num small { font: 500 12px var(--font-mono); } .st-num .up { color: var(--good); } .st-num .dn { color: var(--bad); }

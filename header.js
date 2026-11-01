@@ -53,7 +53,7 @@
     nav?.querySelector('a[href="profile.html"]')?.remove();
     nav?.querySelector('a[href="practice.html"]')?.remove();
     if (!user() && !document.querySelector('#lichess-login')) at?.insertAdjacentHTML('beforebegin', '<a class="top-login" href="profile.html?login" title="Log in with Lichess to see your profile">Log in</a>');
-    nav?.insertAdjacentHTML('beforeend', `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a><a href="playstyles.html"${page === 'playstyles.html' ? ' aria-current="page"' : ''}>Styles</a>`);
+    nav?.insertAdjacentHTML('beforeend', `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a><a href="stars.html"${page === 'stars.html' ? ' aria-current="page"' : ''}>Pros</a><a href="playstyles.html"${page === 'playstyles.html' ? ' aria-current="page"' : ''}>Styles</a>`);
     const who = user();
     if (who) {
       const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`), btn = document.querySelector('#lichess-login');

@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101123846';
-import { STYLE_OF } from './styles.js?v=20261101123846';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261101123846';
+import { account, login, finishLogin } from './lichess.js?v=20261101130216';
+import { STYLE_OF } from './styles.js?v=20261101130216';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101130216';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -662,8 +662,17 @@ function storedGames(name) {
 let RAW = null, RAW_NAME = ''; // the games in use, kept for analysing them here
 let quiet = false; // checking for new games behind a profile already shown: no progress messages
 const msgEl = () => (quiet ? { textContent: '' } : $('#profile-msg'));
+// A known pro's or streamer's games, fetched every few hours by the pros function into our own
+// storage: read in one go, so only the games since come from Lichess (which sends ~20 a second).
+const PRO_STORE = 'https://duhlvhjtxoofgnjegspa.supabase.co/storage/v1/object/public/pros';
+const serverGames = (name) => (isCC(name)
+  ? fetch(`${PRO_STORE}/cc_${encodeURIComponent(nick(name).toLowerCase())}.json`).then((r) => (r.ok ? r.json() : [])).then(fromCC)
+  : fetch(`${PRO_STORE}/${encodeURIComponent(name.toLowerCase())}.ndjson`).then((r) => (r.ok ? r.text() : ''))
+    .then((t) => t.split('\n').filter(Boolean).map((l) => JSON.parse(l)).filter((g) => g.variant === 'standard'))).then((gs) => gs.slice(0, MAX)).catch(() => []);
 async function build(name) {
-  const msg = msgEl(), have = storedGames(name) || [];
+  const msg = msgEl();
+  let have = storedGames(name) || [];
+  if (!have.length && proOf(name)) have = await serverGames(name);
   msg.textContent = have.length ? `Fetching ${nick(name)}'s new games from ${siteOf(name)}…` : `Fetching ${nick(name)}'s last ${MAX} rated games from ${siteOf(name)}…`;
   // Lichess sends about 20-30 games a second, so a first look-up takes a while: the profile is drawn
   // from the first EARLY games as soon as they are in, then drawn again from all of them.
@@ -1057,6 +1066,48 @@ const proLine = (name) => {
 const VIP_NAMES = { agadmator: 'Antonio Radić', tigerlilov: 'IM Valeri Lilov', 'cc:agadmator': 'Antonio Radić', 'cc:tigerlilov': 'IM Valeri Lilov', 'cc:GothamChess': 'IM Levy Rozman',
   'cc:AnnaCramling': 'Anna Cramling', 'cc:AlexandraBotez': 'Alexandra Botez', 'cc:NemsKo': 'Nemo Zhou', 'cc:Chessbrah': 'GM Eric Hansen',
   'cc:ChessNetwork': 'Jerry (ChessNetwork)', 'cc:TheChessNerd': 'Zachary Saine' };
+// A few words on each person, shown on their profiles with what their games show: where from, and what
+// they are known for. Keyed by the name in PRO_NAMES / VIP_NAMES without the title.
+const BIOS = {
+  'Magnus Carlsen': ['Norway', 'World Champion from 2013 to 2023, with the highest classical rating ever reached (2882).'],
+  'Hikaru Nakamura': ['the United States', 'Five-time US champion, one of the strongest blitz and bullet players ever, and the most-watched chess streamer.'],
+  'Alireza Firouzja': ['France (born in Iran)', 'In 2021, at 18, the youngest player ever to pass a 2800 rating.'],
+  'Nihal Sarin': ['India', 'Grandmaster at 14, and among the fastest blitz and bullet players online.'],
+  'Andrew Tang': ['the United States', 'A grandmaster known above all for bullet, where he is among the very best.'],
+  'Sergei Zhigalko': ['Belarus', 'A grandmaster and one of the most active top blitz players on Lichess.'],
+  'Dmitry Andreikin': ['Russia', 'A grandmaster who reached the final of the 2013 World Cup.'],
+  'Aleksei Sarana': ['Russia', 'A grandmaster and one of the strongest blitz players on Lichess.'],
+  'Oleksandr Bortnyk': ['Ukraine', 'A grandmaster and streamer, known for blitz and bullet.'],
+  'Vladislav Artemiev': ['Russia', 'A grandmaster and one of the strongest rapid and blitz players in the world.'],
+  'Anish Giri': ['the Netherlands', 'The Dutch number one for more than a decade; won Tata Steel Masters in 2023.'],
+  'Daniel Naroditsky': ['the United States', 'A grandmaster, coach and commentator, loved for his speedrun videos. He died in October 2025, aged 29.'],
+  'Eric Rosen': ['the United States', 'An International Master and streamer, famous for his traps.'],
+  'John Bartholomew': ['the United States', 'An International Master who teaches the game on YouTube with Chess Fundamentals.'],
+  'Fabiano Caruana': ['the United States', 'World Championship challenger in 2018 and several times US champion.'],
+  'Ian Nepomniachtchi': ['Russia', 'Played two World Championship matches, in 2021 and 2023.'],
+  'Levon Aronian': ['the United States (long for Armenia)', 'Long a world top-five player; led Armenia to three Olympiad gold medals.'],
+  'Daniil Dubov': ['Russia', 'World Rapid Champion in 2018, known for wild opening ideas.'],
+  'Benjamin Bok': ['the Netherlands', 'A grandmaster and streamer.'],
+  'Jose Martinez': ['Peru', 'A grandmaster and one of the best bullet players online.'],
+  'Robert Hess': ['the United States', 'A grandmaster and one of Chess.com’s best-known commentators.'],
+  'Antonio Radić': ['Croatia', 'Runs agadmator’s Chess Channel, for years the biggest chess channel on YouTube.'],
+  'Valeri Lilov': ['Bulgaria', 'An International Master who teaches chess on YouTube.'],
+  'Levy Rozman': ['the United States', 'An International Master behind GothamChess, the most-subscribed chess channel on YouTube.'],
+  'Anna Cramling': ['Sweden', 'A streamer and Woman FIDE Master, daughter of grandmasters Pia Cramling and Juan Manuel Bellón.'],
+  'Alexandra Botez': ['Canada and the United States', 'A Woman FIDE Master and streamer, who started BotezLive with her sister Andrea.'],
+  'Nemo Zhou': ['Canada', 'A Woman Grandmaster and streamer.'],
+  'Eric Hansen': ['Canada', 'A grandmaster and one of the founders of Chessbrah.'],
+  'Jerry (ChessNetwork)': ['the United States', 'A National Master who has taught chess on YouTube as ChessNetwork since 2007.'],
+  'Zachary Saine': [null, 'A commentator and YouTuber behind The Chess Nerd.'],
+};
+// Under the pro line: the bio, then what the games on this card show (the style and the main openings).
+const proBio = (name, p) => {
+  const who = proOf(name)?.replace(/^(GM|IM) /, ''), b = who && BIOS[who];
+  if (!b) return '';
+  const top = (l) => l?.[0]?.fam.replace(/^vs /, ''), w = top(p.openings?.w), bl = top(p.openings?.b), t = p.type || [];
+  const plays = [w && `the ${w} as White`, bl && `the ${bl} as Black`].filter(Boolean).join(' and ');
+  return `<p class="pf-bio">${b[0] ? `From ${esc(b[0])}. ` : ''}${esc(b[1])}${t[0] ? ` Style in these games: <b>${esc(t[0].name)}</b>${t[1] ? ` with ${esc(t[1].name.toLowerCase())}` : ''}.` : ''}${plays ? ` Plays mostly ${esc(plays)}.` : ''}</p>`;
+};
 const VIPS = new Map(Object.entries(VIP_NAMES).map(([k, v]) => [k.toLowerCase(), v]));
 const proOf = (name) => PROS.get(String(name).toLowerCase()) || VIPS.get(String(name).toLowerCase()) || null;
 const proKind = (name) => (PROS.has(String(name).toLowerCase()) ? 'pro' : VIPS.has(String(name).toLowerCase()) ? 'vip' : '');
@@ -1551,7 +1602,7 @@ function render(name, at, full) {
   document.title = me ? 'Your Profile' : `${nick(name)} · Profile`;
   const kpis = [['Win rate', pct(p.winRate ?? p.score)], ['Accuracy', p.acc !== null && p.analysed >= KPI_MIN ? `${p.acc}%` : '–'], ['Blunders / game', p.blunders !== null && p.analysed >= KPI_MIN ? p.blunders.toFixed(1) : '–'], ['Draws', pct(p.draws)]].filter(Boolean);
   $('#profile').innerHTML = `
-    ${accountsRow(name)}${combo && comboOwn ? comboRow() : ''}${nameRow(name)}${proLine(name)}
+    ${accountsRow(name)}${combo && comboOwn ? comboRow() : ''}${nameRow(name)}${proLine(name)}${proBio(name, p)}
     <section class="pf-hero">
       <div class="pf-card-col">${playerCard(name, p, t, skills)}${combo ? '' : speedBar(name, full, sp, avail)}${combo ? '' : `<p class="pf-ago">${me ? 'Your' : 'The'} card from ${AGO.map(([m, t]) => `<a href="${agoLink(name, m)}">${t.replace(' ago', '')}</a>`).join(' · ')} ago</p>`}${me ? starsStrip() : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
         <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
@@ -1997,7 +2048,7 @@ function failed(name, err) {
 
 // A profile from games already fetched (Lichess's shape), without fetching: for checking the types on many players.
 const profileFromRaw = async (name, raw) => (await loadScores(), profileOf(raw.map((g) => readGame(g, name.toLowerCase()))));
-export { TYPE_ABOUT, keptTypes, cardImage, playerCard, flagHtml, loadFlags, bandColor, tierOf, TIERS_AT, proClass, proOf, PROS, boardCard, fineSkillsOf, gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
+export { TYPE_ABOUT, BIOS, keptTypes, cardImage, playerCard, flagHtml, loadFlags, bandColor, tierOf, TIERS_AT, proClass, proOf, PROS, boardCard, fineSkillsOf, gamesReady, build, current, cache, myName, skillsOf, storedGames, keepGame, engineEval, applyEvals, winPct, PV, traitsOf, profileFromRaw };
 // ---------- The games themselves ----------
 // The newest games as a list; each opens on game.html with the board, how it went and the key moves.
 const STATUS = { mate: 'mate', resign: 'resignation', outoftime: 'time', timeout: 'time', draw: 'agreement', stalemate: 'stalemate', aborted: 'abort' };
