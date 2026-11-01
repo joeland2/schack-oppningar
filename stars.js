@@ -1,7 +1,7 @@
 // Pros & VIPs: the pro and the streamer of the week, each with why and a few words on them, then everyone
-// by when they last played. From week.json, which the pros function writes once a day (see supabase/functions/pros).
-import { BIOS, keptTypes } from './profile.js?v=20261101130216';
-import { nick, isCC } from './chesscom.js?v=20261101130216';
+// by when they last played. From week.json, which the pros function writes every 6 hours (see supabase/functions/pros).
+import { BIOS, keptTypes } from './profile.js?v=20261101130648';
+import { nick, isCC } from './chesscom.js?v=20261101130648';
 const WEEK = 'https://duhlvhjtxoofgnjegspa.supabase.co/storage/v1/object/public/pros/week.json';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -29,14 +29,15 @@ const rowOf = (r) => `<li><a class="st-row" href="${link(r)}"><span class="st-av
   <span class="st-num"><b>${r.blitz ?? '–'}</b>${r.blitzGames > 1 ? `<small class="${r.change >= 0 ? 'up' : 'dn'}">${signed(r.change)}</small>` : ''}</span></a></li>`;
 
 (async () => {
-  const data = await fetch(WEEK).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const data = await fetch(WEEK, { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   if (!data) { $('#st-msg').textContent = 'The week is not counted yet. Try again later today.'; return; }
   // The kept style of each person's main account, as their profile shows it.
   const typed = await keptTypes(data.people.map((r) => ({ name: r.account, speed: 'blitz' }))).catch(() => []);
   const people = data.people.map((r, i) => ({ ...r, style: typed[i]?.style, strength: typed[i]?.strength }));
-  const by = (who) => people.find((r) => r.who === who);
+  // The pro and the streamer of the week stay as chosen on Monday, with that day's numbers; their style as now.
+  const by = (r) => { const now = r && people.find((x) => x.who === r.who); return r && { ...r, style: now?.style, strength: now?.strength }; };
   $('#st-msg').textContent = `Counted ${ago(data.at)}.`;
-  $('#st-week').innerHTML = weekCard(by(data.pro), 'pro') + weekCard(by(data.vip), 'vip');
+  $('#st-week').innerHTML = weekCard(by(data.pick?.pro), 'pro') + weekCard(by(data.pick?.vip), 'vip');
   $('#st-rows').innerHTML = people.sort((a, b) => (b.last || 0) - (a.last || 0)).map(rowOf).join('');
 })();
 console.assert(signed(5) === '+5' && signed(-3) === '−3' && initials('Jerry (ChessNetwork)') === 'J' && nick('cc:x') === 'x', 'stars');
