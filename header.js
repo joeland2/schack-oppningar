@@ -101,7 +101,7 @@ addEventListener('DOMContentLoaded', () => {
   const CACHE = ['-sf', '-games', '-profiles', '-mistakes'];
   const synced = (k) => (k.startsWith('opening-book-v2') && !CACHE.some((c) => k.endsWith(c))) || k.endsWith('-solved-v1') || k === 'chess-theme' || k === 'chess-trainer-card-look' || k === 'chess-trainer-admin-notes';
   // Lists and progress are added together on a device's first sync; everything else simply takes the newer.
-  const MERGE = (k) => k === 'chess-trainer-admin-notes' || k === 'opening-book-v2' || k === 'opening-book-v2-rep' || k === 'opening-book-v2-players' || k.endsWith('-solved-v1');
+  const MERGE = (k) => k === 'chess-trainer-admin-notes' || k === 'opening-book-v2' || k === 'opening-book-v2-rep' || k === 'opening-book-v2-players' || k === 'opening-book-v2-endgames' || k.endsWith('-solved-v1');
   const ls = window.localStorage, set = Storage.prototype.setItem, del = Storage.prototype.removeItem;
   const token = () => { try { return JSON.parse(ls.getItem('chess-trainer-lichess-login'))?.token || null; } catch { return null; } };
   const readMeta = () => { try { return JSON.parse(ls.getItem(META)) || {}; } catch { return {}; } };

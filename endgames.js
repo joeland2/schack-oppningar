@@ -4,10 +4,12 @@
 // Lichess tablebase (tablebase.lichess.ovh, exact for up to 7 pieces) says what every move is worth
 // and plays the defence. A slip is a move that lets the win go: a draw, stalemate or a piece given away.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake, instruction } from './board.js?v=20261101101035';
+import { drawBoard, enableDrag, shake, instruction } from './board.js?v=20261101102221';
 
 const $ = (s) => document.querySelector(s);
-const STORE = 'opening-book-v2-endgames'; // { [id]: { learned, box, due, best } }, synced with your account (header.js)
+// { [id]: { learned: 0|1, box, due, times: [your three best ms] } }, synced with your account (header.js). Numbers
+// and lists, so progress made logged out adds to the account's when you log in (the higher number, both lists).
+const STORE = 'opening-book-v2-endgames';
 const DAY = 864e5, INTERVALS = [0, 1, 3, 7, 14, 30]; // days per box, as for an opening's lines
 const NAME = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
@@ -110,7 +112,8 @@ async function newStart(l) {
 const load = () => { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch { return {}; } };
 let prog = load();
 const save = () => { try { localStorage.setItem(STORE, JSON.stringify(prog)); } catch {} };
-const rec = (id) => (prog[id] ??= { learned: false, box: 0, due: 0, best: 0 });
+const rec = (id) => (prog[id] ??= { learned: 0, box: 0, due: 0, times: [] });
+const bestOf = (r) => (r?.times?.length ? Math.min(...r.times) : 0);
 const isDue = (r) => r && r.box > 0 && r.due <= Date.now();
 
 // ---------- State ----------
@@ -136,7 +139,7 @@ function renderList() {
     <ul>${LESSONS.filter((l) => l.group === g).map((l) => {
       const r = prog[l.id], chip = isDue(r) ? ['pagar', 'Review'] : r?.box > 0 ? ['sitter', 'Cleared'] : r?.learned ? ['pagar', 'Learned'] : ['ny', 'New'];
       return `<li><button class="op ${l === L ? 'active' : ''}" data-id="${l.id}">
-        <span class="eco">${l.tag}</span><span class="op-name">${l.title}${r?.best ? ` <small>best ${clock(r.best)}</small>` : ''}</span>
+        <span class="eco">${l.tag}</span><span class="op-name">${l.title}${bestOf(r) ? ` <small>best ${clock(bestOf(r))}</small>` : ''}</span>
         <span class="chip ${chip[0]}">${chip[1]}</span></button></li>`;
     }).join('')}</ul></div>`).join('');
 }
@@ -147,7 +150,7 @@ function renderPath() {
   const r = prog[L.id];
   $('#eg-due').textContent = isDue(r) ? 'due for review' : r?.box > 0 ? `next review in ${plural(Math.max(1, Math.ceil((r.due - Date.now()) / DAY)), 'day')}` : 'from memory';
   $('#trial-clock').hidden = mode !== 'time';
-  $('#tc-best').textContent = r?.best ? `best ${clock(r.best)}` : '';
+  $('#tc-best').textContent = bestOf(r) ? `best ${clock(bestOf(r))}` : '';
   $('#hint').hidden = $('#show').hidden = mode === 'time';
 }
 document.querySelectorAll('.path-step').forEach((b) => b.addEventListener('click', () => { mode = b.dataset.mode; renderPath(); begin(); }));
@@ -267,10 +270,10 @@ function finish() {
   const r = rec(L.id);
   window.track?.('endgame', `${L.id} ${mode}`);
   if (mode === 'learn') {
-    r.learned = true;
+    r.learned = 1;
     say('Checkmate! Lesson learned. Press New position for another one, or go on to <b>Practice</b> to win it from memory.', 'good');
   } else if (mode === 'try') {
-    r.learned = true;
+    r.learned = 1;
     if (!misses && !assisted) {
       r.box = Math.min(r.box + 1, INTERVALS.length - 1); r.due = Date.now() + INTERVALS[r.box] * DAY;
       say(`Checkmate with no slip: cleared. It comes back for review in ${plural(INTERVALS[r.box], 'day')}. Try the <b>Time challenge</b> next.`, 'good');
@@ -279,8 +282,8 @@ function finish() {
       say(`Checkmate, but ${assisted ? 'with help' : `with ${plural(misses, 'slip')}`}, so it is not cleared yet. Press New position to try again.`, 'good');
     }
   } else {
-    const was = r.best;
-    if (!was || elapsed < was) r.best = Math.round(elapsed);
+    const was = bestOf(r);
+    r.times = [...(r.times || []), Math.round(elapsed)].sort((a, b) => a - b).slice(0, 3);
     say(`Checkmate in ${clock(elapsed)}.${!was ? '' : elapsed < was ? ` A new best: it was ${clock(was)}.` : ` Your best is ${clock(was)}.`} Press New position to go again.`, 'good');
   }
   save(); renderList(); renderPath();
