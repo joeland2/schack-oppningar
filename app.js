@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101235135';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101235135';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101235135';
-import { NAMED_TRAPS } from './traps.js?v=20261101235135';
-import { GUIDE } from './guide.js?v=20261101235135';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101235135';
-import { maia3Move } from './maia3.js?v=20261101235135';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101235135';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101235135';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101235135';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101235135';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101235424';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101235424';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101235424';
+import { NAMED_TRAPS } from './traps.js?v=20261101235424';
+import { GUIDE } from './guide.js?v=20261101235424';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101235424';
+import { maia3Move } from './maia3.js?v=20261101235424';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101235424';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101235424';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101235424';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101235424';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position

@@ -91,7 +91,7 @@ export async function openSupport() {
     return;
   }
   body.innerHTML = `<p><b>Thank you for supporting Chess Labs, ${esc(me.name)}.</b> Pick the frame around your card:</p>${grid(true, st.frame)}${err}
-    ${st.customer ? '<button type="button" class="ghost sup-portal">Change or cancel the subscription</button>' : ''}`;
+    ${st.customer ? '<button type="button" class="ghost sup-portal">Cancel the subscription or change card</button>' : ''}`;
   body.querySelectorAll('[data-frame]').forEach((b) => b.addEventListener('click', async () => {
     try {
       const { frame } = await api('', { frame: b.dataset.frame });
