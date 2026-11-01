@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101230805';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101230805';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101230805';
-import { NAMED_TRAPS } from './traps.js?v=20261101230805';
-import { GUIDE } from './guide.js?v=20261101230805';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101230805';
-import { maia3Move } from './maia3.js?v=20261101230805';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101230805';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101230805';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101230805';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101230805';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101230958';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101230958';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101230958';
+import { NAMED_TRAPS } from './traps.js?v=20261101230958';
+import { GUIDE } from './guide.js?v=20261101230958';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101230958';
+import { maia3Move } from './maia3.js?v=20261101230958';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101230958';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101230958';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101230958';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101230958';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3322,7 +3322,15 @@ function stepForward() {
     for (const sq of [m.from, m.to]) boardEl.querySelector(`[data-sq="${sq}"]`)?.click();
     return;
   }
-  if (mode !== 'explore' || busy || !redo.length) return;
+  if (mode !== 'explore' || busy) return;
+  // Exploring with nothing to redo: play the move the arrow shows, as in Learn.
+  if (!redo.length) {
+    if (hintSq.length !== 2) return;
+    const [from, to] = hintSq;
+    sel = null;
+    for (const sq of [from, to]) boardEl.querySelector(`[data-sq="${sq}"]`)?.click();
+    return;
+  }
   const m = redo.pop();
   exploreMove(m.from, m.to, m.promotion, true);
 }
