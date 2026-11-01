@@ -2393,13 +2393,14 @@ main.profile:has(#admin) { max-width: 1320px; }
 .ps-how { color: var(--muted); font-size: 13px !important; } .ps-how b { color: var(--ink); font-weight: 600; }
 .lb-type a { color: inherit; text-decoration: none; } .lb-type a:hover { color: var(--hot); text-decoration: underline; }
 /* The account sits above the name as a small byline: the site, then the name; a pro's other accounts beside it */
-#profile > .pf-accts { margin-top: 0; gap: 18px; }
+#profile > .pf-accts { margin-top: 0; }
 #profile > .pf-accts + .pf-name-row { margin-top: 6px; }
-#profile .pf-acct { padding: 0; border: 0; border-radius: 0; background: none; font-size: 14px; gap: 7px; }
-#profile .pf-acct small { font-size: 11px; letter-spacing: .16em; }
-#profile .pf-acct:hover { background: none; text-decoration: underline; }
-#profile .pf-acct[aria-current] { background: none; color: var(--hot); }
-#profile .pf-acct[aria-current] small { color: var(--muted); opacity: 1; }
+#profile > .pf-accts { gap: 6px; }
+#profile .pf-acct { padding: 6px 11px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); font-size: 14px; gap: 7px; }
+#profile .pf-acct small { font-size: 10px; letter-spacing: .14em; }
+#profile .pf-acct:hover { background: var(--raised); }
+#profile .pf-acct[aria-current] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+#profile .pf-acct[aria-current] small { color: inherit; opacity: .7; }
 #profile .pf-accts-more summary { padding: 0 4px; border: 0; color: var(--muted); }
 /* The site the card's rating is from: a tilted sticker on the top edge, after the PRO / VIP tag when there is one */
 .pf-site { position: absolute; top: -13px; left: 14px; z-index: 2; padding: 4px 11px 3px; border: 3px solid #fff; border-radius: 999px; background: #141414; color: #f4efe6; font: 400 13px/1 var(--font-poster); letter-spacing: .1em; text-transform: uppercase; transform: rotate(-4deg); box-shadow: 0 3px 8px rgb(0 0 0 / .3); pointer-events: none; }

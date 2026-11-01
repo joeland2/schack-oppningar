@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101123313';
-import { STYLE_OF } from './styles.js?v=20261101123313';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261101123313';
+import { account, login, finishLogin } from './lichess.js?v=20261101123846';
+import { STYLE_OF } from './styles.js?v=20261101123846';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261101123846';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1160,7 +1160,9 @@ async function loadFlags(names) {
 // The flag as an image for the downloaded cards (null without one).
 const flagImage = (name) => { const c = FLAGS.get(String(name).toLowerCase()); return c ? new Promise((ok) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => ok(im); im.onerror = () => ok(null); im.src = flagSrc(c); }) : Promise.resolve(null); };
 // The site the rating is from, as a sticker on the card's top edge, so 1221 on Lichess is not read as Chess.com.
-const siteTag = (name) => `<span class="pf-site">${isCC(name) ? 'Chess.com' : 'Lichess'}</span>`;
+// A Combined card with games from both sites has no single site, so no sticker.
+const bothSites = () => !!combo && combo.some(isCC) && combo.some((n) => !isCC(n));
+const siteTag = (name) => bothSites() ? '' : `<span class="pf-site">${isCC(name) ? 'Chess.com' : 'Lichess'}</span>`;
 function playerCard(name, p, t, skills) {
   const known = skills.filter((x) => x.v !== null);
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
@@ -1225,7 +1227,7 @@ function drawCard(ctx, x, y, name, p, t, skills, piece, flag = null) {
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(-52, -38, 104, 76, 10); ctx.fill(); ctx.shadowColor = 'transparent';
     ctx.beginPath(); ctx.roundRect(-46, -32, 92, 64, 5); ctx.clip(); ctx.drawImage(flag, -46, -32, 92, 64); ctx.restore();
   }
-  { // the site sticker on the top edge, after the PRO tag on a pro's card (as .pf-site)
+  if (!bothSites()) { // the site sticker on the top edge, after the PRO tag on a pro's card (as .pf-site)
     const label = (isCC(name) ? 'Chess.com' : 'Lichess').toUpperCase();
     ctx.save(); ctx.font = '400 26px Anton'; ctx.letterSpacing = '2px'; const w = ctx.measureText(label).width + 40;
     ctx.translate((proKind(name) ? 140 : 36) + w / 2, 2); ctx.rotate(-4 * Math.PI / 180);
@@ -1947,6 +1949,8 @@ async function combined(name) {
   if (!group || group.length < 2) { combo = null; return show(name, false); }
   const mine = ++runs, on = own ? group.filter((n) => !isOff(n)) : group;
   combo = group; comboOwn = own;
+  if (!$('#profile .pf-hero')) $('#profile').innerHTML = `<section class="pf-hero pf-skeleton" aria-hidden="true"><div class="pf-card-col"><div class="pf-pcard"><b class="pf-ovr">–</b><p class="pf-pcard-name">${esc(nick(name))}</p></div></div>
+    <div class="pf-hero-text"><span class="pf-sk-line w60"></span><span class="pf-sk-line"></span><span class="pf-sk-line"></span><span class="pf-sk-line w80"></span></div></section>`;
   await gamesReady; await loadScores();
   quiet = true;
   try {
@@ -2344,6 +2348,13 @@ function start() {
   if (name) show(name, false); else ask();
 }
 if ($('#profile')) addEventListener('popstate', () => start());
+// Between one player's accounts and Combined: the page stays, only the card is drawn again.
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('#profile a.pf-acct');
+  if (!a || e.metaKey || e.ctrlKey || e.shiftKey || a.getAttribute('aria-current')) return;
+  e.preventDefault(); a.closest('details')?.removeAttribute('open');
+  history.pushState(null, '', a.href); start();
+});
 
 // Last in the file, so every constant above is defined before the page draws.
 if ($('#profile')) { // the practice page imports this module for the above; only the profile page draws itself
