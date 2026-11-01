@@ -5,6 +5,7 @@
 // data is { [key]: { v: string | null, t: number } }, v being the browser's stored text (null: removed).
 // GET ?board=<speed:opening>&line=<line> needs no login: the best times on one line in Time, from every
 // player's kept stars and times, fastest first (each player's name and best time, nothing else).
+// GET ?hidden=<name> needs no login either: which parts of their profile that player hides from others.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'x-lichess-token, content-type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' };
@@ -39,6 +40,13 @@ Deno.serve(async (req) => {
       try { const s = JSON.parse(r.data?.['opening-book-v2']?.v)?.[board]?.times?.[line]; if (typeof s === 'number' && s > 0) times.push({ player: r.id, s }); } catch { /* no store */ }
     }
     return json(times.sort((a, b) => a.s - b.s).slice(0, 10));
+  }
+  // GET ?hidden=<name> needs no login: the parts of their profile a player hides from others, nothing else.
+  if (req.method === 'GET' && q.has('hidden')) {
+    const { data: r } = await db.from('user_data').select('data').eq('id', (q.get('hidden') || '').toLowerCase().slice(0, 30)).maybeSingle();
+    let off: unknown = [];
+    try { off = JSON.parse(r?.data?.['opening-book-v2-hidden']?.v || '[]'); } catch { /* none */ }
+    return json(Array.isArray(off) ? off.filter((x) => typeof x === 'string').slice(0, 20) : []);
   }
   const id = await idOf(req.headers.get('x-lichess-token'));
   if (!id) return json({ error: 'Log in with Lichess first.' }, 401);

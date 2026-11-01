@@ -1244,6 +1244,12 @@ a { text-underline-offset: .18em; }
   .pf-hero .pf-card-col > .pf-speeds { grid-area: 4 / 1 / 5 / -1; justify-self: stretch; width: auto; margin-left: 56px; }
   #profile .pf-hero:has(.pf-card-col > .pf-speeds) .pf-type-row > .pf-acts { grid-area: 5 / 1 / 6 / -1; justify-self: start; } .pf-hero .pf-card-help { order: 6; max-width: none; }
 }
+/* Profile parts a player hides from others: gone for visitors, marked on their own profile */
+#profile [data-off] { display: none !important; }
+#profile [data-private] { position: relative; opacity: .6; }
+#profile [data-private]::before { content: 'Hidden from others'; position: absolute; top: 8px; right: 10px; z-index: 1; font: 600 11px var(--font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.pf-priv-list { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 10px; }
+.pf-priv-list label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
 /* Skeleton while the games are read */
 .pf-skeleton .pf-pcard { min-height: 380px; opacity: .55; }
 .pf-skeleton .pf-hero-text { display: grid; gap: 14px; }

@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101134751';
-import { STYLE_OF } from './styles.js?v=20261101134751';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101134751';
+import { account, login, finishLogin } from './lichess.js?v=20261101134929';
+import { STYLE_OF } from './styles.js?v=20261101134929';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101134929';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1655,7 +1655,9 @@ function render(name, at, full) {
       <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Win rate counts wins out of all games; an endgame score counts a draw as half.</p>
     </section>
     ${me ? starsCard() : ''}
+    ${me && !isCC(name) ? privacyCard() : ''}
     ${nextActions(name, me)}`;
+  applyHidden(name, me);
   $('#refresh').addEventListener('click', async (e) => { // a seen player is read again quietly: the button says it is working
     Object.assign(e.target, { disabled: true, textContent: 'Reading…' });
     await run(name);
@@ -1804,6 +1806,35 @@ function opponentsCard(p, me, name) {
       return `<li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${OPP_ICON[x.name]}"/></svg><span><b>${x.name}</b><small>${me ? x.about : x.about.replace(/\byou\b/, 'them')}</small><small class="num">${pct(x.score)} · expected ${exp(x)} · ${games(x.n)}${x.n < SURE_OPP ? ' · few games so far' : ''}</small></span><span class="pf-verdict ${v[0]}">${v[1]}</span></li>`; }).join('')}</ul>
     <p class="pf-skill-scale">Expected: what the rating gaps say ${me ? 'you' : 'they'} should score against these opponents. A game can count in more than one group; groups with fewer than 10 games are left out, and under 20 is too few to read much into.</p></section>`;
 }
+// What others see: logged in, a player can hide parts of their profile from visitors. Kept in
+// opening-book-v2-hidden (synced to their account); the userdata function answers ?hidden=<name> to anyone.
+const PANELS = [['chart', 'Rating graph', '#pf-chart'], ['kpis', 'Key numbers', '.pf-kpis'], ['skills', 'Skills', '#pf-skills'], ['trend', 'Trend', '#pf-trend'],
+  ['more', 'Results and openings', '.pf-more'], ['opps', 'Who you struggle against', '.pf-opps'], ['games', 'Recent games', '#pf-games']];
+const HIDE = 'opening-book-v2-hidden';
+const myHidden = () => { try { return JSON.parse(localStorage.getItem(HIDE)) || []; } catch { return []; } };
+const HIDDEN = {};
+const hiddenOf = (name) => (HIDDEN[name.toLowerCase()] ??= isCC(name) ? Promise.resolve([])
+  : fetch(`https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/userdata?hidden=${encodeURIComponent(name.toLowerCase())}`).then((r) => (r.ok ? r.json() : [])).catch(() => []));
+// Your own profile shows everything, the hidden parts marked; a visitor's leaves them out.
+function applyHidden(name, me) {
+  if (me) { const off = myHidden(); for (const [k, , sel] of PANELS) $(`#profile ${sel}`)?.toggleAttribute('data-private', off.includes(k)); return; }
+  hiddenOf(name).then((off) => { if (shown?.[0] !== name || !Array.isArray(off)) return; for (const [k, , sel] of PANELS) if (off.includes(k)) $(`#profile ${sel}`)?.setAttribute('data-off', ''); });
+}
+function privacyCard() {
+  const off = myHidden();
+  return `<section class="pf-card pf-privacy"><h2>What others see</h2>${account()
+    ? `<p class="info">Everyone who opens your profile sees all of it, unless you untick a part here.</p>
+      <div class="pf-priv-list">${PANELS.map(([k, label]) => `<label><input type="checkbox" data-panel="${k}"${off.includes(k) ? '' : ' checked'}> ${label}</label>`).join('')}</div>`
+    : '<p class="info"><button type="button" class="link" data-link-login>Log in with Lichess</button> to choose which parts of your profile others see.</p>'}</section>`;
+}
+document.addEventListener('change', (e) => {
+  const box = e.target.closest?.('#profile [data-panel]');
+  if (!box) return;
+  const off = new Set(myHidden());
+  if (box.checked) off.delete(box.dataset.panel); else off.add(box.dataset.panel);
+  try { localStorage.setItem(HIDE, JSON.stringify([...off])); } catch {}
+  if (shown) applyHidden(shown[0], true);
+});
 function starsCard() {
   const { ops, sum } = starCounts();
   if (!ops.length) return `<section class="pf-card pf-stars"><h2>Your stars</h2><p class="info">Learn a line in the <a href="./">Openings trainer</a> for your first green star; clear it in Practice for gold, and play it without a slip in the time trial for a diamond.</p></section>`;
@@ -1955,6 +1986,7 @@ function ask() {
 
 let runs = 0; // a newer look-up wins over one still reading games
 async function run(name) {
+  hiddenOf(name); // asked at once, so the answer is in before the first draw
   await gamesReady;
   combo = null;
   const mine = ++runs, c = cache()[name.toLowerCase()];
