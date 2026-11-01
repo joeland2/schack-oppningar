@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261101214803';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101214803';
+import { account, login, finishLogin } from './lichess.js?v=20261101214918';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101214918';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -456,17 +456,53 @@ function bindCards(body) {
   box.onmousemove = (e) => { if (!tip.hidden) place(e); };
   box.onmouseout = (e) => { if (e.target.closest?.('a[href*="profile.html?u="]')) tip.hidden = true; };
 }
+// The update's bar (admin page): GitHub's public API, read once a minute (it allows 60 calls an hour without a login);
+// the percentage moves every few seconds from the time gone against the last finished run of the same kind.
+const RUNS = 'https://api.github.com/repos/joeland2/schack-oppningar/actions/workflows/snapshot-pros.yml/runs';
+let proTick = 0;
+function proBar(say, pct) {
+  const b = $('#pf-load');
+  if (!b) return;
+  b.hidden = false; b.querySelector('i').style.width = `${pct}%`; b.querySelector('.pf-load-n').textContent = `${Math.round(pct)}%`;
+  b.querySelector('[role=progressbar]').setAttribute('aria-valuenow', Math.round(pct)); b.querySelector('.pf-load-k').textContent = say;
+}
+const stepSays = (name = '') => (/Fetch every/.test(name) ? 'Fetching every account again from Lichess and Chess.com' : /snapshot_pros/.test(name) ? 'Drawing every profile' : /Push/.test(name) ? 'Saving' : 'Getting ready');
+async function watchPros() {
+  clearInterval(proTick);
+  const runs = await fetch(`${RUNS}?per_page=10`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const say = $('.ad-pros [role=status]'), btn = $('#ad-pros');
+  if (!runs || !say) return;
+  const live = runs.workflow_runs.find((r) => r.status !== 'completed'), last = runs.workflow_runs[0];
+  if (!live) {
+    if (!$('#pf-load').hidden) proBar(last.conclusion === 'success' ? 'Done: every pro and VIP is up to date.' : 'It stopped with an error.', 100);
+    say.innerHTML = last ? `Last update ${ago(last.updated_at)}${last.conclusion === 'success' ? '' : ` failed: <a href="${last.html_url}">see GitHub</a>`}.` : '';
+    btn.disabled = false;
+    return;
+  }
+  btn.disabled = true; say.textContent = '';
+  const past = runs.workflow_runs.find((r) => r.status === 'completed' && r.conclusion === 'success' && r.event === live.event);
+  const took = past ? Date.parse(past.updated_at) - Date.parse(past.run_started_at) : 30 * 60e3, from = Date.parse(live.run_started_at || live.created_at);
+  const step = (await fetch(live.jobs_url).then((r) => (r.ok ? r.json() : null)).catch(() => null))?.jobs?.[0]?.steps?.find((x) => x.status === 'in_progress')?.name;
+  const tick = () => { const gone = Date.now() - from, left = Math.max(1, Math.round((took - gone) / 60e3)); proBar(`${stepSays(step)} · about ${left} min left`, Math.min(97, (gone / took) * 100)); };
+  tick(); proTick = setInterval(tick, 5000);
+  setTimeout(watchPros, 60e3);
+}
+const ago = (iso) => { const m = Math.round((Date.now() - Date.parse(iso)) / 60e3); return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
 function show(body) {
   render(body);
-  // Every pro's and VIP's games fetched again and their profiles snapshotted, now (admin-stats starts the GitHub workflow).
-  $('#admin').insertAdjacentHTML('afterbegin', `<p class="ad-pros"><button type="button" class="ghost" id="ad-pros">Update all pros &amp; VIPs now</button> <span role="status"></span></p>`);
+  // Every pro's and VIP's games fetched again and their profiles snapshotted, now (admin-stats starts the GitHub workflow),
+  // with a bar for how far it is: the run's step and its time against the last such run's, read from GitHub's public API.
+  $('#admin').insertAdjacentHTML('afterbegin', `<div class="ad-pros"><p><button type="button" class="ghost" id="ad-pros">Update all pros &amp; VIPs now</button> <span role="status"></span></p>
+    <div id="pf-load" class="pf-load" hidden><div class="pf-load-head"><p class="pf-load-k" aria-live="polite"></p><b class="pf-load-n">0%</b></div><div class="pf-load-track" role="progressbar" aria-label="Updating pros and VIPs" aria-valuemin="0" aria-valuemax="100"><i></i></div></div></div>`);
   $('#ad-pros').addEventListener('click', async (e) => {
     const say = e.target.nextElementSibling;
     e.target.disabled = true; say.textContent = 'Starting…';
     const r = await fetch(`${FN}?update-pros`, { headers: { 'x-lichess-token': account()?.token } }).then((x) => x.json()).catch((err) => ({ error: err.message }));
-    say.textContent = r.started ? 'Started on GitHub: every account is fetched again, then every profile is redrawn. Done in about 30 minutes.' : r.error;
-    if (!r.started) e.target.disabled = false;
+    say.textContent = r.started ? '' : r.error;
+    if (!r.started) { e.target.disabled = false; return; }
+    proBar('Starting on GitHub…', 0); setTimeout(watchPros, 6000);
   });
+  watchPros();
   bindCards(body);
   bindLine(body);
   $('#ad-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = b.dataset.span === 'today' ? 'today' : Number(b.dataset.span);
