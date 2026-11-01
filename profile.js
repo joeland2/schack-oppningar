@@ -3,10 +3,10 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101233243';
-import { STYLE_OF } from './styles.js?v=20261101233243';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101233243';
-import { PEOPLE } from './pros.js?v=20261101233243';
+import { account, login, finishLogin } from './lichess.js?v=20261101233709';
+import { STYLE_OF } from './styles.js?v=20261101233709';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101233709';
+import { PEOPLE } from './pros.js?v=20261101233709';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1250,9 +1250,9 @@ function playerCard(name, p, t, skills) {
   const known = skills.filter((x) => x.v !== null);
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
   const main = p.speeds[0];
-  return `<div class="pf-pcard${proClass(name)}" style="--band:${bandColor(level(name, main))}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}${siteTag(name)}
+  return `<div class="pf-pcard${proClass(name)}" data-player="${esc(name.toLowerCase())}" style="--band:${bandColor(level(name, main))}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}${siteTag(name)}
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span>${t[1] ? `<span class="pf-str">+ ${esc(t[1].name)}</span>` : ''}</div>
-      <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title=""${esc(nick(name))}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'chosen' ? `chosen by ${esc(nick(name))}` : p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
+      <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title="${esc(nick(name))}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'chosen' ? `chosen by ${esc(nick(name))}` : p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
         ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}${p.also ? `<span class="pf-pcard-rating2">${p.also.rating} <small>${p.also.site}</small></span>` : ''}</div></div>
     <p class="pf-pcard-name">${esc(cardName(name))}</p>
     ${cardBars(skills.map((x) => [ABBR[x.label], x.v]))}
@@ -2213,7 +2213,7 @@ const pickLink = (a) => `profile.html?u=${encodeURIComponent(a)}&vs=`; // compar
 function nameRow(name) {
   const me = isMe(name), mine = myName(), fav = isFav(name);
   const icon = (d, solid = false) => `<svg class="ico${solid ? ' ico-solid' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
-  return `<div class="pf-name-row"><h1 class="pf-name" style="--n:${nick(name).length}">${esc(nick(name))}</h1>${me ? '' : `<div class="pf-acts">
+  return `<div class="pf-name-row"><h1 class="pf-name" data-supporter-name="${esc(name.toLowerCase())}" style="--n:${nick(name).length}">${esc(nick(name))}</h1>${me ? '' : `<div class="pf-acts">
     <button type="button" class="ghost pf-act pf-star" data-fav aria-pressed="${fav}" aria-label="${fav ? 'Starred: unstar' : 'Star this player'}" title="${fav ? 'Starred (press to unstar)' : 'Star this player: one tap to them from the ★ menu'}">${icon(STAR_PATH, fav)}</button>
     <a class="ghost pf-act" href="${pickLink(name)}" aria-label="Compare" title="Compare ${esc(nick(name))} with you or anyone">${icon('M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4')}</a>
     <a class="ghost pf-act" href="${isCC(name) ? ccUrl(name) : `https://lichess.org/@/${encodeURIComponent(name)}`}" target="_blank" rel="noopener" aria-label="${esc(nick(name))} on ${siteOf(name)}" title="${esc(nick(name))} on ${siteOf(name)}">${icon('M14 4h6v6M20 4l-9 9M18 14v6H4V6h6')}</a></div>`}</div>`;

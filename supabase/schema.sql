@@ -96,3 +96,17 @@ create table if not exists public.messages (
 create index if not exists messages_player on public.messages (player, at);
 alter table public.messages enable row level security;
 -- No policies: the public key can neither read nor write it; the Edge Function uses the service role.
+
+-- Added 2026-11-01: supporters, who pay a monthly Stripe subscription. Written by the supporter Edge
+-- Function: Stripe's webhook sets who is active, the player picks the frame on their card.
+create table if not exists public.supporters (
+  player   text primary key check (char_length(player) <= 30),   -- Lichess id
+  customer text,                                                 -- Stripe customer id
+  active   boolean not null default false,
+  frame    text check (char_length(frame) <= 20),                -- null: the default frame; 'none': no frame
+  since    timestamptz not null default now(),
+  updated  timestamptz not null default now()
+);
+create index if not exists supporters_customer on public.supporters (customer);
+alter table public.supporters enable row level security;
+-- No policies: only the Edge Function (service role) reads and writes it.
