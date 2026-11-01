@@ -4,7 +4,7 @@
 // Lichess tablebase (tablebase.lichess.ovh, exact for up to 7 pieces) says what every move is worth
 // and plays the defence. A slip is a move that lets the win go: a draw, stalemate or a piece given away.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake, instruction, flyStar } from './board.js?v=20261101232859';
+import { drawBoard, enableDrag, shake, instruction, flyStar } from './board.js?v=20261101233243';
 
 const $ = (s) => document.querySelector(s);
 // { [id]: { learned: 0|1, box, due, times: [your three best ms] } }, synced with your account (header.js). Numbers
@@ -31,13 +31,15 @@ const LESSONS = [
       '<b>Shrink the box.</b> Each time their king steps back, follow with the queen, still a knight\'s move away, until the king is stuck on the edge.',
       '<b>Never take the last square.</b> If their king has no move and is not in check, it is stalemate: a draw. Always leave it one square.',
       '<b>Bring your king.</b> With their king on the edge, stop moving the queen and walk your king up until the kings face each other with one square between.',
-      '<b>Mate on the edge.</b> Now the queen checks along the edge, guarded by your king or out of reach.'] },
+      '<b>Mate on the edge.</b> Now the queen checks along the edge, guarded by your king or out of reach.'],
+    ex: [['8/8/8/4k3/8/8/8/3Q2K1 w - - 0 1', 'd1', 'd3', '#15781B'], ['8/8/5k2/8/8/3Q4/8/6K1 w - - 0 1', 'd3', 'e4', '#15781B'], ['7k/8/5Q2/8/8/8/8/6K1 w - - 0 1', 'f6', 'g6', '#c4242a'], ['8/8/8/7k/8/6Q1/8/4K3 w - - 0 1', 'e1', 'f2', '#15781B'], ['7k/8/6K1/8/8/8/8/1Q6 w - - 0 1', 'b1', 'b8', '#15781B']] },
   { id: 'rr', tag: 'R+R', group: 'Basic mates', title: 'Two rooks', pieces: ['wK', 'wR', 'wR', 'bK'], min: 8, time: 45,
     intro: 'The ladder mate: two rooks mate on their own, without help from your king.',
     plan: ['<b>One rook cuts, the other checks.</b> One rook holds a rank so their king cannot cross it; the other gives check on the next rank, pushing the king back.',
       '<b>Take turns.</b> The rooks swap jobs, one rank at a time, like climbing a ladder, until the king is on the edge.',
       '<b>Stay far away.</b> If their king walks up to a rook, move that rook to the far side of the board along its rank, then go on.',
-      '<b>Mate.</b> With the king on the edge, one rook guards the next rank and the other checks on the edge.'] },
+      '<b>Mate.</b> With the king on the edge, one rook guards the next rank and the other checks on the edge.'],
+    ex: [['8/8/8/4k3/R7/8/8/1R4K1 w - - 0 1', 'b1', 'b5', '#15781B'], ['8/8/4k3/1R6/R7/8/8/6K1 w - - 0 1', 'a4', 'a6', '#15781B'], ['8/8/2k5/1R6/R7/8/8/6K1 w - - 0 1', 'b5', 'h5', '#15781B'], ['6k1/R7/8/8/8/8/8/1R4K1 w - - 0 1', 'b1', 'b8', '#15781B']] },
   { id: 'kr', tag: 'K+R', group: 'Basic mates', title: 'Rook and king', pieces: ['wK', 'wR', 'bK'], min: 22, time: 120,
     intro: 'The most useful mate to know: rook endgames are the most common of all. It takes at most sixteen moves.',
     plan: ['<b>Cut the king off.</b> Put your rook on a rank or file between the kings, so their king is shut in on one side.',
@@ -45,21 +47,24 @@ const LESSONS = [
       '<b>Check when the kings face each other.</b> When the kings stand opposite with one square between, a rook check pushes their king back a row.',
       '<b>Otherwise wait.</b> If the kings do not face each other, make a quiet rook move along its line, so their king has to step into the facing position.',
       '<b>Keep the rook safe.</b> If their king comes near your rook, move it far away along the same line.',
-      '<b>Mate on the edge</b> the same way: kings face each other, rook checks along the edge.'] },
+      '<b>Mate on the edge</b> the same way: kings face each other, rook checks along the edge.'],
+    ex: [['8/8/3k4/8/8/8/8/R5K1 w - - 0 1', 'a1', 'e1', '#15781B'], ['8/8/8/3k4/R7/8/8/4K3 w - - 0 1', 'e1', 'e2', '#15781B'], ['8/8/3k4/R7/3K4/8/8/8 w - - 0 1', 'a5', 'a6', '#15781B'], ['8/8/4k3/R7/3K4/8/8/8 w - - 0 1', 'a5', 'b5', '#15781B'], ['8/8/1k6/R7/8/3K4/8/8 w - - 0 1', 'a5', 'h5', '#15781B'], ['3k4/8/3K4/8/8/8/8/7R w - - 0 1', 'h1', 'h8', '#15781B']] },
   { id: 'bb', tag: 'B+B', group: 'Basic mates', title: 'Two bishops', pieces: ['wK', 'wB', 'wB', 'bK'], min: 22, time: 150,
     intro: 'Two bishops side by side make a wall the king cannot cross. Mate comes in a corner, in at most nineteen moves.',
     plan: ['<b>Bishops side by side.</b> Next to each other they guard two diagonals together, a wall their king cannot step through.',
       '<b>Push to a corner.</b> Move the wall step by step, with your king close behind, so their king is pushed toward a corner.',
       '<b>Your king does half the work.</b> The bishops cannot cover every square: your king takes the squares they miss.',
       '<b>Mind stalemate.</b> Near the corner their king has few squares. Check that it still has a move after each of yours.',
-      '<b>Mate in the corner</b> with one bishop checking and the other guarding the square next to the king.'] },
+      '<b>Mate in the corner</b> with one bishop checking and the other guarding the square next to the king.'],
+    ex: [['8/8/8/3k4/8/2BB4/8/4K3 w - - 0 1', 'd3', 'e4', '#15781B'], ['6k1/8/8/8/3BB3/8/8/4K3 w - - 0 1', 'e1', 'f2', '#15781B'], ['6k1/8/8/4BB2/8/8/8/6K1 w - - 0 1', 'g1', 'g2', '#15781B'], ['7k/8/6K1/8/8/8/2B5/4B3 w - - 0 1', 'c2', 'b3', '#c4242a'], ['7k/8/6K1/8/8/1B6/8/2B5 w - - 0 1', 'c1', 'b2', '#15781B']] },
   { id: 'kp', tag: 'K+P', group: 'Pawn endings', title: 'King and pawn', pieces: ['wK', 'wP', 'bK'], min: 0, time: 150,
     intro: 'Win with a single pawn: make a queen, then mate. Whether it wins depends on where the kings stand.',
     plan: ['<b>King in front, not behind.</b> Your king goes ahead of the pawn and clears the way. A pawn pushed too early is stopped by their king.',
       '<b>The opposition.</b> When the kings face each other with one square between, the side that has to move must give way. Make them be the one to move.',
       '<b>The key squares.</b> Once your king reaches a square two in front of the pawn, the pawn queens whatever they do.',
       '<b>Push the pawn only when it is safe:</b> when your king guards the square it moves to, or their king cannot reach it.',
-      '<b>Then mate with the new queen</b>, as in Queen and king.'] },
+      '<b>Then mate with the new queen</b>, as in Queen and king.'],
+    ex: [['8/8/4k3/8/8/4K3/4P3/8 w - - 0 1', 'e3', 'e4', '#15781B'], ['8/4k3/8/4K3/8/8/4P3/8 w - - 0 1', 'e5', 'e6', '#c4242a'], ['8/4k3/8/8/8/3K4/4P3/8 w - - 0 1', 'd3', 'd4', '#15781B'], ['8/8/4k3/8/4K3/8/4P3/8 w - - 0 1', 'e2', 'e3', '#15781B'], ['4k3/8/4K3/8/8/8/8/7Q w - - 0 1', 'h1', 'h8', '#15781B']] },
 ];
 
 // ---------- Positions ----------
@@ -157,13 +162,25 @@ function renderPath() {
 }
 document.querySelectorAll('.path-step').forEach((b) => b.addEventListener('click', () => { mode = b.dataset.mode; renderPath(); begin(); }));
 
+// Pointing at a step of the plan shows it on the board: an example position with the move as an arrow
+// (red: the move to avoid). Leaving the step puts your game back.
+function showExample(li) {
+  const ex = li && L?.ex?.[li.dataset.ex];
+  boardEl.classList.toggle('eg-example', !!ex);
+  if (!ex) return draw();
+  const [fen, from, to, colour] = ex;
+  drawBoard(boardEl, new Chess(fen), { side: 'w', arrows: [[from, to, colour]] });
+}
+for (const ev of ['mouseover', 'focusin']) $('#eg-plan').addEventListener(ev, (e) => { const li = e.target.closest('[data-ex]'); if (li) showExample(li); });
+for (const ev of ['mouseleave', 'focusout']) $('#eg-plan').addEventListener(ev, () => showExample(null));
+
 // A new endgame: what to think about first, over the board, then Start.
 function open(l, intro) {
   L = l; mode = rec(l.id).learned ? 'try' : 'learn';
   history.replaceState(null, '', `#${l.id}`);
   $('#eg-tag').textContent = l.tag;
   $('#eg-title').textContent = l.title;
-  $('#eg-plan').innerHTML = `<p>${l.intro}</p><ol class="eg-plan">${l.plan.map((p) => `<li>${p}</li>`).join('')}</ol>`;
+  $('#eg-plan').innerHTML = `<p>${l.intro}</p><ol class="eg-plan eg-plan-ex">${l.plan.map((p, i) => `<li tabindex="0" data-ex="${i}">${p}</li>`).join('')}</ol>`;
   renderList(); renderPath();
   if (!intro) return begin();
   $('#eg-intro').innerHTML = `<div class="depth-card eg-card"><p class="depth-k">Before you start · ${l.tag}</p><p class="depth-q">${l.title}</p>

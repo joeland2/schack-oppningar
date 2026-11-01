@@ -2697,3 +2697,14 @@ a.st-wk:hover h2 { text-decoration: underline; }
 .msg-admins .ico { width: 16px; height: 16px; stroke: var(--hot); fill: none; stroke-width: 2; stroke-linejoin: round; }
 .msg-admins:hover { background: color-mix(in srgb, var(--hot) 20%, transparent); }
 .foot-row .msg-admins { margin-left: auto; }
+
+/* Endgames: How to think, always open, each step a box; pointing at one shows an example on the board */
+.eg-how { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.eg-how h2 { margin: 0 0 4px; font-size: 16px; }
+.eg-how h2 small { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; color: var(--muted); }
+.eg-plan-ex { list-style: none; padding: 0; counter-reset: step; gap: 8px; }
+.eg-plan-ex li { counter-increment: step; position: relative; padding: 10px 12px 10px 42px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: default; transition: border-color .15s, background .15s; }
+.eg-plan-ex li::before { content: counter(step); position: absolute; left: 12px; top: 10px; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: var(--raised); color: var(--ink); font: 600 11px var(--font-body); }
+.eg-plan-ex li:hover, .eg-plan-ex li:focus-visible { border-color: var(--hot); background: color-mix(in srgb, var(--hot) 8%, var(--surface)); outline: none; }
+.eg-plan-ex li:hover::before, .eg-plan-ex li:focus-visible::before { background: var(--hot); color: #141414; }
+#board.eg-example { outline: 3px solid var(--hot); outline-offset: 3px; }
