@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101102221';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101102221';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101102221';
-import { NAMED_TRAPS } from './traps.js?v=20261101102221';
-import { GUIDE } from './guide.js?v=20261101102221';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101102221';
-import { maia3Move } from './maia3.js?v=20261101102221';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101102221';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101102221';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101102221';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101102221';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101112101';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101112101';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101112101';
+import { NAMED_TRAPS } from './traps.js?v=20261101112101';
+import { GUIDE } from './guide.js?v=20261101112101';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101112101';
+import { maia3Move } from './maia3.js?v=20261101112101';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101112101';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101112101';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101112101';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101112101';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2455,7 +2455,7 @@ const avoidStory = (a) => `The ${a.name}, a known trap against you. ${a.share ? 
 const trapMove = (t) => `${Math.floor(t.ply / 2) + 1}${t.ply % 2 ? '...' : '.'}${t.san}?`;
 // The punishing move as a green arrow, in Learn only (in Practice you find it yourself).
 function punishArrow(t) {
-  const san = lines[lineIdx].moves[t.ply + 1];
+  const san = line[t.ply + 1];
   if (mode !== 'learn' || !san) return [];
   const m = new Chess(game.fen()).move(san);
   return [[m.from, m.to, GREEN]];
@@ -2538,15 +2538,24 @@ async function classifyTraps() {
     const g = new Chess();
     l.moves.slice(0, t.ply).forEach((m) => g.move(m));
     const key = `${evalKey(g.fen())}|${t.san}`;
-    if (!known[key]) {
+    if (!known[key] || !('answer' in known[key])) {
       const before = await search(g.fen(), { ms: 400 });
       g.move(t.san);
       const after = await search(g.fen(), { ms: 600 });
       if (!before || !after) return;
       const drop = toCp(before) + toCp(after); // what the slip cost its player, in centipawns
       const w = after.mate > 0 ? { mate: true } : winOf(g.fen(), after.pv);
-      known[key] = w.mate ? { kind: 'trap', win: 'the game: there is a mate' }
-        : w.net >= 1 && drop >= 100 ? { kind: 'trap', win: w.text } : { kind: 'mistake' };
+      // The answer to the slip: Stockfish's best move where the line's own next move (the one most
+      // players at your level make) gives away a pawn or more of it, e.g. 4...e6?? 5.exd5, not 5.Nf3.
+      let answer = null;
+      const best = after.move && new Chess(g.fen()).move(after.move), next = l.moves[t.ply + 1];
+      if (best && next && clean(best.san) !== clean(next)) {
+        const g2 = new Chess(g.fen()); g2.move(next);
+        const alt = await search(g2.fen(), { ms: 600 });
+        if (alt && toCp(after) + toCp(alt) >= 100) answer = clean(best.san);
+      }
+      known[key] = { ...(w.mate ? { kind: 'trap', win: 'the game: there is a mate' }
+        : w.net >= 1 && drop >= 100 ? { kind: 'trap', win: w.text } : { kind: 'mistake' }), answer };
       store(TRAPS_KEY, known);
     }
     for (const x of mine) if (x.trap && x.trap.ply === t.ply && x.trap.san === t.san && lineKey(x.moves.slice(0, t.ply)) === lineKey(l.moves.slice(0, t.ply))) Object.assign(x.trap, known[key]);
@@ -2688,6 +2697,9 @@ function reply() {
     notes[ply - 1] = 'book';
     // The trap's slip: the board stops for a moment with the move in red, so it cannot be missed.
     const t = lines[lineIdx]?.trap;
+    // Where the move most players at your level make next does not punish it, the line ends on the move
+    // that does (the line keeps its name and progress; play on from there if you like).
+    if (t?.answer && t.ply === ply - 1 && line[ply] !== t.answer) line = [...line.slice(0, ply), t.answer];
     if (mode !== 'time' && t?.ply === ply - 1) return showTrap(t, m);
     render();
     if (ply >= line.length) return finish();
@@ -2892,7 +2904,12 @@ function transpose() {
   const n = game.history().length, at = evalKey(game.fen()), san = clean(game.history().at(-1));
   // Your next two moves the other way round: fine when, after their reply, the line's move you skipped
   // reaches the line's position. The line is then played in your order.
-  if (line[ply + 2] === san) {
+  // Only where players at your level do answer your order with the line's reply, and it is no slip
+  // there: after 4.e4 nobody plays 4...e6 (it drops the knight on d5, as it does not after the line's
+  // 4.Nf3), and the line's next move would not punish it.
+  const theirs = line[ply + 2] === san && gamesAt([...line.slice(0, ply), san]).moves.find((m) => m.san === line[ply + 1]);
+  const sound = theirs && theirs.n >= MIN_GAMES && scoreFor(theirs, cur.side === 'w' ? 'b' : 'w') > TRAP_SCORE;
+  if (sound) {
     const g = new Chess(game.fen());
     try { g.move(line[ply + 1]); g.move(line[ply]); } catch { /* not this time */ }
     if (g.history().length === 2 && evalKey(g.fen()) === posAt(line.slice(0, ply + 3))) {
