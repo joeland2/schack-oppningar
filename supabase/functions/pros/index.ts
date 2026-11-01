@@ -86,6 +86,15 @@ async function lichessWeek(a: string, since: number): Promise<G[]> {
   return data ? (JSON.parse(await data.text()) as G[]).filter((g) => g.at >= since) : [];
 }
 
+// An opening's family from Chess.com's ECOUrl slug, as Lichess names it: the words up to Defense, Opening,
+// Game, Gambit, Attack or System ('Sicilian-Defense-Open-2...Nc6' → Sicilian Defense).
+function family(slug?: string) {
+  if (!slug || /^undefined/i.test(slug)) return null;
+  const words = slug.split('-').filter((w) => /^[A-Za-z']+$/.test(w)), end = words.findIndex((w) => /^(Defense|Opening|Game|Gambit|Attack|System)$/i.test(w));
+  return (end >= 0 ? words.slice(0, end + 1) : words.slice(0, 2)).join(' ').replace(/\b(King|Queen|Bishop|Alekhine|Owen|Petrov|Bird|Larsen|Philidor)s\b/g, "$1's") || null;
+}
+console.assert(family('Sicilian-Defense-Open-2...Nc6') === 'Sicilian Defense' && family('Kings-Indian-Attack') === "King's Indian Attack" && family('Undefined') === null, 'family');
+
 async function ccWeek(a: string, since: number): Promise<G[]> {
   const u = a.slice(3).toLowerCase(), out: G[] = [];
   for (const d of [new Date(), new Date(since)]) {
@@ -96,7 +105,7 @@ async function ccWeek(a: string, since: number): Promise<G[]> {
       const white = g.white.username.toLowerCase() === u, me = white ? g.white : g.black;
       const res = me.result === 'win' ? 1 : ['agreed', 'repetition', 'stalemate', 'insufficient', '50move', 'timevsinsufficient'].includes(me.result) ? 0.5 : 0;
       const eco = /\[ECOUrl "[^"]*\/openings\/([^"]+)"\]/.exec(g.pgn || '')?.[1];
-      out.push({ at: g.end_time * 1000, speed: g.time_class, white, score: res, rating: me.rating, opening: eco ? eco.split('-').slice(0, 3).join(' ').replace(/\b(\w)/g, (c: string) => c.toUpperCase()) : null });
+      out.push({ at: g.end_time * 1000, speed: g.time_class, white, score: res, rating: me.rating, opening: family(eco) });
     }
     if (d.getUTCMonth() === new Date(since).getUTCMonth()) break; // the week is all in this month
   }
