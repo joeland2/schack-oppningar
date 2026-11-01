@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101114256';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101114256';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101114256';
-import { NAMED_TRAPS } from './traps.js?v=20261101114256';
-import { GUIDE } from './guide.js?v=20261101114256';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101114256';
-import { maia3Move } from './maia3.js?v=20261101114256';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101114256';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101114256';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101114256';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101114256';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101122503';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101122503';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101122503';
+import { NAMED_TRAPS } from './traps.js?v=20261101122503';
+import { GUIDE } from './guide.js?v=20261101122503';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101122503';
+import { maia3Move } from './maia3.js?v=20261101122503';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101122503';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101122503';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101122503';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101122503';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -242,6 +242,9 @@ function strongGroups(moves) {
 const STRONG_SHARE = 0.1;
 // Moves the games pick that Stockfish (2 s a position) says give away two pawns or more, found by
 // checking every line of the 148 openings at 1000–1599 blitz: never taught. Key: the moves before | the move.
+// Your two moves the other way round where the line's move you skipped then loses 1.5 pawns or more,
+// though the reply is common: prefix|your move|the line's move. 2...Nf6 3.Bc4 and 3...c6 drops e5 to Nxe5.
+const BAD_SWAPS = new Set(['e4 e5 Nf3|Nf6|c6', 'e4 e5 Nf3|Nf6|Bc5', 'd4 d5 Nc3|Nf6|c6', 'e4 d5 exd5 Nf6 Nc3 Nxd5 Nxd5 Qxd5 Nf3|e5|Bg4']);
 const BAD_MOVES = new Set([
   'e4 e5 Nf3 Nc6 Bc4 Nf6 Ng5 Bc5 Bxf7 Kf8|Bd5', // Bb3
   'e4 e5 f4 d6 Nf3 f6 fxe5 dxe5|Nxe5', // c3
@@ -249,6 +252,11 @@ const BAD_MOVES = new Set([
   'e4 a6 d4 b5 c4 bxc4 Bxc4|Bb7', // e6
   'e4 e5 Nf3 Nf6 Nxe5 Nc6 Nxc6 dxc6 Nc3 Bc5 Bc4|Qd4', // Ng4
   'd4 d5 c4 dxc4 Nc3 e5 d5 Bc5 e4 Nf6 Bxc4|Bxf2', // Ng4
+  // Found at every rating level, blitz and classical, each checked at 1.5 s: the line's move loses 1.5 pawns or more.
+  'd4 d5 Nc3 Bf5 f3 e6|g4', 'e4 e5 f4 d6 fxe5|dxe5', 'e4 d5 Nf3 dxe4 Nd4|Nf6', 'e4 d6 f4 Nf6 Nf3|g6',
+  'e4 e5 f4 Nc6 Nf3 Bc5 fxe5 d6 d4|Bb6', 'e4 e5 Nf3 Nf6 Nxe5 Nc6 Nxc6 dxc6 d3 Bc5 Be2 h5 O-O Ng4 h3|Qh4',
+  'e4 e5 Nc3 Nc6 f4 Nf6|Nf3', 'e4 e5 Nf3 Nc6 d4 exd4 Nxd4 Bc5 Nxc6 bxc6 Bc4|Ne7', 'e4 e5 Nf3 Nc6 Bc4 Nf6 Ng5 Nxe4 Bxf7 Ke7|Nxe4',
+  'd4 e5|Nf3', 'e4 e5 Nf3 Nc6 Bc4 Nf6 Ng5 Qe7|Nxf7', 'e4 e5 f4 Nc6 fxe5|Nxe5',
 ]);
 function userMove(moves, book) {
   const { x: all } = strongGroups(moves);
@@ -2922,7 +2930,7 @@ function transpose() {
   // Strong players must make that reply in your order too: at 1000–1599 2.e3 Bg4 is common and scores
   // well, but it drops the bishop to Qxg4, and the line's 3.Nf3 would not take it.
   const strong = theirs && explore([...line.slice(0, ply), san], THEORY_GROUPS), top = strong?.moves.find((m) => m.san === line[ply + 1]);
-  const sound = theirs && theirs.n >= MIN_GAMES && scoreFor(theirs, cur.side === 'w' ? 'b' : 'w') > TRAP_SCORE && top && top.n >= 3 && top.n / strong.total >= MIN_SHARE;
+  const sound = theirs && !BAD_SWAPS.has(`${lineKey(line.slice(0, ply))}|${san}|${line[ply]}`) && theirs.n >= MIN_GAMES && scoreFor(theirs, cur.side === 'w' ? 'b' : 'w') > TRAP_SCORE && top && top.n >= 3 && top.n / strong.total >= MIN_SHARE;
   if (sound) {
     const g = new Chess(game.fen());
     try { g.move(line[ply + 1]); g.move(line[ply]); } catch { /* not this time */ }
