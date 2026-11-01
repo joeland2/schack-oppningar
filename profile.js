@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101155736';
-import { STYLE_OF } from './styles.js?v=20261101155736';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101155736';
+import { account, login, finishLogin } from './lichess.js?v=20261101182256';
+import { STYLE_OF } from './styles.js?v=20261101182256';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101182256';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1227,6 +1227,7 @@ function playerCard(name, p, t, skills) {
     <p class="pf-pcard-name">${esc(cardName(name))}</p>
     ${cardBars(skills.map((x) => [ABBR[x.label], x.v]))}
     <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
+    <p class="pf-pcard-brand">chesslabs.gg</p>
   </div>`;
 }
 // Where a rating ranks among all Lichess players of that time control this week: "Top 27%".
@@ -1306,7 +1307,9 @@ function drawCard(ctx, x, y, name, p, t, skills, piece, flag = null) {
     ctx.fillStyle = CARD.ink; ctx.font = '400 38px Anton'; ctx.textAlign = 'right'; ctx.fillText(String(k.v ?? '–'), 558, cy + 2); ctx.textAlign = 'left';
   });
   ctx.fillStyle = CARD.muted; ctx.textAlign = 'center'; ctx.font = '600 20px Geist'; ctx.letterSpacing = '4px';
-  ctx.fillText(`${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} GAMES`, 300, 752);
+  ctx.fillText(`${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} GAMES`, 300, 738);
+  // Where the card is from, so a shared image leads back here.
+  ctx.fillStyle = band; ctx.font = '700 15px Geist'; ctx.letterSpacing = '3px'; ctx.fillText('CHESSLABS.GG', 300, 766);
   ctx.restore();
 }
 // A comparison as an image, in the look picked in the menu (dark or light): the two cards side by side
@@ -1385,7 +1388,7 @@ async function comparePng(A, B, sa, sb, detail, btn) {
       }
     }
     ctx.fillStyle = CARD.hot; ctx.fillRect(70, H - 76, W - 140, 3);
-    ctx.fillStyle = CARD.paperInk; ctx.font = '400 28px Anton'; ctx.fillText('CHESS TRAINER', 70, H - 34);
+    ctx.fillStyle = CARD.paperInk; ctx.font = '400 28px Anton'; ctx.fillText('CHESSLABS.GG', 70, H - 34);
     ctx.fillStyle = CARD.paperMuted; ctx.font = '400 19px Geist'; ctx.textAlign = 'right'; ctx.fillText(`${A.name} vs ${B.name}, from their last ${MAX} rated Lichess games`, W - 70, H - 36); ctx.textAlign = 'left';
     const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${A.name}-vs-${B.name}${detail ? '-text' : ''}-${cardLook()}.png`, { type: 'image/png' });
     await saveImage(blob, file, `${A.name} vs ${B.name}`);
@@ -1449,7 +1452,7 @@ async function cardImage(look, name, p, t, skills, detail, lead) {
       ctx.fillStyle = CARD.paperMuted; ctx.font = '400 24px Geist';
       for (const k of t) { ctx.font = '700 24px Geist'; ctx.fillStyle = CARD.paperInk; ctx.fillText(`${k.name}.`, 60, ty); const w = ctx.measureText(`${k.name}. `).width; ctx.font = '400 24px Geist'; ctx.fillStyle = CARD.paperMuted; ty = wrap(ctx, TYPE_ABOUT[k.name] || '', 60, ty, W - 120, 34, 3, w) + 12; }
       ctx.fillStyle = CARD.hot; ctx.fillRect(60, H - 96, W - 120, 3);
-      ctx.fillStyle = CARD.paperInk; ctx.font = '400 30px Anton'; ctx.fillText('CHESS TRAINER', 60, H - 50);
+      ctx.fillStyle = CARD.paperInk; ctx.font = '400 30px Anton'; ctx.fillText('CHESSLABS.GG', 60, H - 50);
       ctx.fillStyle = CARD.paperMuted; ctx.font = '400 20px Geist'; ctx.textAlign = 'right'; ctx.fillText(`From ${nick(name)}'s last ${p.n} rated ${siteOf(name)} games`, W - 60, H - 52); ctx.textAlign = 'left';
     }
     return canvas;

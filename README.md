@@ -1,4 +1,4 @@
-# Chess Trainer
+# Chess Labs
 
 Three ways to practise, picked from the start page:
 

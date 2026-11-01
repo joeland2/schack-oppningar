@@ -790,6 +790,7 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .pf-pcard-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; padding: 2px 10px; }
 .pf-pcard-stats span { display: flex; gap: 8px; align-items: baseline; font: 400 16px var(--font-poster); letter-spacing: .04em; opacity: .85; }
 .pf-pcard-stats b { font: 400 26px var(--font-poster); font-weight: 400; opacity: 1; min-width: 1.6em; }
+.pf-pcard-brand { margin: 6px 0 0; text-align: center; font: 700 9px var(--font-body); letter-spacing: .2em; text-transform: uppercase; color: var(--band); }
 .pf-pcard-foot { margin: 10px 0 0; text-align: center; font: 500 10px var(--font-body); letter-spacing: .18em; opacity: .7; }
 .pf-h1 { margin: 6px 0 0; font: 400 clamp(3.4rem, 9vw, 6rem)/0.92 var(--font-poster); text-transform: uppercase; letter-spacing: 0; }
 .pf-sub { margin: 6px 0 0; font: 400 clamp(1.5rem, 3.5vw, 2.2rem)/1.1 var(--font-poster); color: var(--muted); }

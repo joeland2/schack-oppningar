@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101155736';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101155736';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101155736';
-import { NAMED_TRAPS } from './traps.js?v=20261101155736';
-import { GUIDE } from './guide.js?v=20261101155736';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101155736';
-import { maia3Move } from './maia3.js?v=20261101155736';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101155736';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101155736';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101155736';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101155736';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101182256';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101182256';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101182256';
+import { NAMED_TRAPS } from './traps.js?v=20261101182256';
+import { GUIDE } from './guide.js?v=20261101182256';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101182256';
+import { maia3Move } from './maia3.js?v=20261101182256';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101182256';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101182256';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101182256';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101182256';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3574,7 +3574,7 @@ $('#import').addEventListener('change', async (e) => {
   if (!file) return;
   try {
     const { app, data } = JSON.parse(await file.text());
-    if (app !== 'chess-trainer' || typeof data !== 'object') throw new Error('not a Chess Trainer progress file');
+    if (app !== 'chess-trainer' || typeof data !== 'object') throw new Error('not a Chess Labs progress file');
     const keys = Object.keys(data).filter(KEEP_KEY); // only our own keys, whatever the file holds
     for (const k of keys) localStorage.setItem(k, String(data[k]));
     $('#backup-msg').textContent = `Loaded ${keys.length} saved items. Reloading…`;

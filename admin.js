@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261101155736';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101155736';
+import { account, login, finishLogin } from './lichess.js?v=20261101182256';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101182256';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -349,7 +349,7 @@ const errorsHtml = (s) => `<section class="pf-card"><div class="ad-head"><h2>${i
 function render(s) {
   const link = (x) => `<a href="profile.html?u=${encodeURIComponent(x.name)}">${esc(x.name)}</a>`, t = s.totals;
   $('#admin').innerHTML = `
-    <header class="pr-head"><h1 class="pf-h1">Admin</h1><p class="info">How Chess Trainer is used. A visitor is a browser, counted once in each period; a new visitor came for the first time in it. The admins' own visits and automated browsers are not counted.</p>
+    <header class="pr-head"><h1 class="pf-h1">Admin</h1><p class="info">How Chess Labs is used. A visitor is a browser, counted once in each period; a new visitor came for the first time in it. The admins' own visits and automated browsers are not counted.</p>
       <p class="ad-demo-row"><span class="seg" role="group" aria-label="Which numbers"><button type="button" data-real aria-pressed="${!s.demo}">Real</button><button type="button" data-demo aria-pressed="${!!s.demo}">Demo</button></span>
         ${s.demo ? '<b class="ad-demo-tag">Demo data</b> Made up test visitors, to see how the page looks with many.' : ''}</p>
       <nav class="ad-jump" aria-label="Parts">${GROUPS.map(([id, t, i]) => `<a href="#ad-${id}">${ic(i)}${t}</a>`).join('')}</nav></header>

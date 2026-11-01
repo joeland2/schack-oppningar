@@ -19,7 +19,7 @@ Typical situation: between games or in the evening, on a laptop or phone, going 
 
 ## Product Purpose
 
-Chess Trainer reads a player's own Lichess games and turns them into an understanding of their game and a way to train it. What it covers today:
+Chess Labs reads a player's own Lichess games and turns them into an understanding of their game and a way to train it. What it covers today:
 
 - **Profile** (`profile.html`): the player's last 500 rated Lichess games, read move by move. A player card (overall, the player type, their most important piece, rating in their main time control, six skills that compare the player with their own opponents rated within 200 of them, in the same games (50 = as good as them; openings by the position after move 12, tactics by blunders, winning when ahead and defending by mistakes per move while clearly ahead or behind, endgames by score, clock by time trouble and time losses)), two player types with the evidence, a portrait written from their own games, a rating graph (1W to all time, high and low), key numbers (win rate, accuracy, blunders, draws), skills, Good at and Work on, opening style, results, how games end, openings by side, and the list of games. Any player can be looked up, starred, and compared with you.
 - **Analysing games here**: games Lichess has not analysed can be analysed in the browser with Stockfish (the newest 100, 250 or 500 in all, skipping analysed ones, with count and time first). Numbers that need analysis appear from 20 analysed games.
@@ -55,7 +55,7 @@ Everything starts from the player's own Lichess games: the profile, the player t
 
 ## Brand Commitments
 
-- Name: open. "Chess Trainer" is the working name; a new name has not been chosen.
+- Name: open. Chess Labs, at chesslabs.gg (chosen 2026-11-01).
 - The board uses Lichess's default look: brown board and cburnett pieces.
 - All interface text is in English.
 
