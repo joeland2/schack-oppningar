@@ -879,6 +879,19 @@ button.link { padding: 0; border: 0; background: none; color: inherit; font: inh
 .pr-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
 .pr-list li { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .pr-list small { color: var(--muted); white-space: nowrap; }
+.bd { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 20px; align-items: start; margin-top: 12px; }
+.bd-board { width: 100%; }
+.bd-side { display: grid; gap: 10px; align-content: start; }
+.bd-k { margin: 0; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.bd-msg { margin: 0; min-height: 3em; }
+.bd-moves { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.bd-moves .chip-btn { font-family: var(--font-mono); color: var(--ink); }
+.bd-moves .chip-btn:disabled { cursor: default; color: var(--muted); }
+.bd-moves .chip-btn:not(:disabled):hover { border-color: var(--ink); }
+.bd-moves .chip-btn.bd-hit { background: var(--bad, #c0392b); border-color: var(--bad, #c0392b); color: #fff; }
+.bd-moves .chip-btn.bd-miss { text-decoration: line-through; }
+.bd-acts { display: flex; gap: 8px; margin: 0 !important; }
+@media (max-width: 640px) { .bd { grid-template-columns: minmax(0, 1fr); } }
 
 /* Magazine details, site-wide: poster headlines, the brand, the current section, panels under a heavy rule */
 .brand { font-family: var(--font-poster); font-weight: 400; font-size: 1.45rem; text-transform: uppercase; letter-spacing: .02em; }

@@ -2,9 +2,10 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261101133626';
-import { findMistakes, pickPuzzles } from './mistakes.js?v=20261101133626';
-import { current, cache, myName, skillsOf, storedGames, gamesReady } from './profile.js?v=20261101133626';
+import { login } from './lichess.js?v=20261101134751';
+import { findMistakes, pickPuzzles } from './mistakes.js?v=20261101134751';
+import { blunders, spotTheBlunder } from './blunder.js?v=20261101134751';
+import { current, cache, myName, skillsOf, storedGames, gamesReady } from './profile.js?v=20261101134751';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -52,6 +53,8 @@ function render(name, p) {
     ? `<p>${mine.length} positions from your games where you went wrong. Find the move you missed. <a href="profile.html">Analyse more games</a> on your profile for more.</p>`
     : '<p>The positions in your games where you went wrong, as puzzles: blunders, missed wins and missed mates.</p>',
   mine.length ? '<a class="cta" href="mistakes.html">Solve them</a>' : '<a class="cta" href="./?do=mistakes">Find my mistakes</a>']);
+  const spot = blunders(mine, storedGames(name) || []);
+  if (spot.length) steps.push(['Spot the blunder', `<p>A few moves from one of your games. One of yours threw the game away: which one? ${spot.length} games to go through.</p><div id="pr-blunder"></div>`, '']);
   const ops = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))]
     .filter((o) => o.n >= 8 && o.score <= 0.47).sort((a, b) => (a.score - 0.5) * Math.sqrt(a.n) - (b.score - 0.5) * Math.sqrt(b.n)).slice(0, 3);
   if (ops.length) {
@@ -72,6 +75,7 @@ function render(name, p) {
     <header class="pr-head"><h1 class="pf-h1">Your plan</h1>
       <p class="info">Built from your last ${p.n} rated Lichess games, ${esc(name)}: the weakest parts of your game first. <a href="profile.html">See your profile</a></p></header>
     <ol class="pr-steps">${steps.map((x, i) => step(i + 1, ...x)).join('')}</ol>`;
+  if (spot.length) spotTheBlunder($('#pr-blunder'), spot);
 }
 
 function ask() {
