@@ -16,10 +16,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261101231125">
-  <script src="move.js?v=20261101231125"></script>
-  <script src="header.js?v=20261101231125" defer></script>
-  <script src="theme.js?v=20261101231125"></script>
+  <link rel="stylesheet" href="style.css?v=20261101231512">
+  <script src="move.js?v=20261101231512"></script>
+  <script src="header.js?v=20261101231512" defer></script>
+  <script src="theme.js?v=20261101231512"></script>
 </head>
 <body>
   <header class="top">
@@ -177,11 +177,9 @@
           <p id="op-line" class="op-line"></p>
         </div>
         <nav class="path" aria-label="How to learn this opening">
-          <button id="mode-learn" class="path-step" type="button" aria-pressed="true"><span class="path-n">1</span><span><b>Learn</b><small>every move shown</small></span></button>
-          <svg class="path-arrow ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          <button id="mode-try" class="path-step" type="button" aria-pressed="false"><span class="path-n">2</span><span><b>Practice</b><small id="path-due">from memory</small></span></button>
-          <svg class="path-arrow ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          <button id="mode-time" class="path-step" type="button" aria-pressed="false"><span class="path-n">3</span><span><b>Time challenge</b><small>against the clock</small></span></button>
+          <button id="mode-learn" class="path-step" type="button" aria-pressed="true" title="Every move is shown with an arrow"><span class="path-hd"><b>Learn</b><svg class="line-star green" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></span><small id="path-learn">every move shown</small><span class="path-bar"><i></i></span></button>
+          <button id="mode-try" class="path-step" type="button" aria-pressed="false" title="Play the lines from memory"><span class="path-hd"><b>Practice</b><svg class="line-star gold" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></span><small id="path-try">from memory</small><span class="path-bar"><i></i></span></button>
+          <button id="mode-time" class="path-step" type="button" aria-pressed="false" title="Play the lines against the clock"><span class="path-hd"><b>Time</b><svg class="line-star diamond" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></span><small id="path-time">against the clock</small><span class="path-bar"><i></i></span></button>
         </nav>
         <p class="path-extra">Or <button id="mode-explore" class="link" type="button" aria-pressed="false">explore freely</button></p>
         <p id="mode-about" class="choice-about" hidden></p>
@@ -231,7 +229,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261101231125"></script>
+  <script type="module" src="app.js?v=20261101231512"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>

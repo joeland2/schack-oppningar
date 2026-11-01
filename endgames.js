@@ -4,7 +4,7 @@
 // Lichess tablebase (tablebase.lichess.ovh, exact for up to 7 pieces) says what every move is worth
 // and plays the defence. A slip is a move that lets the win go: a draw, stalemate or a piece given away.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake, instruction, flyStar } from './board.js?v=20261101231125';
+import { drawBoard, enableDrag, shake, instruction, flyStar } from './board.js?v=20261101231512';
 
 const $ = (s) => document.querySelector(s);
 // { [id]: { learned: 0|1, box, due, times: [your three best ms] } }, synced with your account (header.js). Numbers

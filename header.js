@@ -255,7 +255,7 @@ addEventListener('DOMContentLoaded', () => {
     const row = document.querySelector('.foot-row');
     if (row) row.insertAdjacentHTML('beforeend', b);
     else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
-    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261101231125')).openChat());
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261101231512')).openChat());
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
 })();

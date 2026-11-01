@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101231125';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101231125';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101231125';
-import { NAMED_TRAPS } from './traps.js?v=20261101231125';
-import { GUIDE } from './guide.js?v=20261101231125';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101231125';
-import { maia3Move } from './maia3.js?v=20261101231125';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101231125';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101231125';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101231125';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101231125';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101231512';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101231512';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101231512';
+import { NAMED_TRAPS } from './traps.js?v=20261101231512';
+import { GUIDE } from './guide.js?v=20261101231512';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101231512';
+import { maia3Move } from './maia3.js?v=20261101231512';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101231512';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101231512';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101231512';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101231512';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1166,7 +1166,15 @@ function renderMoves() {
   for (const b of $('.m-modes').children) b.setAttribute('aria-pressed', b.dataset.mode === mode);
   // The path: how many lines wait for review under Practice, and what a step means until a line is learned.
   const st = cur && stats[statKey(cur.id)], due = dueCount(st);
-  $('#path-due').textContent = due ? `${due} due for review` : 'from memory';
+  // Each step's progress: how many of the lines reached it, as the step's star and a bar in its colour.
+  const n = lines.length, has = (list) => lines.filter((l) => (list || []).includes(lineKey(l.moves))).length;
+  [['learn', lines.filter((l) => st?.played?.includes(lineKey(l.moves)) || st?.done?.includes(lineKey(l.moves))).length, 'learned', 'every move shown'],
+    ['try', has(st?.done), due ? `${due} due` : 'cleared', 'from memory'], ['time', has(st?.timed), 'perfect', 'against the clock']].forEach(([id, k, word, idle]) => {
+    const b = $(`#mode-${id}`);
+    b.querySelector('small').textContent = n && (k || st?.played?.length) ? `${k}/${n} ${word}` : idle;
+    b.querySelector('.path-bar i').style.width = n ? `${(k / n) * 100}%` : '0';
+    b.classList.toggle('reached', k > 0);
+  });
   $('#mode-about').hidden = (mode === 'learn' || mode === 'try') && (st?.played?.length ?? 0) > 0;
   $('#depth').textContent = `${depthName(load(STORE + '-depth', {})[cur?.id] || MAX_LINES)} ▾`;
   $('#depth').hidden = allLines.length <= DEPTHS[0][1] || !!trapRun || mode === 'explore';

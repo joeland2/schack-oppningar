@@ -657,9 +657,8 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
 .line-banner { background: rgb(46 125 50 / .25); font-size: clamp(18px, 8cqi, 44px); }
 .line-banner.trap-banner { background: rgb(196 36 42 / .28); }
 
-/* Lines you have played through (green) and cleared (stronger green, with a tick) */
-.line-btn.learned { background: color-mix(in srgb, var(--good) 10%, transparent); }
-.line-btn.cleared { background: color-mix(in srgb, var(--good) 22%, transparent); }
+/* Lines you have played through or cleared: the same green; the stars tell which */
+.line-btn.learned, .line-btn.cleared { background: color-mix(in srgb, var(--good) 10%, transparent); }
 .line-btn.learned .line-name, .line-btn.cleared .line-name { color: var(--ink); }
 .line-btn.now.learned, .line-btn.now.cleared { border-color: var(--good); }
 
@@ -2659,3 +2658,16 @@ a.st-wk:hover h2 { text-decoration: underline; }
 .pr-ex li > span:nth-child(2) { display: grid; gap: 2px; } .pr-ex small { color: var(--muted); font-size: 13px; }
 .pr-ic { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 8px; background: var(--raised, var(--bg)); font-size: 18px; }
 .pr-ex a { text-decoration: none; white-space: nowrap; }
+
+/* Learn, Practice, Time: three equal steps, each with its star and a bar of how many lines reached it */
+.path:not(:has(.path-arrow)) { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.path-step:has(.path-hd) { flex-direction: column; align-items: stretch; gap: 6px; padding: 12px; }
+.path-hd { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.path-hd .line-star { width: 15px; height: 15px; flex: none; }
+.path-step:not(.reached) .line-star { fill: none; stroke: var(--muted); filter: none; }
+.path-hd + small { font-family: var(--font-mono); font-size: 12px; }
+.path-bar { height: 4px; border-radius: 9px; background: var(--track); overflow: hidden; margin-top: auto; }
+.path-bar i { display: block; height: 100%; width: 0; transition: width .3s; }
+#mode-learn .path-bar i { background: var(--good); }
+#mode-try .path-bar i { background: #e0b23a; }
+#mode-time .path-bar i { background: #4fb8e0; }
