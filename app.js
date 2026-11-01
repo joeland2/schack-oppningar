@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH } from './board.js?v=20261101222021';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101222021';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101222021';
-import { NAMED_TRAPS } from './traps.js?v=20261101222021';
-import { GUIDE } from './guide.js?v=20261101222021';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101222021';
-import { maia3Move } from './maia3.js?v=20261101222021';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101222021';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101222021';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101222021';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101222021';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101222212';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101222212';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101222212';
+import { NAMED_TRAPS } from './traps.js?v=20261101222212';
+import { GUIDE } from './guide.js?v=20261101222212';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101222212';
+import { maia3Move } from './maia3.js?v=20261101222212';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101222212';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101222212';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101222212';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101222212';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3030,33 +3030,8 @@ addEventListener('pagehide', () => { if (ply > 0) trackLine('left'); });
 // A star a line has just earned (green in Learn, gold in Practice, diamond in Time): shown big in the
 // middle of the screen, then it flies into its place in the lines list (hidden there until it lands).
 // With reduced motion it only fades in and out in the middle.
-const STAR_WORD = { green: 'Green star', gold: 'Gold star', diamond: 'Diamond star' };
 let flying = null; // the star on its way: the end card waits for it
-function starFly(i, kind) {
-  const to = $(`#lines-list .line-btn[data-i="${i}"] .line-star.${kind}`);
-  if (!to) return Promise.resolve();
-  if (!to.closest('details:not([open])')) to.scrollIntoView({ block: 'nearest' }); // a folded list (a phone) stays put
-  const r = to.getBoundingClientRect(), size = Math.min(240, innerWidth * .55), cx = innerWidth / 2, cy = innerHeight / 2;
-  const seen = r.width > 0 && r.bottom > 0 && r.top < innerHeight;
-  const big = document.createElement('div');
-  big.className = `star-fly ${kind}`;
-  big.innerHTML = `<svg class="line-star ${kind}" viewBox="0 0 24 24" aria-hidden="true">${to.querySelector('path').outerHTML}</svg><b>${STAR_WORD[kind]}</b><i class="star-fly-glow"></i>`;
-  big.style.cssText = `left:${cx - size / 2}px;top:${cy - size / 2}px;width:${size}px`;
-  document.body.append(big);
-  to.style.visibility = 'hidden';
-  const end = seen ? `translate(${r.left + r.width / 2 - cx}px, ${r.top + r.height / 2 - cy}px) scale(${r.width / size})` : 'translateY(-40px) scale(.6)';
-  // Reduced motion: the star still shows, only fading in and out where it stands.
-  if (REDUCE_MOTION) return big.animate([{ opacity: 0 }, { opacity: 1, offset: .15 }, { opacity: 1, offset: .8 }, { opacity: 0 }], { duration: 1600, fill: 'forwards' }).finished.then(() => { big.remove(); to.style.visibility = ''; });
-  for (const el of big.querySelectorAll('b, i')) el.animate([{ opacity: 0 }, { opacity: 1, offset: .2 }, { opacity: 1, offset: .5 }, { opacity: 0, offset: .6 }, { opacity: 0 }], { duration: 1800, fill: 'forwards' });
-  return big.animate([
-    { transform: 'scale(.2) rotate(-40deg)', opacity: 0, easing: 'cubic-bezier(.2,.9,.3,1.3)' },
-    { transform: 'scale(1) rotate(0)', opacity: 1, offset: .25 },
-    { transform: 'scale(1) rotate(0)', opacity: 1, offset: .55, easing: 'cubic-bezier(.5,0,.2,1)' },
-    { transform: end, opacity: seen ? 1 : 0 }], { duration: 1800, fill: 'forwards' }).finished.then(() => {
-    big.remove(); to.style.visibility = '';
-    to.animate([{ transform: 'scale(2)' }, { transform: 'scale(1)' }], { duration: 350, easing: 'cubic-bezier(.2,.9,.3,1.3)' });
-  });
-}
+const starFly = (i, kind) => flyStar($(`#lines-list .line-btn[data-i="${i}"] .line-star.${kind}`), kind);
 // Time: the fastest runs without a slip on this line, every logged-in player's best (the userdata
 // function reads them from the stars and times kept with each account), yours marked.
 const BOARD_API = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/userdata';

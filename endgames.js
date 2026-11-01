@@ -4,7 +4,7 @@
 // Lichess tablebase (tablebase.lichess.ovh, exact for up to 7 pieces) says what every move is worth
 // and plays the defence. A slip is a move that lets the win go: a draw, stalemate or a piece given away.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake, instruction } from './board.js?v=20261101222021';
+import { drawBoard, enableDrag, shake, instruction, flyStar } from './board.js?v=20261101222212';
 
 const $ = (s) => document.querySelector(s);
 // { [id]: { learned: 0|1, box, due, times: [your three best ms] } }, synced with your account (header.js). Numbers
@@ -137,10 +137,12 @@ function renderList() {
   $('#items').innerHTML = groups.map((g) => `<div>
     <h3 class="group">${g}</h3>
     <ul>${LESSONS.filter((l) => l.group === g).map((l) => {
-      const r = prog[l.id], chip = isDue(r) ? ['pagar', 'Review'] : r?.box > 0 ? ['sitter', 'Cleared'] : r?.learned ? ['pagar', 'Learned'] : ['ny', 'New'];
+      // Its stars, as on an opening's lines: green once mated in Learn, gold once cleared in Practice, diamond once mated in Time.
+      const r = prog[l.id], stars = [[r?.learned, 'green', 'Mated in Learn'], [r?.box > 0, 'gold', 'Cleared in Practice'], [r?.times?.length, 'diamond', 'Mated in the Time challenge']]
+        .filter(([on]) => on).map(([, c, t]) => `<svg class="line-star ${c}" viewBox="0 0 24 24" role="img" aria-label="${t}"><title>${t}</title><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>`).join('');
       return `<li><button class="op ${l === L ? 'active' : ''}" data-id="${l.id}">
         <span class="eco">${l.tag}</span><span class="op-name">${l.title}${bestOf(r) ? ` <small>best ${clock(bestOf(r))}</small>` : ''}</span>
-        <span class="chip ${chip[0]}">${chip[1]}</span></button></li>`;
+        ${isDue(r) ? '<span class="chip pagar">Review</span>' : ''}<span class="line-ok">${stars}</span></button></li>`;
     }).join('')}</ul></div>`).join('');
 }
 $('#items').addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (b) open(LESSONS.find((l) => l.id === b.dataset.id), true); });
@@ -302,7 +304,7 @@ async function tryMove(from, to) {
 
 function finish() {
   over = true; busy = false; arrow = null; stopTick(); showMate(null); draw();
-  const r = rec(L.id);
+  const r = rec(L.id), had = { green: !!r.learned, gold: r.box > 0, diamond: !!r.times?.length };
   window.track?.('endgame', `${L.id} ${mode}`);
   if (mode === 'learn') {
     r.learned = 1;
@@ -322,6 +324,9 @@ function finish() {
     say(`Checkmate in ${clock(elapsed)}.${!was ? '' : elapsed < was ? ` A new best: it was ${clock(was)}.` : ` Your best is ${clock(was)}.`} Press New position to go again.`, 'good');
   }
   save(); renderList(); renderPath();
+  // A star newly earned flies from the middle of the screen to its place in the list.
+  const kind = mode === 'learn' ? 'green' : mode === 'try' ? 'gold' : 'diamond';
+  if (!had[kind] && (kind !== 'gold' || r.box > 0)) flyStar($(`#items [data-id="${L.id}"] .line-star.${kind}`), kind);
 }
 
 // ---------- Input ----------

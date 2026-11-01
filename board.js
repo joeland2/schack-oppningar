@@ -288,3 +288,32 @@ export function instruction(m) {
 export function shake(el) {
   el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
 }
+
+// A star just earned (green in Learn, gold in Practice, diamond in Time): shown big in the middle of the
+// screen, then it flies into `to` (hidden there until it lands). With reduced motion it only fades in and out.
+const STAR_WORD = { green: 'Green star', gold: 'Gold star', diamond: 'Diamond star' };
+const STAR_PATH = '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>';
+export function flyStar(to, kind) {
+  if (!to) return Promise.resolve();
+  if (!to.closest('details:not([open])')) to.scrollIntoView({ block: 'nearest' }); // a folded list (a phone) stays put
+  const r = to.getBoundingClientRect(), size = Math.min(240, innerWidth * .55), cx = innerWidth / 2, cy = innerHeight / 2;
+  const seen = r.width > 0 && r.bottom > 0 && r.top < innerHeight;
+  const big = document.createElement('div');
+  big.className = `star-fly ${kind}`;
+  big.innerHTML = `<svg class="line-star ${kind}" viewBox="0 0 24 24" aria-hidden="true">${STAR_PATH}</svg><b>${STAR_WORD[kind]}</b><i class="star-fly-glow"></i>`;
+  big.style.cssText = `left:${cx - size / 2}px;top:${cy - size / 2}px;width:${size}px`;
+  document.body.append(big);
+  to.style.visibility = 'hidden';
+  const end = seen ? `translate(${r.left + r.width / 2 - cx}px, ${r.top + r.height / 2 - cy}px) scale(${r.width / size})` : 'translateY(-40px) scale(.6)';
+  // Reduced motion: the star still shows, only fading in and out where it stands.
+  if (REDUCE.matches) return big.animate([{ opacity: 0 }, { opacity: 1, offset: .15 }, { opacity: 1, offset: .8 }, { opacity: 0 }], { duration: 1600, fill: 'forwards' }).finished.then(() => { big.remove(); to.style.visibility = ''; });
+  for (const el of big.querySelectorAll('b, i')) el.animate([{ opacity: 0 }, { opacity: 1, offset: .2 }, { opacity: 1, offset: .5 }, { opacity: 0, offset: .6 }, { opacity: 0 }], { duration: 1800, fill: 'forwards' });
+  return big.animate([
+    { transform: 'scale(.2) rotate(-40deg)', opacity: 0, easing: 'cubic-bezier(.2,.9,.3,1.3)' },
+    { transform: 'scale(1) rotate(0)', opacity: 1, offset: .25 },
+    { transform: 'scale(1) rotate(0)', opacity: 1, offset: .55, easing: 'cubic-bezier(.5,0,.2,1)' },
+    { transform: end, opacity: seen ? 1 : 0 }], { duration: 1800, fill: 'forwards' }).finished.then(() => {
+    big.remove(); to.style.visibility = '';
+    to.animate([{ transform: 'scale(2)' }, { transform: 'scale(1)' }], { duration: 350, easing: 'cubic-bezier(.2,.9,.3,1.3)' });
+  });
+}
