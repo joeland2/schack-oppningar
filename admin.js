@@ -1,7 +1,7 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261101215347';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101215347';
+import { account, login, finishLogin } from './lichess.js?v=20261101220026';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101220026';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -25,9 +25,9 @@ function cardOf(target, board) {
   const r = board.filter((x) => x.name.toLowerCase() === name.toLowerCase()).sort((x, y) => y.games - x.games)[0]; // their main time control
   return r && { name: r.name, overall: r.overall, style: r.style, strength: r.strength, skills: ['Attack', 'Defense', 'Early game', 'Late game', 'Accuracy', 'Speed'].map((k) => r.skills?.[k] ?? null), rating: r.rating, speed: r.speed, piece: r.piece };
 }
-const cardHtml = (c, look = 'dark', style = false) => `<div class="ad-cv ad-cv-${look}${style ? ' with-style' : ''}"><div class="pf-pcard${proClass(c.name)}" style="--band:${bandColor(c.rating)}">${flagHtml(c.name)}<div class="pf-pcard-top"><div><b class="pf-ovr">${esc(c.overall ?? '–')}</b><span class="pf-pos">${esc(c.style || '')}</span>${c.strength ? `<span class="pf-str">+ ${esc(c.strength)}</span>` : ''}</div>
+const cardHtml = (c, look = 'dark', style = false) => `<div class="adm-cv adm-cv-${look}${style ? ' with-style' : ''}"><div class="pf-pcard${proClass(c.name)}" style="--band:${bandColor(c.rating)}">${flagHtml(c.name)}<div class="pf-pcard-top"><div><b class="pf-ovr">${esc(c.overall ?? '–')}</b><span class="pf-pos">${esc(c.style || '')}</span>${c.strength ? `<span class="pf-str">+ ${esc(c.strength)}</span>` : ''}</div>
   <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(c.piece || 'n').toUpperCase()}.svg" alt=""><img class="pf-pcard-piece ink-on-dark" src="pieces/w${(c.piece || 'n').toUpperCase()}.svg" alt="">${c.rating ? `<span class="pf-pcard-rating">${c.rating} <small>${esc(c.speed || '')}</small></span>` : ''}</div></div>
-  <p class="pf-pcard-name">${esc(c.name)}</p><div class="pf-pcard-bars">${SKILL_KEYS.map((k, i) => `<div><span>${k}</span><i style="--v:${c.skills[i] ?? 0}%"></i><b>${c.skills[i] ?? '–'}</b></div>`).join('')}</div></div>${style ? `<div class="ad-cv-style"><b>${esc(c.style || '')}</b>${c.strength ? `<span>+ ${esc(c.strength)}</span>` : ''}</div>` : ''}</div>`;
+  <p class="pf-pcard-name">${esc(c.name)}</p><div class="pf-pcard-bars">${SKILL_KEYS.map((k, i) => `<div><span>${k}</span><i style="--v:${c.skills[i] ?? 0}%"></i><b>${c.skills[i] ?? '–'}</b></div>`).join('')}</div></div>${style ? `<div class="adm-cv-style"><b>${esc(c.style || '')}</b>${c.strength ? `<span>+ ${esc(c.strength)}</span>` : ''}</div>` : ''}</div>`;
 let BOARD = [];
 // An event's target with the player names as links to their profiles (looked up, card, analysis, comparison).
 const plink = (n) => `<a href="profile.html?u=${encodeURIComponent(n)}">${esc(n)}</a>`;
@@ -48,7 +48,7 @@ function actionRows(list) {
       // The same analysis started again (stopped and restarted, or a second device): one row, with how often.
       let n = 1;
       while (list[i + 1]?.kind === r.kind && list[i + 1].target === r.target) { n++; i++; }
-      out.push(`<li><span class="ad-act">${ICON.analyse}<span><b>Analysis</b> ${plink(name)} <span class="ad-what">${esc((rest || '').replace(/^until (\d+)$/, 'up to $1 games'))}${n > 1 ? ` · started ${n} times` : ''}</span>${by}</span></span>${where}</li>`);
+      out.push(`<li><span class="adm-act">${ICON.analyse}<span><b>Analysis</b> ${plink(name)} <span class="adm-what">${esc((rest || '').replace(/^until (\d+)$/, 'up to $1 games'))}${n > 1 ? ` · started ${n} times` : ''}</span>${by}</span></span>${where}</li>`);
       continue;
     }
     let [name, what, look] = parts, own = r.target || '';
@@ -58,7 +58,7 @@ function actionRows(list) {
       && Math.abs(new Date(r.at) - new Date(o.at)) < 60000) { what = 'both'; if (op[1] === 'style') own = o.target; i++; }
     const label = what === 'both' ? 'Both: card, and card + style' : WHAT[what] || esc(what || '');
     const who = name.includes(' vs ') ? name.split(' vs ').map(plink).join(' vs ') : plink(name).replace('<a ', `<a data-card="${esc(own)}" `);
-    out.push(`<li><span class="ad-act">${ICON.card}<span><b>Image</b> ${who} <span class="ad-what">${label}</span>${look ? ` <span class="ad-look ${look === 'light' ? 'light' : 'dark'}">${look === 'light' ? 'Light' : 'Dark'}</span>` : ''}${by}</span></span>${where}</li>`);
+    out.push(`<li><span class="adm-act">${ICON.card}<span><b>Image</b> ${who} <span class="adm-what">${label}</span>${look ? ` <span class="adm-look ${look === 'light' ? 'light' : 'dark'}">${look === 'light' ? 'Light' : 'Dark'}</span>` : ''}${by}</span></span>${where}</li>`);
   }
   return out;
 }
@@ -128,21 +128,21 @@ function visitorLine(ds) {
   ds.forEach((d, i) => { d.drawn = sv.visitors[i]; }); // where the hover dot sits
   const at = new Map(ds.map((d, i) => [d.key, i]));
   const marks = notes().map((nt, k) => [nt, at.get(noteKey(nt.t)), k]).filter(([, i]) => i !== undefined);
-  return `<svg class="ad-line" viewBox="-34 0 ${W + 34} ${H + 22}" role="img" aria-label="Visitors ${hourly() ? `per hour over ${ds.length} hours` : `per day over ${ds.length} days`}: ${ds.reduce((t, d) => t + d.fresh, 0)} new">
-    ${Array.from({ length: top / step + 1 }, (_, k) => k * step).map((v) => `<line class="${v ? 'ad-grid' : 'ad-axis'}" x1="0" y1="${y(v)}" x2="${W}" y2="${y(v)}"></line><text class="ad-tick" x="-8" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
+  return `<svg class="adm-line" viewBox="-34 0 ${W + 34} ${H + 22}" role="img" aria-label="Visitors ${hourly() ? `per hour over ${ds.length} hours` : `per day over ${ds.length} days`}: ${ds.reduce((t, d) => t + d.fresh, 0)} new">
+    ${Array.from({ length: top / step + 1 }, (_, k) => k * step).map((v) => `<line class="${v ? 'adm-grid' : 'adm-axis'}" x1="0" y1="${y(v)}" x2="${W}" y2="${y(v)}"></line><text class="adm-tick" x="-8" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
     ${span === 7 || span === 30 ? ds.map((d, i) => { const date = new Date(d.key.slice(0, 10)); // a midnight each day in 1W, each Monday in 1M
-      return i && d.key.endsWith(' 00') && x(i) < W - 60 && (span === 7 || date.getDay() === 1) ? `<line class="ad-midnight" x1="${x(i)}" y1="0" x2="${x(i)}" y2="${H}"></line><text x="${x(i) + 4}" y="${H + 16}">${date.toLocaleDateString('en-GB', span === 7 ? { weekday: 'short' } : { day: 'numeric', month: 'short' })}</text>` : ''; }).join('') : ''}
-    ${marks.map(([nt, i]) => `<g class="ad-note"><line x1="${x(i)}" y1="6" x2="${x(i)}" y2="${H}"></line><circle cx="${x(i)}" cy="6" r="4"></circle></g>`).join('')}
-    <path class="ad-area" d="${curve(pts('fresh'))}L${W},${H}L0,${H}Z"></path><path class="ad-curve" d="${curve(pts('visitors'))}"></path><path class="ad-curve-back" d="${curve(pts('back'))}"></path>
-    <line class="ad-cross" x1="0" y1="0" x2="0" y2="${H}" visibility="hidden"></line><circle class="ad-dot" r="4" visibility="hidden"></circle>
+      return i && d.key.endsWith(' 00') && x(i) < W - 60 && (span === 7 || date.getDay() === 1) ? `<line class="adm-midnight" x1="${x(i)}" y1="0" x2="${x(i)}" y2="${H}"></line><text x="${x(i) + 4}" y="${H + 16}">${date.toLocaleDateString('en-GB', span === 7 ? { weekday: 'short' } : { day: 'numeric', month: 'short' })}</text>` : ''; }).join('') : ''}
+    ${marks.map(([nt, i]) => `<g class="adm-note"><line x1="${x(i)}" y1="6" x2="${x(i)}" y2="${H}"></line><circle cx="${x(i)}" cy="6" r="4"></circle></g>`).join('')}
+    <path class="adm-area" d="${curve(pts('fresh'))}L${W},${H}L0,${H}Z"></path><path class="adm-curve" d="${curve(pts('visitors'))}"></path><path class="adm-curve-back" d="${curve(pts('back'))}"></path>
+    <line class="adm-cross" x1="0" y1="0" x2="0" y2="${H}" visibility="hidden"></line><circle class="adm-dot" r="4" visibility="hidden"></circle>
     <text x="0" y="${H + 16}">${span === 'today' ? '00:00' : day(ds[0].key.slice(0, 10))}</text><text x="${W}" y="${H + 16}" text-anchor="end">${hourly() ? 'Now' : 'Today'}</text></svg>
-    <div class="ad-tip" hidden></div>
-    <p class="ad-key"><span class="ad-k-line"></span>Visitors <span class="ad-k-area"></span>New (first visit) <span class="ad-k-back"></span>Came back <span class="ad-k-note"></span>Note</p>`;
+    <div class="adm-tip" hidden></div>
+    <p class="adm-key"><span class="adm-k-line"></span>Visitors <span class="adm-k-area"></span>New (first visit) <span class="adm-k-back"></span>Came back <span class="adm-k-note"></span>Note</p>`;
 }
 function bindLine(body) {
-  const ds = spanPoints(body), box = $('#ad-line');
+  const ds = spanPoints(body), box = $('#adm-line');
   box.innerHTML = visitorLine(ds);
-  const svg = box.querySelector('svg'), cross = svg.querySelector('.ad-cross'), dot = svg.querySelector('.ad-dot'), tip = box.querySelector('.ad-tip');
+  const svg = box.querySelector('svg'), cross = svg.querySelector('.adm-cross'), dot = svg.querySelector('.adm-dot'), tip = box.querySelector('.adm-tip');
   const top = ds.top;
   svg.addEventListener('pointermove', (e) => {
     const r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(ds.length - 1, Math.round((((e.clientX - r.left) / r.width) * (W + 34) - 34) / W * (ds.length - 1)))), d = ds[i];
@@ -151,7 +151,7 @@ function bindLine(body) {
     dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('visibility', 'visible');
     const here = notes().filter((nt) => noteKey(nt.t) === d.key);
     tip.hidden = false;
-    tip.innerHTML = `<b>${d.label}</b><br>${d.visitors} visitor${d.visitors === 1 ? '' : 's'} · ${d.fresh} new · ${Math.max(0, d.visitors - d.fresh)} came back<br><small>${d.views} page views</small>${here.map((nt) => `<br><span class="ad-tip-note">${esc(nt.text)}</span>`).join('')}`;
+    tip.innerHTML = `<b>${d.label}</b><br>${d.visitors} visitor${d.visitors === 1 ? '' : 's'} · ${d.fresh} new · ${Math.max(0, d.visitors - d.fresh)} came back<br><small>${d.views} page views</small>${here.map((nt) => `<br><span class="adm-tip-note">${esc(nt.text)}</span>`).join('')}`;
     const px = ((cx + 34) / (W + 34)) * r.width; // the numbers on the left take 34 units
     tip.style.left = `${Math.min(Math.max(px, 60), r.width - 60)}px`;
   });
@@ -160,25 +160,25 @@ function bindLine(body) {
 }
 // The notes under the graph: when and what, newest first; add one (now, or any time) or remove one.
 function renderNotes(body) {
-  const el = $('#ad-notes'), when = (t) => new Date(t).toLocaleString('en-GB', { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const el = $('#adm-notes'), when = (t) => new Date(t).toLocaleString('en-GB', { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const local = (t) => { const d = new Date(t - new Date(t).getTimezoneOffset() * 6e4); return d.toISOString().slice(0, 16); };
-  el.innerHTML = `<form class="ad-note-form"><input name="text" required maxlength="80" placeholder="What did you do? e.g. Posted on r/lichess" aria-label="Note"><input name="at" type="datetime-local" value="${local(Date.now())}" aria-label="When"><button type="submit" class="cta">Add note</button></form>
-    ${notes().length ? `<ul class="ad-note-list">${notes().slice().reverse().map((nt) => `<li><span>${when(nt.t)}</span><b>${esc(nt.text)}</b><button type="button" data-note="${nt.t}" aria-label="Remove the note ${esc(nt.text)}">×</button></li>`).join('')}</ul>` : ''}`;
+  el.innerHTML = `<form class="adm-note-form"><input name="text" required maxlength="80" placeholder="What did you do? e.g. Posted on r/lichess" aria-label="Note"><input name="at" type="datetime-local" value="${local(Date.now())}" aria-label="When"><button type="submit" class="cta">Add note</button></form>
+    ${notes().length ? `<ul class="adm-note-list">${notes().slice().reverse().map((nt) => `<li><span>${when(nt.t)}</span><b>${esc(nt.text)}</b><button type="button" data-note="${nt.t}" aria-label="Remove the note ${esc(nt.text)}">×</button></li>`).join('')}</ul>` : ''}`;
   el.querySelector('form').onsubmit = (e) => { e.preventDefault(); const f = e.target, t = Date.parse(f.at.value) || Date.now();
     saveNotes([...notes(), { t, text: f.text.value.trim() }]); bindLine(body); };
   el.onclick = (e) => { const b = e.target.closest('[data-note]'); if (b) { saveNotes(notes().filter((nt) => nt.t !== Number(b.dataset.note))); bindLine(body); } };
 }
 const rows = (list, label = (x) => esc(x.name)) => (list.length
-  ? `<ul class="pf-rows ad-rows">${list.map((x) => `<li><span>${label(x)}</span><small>${x.n}</small></li>`).join('')}</ul>`
+  ? `<ul class="pf-rows adm-rows">${list.map((x) => `<li><span>${label(x)}</span><small>${x.n}</small></li>`).join('')}</ul>`
   : '<p class="info">Nothing yet.</p>');
 // A list with a bar under each name, as long as its share of the largest.
 const bars = (list, label = (x) => esc(x.name), extra = () => '') => (list.length
-  ? `<ul class="ad-list">${list.map((x) => `<li><span>${label(x)}</span><b>${x.n}${extra(x)}</b><i style="width:${(x.n / list[0].n) * 100}%"></i></li>`).join('')}</ul>`
+  ? `<ul class="adm-list">${list.map((x) => `<li><span>${label(x)}</span><b>${x.n}${extra(x)}</b><i style="width:${(x.n / list[0].n) * 100}%"></i></li>`).join('')}</ul>`
   : '<p class="info">Nothing yet.</p>');
 // Page views per hour (0–23) or weekday, as columns; each column's count in its tooltip.
 function cols(values, labels, every = 1) {
   const W = 360, H = 120, top = Math.max(1, ...values), bw = W / values.length;
-  return `<svg class="ad-bars ad-cols" viewBox="0 0 ${W} ${H + 20}" role="img" aria-label="${values.map((v, i) => `${labels[i]}: ${v}`).join(', ')}">
+  return `<svg class="adm-bars adm-cols" viewBox="0 0 ${W} ${H + 20}" role="img" aria-label="${values.map((v, i) => `${labels[i]}: ${v}`).join(', ')}">
     ${values.map((v, i) => { const h = (v / top) * H; return `<g><title>${labels[i]}: ${v} page views</title>
       <rect x="${i * bw + 1.5}" y="${H - h}" width="${bw - 3}" height="${Math.max(h, v ? 2 : 0)}" rx="1.5"></rect>
       <rect class="hit" x="${i * bw}" y="0" width="${bw}" height="${H}"></rect></g>`; }).join('')}
@@ -192,10 +192,10 @@ const pageName = (p) => PAGE[p] || p;
 // week's visitors got, and how many came back, by the week they first came.
 const pctOf = (x) => (x === null || x === undefined ? '–' : `${Math.round(x * 100)}%`);
 function change(now, before, points = false) {
-  if (now === null || before === null) return '<small class="ad-ch">no week before to compare</small>';
+  if (now === null || before === null) return '<small class="adm-ch">no week before to compare</small>';
   const d = points ? Math.round((now - before) * 100) : before ? Math.round(((now - before) / before) * 100) : null;
-  if (d === null) return '<small class="ad-ch">new this week</small>';
-  return `<small class="ad-ch ${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '▲' : d < 0 ? '▼' : '='} ${Math.abs(d)}${points ? ' points' : '%'} vs the week before</small>`;
+  if (d === null) return '<small class="adm-ch">new this week</small>';
+  return `<small class="adm-ch ${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '▲' : d < 0 ? '▼' : '='} ${Math.abs(d)}${points ? ' points' : '%'} vs the week before</small>`;
 }
 function overviewHtml(s) {
   const o = s.overview;
@@ -203,16 +203,16 @@ function overviewHtml(s) {
   const tiles = [['Visitors, 7 days', o.now.visitors, o.before.visitors], ['Profiles looked up', o.now.profiles, o.before.profiles], ['Lines finished', o.now.finished, o.before.finished]]
     .map(([dt, a, b]) => `<div><dt>${dt}</dt><dd>${a}</dd>${change(a, b)}</div>`).join('')
     + `<div><dt>Came back within 7 days</dt><dd>${pctOf(o.now.back)}</dd>${change(o.now.back, o.before.back, true)}</div>`;
-  const top = Math.max(1, s.funnel[0]?.n || 0), cell = (x) => (x === null ? '<td class="ad-ret-none">–</td>' : `<td style="--v:${x}">${pctOf(x)}</td>`);
+  const top = Math.max(1, s.funnel[0]?.n || 0), cell = (x) => (x === null ? '<td class="adm-ret-none">–</td>' : `<td style="--v:${x}">${pctOf(x)}</td>`);
   const sites = s.sites && s.sites.lichess + s.sites.chesscom;
-  return `<dl class="pf-kpis ad-kpis ad-week">${tiles}</dl>
+  return `<dl class="pf-kpis adm-kpis adm-week">${tiles}</dl>
     <div class="pf-two">
-      <section class="pf-card"><h2>How far visitors get <small>last 7 days</small></h2><ul class="ad-funnel">${s.funnel.map((f) => `<li><span>${esc(f.name)}</span><i style="width:${(f.n / top) * 100}%"></i><b>${f.n}${f === s.funnel[0] ? '' : ` <small>${pctOf(f.n / top)}</small>`}</b></li>`).join('')}</ul>
-        <p class="ad-foot">Each step as a share of everyone who visited.</p></section>
+      <section class="pf-card"><h2>How far visitors get <small>last 7 days</small></h2><ul class="adm-funnel">${s.funnel.map((f) => `<li><span>${esc(f.name)}</span><i style="width:${(f.n / top) * 100}%"></i><b>${f.n}${f === s.funnel[0] ? '' : ` <small>${pctOf(f.n / top)}</small>`}</b></li>`).join('')}</ul>
+        <p class="adm-foot">Each step as a share of everyone who visited.</p></section>
       <section class="pf-card"><h2>Come back <small>by the week they first came</small></h2>
-        <table class="ad-ret"><thead><tr><th>Week of</th><th>New</th><th>1 day</th><th>7 days</th><th>30 days</th></tr></thead>
+        <table class="adm-ret"><thead><tr><th>Week of</th><th>New</th><th>1 day</th><th>7 days</th><th>30 days</th></tr></thead>
         <tbody>${s.retention.map((c) => `<tr><td>${day(c.week)}</td><td class="num">${c.n}</td>${cell(c.d1)}${cell(c.d7)}${cell(c.d30)}</tr>`).join('')}</tbody></table>
-        <p class="ad-foot">Seen again on a later day. – while a week is too new to tell.${sites ? ` Names looked up, 30 days: Lichess ${pctOf(s.sites.lichess / sites)} · Chess.com ${pctOf(s.sites.chesscom / sites)}.` : ''}</p></section>
+        <p class="adm-foot">Seen again on a later day. – while a week is too new to tell.${sites ? ` Names looked up, 30 days: Lichess ${pctOf(s.sites.lichess / sites)} · Chess.com ${pctOf(s.sites.chesscom / sites)}.` : ''}</p></section>
     </div>`;
 }
 
@@ -220,14 +220,14 @@ function overviewHtml(s) {
 // (a visit ends after 30 minutes without anything). A logged-in player's browsers are joined into one.
 const MODE = { learn: 'Learn', try: 'Practice', time: 'Time' };
 const runOf = (t) => { try { return JSON.parse(t); } catch { return null; } };
-const side = (c) => `<i class="ad-side ${c === 'b' ? 'b' : 'w'}" title="As ${c === 'b' ? 'Black' : 'White'}"></i>`;
+const side = (c) => `<i class="adm-side ${c === 'b' ? 'b' : 'w'}" title="As ${c === 'b' ? 'Black' : 'White'}"></i>`;
 const EV_ICON = { view: 'M4 6h16M4 12h16M4 18h10', profile: 'M11 17a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM20 20l-4.5-4.5', line: 'M5 12.5l4.5 4.5L19 7.5', left: 'M6 6l12 12M18 6L6 18',
   card: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4', analyse: 'M4 19h16M5 15l4-5 4 3 6-7', compare: 'M7 4v16M17 4v16M4 8h6M14 16h6', practise: 'M5 4h11l3 3v13H5zM9 12h6M9 16h6', login: 'M10 17l5-5-5-5M15 12H3M14 4h5v16h-5', error: 'M12 8v5M12 17h.01M10.3 3.9L2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z' };
 const evIcon = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${EV_ICON[k] || EV_ICON.view}"/></svg>`;
 // How one run of a line went: the mode, how it ended and the mistakes.
 const runHow = (x) => `${MODE[x.m] || esc(x.m)} · ${x.k === 'done' ? 'finished' : x.k === 'wrong' ? `wrong on move ${Math.floor(x.n / 2) + 1}` : `left at move ${Math.ceil((x.p || 0) / 2)}`}${x.x ? ` · ${x.x} mistake${x.x === 1 ? '' : 's'}` : ''}`;
 // A visitor by their Lichess name, else by where they were.
-const personName = (v) => (v.name ? `<a href="profile.html?u=${encodeURIComponent(v.name)}">${esc(v.name)}</a>` : `<span class="ad-muted">${flag(v.country)}${esc(v.city || 'Visitor')}</span>`);
+const personName = (v) => (v.name ? `<a href="profile.html?u=${encodeURIComponent(v.name)}">${esc(v.name)}</a>` : `<span class="adm-muted">${flag(v.country)}${esc(v.city || 'Visitor')}</span>`);
 // Icons for the groups and the cards' titles.
 const IC = { ...EV_ICON, people: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1M16 3.1a4 4 0 0 1 0 7.8M22 21v-1a6 6 0 0 0-4-5.6',
   globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18', pin: 'M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12zM12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
@@ -238,7 +238,7 @@ const IC = { ...EV_ICON, people: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6
 const ic = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[k]}"/></svg>`;
 const GROUPS = [['overview', 'Overview', 'home', 'the week at a glance'], ['openings', 'Openings', 'practise', 'what is practised, and by whom'], ['people', 'People', 'people', 'who comes and what they do'],
   ['traffic', 'Traffic', 'globe', 'where they come from'], ['errors', 'Errors', 'error', 'what broke']];
-const group = (id) => { const [, t, i, sub] = GROUPS.find((g) => g[0] === id); return `<h2 class="ad-group" id="ad-${id}">${ic(i)}${t}<small>${sub}</small></h2>`; };
+const group = (id) => { const [, t, i, sub] = GROUPS.find((g) => g[0] === id); return `<h2 class="adm-group" id="ad-${id}">${ic(i)}${t}<small>${sub}</small></h2>`; };
 
 // Who practises what: every run of a line in the visitor list, by person, and the newest runs.
 function runsOf(s) {
@@ -250,9 +250,9 @@ function practiceHtml(s) {
     const k = r.v.name || r.v.id, p = people.get(k) ?? { v: r.v, runs: 0, done: 0, last: r.at, ops: new Map() }, o = `${r.x.s}|${r.x.o}`;
     p.runs++; if (r.x.k === 'done') p.done++; p.ops.set(o, (p.ops.get(o) || 0) + 1); people.set(k, p);
   }
-  return `<section class="pf-card"><h2>${ic('people')}Who practises <small>${people.size} ${people.size === 1 ? 'person' : 'people'}</small></h2>${people.size ? `<ul class="pf-rows ad-who-list">${[...people.values()].sort((a, b) => b.runs - a.runs).map((p) => `<li><span>${personName(p.v)} <small>${p.runs} run${p.runs === 1 ? '' : 's'} · ${p.done} finished · ${short(p.last)}</small>
-      <span class="ad-who-ops">${[...p.ops.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `<span class="ad-chip">${side(k[0])}${esc(k.slice(2))}${n > 1 ? ` ×${n}` : ''}</span>`).join('')}</span></span></li>`).join('')}</ul>` : none}</section>
-    <section class="pf-card"><h2>${ic('line')}Latest runs <small>newest first</small></h2>${runs.length ? `<ul class="pf-rows ad-recent">${runs.slice(0, 40).map(({ v, at, x }) => `<li><span>${side(x.s)}<b>${esc(x.o)}</b> · ${esc(x.l)} <small>${runHow(x)}</small></span><small>${personName(v)} · ${short(at)}</small></li>`).join('')}</ul>` : none}</section>`;
+  return `<section class="pf-card"><h2>${ic('people')}Who practises <small>${people.size} ${people.size === 1 ? 'person' : 'people'}</small></h2>${people.size ? `<ul class="pf-rows adm-who-list">${[...people.values()].sort((a, b) => b.runs - a.runs).map((p) => `<li><span>${personName(p.v)} <small>${p.runs} run${p.runs === 1 ? '' : 's'} · ${p.done} finished · ${short(p.last)}</small>
+      <span class="adm-who-ops">${[...p.ops.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `<span class="adm-chip">${side(k[0])}${esc(k.slice(2))}${n > 1 ? ` ×${n}` : ''}</span>`).join('')}</span></span></li>`).join('')}</ul>` : none}</section>
+    <section class="pf-card"><h2>${ic('line')}Latest runs <small>newest first</small></h2>${runs.length ? `<ul class="pf-rows adm-recent">${runs.slice(0, 40).map(({ v, at, x }) => `<li><span>${side(x.s)}<b>${esc(x.o)}</b> · ${esc(x.l)} <small>${runHow(x)}</small></span><small>${personName(v)} · ${short(at)}</small></li>`).join('')}</ul>` : none}</section>`;
 }
 // Getting better: the mistakes a run by how many times that person had tried that line before,
 // then each person who ran a line more than once, from their first run to their latest.
@@ -267,9 +267,9 @@ function betterHtml(s) {
   const curve = byNth.map((xs, i) => ({ name: i === 4 ? '5th try or later' : `${['1st', '2nd', '3rd', '4th'][i]} try`, n: avg(xs), runs: xs.length })).filter((c) => c.runs);
   const top = Math.max(0.1, ...curve.map((c) => c.n));
   const people = [...tries.values()].filter((t) => t.runs.length > 1).sort((a, b) => (b.runs[0] - b.runs.at(-1)) - (a.runs[0] - a.runs.at(-1)) || b.runs.length - a.runs.length);
-  return `<section class="pf-card"><h2>${ic('target')}Getting better <small>mistakes a run, by try</small></h2>${curve.length ? `<div><ul class="ad-list">${curve.map((c) => `<li><span>${c.name} <small class="ad-muted">${c.runs} run${c.runs === 1 ? '' : 's'}</small></span><b>${c.n.toFixed(1)}</b><i style="width:${(c.n / top) * 100}%"></i></li>`).join('')}</ul>
-    ${people.length ? `<h3 class="ad-sub">From the first run to the latest</h3><ul class="pf-rows ad-recent">${people.map((t) => { const a = t.runs[0], b = t.runs.at(-1);
-      return `<li><span>${personName(t.v)} · ${side(t.x.s)}${esc(t.x.o)} <small>${esc(t.x.l)} · ${t.runs.length} runs</small></span><small class="${b < a ? 'ad-up' : b > a ? 'ad-down' : ''}">${a} → ${b} mistake${b === 1 ? '' : 's'}</small></li>`; }).join('')}</ul>` : ''}</div>`
+  return `<section class="pf-card"><h2>${ic('target')}Getting better <small>mistakes a run, by try</small></h2>${curve.length ? `<div><ul class="adm-list">${curve.map((c) => `<li><span>${c.name} <small class="adm-muted">${c.runs} run${c.runs === 1 ? '' : 's'}</small></span><b>${c.n.toFixed(1)}</b><i style="width:${(c.n / top) * 100}%"></i></li>`).join('')}</ul>
+    ${people.length ? `<h3 class="adm-sub">From the first run to the latest</h3><ul class="pf-rows adm-recent">${people.map((t) => { const a = t.runs[0], b = t.runs.at(-1);
+      return `<li><span>${personName(t.v)} · ${side(t.x.s)}${esc(t.x.o)} <small>${esc(t.x.l)} · ${t.runs.length} runs</small></span><small class="${b < a ? 'adm-up' : b > a ? 'adm-down' : ''}">${a} → ${b} mistake${b === 1 ? '' : 's'}</small></li>`; }).join('')}</ul>` : ''}</div>`
     : '<p class="info">Nothing yet. Runs are counted from 31 Oct 2026.</p>'}</section>`;
 }
 
@@ -277,7 +277,7 @@ function betterHtml(s) {
 function cardsHtml(s) {
   const cs = s.visitors.flatMap((v) => v.events.filter((e) => e.kind === 'card' && e.target)), count = (xs) => Object.entries(xs.reduce((m, x) => ({ ...m, [x]: (m[x] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ name, n }));
   const parts = cs.map((e) => { const [head, code] = e.target.split(' #'), bits = head.split(' · '); return { kind: bits.includes('style') ? 'Style card' : head.includes(' vs ') ? 'Comparison' : 'Card', look: bits.find((b) => b === 'light' || b === 'dark'), type: code && TYPE_CODES[code.split('/')[1]] }; });
-  const block = (t, xs) => (xs.length ? `<h3 class="ad-sub">${t}</h3>${bars(xs)}` : '');
+  const block = (t, xs) => (xs.length ? `<h3 class="adm-sub">${t}</h3>${bars(xs)}` : '');
   return `<section class="pf-card"><h2>${ic('card')}Cards downloaded · ${cs.length} <small>by kind, look and player type</small></h2>${cs.length ? `<div>${block('Kind', count(parts.map((p) => p.kind)))}${block('Look', count(parts.map((p) => (p.look ? `${p.look[0].toUpperCase()}${p.look.slice(1)}` : 'Not known (older)'))))}${block('Player type on the card', count(parts.map((p) => p.type).filter(Boolean)))}</div>` : '<p class="info">None yet.</p>'}</section>`;
 }
 
@@ -285,8 +285,8 @@ function cardsHtml(s) {
 function liveHtml(s) {
   const now = Date.now(), ago = (iso) => Math.round((now - Date.parse(iso)) / 6e4), here = s.visitors.filter((v) => ago(v.last) < 15), hour = s.visitors.filter((v) => ago(v.last) < 60).length;
   const doing = (v) => { const e = v.events[0]; return e ? eventRow(e).replace(/^<li>|<\/li>$/g, '') : ''; };
-  return `<section class="pf-card ad-live"><div class="ad-head"><h2><i class="ad-live-dot" aria-hidden="true"></i>Live now <small>${here.length} in the last 15 min · ${hour} in the last hour</small></h2><small>As of ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. Reload for newer.</small></div>
-    ${here.length ? `<ul class="ad-live-list">${here.map((v) => `<li><span class="ad-live-who">${personName(v)} <small>${esc(v.device || '')} · ${ago(v.last) < 1 ? 'just now' : `${ago(v.last)} min ago`}</small></span><span class="ad-live-did">${doing(v)}</span></li>`).join('')}</ul>` : '<p class="info">Nobody right now.</p>'}</section>`;
+  return `<section class="pf-card adm-live"><div class="adm-head"><h2><i class="adm-live-dot" aria-hidden="true"></i>Live now <small>${here.length} in the last 15 min · ${hour} in the last hour</small></h2><small>As of ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. Reload for newer.</small></div>
+    ${here.length ? `<ul class="adm-live-list">${here.map((v) => `<li><span class="adm-live-who">${personName(v)} <small>${esc(v.device || '')} · ${ago(v.last) < 1 ? 'just now' : `${ago(v.last)} min ago`}</small></span><span class="adm-live-did">${doing(v)}</span></li>`).join('')}</ul>` : '<p class="info">Nobody right now.</p>'}</section>`;
 }
 
 function eventRow(e) {
@@ -297,7 +297,7 @@ function eventRow(e) {
     const slip = x.w ? ` · played ${esc(x.g || '?')}, the line has ${esc(x.w)}` : '';
     return `<li>${t}${evIcon(x.k === 'done' ? 'line' : 'left')}<span>${side(x.s)}${esc(x.o)} · ${esc(x.l)} <small>${runHow(x)}${slip}</small></span></li>`;
   }
-  if (e.kind === 'view') return `<li>${t}${evIcon('view')}<span class="ad-muted">Opened ${esc(pageName(e.page))}</span></li>`;
+  if (e.kind === 'view') return `<li>${t}${evIcon('view')}<span class="adm-muted">Opened ${esc(pageName(e.page))}</span></li>`;
   return `<li>${t}${evIcon(e.kind)}<span>${esc(KIND[e.kind] || e.kind)}${e.target ? `: <b>${targetHtml(e.kind, e.target)}</b>` : ''}</span></li>`;
 }
 function personHtml(v, all) {
@@ -309,12 +309,12 @@ function personHtml(v, all) {
   const total = visits.reduce((t, vs) => t + mins(vs), 0), runs = events.filter((e) => e.kind === 'line').map((e) => runOf(e.target)).filter(Boolean);
   const devices = [...new Set(same.map((w) => w.device).filter(Boolean))], dayCount = new Set(events.map((e) => e.at.slice(0, 10))).size;
   const chips = [[runs.filter((x) => x.k === 'done').length, 'line', 'finished'], [events.filter((e) => e.kind === 'profile').length, 'profile', 'looked up'], [events.filter((e) => e.kind === 'card').length, 'card', 'downloaded']]
-    .filter(([n]) => n).map(([n, w, d]) => `<span class="ad-chip">${n} ${w}${n === 1 ? '' : 's'} ${d}</span>`).join('');
-  return `<div class="ad-person"><div class="ad-who">${v.name ? `<b>${esc(v.name)}</b><small>Logged in with Lichess${same.length > 1 ? ` · ${same.length} browsers` : ''}</small>` : `<b>Visitor</b><small>Not logged in</small>`}
+    .filter(([n]) => n).map(([n, w, d]) => `<span class="adm-chip">${n} ${w}${n === 1 ? '' : 's'} ${d}</span>`).join('');
+  return `<div class="adm-person"><div class="adm-who">${v.name ? `<b>${esc(v.name)}</b><small>Logged in with Lichess${same.length > 1 ? ` · ${same.length} browsers` : ''}</small>` : `<b>Visitor</b><small>Not logged in</small>`}
       <dl><dt>First seen</dt><dd>${when(events[0].at)}</dd><dt>Last seen</dt><dd>${when(events.at(-1).at)}</dd><dt>Visits</dt><dd>${visits.length} on ${dayCount} day${dayCount === 1 ? '' : 's'}</dd>
         <dt>Time here</dt><dd>${total < 1 ? 'under a minute' : `${total >= 60 ? `${Math.floor(total / 60)} h ` : ''}${total % 60} min`}</dd><dt>From</dt><dd>${flag(v.country)}${esc(v.city || land(v.country))}</dd>
-        <dt>Device</dt><dd>${esc(devices.join(', ') || '–')}</dd><dt>Came via</dt><dd>${esc(v.source || '–')}</dd></dl>${chips ? `<p class="ad-chips">${chips}</p>` : ''}</div>
-    <ol class="ad-visits">${visits.reverse().map((vs) => `<li><h3>${new Date(vs[0].at).toDateString() === new Date().toDateString() ? 'Today' : day(vs[0].at)}<small>${new Date(vs[0].at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}${mins(vs) ? `–${new Date(vs.at(-1).at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · ${mins(vs)} min` : ''}</small></h3>
+        <dt>Device</dt><dd>${esc(devices.join(', ') || '–')}</dd><dt>Came via</dt><dd>${esc(v.source || '–')}</dd></dl>${chips ? `<p class="adm-chips">${chips}</p>` : ''}</div>
+    <ol class="adm-visits">${visits.reverse().map((vs) => `<li><h3>${new Date(vs[0].at).toDateString() === new Date().toDateString() ? 'Today' : day(vs[0].at)}<small>${new Date(vs[0].at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}${mins(vs) ? `–${new Date(vs.at(-1).at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · ${mins(vs)} min` : ''}</small></h3>
       <ul>${vs.slice().reverse().map(eventRow).join('')}</ul></li>`).join('')}</ol></div>`;
 }
 
@@ -323,12 +323,12 @@ function personHtml(v, all) {
 function boardHtml(fen, white) {
   const rows = fen.split(' ')[0].split('/').map((r) => [...r].flatMap((c) => (/\d/.test(c) ? Array(Number(c)).fill('') : [c])));
   const ord = (xs) => (white ? xs : [...xs].reverse());
-  return `<div class="ad-board">${ord(rows).map((row, r) => ord(row).map((p, f) => `<i class="${(r + f) % 2 ? 'd' : 'l'}">${p ? `<img src="pieces/${p === p.toUpperCase() ? 'w' : 'b'}${p.toUpperCase()}.svg" alt="">` : ''}</i>`).join('')).join('')}</div>`;
+  return `<div class="adm-board">${ord(rows).map((row, r) => ord(row).map((p, f) => `<i class="${(r + f) % 2 ? 'd' : 'l'}">${p ? `<img src="pieces/${p === p.toUpperCase() ? 'w' : 'b'}${p.toUpperCase()}.svg" alt="">` : ''}</i>`).join('')).join('')}</div>`;
 }
-const doneBar = (t) => `<span class="ad-done"><i style="--v:${t.runs ? t.done / t.runs : 0}"></i>${pctOf(t.runs ? t.done / t.runs : null)}</span>`;
+const doneBar = (t) => `<span class="adm-done"><i style="--v:${t.runs ? t.done / t.runs : 0}"></i>${pctOf(t.runs ? t.done / t.runs : null)}</span>`;
 const modes = (t) => `<small title="Lines finished in Learn, Practice and Time">L ${t.learn} · P ${t.try} · T ${t.time}</small>`;
 function openingsHtml(s) {
-  if (!(s.openings2 || []).length) return `<section class="pf-card"><div class="ad-head"><h2>${ic('practise')}Openings practised <small>last 30 days</small></h2></div>
+  if (!(s.openings2 || []).length) return `<section class="pf-card"><div class="adm-head"><h2>${ic('practise')}Openings practised <small>last 30 days</small></h2></div>
     <p class="info">Nothing yet. Each line practised is counted from 31 Oct 2026; the table, each opening's lines and the hardest moves fill in as people practise.</p></section>`;
   const by = new Map();
   for (const { v, x } of runsOf(s)) { const k = `${x.s}|${x.o}`, m = by.get(k) ?? new Map(), p = v.name || v.id; m.set(p, { v, n: (m.get(p)?.n || 0) + 1 }); by.set(k, m); }
@@ -336,74 +336,74 @@ function openingsHtml(s) {
   const who = (o) => { const ps = [...(by.get(`${o.side}|${o.name}`) || new Map()).values()].sort((a, b) => b.n - a.n), anon = ps.filter((p) => !p.v.name).length;
     return [...ps.filter((p) => p.v.name).map((p) => `${personName(p.v)}${p.n > 1 ? ` <small>×${p.n}</small>` : ''}`), ...(anon ? [`${anon} not logged in`] : [])].join(' · '); };
   const row = (t) => `<td class="num">${t.people}</td><td class="num">${t.runs}</td><td>${doneBar(t)}</td><td class="num">${(t.misses / Math.max(1, t.runs)).toFixed(1)}</td>`;
-  return `<section class="pf-card"><div class="ad-head"><h2>${ic('practise')}Openings practised <small>last 30 days</small></h2><small>A run is one go at a line. Click an opening for its lines and who practised it.</small></div>
-    <div class="ad-op-wrap"><table class="ad-op"><thead><tr><th>Opening</th><th>People</th><th>Runs</th><th>Finished</th><th>Mistakes a run</th><th>Finished in</th></tr></thead>
-    ${s.openings2.map((o) => `<tbody class="ad-op-group"><tr class="ad-op-row" tabindex="0" aria-expanded="false"><td>${side(o.side)}<b>${esc(o.name)}</b> <small>${o.lines.length} line${o.lines.length === 1 ? '' : 's'}</small></td>${row(o)}<td>${modes(o)}</td></tr>
-      ${o.lines.map((l) => `<tr class="ad-op-line" hidden><td>${esc(l.name)}</td>${row(l)}<td>${modes(l)}</td></tr>`).join('')}${who(o) ? `<tr class="ad-op-line ad-op-who" hidden><td colspan="6">${ic('people')}${who(o)}</td></tr>` : ''}</tbody>`).join('')}</table></div>
-    ${(s.hardest || []).length ? `<h3 class="ad-sub">${ic('target')}Hardest moves <small>where most runs slip first</small></h3><div class="ad-hard">${s.hardest.map((h) => `<figure>${boardHtml(h.fen, h.side !== 'b')}
-      <figcaption><b class="ad-hard-n">${pctOf(h.share)}</b> of runs slip here · the move is <b>${esc(h.want)}</b>${h.got ? `, most play ${esc(h.got)}` : ''}<small>${side(h.side)}${esc(h.opening)} · ${esc(h.line)} · ${h.n} slip${h.n === 1 ? '' : 's'}, ${h.people} ${h.people === 1 ? 'person' : 'people'}</small></figcaption></figure>`).join('')}</div>` : ''}</section>`;
+  return `<section class="pf-card"><div class="adm-head"><h2>${ic('practise')}Openings practised <small>last 30 days</small></h2><small>A run is one go at a line. Click an opening for its lines and who practised it.</small></div>
+    <div class="adm-op-wrap"><table class="adm-op"><thead><tr><th>Opening</th><th>People</th><th>Runs</th><th>Finished</th><th>Mistakes a run</th><th>Finished in</th></tr></thead>
+    ${s.openings2.map((o) => `<tbody class="adm-op-group"><tr class="adm-op-row" tabindex="0" aria-expanded="false"><td>${side(o.side)}<b>${esc(o.name)}</b> <small>${o.lines.length} line${o.lines.length === 1 ? '' : 's'}</small></td>${row(o)}<td>${modes(o)}</td></tr>
+      ${o.lines.map((l) => `<tr class="adm-op-line" hidden><td>${esc(l.name)}</td>${row(l)}<td>${modes(l)}</td></tr>`).join('')}${who(o) ? `<tr class="adm-op-line adm-op-who" hidden><td colspan="6">${ic('people')}${who(o)}</td></tr>` : ''}</tbody>`).join('')}</table></div>
+    ${(s.hardest || []).length ? `<h3 class="adm-sub">${ic('target')}Hardest moves <small>where most runs slip first</small></h3><div class="adm-hard">${s.hardest.map((h) => `<figure>${boardHtml(h.fen, h.side !== 'b')}
+      <figcaption><b class="adm-hard-n">${pctOf(h.share)}</b> of runs slip here · the move is <b>${esc(h.want)}</b>${h.got ? `, most play ${esc(h.got)}` : ''}<small>${side(h.side)}${esc(h.opening)} · ${esc(h.line)} · ${h.n} slip${h.n === 1 ? '' : 's'}, ${h.people} ${h.people === 1 ? 'person' : 'people'}</small></figcaption></figure>`).join('')}</div>` : ''}</section>`;
 }
-const errorsHtml = (s) => `<section class="pf-card"><div class="ad-head"><h2>${ic('error')}Errors <small>last 30 days</small></h2><small>What broke for visitors: profiles that could not be read, and errors in the pages.</small></div>
-  ${(s.errors || []).length ? `<ul class="pf-rows ad-recent">${s.errors.map((e) => `<li><span>${esc(e.text)}</span><small>${e.n}× · ${e.people} ${e.people === 1 ? 'person' : 'people'} · last ${short(e.last)}</small></li>`).join('')}</ul>` : '<p class="info">None. Errors are counted from 31 Oct 2026.</p>'}</section>`;
+const errorsHtml = (s) => `<section class="pf-card"><div class="adm-head"><h2>${ic('error')}Errors <small>last 30 days</small></h2><small>What broke for visitors: profiles that could not be read, and errors in the pages.</small></div>
+  ${(s.errors || []).length ? `<ul class="pf-rows adm-recent">${s.errors.map((e) => `<li><span>${esc(e.text)}</span><small>${e.n}× · ${e.people} ${e.people === 1 ? 'person' : 'people'} · last ${short(e.last)}</small></li>`).join('')}</ul>` : '<p class="info">None. Errors are counted from 31 Oct 2026.</p>'}</section>`;
 
 function render(s) {
   const link = (x) => `<a href="profile.html?u=${encodeURIComponent(x.name)}">${esc(x.name)}</a>`, t = s.totals;
   $('#admin').innerHTML = `
     <header class="pr-head"><h1 class="pf-h1">Admin</h1><p class="info">How Chess Labs is used. A visitor is a browser, counted once in each period; a new visitor came for the first time in it. The admins' own visits and automated browsers are not counted.</p>
-      <p class="ad-demo-row"><span class="seg" role="group" aria-label="Which numbers"><button type="button" data-real aria-pressed="${!s.demo}">Real</button><button type="button" data-demo aria-pressed="${!!s.demo}">Demo</button></span>
-        ${s.demo ? '<b class="ad-demo-tag">Demo data</b> Made up test visitors, to see how the page looks with many.' : ''}</p>
-      <nav class="ad-jump" aria-label="Parts">${GROUPS.map(([id, t, i]) => `<a href="#ad-${id}">${ic(i)}${t}</a>`).join('')}</nav></header>
-    <dl class="pf-kpis ad-kpis">
+      <p class="adm-demo-row"><span class="seg" role="group" aria-label="Which numbers"><button type="button" data-real aria-pressed="${!s.demo}">Real</button><button type="button" data-demo aria-pressed="${!!s.demo}">Demo</button></span>
+        ${s.demo ? '<b class="adm-demo-tag">Demo data</b> Made up test visitors, to see how the page looks with many.' : ''}</p>
+      <nav class="adm-jump" aria-label="Parts">${GROUPS.map(([id, t, i]) => `<a href="#ad-${id}">${ic(i)}${t}</a>`).join('')}</nav></header>
+    <dl class="pf-kpis adm-kpis">
       ${[['Today', t.today, t.newToday], ['7 days', t.week, t.new7], [`${s.days} days`, t.month, t.new30, `${Math.round(t.mobile * 100)}% on a phone`],
-        ['All time', t.all, t.all, `${t.all ? (t.views / t.all).toFixed(1) : 0} pages a visitor`]].map(([dt, all, fresh, more]) => `<div class="ad-pair"><dt>${dt}</dt>
+        ['All time', t.all, t.all, `${t.all ? (t.views / t.all).toFixed(1) : 0} pages a visitor`]].map(([dt, all, fresh, more]) => `<div class="adm-pair"><dt>${dt}</dt>
         <dd><span>${all}<small>visitors</small></span><span>${fresh}<small>new visitors</small></span></dd>${more ? `<small>${more}</small>` : ''}</div>`).join('')}
       <div><dt>Profiles created</dt><dd>${t.registered}</dd><small>logged in with Lichess</small></div>
     </dl>
     ${group('overview')}
     ${liveHtml(s)}
     ${overviewHtml(s)}
-    <section class="pf-card"><div class="ad-head"><h2>${ic('analyse')}Visitors</h2><div class="seg" role="group" aria-label="Time span" id="ad-span">${SPANS.map(([l, n]) => `<button type="button" data-span="${n}" aria-pressed="${n === span}">${l}</button>`).join('')}</div></div>
-      <div id="ad-line" class="ad-line-box"></div><div id="ad-notes" class="ad-notes"></div></section>
+    <section class="pf-card"><div class="adm-head"><h2>${ic('analyse')}Visitors</h2><div class="seg" role="group" aria-label="Time span" id="adm-span">${SPANS.map(([l, n]) => `<button type="button" data-span="${n}" aria-pressed="${n === span}">${l}</button>`).join('')}</div></div>
+      <div id="adm-line" class="adm-line-box"></div><div id="adm-notes" class="adm-notes"></div></section>
     ${group('openings')}
     ${openingsHtml(s)}
-    <div class="ad-three">${practiceHtml(s)}${betterHtml(s)}</div>
+    <div class="adm-three">${practiceHtml(s)}${betterHtml(s)}</div>
     <div class="pf-two">${cardsHtml(s)}
       <section class="pf-card"><h2>${ic('practise')}Openings opened <small>before lines were counted one by one</small></h2>
-        ${(s.openings || []).length ? `<ul class="pf-rows ad-recent">${s.openings.map((o) => `<li><span>${esc(o.name)}</span><small>opened ${o.opened} · ${o.people} ${o.people === 1 ? 'person' : 'people'} · done <b title="Learn">${o.learn}</b> L · <b title="Practice">${o.try}</b> P · <b title="Time challenge">${o.time}</b> T</small></li>`).join('')}</ul>` : rows(s.practised)}</section>
+        ${(s.openings || []).length ? `<ul class="pf-rows adm-recent">${s.openings.map((o) => `<li><span>${esc(o.name)}</span><small>opened ${o.opened} · ${o.people} ${o.people === 1 ? 'person' : 'people'} · done <b title="Learn">${o.learn}</b> L · <b title="Practice">${o.try}</b> P · <b title="Time challenge">${o.time}</b> T</small></li>`).join('')}</ul>` : rows(s.practised)}</section>
     </div>
     ${group('people')}
-    <section class="pf-card"><div class="ad-head"><h2>${ic('people')}Unique visitors · ${s.visitors.length}</h2><small>Every visitor once, newest first. IP addresses without their last part. Click one to see what they did.</small></div>
-      ${s.visitors.length ? `<div class="ad-visitors"><div class="ad-v-head"><span>Location</span><span>IP</span><span>Lichess</span><span>Device</span><span>Visits</span><span>Last seen</span></div>${s.visitors.map((v) => `<details class="ad-visitor"><summary>
-          <span class="ad-v-where">${flag(v.country)}${esc(v.country ? land(v.country).replace(/ \(..\)$/, '') : 'Unknown')}${v.city ? ` · ${esc(v.city)}` : ''}</span>
+    <section class="pf-card"><div class="adm-head"><h2>${ic('people')}Unique visitors · ${s.visitors.length}</h2><small>Every visitor once, newest first. IP addresses without their last part. Click one to see what they did.</small></div>
+      ${s.visitors.length ? `<div class="adm-visitors"><div class="adm-v-head"><span>Location</span><span>IP</span><span>Lichess</span><span>Device</span><span>Visits</span><span>Last seen</span></div>${s.visitors.map((v) => `<details class="adm-visitor"><summary>
+          <span class="adm-v-where">${flag(v.country)}${esc(v.country ? land(v.country).replace(/ \(..\)$/, '') : 'Unknown')}${v.city ? ` · ${esc(v.city)}` : ''}</span>
           <span class="num">${esc((v.ip || '–').replace(/\.0$/, '.x').replace(/::$/, ':x'))}</span>
           <span>${v.name ? link({ name: v.name }) : '<small>–</small>'}</span>
           <span>${esc(v.device || '–')}</span>
           <span class="num">${v.views} view${v.views === 1 ? '' : 's'} · since ${day(v.first)}</span>
           <span class="num">${when(v.last)}</span></summary>
           ${personHtml(v, s.visitors)}</details>`).join('')}</div>
-      ${s.visitors.length > 10 ? `<button type="button" class="ghost ad-more" data-more aria-expanded="false">Show all ${s.visitors.length}</button>` : ''}`
+      ${s.visitors.length > 10 ? `<button type="button" class="ghost adm-more" data-more aria-expanded="false">Show all ${s.visitors.length}</button>` : ''}`
       : '<p class="info">Nobody yet.</p>'}</section>
-    <div class="ad-three">
+    <div class="adm-three">
       <section class="pf-card"><h2>${ic('login')}Logged-in players · ${s.days} days</h2>${s.users.length
-        ? `<ul class="pf-rows ad-rows">${s.users.map((u) => `<li><span>${link(u)}</span><small>${u.n} actions · last ${when(u.last)}</small></li>`).join('')}</ul>` : '<p class="info">Nobody yet.</p>'}</section>
-      <section class="pf-card"><h2>${ic('plus')}Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="ad-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
+        ? `<ul class="pf-rows adm-rows">${s.users.map((u) => `<li><span>${link(u)}</span><small>${u.n} actions · last ${when(u.last)}</small></li>`).join('')}</ul>` : '<p class="info">Nobody yet.</p>'}</section>
+      <section class="pf-card"><h2>${ic('plus')}Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="adm-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
       <section class="pf-card"><h2>${ic('profile')}Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>
     </div>
-    <div class="ad-three">
-      <section class="pf-card"><div class="ad-head"><h2>${ic('profile')}Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
-      ${(s.recentProfiles || []).length ? `<ul class="pf-rows ad-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: (r.target || '').split(' #')[0] })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
-      <section class="pf-card"><div class="ad-head"><h2>${ic('card')}Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
-      ${(s.recentActions || []).length ? `<ul class="pf-rows ad-recent">${actionRows(s.recentActions).slice(0, 15).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
+    <div class="adm-three">
+      <section class="pf-card"><div class="adm-head"><h2>${ic('profile')}Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
+      ${(s.recentProfiles || []).length ? `<ul class="pf-rows adm-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: (r.target || '').split(' #')[0] })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
+      <section class="pf-card"><div class="adm-head"><h2>${ic('card')}Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
+      ${(s.recentActions || []).length ? `<ul class="pf-rows adm-recent">${actionRows(s.recentActions).slice(0, 15).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
       <section class="pf-card"><h2>${ic('compare')}Comparisons</h2>${rows(s.compares, (x) => targetHtml('compare', x.name))}</section>
     </div>
     ${group('traffic')}
-    <div class="ad-four">
+    <div class="adm-four">
       <section class="pf-card"><h2>${ic('globe')}Countries <small>unique visitors</small></h2>${bars(s.countries || [], (x) => flag(x.name) + esc(land(x.name)))}</section>
       <section class="pf-card"><h2>${ic('pin')}Cities <small>unique visitors</small></h2>${bars(s.cities || [], (x) => flag(x.name.split(', ')[1]) + esc(x.name))}</section>
       <section class="pf-card"><h2>${ic('link')}Where visitors come from</h2>${bars(s.sources || [])}</section>
       <section class="pf-card"><h2>${ic('phone')}Devices <small>unique visitors</small></h2>${bars(s.devices || [])}</section>
     </div>
-    <div class="ad-four">
+    <div class="adm-four">
       <section class="pf-card"><h2>${ic('view')}Most visited pages</h2>${bars(s.pages, (x) => esc(pageName(x.name)), (x) => ` <small>${x.unique} unique</small>`)}</section>
       <section class="pf-card"><h2>${ic('bolt')}What people do</h2>${rows(s.usage, (x) => KIND[x.name] || esc(x.name))}</section>
       <section class="pf-card"><h2>${ic('clock')}Time of day <small>Swedish time</small></h2>${cols(s.hours, s.hours.map((_, i) => String(i).padStart(2, '0')), 3)}</section>
@@ -439,7 +439,7 @@ function shot(key, c, look, style) {
 function bindCards(body) {
   const cards = cardsOf(body), box = $('#admin');
   loadFlags([...cards.keys()]); // the stickers on the cards shown on hover
-  tip ??= document.body.appendChild(Object.assign(document.createElement('div'), { className: 'ad-card-tip', hidden: true }));
+  tip ??= document.body.appendChild(Object.assign(document.createElement('div'), { className: 'adm-card-tip', hidden: true }));
   const place = (e) => { const w = tip.offsetWidth, h = tip.offsetHeight;
     tip.style.left = `${Math.min(e.clientX + 16, innerWidth - w - 8)}px`; tip.style.top = `${Math.min(e.clientY + 16, innerHeight - h - 8)}px`; };
   box.onmouseover = (e) => {
@@ -450,7 +450,7 @@ function bindCards(body) {
     const look = own && / · light\b/.test(own) ? 'light' : 'dark', style = !!own && / · (style|card \+ style)\b/.test(own);
     tip.innerHTML = cardHtml(c, look, style); tip.hidden = false; place(e);
     // A download that carries its image data is shown as the very image, drawn as the profile page drew it.
-    if (own && c.n) shot(own, c, look, style).then((src) => { if (!tip.hidden && tip.dataset.own === own) { tip.innerHTML = `<img class="ad-shot${style ? ' style' : ''}" src="${src}" alt="">`; place(e); } });
+    if (own && c.n) shot(own, c, look, style).then((src) => { if (!tip.hidden && tip.dataset.own === own) { tip.innerHTML = `<img class="adm-shot${style ? ' style' : ''}" src="${src}" alt="">`; place(e); } });
     tip.dataset.own = own || '';
   };
   box.onmousemove = (e) => { if (!tip.hidden) place(e); };
@@ -470,7 +470,7 @@ const stepSays = (name = '') => (/Fetch every/.test(name) ? 'Fetching every acco
 async function watchPros() {
   clearInterval(proTick);
   const runs = await fetch(`${RUNS}?per_page=10`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  const say = $('.ad-pros [role=status]'), btn = $('#ad-pros');
+  const say = $('.adm-pros [role=status]'), btn = $('#adm-pros');
   if (!runs || !say) return;
   const live = runs.workflow_runs.find((r) => r.status !== 'completed'), last = runs.workflow_runs[0];
   if (!live) {
@@ -492,9 +492,9 @@ function show(body) {
   render(body);
   // Every pro's and VIP's games fetched again and their profiles snapshotted, now (admin-stats starts the GitHub workflow),
   // with a bar for how far it is: the run's step and its time against the last such run's, read from GitHub's public API.
-  $('#admin').insertAdjacentHTML('afterbegin', `<div class="ad-pros"><p><button type="button" class="ghost" id="ad-pros">Update all pros &amp; VIPs now</button> <span role="status"></span></p>
+  $('#admin').insertAdjacentHTML('afterbegin', `<div class="adm-pros"><p><button type="button" class="ghost" id="adm-pros">Update all pros &amp; VIPs now</button> <span role="status"></span></p>
     <div id="pf-load" class="pf-load" hidden><div class="pf-load-head"><p class="pf-load-k" aria-live="polite"></p><b class="pf-load-n">0%</b></div><div class="pf-load-track" role="progressbar" aria-label="Updating pros and VIPs" aria-valuemin="0" aria-valuemax="100"><i></i></div></div></div>`);
-  $('#ad-pros').addEventListener('click', async (e) => {
+  $('#adm-pros').addEventListener('click', async (e) => {
     const say = e.target.nextElementSibling;
     e.target.disabled = true; say.textContent = 'Starting…';
     const r = await fetch(`${FN}?update-pros`, { headers: { 'x-lichess-token': account()?.token } }).then((x) => x.json()).catch((err) => ({ error: err.message }));
@@ -505,18 +505,18 @@ function show(body) {
   watchPros();
   bindCards(body);
   bindLine(body);
-  $('#ad-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = b.dataset.span === 'today' ? 'today' : Number(b.dataset.span);
-    $('#ad-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body); });
+  $('#adm-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = b.dataset.span === 'today' ? 'today' : Number(b.dataset.span);
+    $('#adm-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body); });
   // The visitor list shows the newest 10 until opened.
-  $('[data-more]')?.addEventListener('click', (e) => { const b = e.currentTarget, open = $('.ad-visitors').classList.toggle('open');
+  $('[data-more]')?.addEventListener('click', (e) => { const b = e.currentTarget, open = $('.adm-visitors').classList.toggle('open');
     b.setAttribute('aria-expanded', open); b.textContent = open ? 'Show the newest 10' : `Show all ${body.visitors.length}`; });
   // An opening's lines open under it, by click or Enter.
-  for (const r of document.querySelectorAll('.ad-op-row')) r.onclick = r.onkeydown = (e) => {
+  for (const r of document.querySelectorAll('.adm-op-row')) r.onclick = r.onkeydown = (e) => {
     if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
     const open = r.getAttribute('aria-expanded') !== 'true';
     r.setAttribute('aria-expanded', open);
-    r.parentElement.querySelectorAll('.ad-op-line').forEach((x) => { x.hidden = !open; });
+    r.parentElement.querySelectorAll('.adm-op-line').forEach((x) => { x.hidden = !open; });
   };
   $('[data-demo]').addEventListener('click', () => { if (!body.demo) { real = body; show(demoData()); } });
   $('[data-real]').addEventListener('click', () => { if (body.demo) show(real); });
@@ -599,8 +599,8 @@ async function start() {
   const a = account();
   if (!a) {
     $('#admin').innerHTML = `<section class="picker"><h1 class="pf-h1">Admin</h1><p class="info">Log in with Lichess to see the site's numbers.</p>
-      <p><button id="ad-login" class="cta" type="button">Log in with Lichess</button></p></section>`;
-    return $('#ad-login').addEventListener('click', login);
+      <p><button id="adm-login" class="cta" type="button">Log in with Lichess</button></p></section>`;
+    return $('#adm-login').addEventListener('click', login);
   }
   $('#profile-msg').textContent = 'Loading the numbers…';
   try {
