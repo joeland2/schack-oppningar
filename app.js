@@ -1,15 +1,15 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101230242';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101230242';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101230242';
-import { NAMED_TRAPS } from './traps.js?v=20261101230242';
-import { GUIDE } from './guide.js?v=20261101230242';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101230242';
-import { maia3Move } from './maia3.js?v=20261101230242';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101230242';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261101230242';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101230242';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101230242';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261101230805';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261101230805';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261101230805';
+import { NAMED_TRAPS } from './traps.js?v=20261101230805';
+import { GUIDE } from './guide.js?v=20261101230805';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261101230805';
+import { maia3Move } from './maia3.js?v=20261101230805';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261101230805';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261101230805';
+import { login, finishLogin, account, liveGames } from './lichess.js?v=20261101230805';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261101230805';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -512,11 +512,10 @@ function aboutOf(o) {
 }
 function card(o) {
   const s = stats[statKey(o.id)] || { done: [], total: 0 };
-  const due = dueCount(s), learned = new Set([...(s.played || []), ...s.done]).size;
+  const learned = new Set([...(s.played || []), ...s.done]).size;
   // Your furthest step with the opening, as its star and how many lines reached it: green Learn, gold Practice, diamond Time.
   const [n, c, t] = [[(s.timed || []).length, 'diamond', 'without a slip in Time'], [s.done.length, 'gold', 'cleared in Practice'], [learned, 'green', 'played through in Learn']].find(([k]) => k) || [];
-  const progress = due ? `<span class="chip pagar" title="${due} of your lines are due for review in Practice">${due} to review</span>`
-    : n ? `<span class="chip ocard-prog" title="${n} of ${s.total} lines ${t}"><svg class="line-star ${c}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>${n}/${s.total}</span>` : '';
+  const progress = n ? `<span class="chip ocard-prog" title="${n} of ${s.total} lines ${t}"><svg class="line-star ${c}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>${n}/${s.total}</span>` : '';
   const tags = stylesOf(o).map((t) => `<span class="tag">${STYLES[t].label}</span>`).join('');
   const about = aboutOf(o);
   const win = o.side === 'w' ? o.win : 1 - o.win - o.draw;

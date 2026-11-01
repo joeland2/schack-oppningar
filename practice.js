@@ -2,64 +2,70 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261101230242';
-import { blunders, puzzles, puzzlesFromGames } from './blunder.js?v=20261101230242';
-import { current, cache, myName, skillsOf, storedGames } from './profile.js?v=20261101230242';
+import { login } from './lichess.js?v=20261101230805';
+import { blunders, puzzles, puzzlesFromGames } from './blunder.js?v=20261101230805';
+import { current, cache, myName, skillsOf, storedGames } from './profile.js?v=20261101230805';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const pct = (x) => `${Math.round(x * 100)}%`;
 const practise = (side, fam) => `./?practise=${side}~${encodeURIComponent(fam.replace(/^vs /, ''))}`;
 
-// Where each weak skill is trained on this site.
-const SKILL_GO = {
-  Attack: { href: 'mistakes.html', label: 'Solve your own mistakes' },
-  Defense: null,
-  'Early game': null, // the openings that cost you most are their own step
-  'Late game': null,
-  Accuracy: { href: 'mistakes.html', label: 'Solve your own mistakes' },
-  Speed: null,
-};
-
-function step(n, title, body, action) {
-  return `<li class="pr-step"><span class="pr-n">${n}</span><div><h2>${title}</h2>${body}${action ? `<p class="pr-go">${action}</p>` : ''}</div></li>`;
-}
-
+// Skills on the left, the plan for the one picked on the right: each skill's exercises on this site.
 function render(name, p) {
-  const steps = [];
-  const weak = skillsOf(p).filter((x) => x.raw !== null && x.raw <= 45).sort((a, b) => a.raw - b.raw); // clearly below your opponents, as on the profile
-  for (const x of weak.slice(0, 2)) {
-    const go = SKILL_GO[x.label];
-    steps.push([`Train ${x.label.toLowerCase()} <small>${x.v}</small>`, `<p>${esc(x.means)} ${esc(x.why)}</p><p class="pr-how"><b>How:</b> ${esc(x.train)}</p>`,
-      go ? `<a class="cta" href="${go.href}">${go.label}</a>` : x.label === 'Early game' ? '<a class="cta" href="#pr-openings">See the openings below</a>' : '']);
-  }
-  const mine = puzzles();
-  steps.push(['Puzzles from your own games', mine.length
-    ? `<p>${mine.length} positions from your games where you went wrong. Find the move you missed. <a href="profile.html">Analyse more games</a> on your profile for more.</p>`
-    : '<p>The positions in your games where you went wrong, as puzzles: blunders, missed wins and missed mates.</p>',
-  mine.length ? '<a class="cta" href="mistakes.html">Solve them</a>' : '<a class="cta" href="./?do=mistakes">Find my mistakes</a>']);
-  const spot = blunders(mine, storedGames(name) || []);
-  if (spot.length) steps.push(['Spot the blunder', `<p>A few moves from one of your games. One of yours threw the game away: which one? ${spot.length} games to go through.</p>`, '<a class="cta" href="blunder.html">Spot the blunder</a>']);
-  const ops = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))]
-    .filter((o) => o.n >= 8 && o.score <= 0.47).sort((a, b) => (a.score - 0.5) * Math.sqrt(a.n) - (b.score - 0.5) * Math.sqrt(b.n)).slice(0, 3);
-  if (ops.length) {
-    steps.push(['<span id="pr-openings">Openings that cost you points</span>', `<ul class="pr-list">${ops.map((o) => `<li><a href="${practise(o.side, o.fam)}"><b>${esc(o.fam)}</b> as ${o.side === 'w' ? 'White' : 'Black'}</a><small>${pct(o.win ?? o.score)} wins in ${o.n} games</small></li>`).join('')}</ul>`,
-      '<small class="info">Each opens that opening\'s lines in the trainer.</small>']);
-  }
-  steps.push(['A player to learn from', '<p>Someone rated a bit above you who plays your main opening and avoids the moves that cost you: see what they play where you go wrong.</p>',
-    '<a class="cta" href="./?do=learnfrom">Find one</a>']);
-  steps.push(['Traps in your openings', '<p>The traps players at your level fall into in the openings you play, one after another: spot the slip and punish it.</p>',
-    '<a class="cta" href="./?do=traps">Practise the traps</a>']);
-  const best = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))]
-    .filter((o) => o.n >= 8).sort((a, b) => (b.score - 0.5) * Math.sqrt(b.n) - (a.score - 0.5) * Math.sqrt(a.n))[0];
-  if (best && best.score >= 0.55) {
-    steps.push(['Keep your best opening sharp', `<p><b>${esc(best.fam)}</b> as ${best.side === 'w' ? 'White' : 'Black'}: you win ${pct(best.win ?? best.score)} of ${best.n} games. A short review keeps it that way.</p>`,
-      `<a class="ghost pr-ghost" href="${practise(best.side, best.fam)}">Review it</a>`]);
-  }
+  const skills = skillsOf(p).filter((x) => x.v !== null);
+  const mine = puzzles(), spot = blunders(mine, storedGames(name) || []);
+  const all = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))];
+  const costly = all.filter((o) => o.n >= 8 && o.score <= 0.47).sort((a, b) => (a.score - 0.5) * Math.sqrt(a.n) - (b.score - 0.5) * Math.sqrt(b.n)).slice(0, 3);
+  const best = all.filter((o) => o.n >= 8).sort((a, b) => (b.score - 0.5) * Math.sqrt(b.n) - (a.score - 0.5) * Math.sqrt(a.n))[0];
+  const side = (o) => (o.side === 'w' ? 'White' : 'Black');
+  // One exercise: [icon, title, a line on it, link, button].
+  const ex = {
+    puzzles: ['🧩', 'Puzzles from your games', mine.length ? `${mine.length} positions where you went wrong: find the move you missed.` : 'The positions in your games where you went wrong, as puzzles.', mine.length ? 'mistakes.html' : './?do=mistakes', mine.length ? 'Solve' : 'Find them'],
+    spot: spot.length && ['👁', 'Spot the blunder', `A few moves from one of your ${spot.length} games: which of yours threw it away?`, 'blunder.html', 'Play'],
+    traps: ['⚡', 'Traps in your openings', 'The traps players at your level fall into in your openings: spot the slip and punish it.', './?do=traps', 'Practise'],
+    learnfrom: ['👤', 'A player to learn from', 'Someone a bit above you in your main opening: what they play where you go wrong.', './?do=learnfrom', 'Find one'],
+    endgames: ['♚', 'Endgames', 'Win the basic endgames to mate, move by move, then against the clock.', 'endgames.html', 'Train'],
+    pawn: ['♙', 'King and pawn', 'The endgame most games come down to: the opposition and the key squares.', 'endgames.html#kp', 'Train'],
+    rook: ['♜', 'Rook and king', 'Mate with a rook: the most common mate to need.', 'endgames.html#kr', 'Train'],
+    time: ['⏱', 'Endgames against the clock', 'The Time challenge: mate as fast as you can, without a slip.', 'endgames.html', 'Race'],
+  };
+  const opRows = costly.map((o) => ['♞', `${esc(o.fam)} as ${side(o)}`, `${pct(o.win ?? o.score)} wins in ${o.n} games: one of the openings that cost you most.`, practise(o.side, o.fam), 'Fix it']);
+  const keep = best && best.score >= 0.55 ? [['★', `Keep the ${esc(best.fam)} sharp`, `Your best: ${pct(best.win ?? best.score)} wins in ${best.n} games as ${side(best)}.`, practise(best.side, best.fam), 'Review']] : [];
+  const PLAN = {
+    Attack: [ex.puzzles, ex.traps, ex.spot],
+    Defense: [ex.puzzles, ex.spot, ex.rook],
+    'Early game': [...opRows, ex.traps, ex.learnfrom, ...keep],
+    'Late game': [ex.pawn, ex.rook, ex.endgames],
+    Accuracy: [ex.spot, ex.puzzles],
+    Speed: [ex.time, ...keep, ex.traps],
+  };
+  const tone = (x) => (x.raw !== null && x.raw <= 45 ? 'weak' : x.raw !== null && x.raw >= 55 ? 'strong' : '');
+  const HEAD = { Attack: 'Make your attacks land', Defense: 'Hold your worse positions', 'Early game': 'Come out of the opening better', 'Late game': 'Win more endgames', Accuracy: 'Blunder less', Speed: 'Use your clock better' };
+  const why = (w) => (Array.isArray(w) ? w.filter(Boolean).join(' · ') : w || '');
+  let pick = [...skills].sort((a, b) => (a.raw ?? a.v) - (b.raw ?? b.v))[0]?.label;
+  const panel = () => {
+    const x = skills.find((k) => k.label === pick), rows = (PLAN[pick] || []).filter(Boolean);
+    return `<p class="pr-k">To train ${esc(pick.toLowerCase())} <b>${x.v}</b></p><h2>${esc(HEAD[pick] || pick)}</h2>
+      <p class="pr-why">${esc(x.means)} ${esc(why(x.why))}</p><p class="pr-how"><b>How:</b> ${esc(x.train)}</p>
+      <ul class="pr-ex">${rows.map(([ic, t, d, href, go], i) => `<li><span class="pr-ic" aria-hidden="true">${ic}</span><span><b>${t}</b><small>${d}</small></span><a class="${i ? 'ghost' : 'cta'}" href="${href}">${go}</a></li>`).join('')}</ul>`;
+  };
   $('#practice').innerHTML = `
     <header class="pr-head"><h1 class="pf-h1">Your plan</h1>
-      <p class="info">Built from your last ${p.n} rated Lichess games, ${esc(name)}: the weakest parts of your game first. <a href="profile.html">See your profile</a></p></header>
-    <ol class="pr-steps">${steps.map((x, i) => step(i + 1, ...x)).join('')}</ol>`;
+      <p class="info">Built from your last ${p.n} rated Lichess games, ${esc(name)}. Pick a skill to see how to train it; your weakest is picked. <a href="profile.html">See your profile</a></p></header>
+    <div class="pr-split">
+      <section class="pf-card pr-skills"><h2>Your skills</h2><div role="tablist" aria-label="Skills">${skills.map((x) => `<button type="button" role="tab" class="pr-sk ${tone(x)}" data-skill="${esc(x.label)}" aria-selected="${x.label === pick}">
+        <span class="pr-sk-row"><span>${esc(x.label)}</span><b>${x.v}</b></span><span class="pr-sk-bar"><i style="width:${x.v}%"></i></span></button>`).join('')}</div>
+        <p class="pr-scale">Against players within your rating range: 50 is as good as them.</p></section>
+      <section class="pf-card pr-plan" role="tabpanel" aria-live="polite">${panel()}</section>
+    </div>`;
+  $('.pr-skills').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-skill]');
+    if (!b) return;
+    pick = b.dataset.skill;
+    document.querySelectorAll('.pr-sk').forEach((x) => x.setAttribute('aria-selected', x === b));
+    $('.pr-plan').innerHTML = panel();
+  });
 }
 
 function ask() {
