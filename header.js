@@ -251,11 +251,11 @@ addEventListener('DOMContentLoaded', () => {
 // opens your thread with the admins (chat.js, loaded on the first click).
 (() => {
   const add = () => {
-    const b = '<button type="button" class="link msg-admins" data-msg-admins>Message the admins</button>';
+    const b = '<button type="button" class="msg-admins" data-msg-admins><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Message the admins</button>';
     const row = document.querySelector('.foot-row');
     if (row) row.insertAdjacentHTML('beforeend', b);
     else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
-    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261101232716')).openChat());
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261101232859')).openChat());
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
 })();

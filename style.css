@@ -2691,3 +2691,9 @@ a.st-wk:hover h2 { text-decoration: underline; }
 .adm-op-star .line-star { width: 15px; height: 15px; }
 .adm-op-star.none { opacity: .35; }
 @media (max-width: 560px) { .adm-opened li { grid-template-columns: minmax(0, 1fr) auto; } .adm-opened-bar { grid-column: 1 / -1; order: 3; } }
+
+/* Message the admins: a real button at the bottom of every page, easy to find */
+.msg-admins { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border: 1px solid var(--hot); border-radius: 99px; background: color-mix(in srgb, var(--hot) 10%, transparent); color: var(--ink); font: 600 14px var(--font-body); cursor: pointer; }
+.msg-admins .ico { width: 16px; height: 16px; stroke: var(--hot); fill: none; stroke-width: 2; stroke-linejoin: round; }
+.msg-admins:hover { background: color-mix(in srgb, var(--hot) 20%, transparent); }
+.foot-row .msg-admins { margin-left: auto; }
