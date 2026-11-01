@@ -53,7 +53,7 @@
     nav?.querySelector('a[href="profile.html"]')?.remove();
     nav?.querySelector('a[href="practice.html"]')?.remove();
     if (!user() && !document.querySelector('#lichess-login')) at?.insertAdjacentHTML('beforebegin', '<a class="top-login" href="profile.html?login" title="Log in with Lichess to see your profile">Log in</a>');
-    nav?.insertAdjacentHTML('beforeend', `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a><a href="stars.html"${page === 'stars.html' ? ' aria-current="page"' : ''}>Pros</a><a href="playstyles.html"${page === 'playstyles.html' ? ' aria-current="page"' : ''}>Styles</a>`);
+    nav?.insertAdjacentHTML('beforeend', `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a><a href="stars.html"${page === 'stars.html' ? ' aria-current="page"' : ''}>PRO/VIP</a><a href="playstyles.html"${page === 'playstyles.html' ? ' aria-current="page"' : ''}>Styles</a>`);
     const who = user();
     if (who) {
       const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`), btn = document.querySelector('#lichess-login');
@@ -241,4 +241,17 @@ addEventListener('DOMContentLoaded', () => {
     const onCC = cc && (!li || li.disabled || (cc.last_online || 0) * 1000 > (li.seenAt || 0));
     location.href = `profile.html?u=${encodeURIComponent(onCC ? `cc:${cc.username || t}` : t)}`;
   });
+})();
+
+// Message the admins: a button at the bottom of every page (in the footer where there is one) that
+// opens your thread with the admins (chat.js, loaded on the first click).
+(() => {
+  const add = () => {
+    const b = '<button type="button" class="link msg-admins" data-msg-admins>Message the admins</button>';
+    const row = document.querySelector('.foot-row');
+    if (row) row.insertAdjacentHTML('beforeend', b);
+    else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261101223350')).openChat());
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
 })();

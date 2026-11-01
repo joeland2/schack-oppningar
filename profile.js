@@ -3,10 +3,10 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101222212';
-import { STYLE_OF } from './styles.js?v=20261101222212';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101222212';
-import { PEOPLE } from './pros.js?v=20261101222212';
+import { account, login, finishLogin } from './lichess.js?v=20261101223350';
+import { STYLE_OF } from './styles.js?v=20261101223350';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101223350';
+import { PEOPLE } from './pros.js?v=20261101223350';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -2073,7 +2073,7 @@ async function run(name) {
   try {
     const p = await build(name);
     if (mine === runs) render(name, Date.now(), p);
-    if (SNAPSHOT) window.snapOut = { ...cache()[name.toLowerCase()], games: MEM.get(name.toLowerCase())?.games }; // for tools/snapshot_pros.py
+    if (SNAPSHOT) window.snapOut = { ...cache()[name.toLowerCase()], games: MEM.get(name.toLowerCase())?.games, skills: Object.fromEntries(skillsOf(p).filter((x) => x.v !== null).map((x) => [x.label, Math.round(x.v)])) }; // for tools/snapshot_pros.py
     window.track?.('profile', `${cache()[name.toLowerCase()]?.name || name} #${shownCode}`);
     if (mine === runs) await ownSpeed(name);
     if (mine === runs) { holdBar = false; loadBar.done(); otherSpeeds(name); }

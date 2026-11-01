@@ -83,3 +83,16 @@ alter table public.user_data enable row level security;
 -- targets are longer than 80 characters.
 alter table public.events drop constraint if exists events_target_check;
 alter table public.events add constraint events_target_check check (char_length(target) <= 600);
+
+-- Added 2026-11-01: messages between a logged-in player and the admins, one thread per player.
+-- Written and read only by the messages Edge Function, after it has checked the Lichess login.
+create table if not exists public.messages (
+  id      bigint generated always as identity primary key,
+  at      timestamptz not null default now(),
+  player  text not null check (char_length(player) <= 30),   -- whose thread (Lichess id)
+  author  text not null check (char_length(author) <= 30),   -- the player, or the admin who answered
+  body    text not null check (char_length(body) between 1 and 2000)
+);
+create index if not exists messages_player on public.messages (player, at);
+alter table public.messages enable row level security;
+-- No policies: the public key can neither read nor write it; the Edge Function uses the service role.

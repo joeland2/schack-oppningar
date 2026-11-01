@@ -2568,7 +2568,7 @@ main.profile:has(#admin) { max-width: 1320px; }
 .st-col .st-h2 { margin: 12px 0 10px; }
 @media (max-width: 760px) {
   .st-split { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .st-split .st-why, .st-split .st-bio { display: none; }
+  .st-split .st-why { display: none; }
   .st-split > .st-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
   .st-tabs button { padding: 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--muted); font: 400 18px var(--font-poster); text-transform: uppercase; letter-spacing: .06em; cursor: pointer; }
   .st-tabs button.pro[aria-selected="true"] { background: #d4a017; border-color: #d4a017; color: #141414; }
@@ -2610,3 +2610,26 @@ a.st-wk:hover h2 { text-decoration: underline; }
 @media (max-width: 760px) { .top-me-who b { max-width: 6.5em; font-size: 13px; } .top-me summary.top-bug { gap: 8px; } }
 /* Endgames: each part of the message (your move and why, their reply, the next move and why) on its own line. */
 .eg-why { display: block; } .eg-why + .eg-why { margin-top: 4px; font-weight: 400; color: var(--ink); }
+/* Message the admins: the footer button, and the chat dialog. */
+.msg-foot { padding-block: 24px 40px; text-align: center; }
+.chat { width: min(520px, calc(100vw - 32px)); max-height: min(640px, calc(100vh - 32px)); padding: 0; border: 1px solid var(--line); border-top: 3px solid var(--hot); background: var(--surface); color: var(--ink); display: flex; flex-direction: column; }
+.chat:not([open]) { display: none; }
+.chat::backdrop { background: rgb(0 0 0 / .55); }
+.chat-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.chat-head h2 { margin: 0; font-size: 18px; }
+.chat-x { background: none; border: 0; color: var(--muted); font-size: 26px; line-height: 1; cursor: pointer; }
+.chat-list { list-style: none; margin: 0; padding: 16px 18px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 160px; }
+.chat-msg { max-width: 85%; align-self: flex-start; }
+.chat-msg p { margin: 0; padding: 9px 12px; background: var(--raised, var(--bg)); border: 1px solid var(--line); border-radius: 12px 12px 12px 3px; overflow-wrap: anywhere; }
+.chat-msg.mine { align-self: flex-end; text-align: right; }
+.chat-msg.mine p { background: var(--hot); border-color: var(--hot); color: #141414; border-radius: 12px 12px 3px 12px; text-align: left; }
+.chat-msg small { display: block; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+.chat-note { color: var(--muted); padding: 0 18px; }
+.chat > p { padding: 0 18px; }
+.chat-form { display: flex; gap: 10px; align-items: flex-end; padding: 12px 18px 16px; border-top: 1px solid var(--line); }
+.chat-form textarea { flex: 1; min-width: 0; resize: vertical; font: inherit; padding: 8px 10px; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius); }
+.chat-err { color: var(--bad, #e06666); padding: 0 18px 12px; margin: 0; }
+.adm-thread { display: grid; gap: 2px; text-align: left; text-decoration: none; color: var(--ink); } .adm-thread small { color: var(--muted); font-weight: 400; }
+.st-sort { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; justify-self: end; font-size: 14px; color: var(--muted); }
+.st-sort select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; }
+@media (max-width: 760px) { .st-sort { justify-self: stretch; } .st-sort select { flex: 1; } }

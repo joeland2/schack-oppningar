@@ -26,6 +26,10 @@ def main():
         last = json.load(open(f'{OUT}/index.json'))
     except (OSError, ValueError):
         last = {}
+    try:  # each account's card skills (Attack, Defense, …), for sorting the Pros & VIPs page
+        skills = json.load(open(f'{OUT}/skills.json'))
+    except (OSError, ValueError):
+        skills = {}
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch()
@@ -38,6 +42,7 @@ def main():
                     page.goto(f'http://localhost:{PORT}/profile.html?u={a}&snapshot=1')
                     page.wait_for_function('() => window.snapOut && window.snapOut.games', timeout=WAIT)
                     entry = page.evaluate('() => window.snapOut')
+                    skills[a.lower()] = entry.pop('skills', None) or skills.get(a.lower(), {})
                     with open(f'{OUT}/{file_of(a)}.json', 'w') as f:
                         json.dump(entry, f, separators=(',', ':'))
                     last[a.lower()] = entry['games'][0]['createdAt'] if entry['games'] else 0
@@ -53,6 +58,8 @@ def main():
         server.terminate()
     with open(f'{OUT}/index.json', 'w') as f:
         json.dump(last, f, separators=(',', ':'))
+    with open(f'{OUT}/skills.json', 'w') as f:
+        json.dump(skills, f, separators=(',', ':'))
     if failed:
         print('failed:', ' '.join(failed))
 

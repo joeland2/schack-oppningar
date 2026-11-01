@@ -1,7 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261101222212';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101222212';
+import { account, login, finishLogin } from './lichess.js?v=20261101223350';
+import { api as chatApi, openChat } from './chat.js?v=20261101223350';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101223350';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -236,7 +237,7 @@ const IC = { ...EV_ICON, people: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6
   plus: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 5 2.7M19 14v6M16 17h6', target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01',
   home: 'M3 11l9-7 9 7M5 9.5V20h14V9.5' };
 const ic = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[k]}"/></svg>`;
-const GROUPS = [['overview', 'Overview', 'home', 'the week at a glance'], ['openings', 'Openings', 'practise', 'what is practised, and by whom'], ['people', 'People', 'people', 'who comes and what they do'],
+const GROUPS = [['messages', 'Messages', 'people', 'players writing to the admins'], ['overview', 'Overview', 'home', 'the week at a glance'], ['openings', 'Openings', 'practise', 'what is practised, and by whom'], ['people', 'People', 'people', 'who comes and what they do'],
   ['traffic', 'Traffic', 'globe', 'where they come from'], ['errors', 'Errors', 'error', 'what broke']];
 const group = (id) => { const [, t, i, sub] = GROUPS.find((g) => g[0] === id); return `<h2 class="adm-group" id="ad-${id}">${ic(i)}${t}<small>${sub}</small></h2>`; };
 
@@ -359,6 +360,8 @@ function render(s) {
         <dd><span>${all}<small>visitors</small></span><span>${fresh}<small>new visitors</small></span></dd>${more ? `<small>${more}</small>` : ''}</div>`).join('')}
       <div><dt>Profiles created</dt><dd>${t.registered}</dd><small>logged in with Lichess</small></div>
     </dl>
+    ${group('messages')}
+    <section class="pf-card" id="adm-threads"><p class="info">Loading…</p></section>
     ${group('overview')}
     ${liveHtml(s)}
     ${overviewHtml(s)}
@@ -488,6 +491,17 @@ async function watchPros() {
   setTimeout(watchPros, 60e3);
 }
 const ago = (iso) => { const m = Math.round((Date.now() - Date.parse(iso)) / 60e3); return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+// Messages: every player's thread with the admins, newest first, the ones waiting for an answer marked.
+// A click opens the thread to answer it (chat.js); closing it reads the list again.
+async function threads() {
+  const el = $('#adm-threads');
+  let ts;
+  try { ts = await chatApi('?threads'); } catch (e) { el.innerHTML = `<p class="info">${esc(e.message)}</p>`; return; }
+  const waiting = ts.filter((t) => t.author === t.player).length;
+  el.innerHTML = `<div class="adm-head"><h2>${ic('people')}Threads · ${ts.length}</h2><small>${waiting ? `${waiting} waiting for an answer` : 'All answered'}</small></div>
+    ${ts.length ? `<ul class="pf-rows adm-recent">${ts.map((t) => `<li><button type="button" class="link adm-thread" data-thread="${esc(t.player)}"><b>${esc(t.player)}</b> ${t.author === t.player ? '<span class="chip pagar">Waiting</span>' : ''}<small>${esc(t.body.slice(0, 90))}${t.body.length > 90 ? '…' : ''}</small></button><small>${t.n} · ${when(t.at)}</small></li>`).join('')}</ul>` : '<p class="info">No messages yet.</p>'}`;
+  el.querySelectorAll('[data-thread]').forEach((b) => b.addEventListener('click', () => { openChat(b.dataset.thread); document.querySelector('dialog.chat')?.addEventListener('close', threads); }));
+}
 function show(body) {
   render(body);
   // Every pro's and VIP's games fetched again and their profiles snapshotted, now (admin-stats starts the GitHub workflow),
@@ -503,6 +517,7 @@ function show(body) {
     proBar('Starting on GitHub…', 0); setTimeout(watchPros, 6000);
   });
   watchPros();
+  threads();
   bindCards(body);
   bindLine(body);
   $('#adm-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = b.dataset.span === 'today' ? 'today' : Number(b.dataset.span);
