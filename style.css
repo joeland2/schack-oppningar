@@ -2770,3 +2770,5 @@ a.st-wk:hover h2 { text-decoration: underline; }
 .sup-frame .sup-fx::before { inset: -4px; }
 .sup-mini { position: relative; z-index: 1; display: block; width: 40px; height: 54px; border-radius: 3px; background: var(--card); }
 .sup-frame .fx-none .sup-mini { outline: 1px dashed var(--muted); outline-offset: 3px; }
+/* The bottom buttons stay at the bottom while a page is still loading: the page is at least a screen tall */
+body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
