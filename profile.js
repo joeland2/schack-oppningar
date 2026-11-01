@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101202329';
-import { STYLE_OF } from './styles.js?v=20261101202329';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101202329';
+import { account, login, finishLogin } from './lichess.js?v=20261101203724';
+import { STYLE_OF } from './styles.js?v=20261101203724';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101203724';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -2070,7 +2070,7 @@ let comboGames = [];
 // games are in, as picking it does: not just its share of the last 500 of all.
 async function ownSpeed(name) {
   const sp = document.querySelector('[data-pf-speed][aria-pressed="true"]')?.dataset.pfSpeed;
-  if (!sp || sp === 'all' || storedGames(speedKey(name, sp))) return;
+  if (SNAPSHOT || !sp || sp === 'all' || storedGames(speedKey(name, sp))) return;
   if (await fetchSpeed(name, sp).catch(() => false) && shown?.[0].toLowerCase() === name.toLowerCase()) { const y = scrollY; render(...shown); scrollTo(0, y); }
 }
 // Something went wrong: say what, and offer to try again (reading the games afresh).
