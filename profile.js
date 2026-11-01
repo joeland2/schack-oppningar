@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101122632';
-import { STYLE_OF } from './styles.js?v=20261101122632';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261101122632';
+import { account, login, finishLogin } from './lichess.js?v=20261101122946';
+import { STYLE_OF } from './styles.js?v=20261101122946';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261101122946';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1044,7 +1044,9 @@ const PRO_NAMES = { DrNykterstein: 'GM Magnus Carlsen', DrDrunkenstein: 'GM Magn
   EricRosen: 'IM Eric Rosen', Fins: 'IM John Bartholomew',
   // On chess.com (cc:), checked against the name and title chess.com gives the account.
   'cc:Hikaru': 'GM Hikaru Nakamura', 'cc:MagnusCarlsen': 'GM Magnus Carlsen', 'cc:FabianoCaruana': 'GM Fabiano Caruana', 'cc:DanielNaroditsky': 'GM Daniel Naroditsky',
-  'cc:Firouzja2003': 'GM Alireza Firouzja', 'cc:NihalSarin': 'GM Nihal Sarin', 'cc:AnishGiri': 'GM Anish Giri', 'cc:Penguingm1': 'GM Andrew Tang', 'cc:IMRosen': 'IM Eric Rosen' };
+  'cc:Firouzja2003': 'GM Alireza Firouzja', 'cc:NihalSarin': 'GM Nihal Sarin', 'cc:AnishGiri': 'GM Anish Giri', 'cc:Penguingm1': 'GM Andrew Tang', 'cc:IMRosen': 'IM Eric Rosen',
+  'cc:LachesisQ': 'GM Ian Nepomniachtchi', 'cc:LevonAronian': 'GM Levon Aronian', 'cc:Duhless': 'GM Daniil Dubov', 'cc:FairChess_on_YouTube': 'GM Dmitry Andreikin',
+  'cc:GMBenjaminBok': 'GM Benjamin Bok', 'cc:Jospem': 'GM Jose Martinez', 'cc:GMHess': 'GM Robert Hess' };
 const PROS = new Map(Object.entries(PRO_NAMES).map(([k, v]) => [k.toLowerCase(), v]));
 // On a pro's profile, under the name: who the account belongs to.
 const proLine = (name) => {
@@ -1052,7 +1054,9 @@ const proLine = (name) => {
   return who ? `<p class="pf-pro-line ${proKind(name)}"><span class="pf-pro-tag">${proKind(name).toUpperCase()}</span><b>${esc(who.replace(/^(GM|IM) /, ''))}</b>${title ? `<span class="pf-pro-title">${title}</span>` : ''}</p>` : '';
 };
 // Known streamers and chess creators (checked the same way): a VIP frame instead.
-const VIP_NAMES = { agadmator: 'Antonio Radić', tigerlilov: 'IM Valeri Lilov', 'cc:agadmator': 'Antonio Radić', 'cc:tigerlilov': 'IM Valeri Lilov', 'cc:GothamChess': 'IM Levy Rozman' };
+const VIP_NAMES = { agadmator: 'Antonio Radić', tigerlilov: 'IM Valeri Lilov', 'cc:agadmator': 'Antonio Radić', 'cc:tigerlilov': 'IM Valeri Lilov', 'cc:GothamChess': 'IM Levy Rozman',
+  'cc:AnnaCramling': 'Anna Cramling', 'cc:AlexandraBotez': 'Alexandra Botez', 'cc:NemsKo': 'Nemo Zhou', 'cc:Chessbrah': 'GM Eric Hansen',
+  'cc:ChessNetwork': 'Jerry (ChessNetwork)', 'cc:TheChessNerd': 'Zachary Saine' };
 const VIPS = new Map(Object.entries(VIP_NAMES).map(([k, v]) => [k.toLowerCase(), v]));
 const proOf = (name) => PROS.get(String(name).toLowerCase()) || VIPS.get(String(name).toLowerCase()) || null;
 const proKind = (name) => (PROS.has(String(name).toLowerCase()) ? 'pro' : VIPS.has(String(name).toLowerCase()) ? 'vip' : '');
