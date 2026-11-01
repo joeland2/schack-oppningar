@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101121452';
-import { STYLE_OF } from './styles.js?v=20261101121452';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261101121452';
+import { account, login, finishLogin } from './lichess.js?v=20261101121705';
+import { STYLE_OF } from './styles.js?v=20261101121705';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261101121705';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1927,6 +1927,8 @@ async function run(name) {
     window.track?.('profile', `${cache()[name.toLowerCase()]?.name || name} #${shownCode}`);
     if (mine === runs) await ownSpeed(name);
   } catch (err) {
+    // A name typed without picking "On Chess.com" is looked up on Lichess first; not there, Chess.com's is shown.
+    if (mine === runs && !isCC(name) && /no player/.test(err.message) && await ccUser(name)) { history.replaceState(null, '', `?u=${encodeURIComponent(`cc:${name}`)}`); return run(`cc:${name}`); }
     if (mine === runs) failed(name, err);
   } finally { clearTimeout(slow); }
 }
