@@ -1,5 +1,5 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drill } from './drill.js?v=20261101135510';
+import { drill } from './drill.js?v=20261101155736';
 
 // data/pros.json is built by tools/make_pros.py from real chess.com games, analysed by Stockfish.
 const PUZZLES = await fetch('data/pros.json').then((r) => r.json());

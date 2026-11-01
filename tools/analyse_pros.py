@@ -18,7 +18,6 @@ SYNC = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/analyses'
 MAX, FULL, DEPTH, WORKERS = 500, 300, 10, 8
 UA = {'User-Agent': 'chess-trainer (joeland2.github.io/schack-oppningar)'}
 SPEEDS = ['bullet', 'blitz', 'rapid', 'classical']
-SKIP = {'MagnusCarlsen'}  # a Lichess account with no rated games
 
 
 def get(url, accept='application/json'):
@@ -147,7 +146,7 @@ def post(player, rows):
 
 def accounts():
     src = open('supabase/functions/pros/index.ts').read()
-    return [a for a in re.findall(r"\['([^']+)', '[^']+', '(?:pro|vip)'\]", src) if a not in SKIP]
+    return [a for a in re.findall(r"\['([^']+)', '[^']+', '(?:pro|vip)'\]", src)]
 
 
 def main():

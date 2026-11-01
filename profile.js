@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261101135510';
-import { STYLE_OF } from './styles.js?v=20261101135510';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101135510';
+import { account, login, finishLogin } from './lichess.js?v=20261101155736';
+import { STYLE_OF } from './styles.js?v=20261101155736';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261101155736';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1047,7 +1047,7 @@ function cardCode(p, t, skills) {
 // Magnus Carlsen's DrNykterstein): their cards wear a gold PRO frame wherever they show.
 // Keys as Lichess spells them (shown in the search's suggestions); looked up in lower case.
 const PRO_NAMES = { DrNykterstein: 'GM Magnus Carlsen', DrDrunkenstein: 'GM Magnus Carlsen', DannyTheDonkey: 'GM Magnus Carlsen', manwithavan: 'GM Magnus Carlsen',
-  MagnusCarlsen: 'GM Magnus Carlsen', alireza2003: 'GM Alireza Firouzja', nihalsarin2004: 'GM Nihal Sarin', penguingim1: 'GM Andrew Tang',
+  alireza2003: 'GM Alireza Firouzja', nihalsarin2004: 'GM Nihal Sarin', penguingim1: 'GM Andrew Tang',
   Zhigalko_Sergei: 'GM Sergei Zhigalko', Vladimirovich9000: 'GM Dmitry Andreikin', may6enexttime: 'GM Aleksei Sarana', 'Night-King96': 'GM Oleksandr Bortnyk',
   Konevlad: 'GM Vladislav Artemiev', AnishGiri: 'GM Anish Giri', RebeccaHarris: 'GM Daniel Naroditsky', DanielNaroditsky: 'GM Daniel Naroditsky',
   EricRosen: 'IM Eric Rosen', Fins: 'IM John Bartholomew',
@@ -1214,6 +1214,8 @@ const flagImage = (name) => { const c = FLAGS.get(String(name).toLowerCase()); r
 // A Combined card with games from both sites has no single site, so no sticker.
 const bothSites = () => !!combo && combo.some(isCC) && combo.some((n) => !isCC(n));
 const siteTag = (name) => bothSites() ? '' : `<span class="pf-site">${isCC(name) ? 'Chess.com' : 'Lichess'}</span>`;
+// A pro's Combined card is the person, not one of their accounts.
+const cardName = (name) => (combo && !comboOwn && proOf(name)?.replace(/^(GM|IM) /, '')) || nick(name);
 function playerCard(name, p, t, skills) {
   const known = skills.filter((x) => x.v !== null);
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
@@ -1222,7 +1224,7 @@ function playerCard(name, p, t, skills) {
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span>${t[1] ? `<span class="pf-str">+ ${esc(t[1].name)}</span>` : ''}</div>
       <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title=""${esc(nick(name))}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'chosen' ? `chosen by ${esc(nick(name))}` : p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
         ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}${p.also ? `<span class="pf-pcard-rating2">${p.also.rating} <small>${p.also.site}</small></span>` : ''}</div></div>
-    <p class="pf-pcard-name">${esc(nick(name))}</p>
+    <p class="pf-pcard-name">${esc(cardName(name))}</p>
     ${cardBars(skills.map((x) => [ABBR[x.label], x.v]))}
     <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
   </div>`;
@@ -1570,11 +1572,11 @@ function trendCard(full) {
   const all = names.flatMap((k) => pts.map((q) => q.v[k]).filter((v) => v !== null));
   const lo = Math.floor((Math.min(...all) - 3) / 10) * 10, hi = Math.ceil((Math.max(...all) + 3) / 10) * 10, ticks = [lo, (lo + hi) / 2, hi];
   // Drawn at the width it shows at, so the numbers stay small and sharp on a phone and a wide screen alike.
-  const phone = matchMedia('(max-width: 560px)').matches, W = Math.max(140, el.clientWidth - (phone ? 220 : 310)), H = 104, L = 28, R = 8, T = 16, B = 16, x = (i) => L + (i / (pts.length - 1)) * (W - L - R), y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const phone = matchMedia('(max-width: 560px)').matches, W = Math.max(140, el.clientWidth - (phone ? parseFloat(getComputedStyle(el).paddingLeft) * 2 : 310)), H = 104, L = 28, R = 8, T = 16, B = 16, x = (i) => L + (i / (pts.length - 1)) * (W - L - R), y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
   const row = (k) => {
     const ps = pts.map((q, i) => [i, q.v[k]]).filter(([, v]) => v !== null), vs = ps.map(([, v]) => v);
     const low = ps[vs.indexOf(Math.min(...vs))], high = ps[vs.indexOf(Math.max(...vs))], last = ps.at(-1), d = last[1] - ps[0][1];
-    const mark = ([i, v], c, below) => `<circle class="${c}" cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3"/><text class="pf-tr-v" x="${x(i).toFixed(1)}" y="${(y(v) + (below ? 13 : -6)).toFixed(1)}" text-anchor="middle">${v}</text>`;
+    const mark = ([i, v], c, below) => `<circle class="${c}" cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3"/><text class="pf-tr-v" x="${(x(i) + (i ? 0 : 5)).toFixed(1)}" y="${(y(v) + (below ? 13 : -6)).toFixed(1)}" text-anchor="${i ? 'middle' : 'start'}">${v}</text>`;
     return `<div class="pf-tr-row"><span>${k}<small>swung ${Math.max(...vs) - Math.min(...vs)}</small></span>
       <svg class="pf-line" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${k}: from ${ps[0][1]} to ${last[1]}, low ${low[1]}, high ${high[1]}">
         ${ticks.map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L - 5}" y="${y(v) + 3}" text-anchor="end">${v}</text>`).join('')}
@@ -2032,7 +2034,7 @@ async function combined(name) {
   if (!group || group.length < 2) { combo = null; return show(name, false); }
   const mine = ++runs, on = own ? group.filter((n) => !isOff(n)) : group;
   combo = group; comboOwn = own;
-  if (!$('#profile .pf-hero')) $('#profile').innerHTML = `<section class="pf-hero pf-skeleton" aria-hidden="true"><div class="pf-card-col"><div class="pf-pcard"><b class="pf-ovr">–</b><p class="pf-pcard-name">${esc(nick(name))}</p></div></div>
+  if (!$('#profile .pf-hero')) $('#profile').innerHTML = `<section class="pf-hero pf-skeleton" aria-hidden="true"><div class="pf-card-col"><div class="pf-pcard"><b class="pf-ovr">–</b><p class="pf-pcard-name">${esc(cardName(name))}</p></div></div>
     <div class="pf-hero-text"><span class="pf-sk-line w60"></span><span class="pf-sk-line"></span><span class="pf-sk-line"></span><span class="pf-sk-line w80"></span></div></section>`;
   await gamesReady; await loadScores();
   quiet = true;

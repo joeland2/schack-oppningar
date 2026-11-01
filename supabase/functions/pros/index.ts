@@ -17,7 +17,7 @@ const KEEP = 500; // games kept for the profile: its own MAX, so nobody download
 // [account, person, kind]; a Chess.com account is cc:name.
 const ACCOUNTS: [string, string, 'pro' | 'vip'][] = [
   ['DrNykterstein', 'Magnus Carlsen', 'pro'], ['DrDrunkenstein', 'Magnus Carlsen', 'pro'], ['DannyTheDonkey', 'Magnus Carlsen', 'pro'], ['manwithavan', 'Magnus Carlsen', 'pro'],
-  ['MagnusCarlsen', 'Magnus Carlsen', 'pro'], ['alireza2003', 'Alireza Firouzja', 'pro'], ['nihalsarin2004', 'Nihal Sarin', 'pro'], ['penguingim1', 'Andrew Tang', 'pro'],
+  ['alireza2003', 'Alireza Firouzja', 'pro'], ['nihalsarin2004', 'Nihal Sarin', 'pro'], ['penguingim1', 'Andrew Tang', 'pro'],
   ['Zhigalko_Sergei', 'Sergei Zhigalko', 'pro'], ['Vladimirovich9000', 'Dmitry Andreikin', 'pro'], ['may6enexttime', 'Aleksei Sarana', 'pro'], ['Night-King96', 'Oleksandr Bortnyk', 'pro'],
   ['Konevlad', 'Vladislav Artemiev', 'pro'], ['AnishGiri', 'Anish Giri', 'pro'], ['RebeccaHarris', 'Daniel Naroditsky', 'pro'], ['DanielNaroditsky', 'Daniel Naroditsky', 'pro'],
   ['EricRosen', 'Eric Rosen', 'pro'], ['Fins', 'John Bartholomew', 'pro'],
@@ -108,9 +108,10 @@ async function lichessWeek(a: string, since: number): Promise<G[]> {
 function family(slug?: string) {
   if (!slug || /^undefined/i.test(slug)) return null;
   const words = slug.split('-').filter((w) => /^[A-Za-z']+$/.test(w)), end = words.findIndex((w) => /^(Defense|Opening|Game|Gambit|Attack|System)$/i.test(w));
-  return (end >= 0 ? words.slice(0, end + 1) : words.slice(0, 2)).join(' ').replace(/\b(King|Queen|Bishop|Alekhine|Owen|Petrov|Bird|Larsen|Philidor)s\b/g, "$1's") || null;
+  return (end >= 0 ? words.slice(0, end + 1) : words.slice(0, 2)).join(' ').replace(/\b(King|Queen|Bishop|Alekhine|Owen|Petrov|Bird|Larsen|Philidor)s\b/g, "$1's")
+    .replace(/\b(Caro|Nimzo|Bogo|Smith) (Kann|Indian|Morra)\b/g, '$1-$2') || null;
 }
-console.assert(family('Sicilian-Defense-Open-2...Nc6') === 'Sicilian Defense' && family('Kings-Indian-Attack') === "King's Indian Attack" && family('Undefined') === null, 'family');
+console.assert(family('Sicilian-Defense-Open-2...Nc6') === 'Sicilian Defense' && family('Kings-Indian-Attack') === "King's Indian Attack" && family('Caro-Kann-Defense-Advance') === 'Caro-Kann Defense' && family('Undefined') === null, 'family');
 
 async function ccWeek(a: string, since: number): Promise<G[]> {
   const u = a.slice(3).toLowerCase(), out: G[] = [];

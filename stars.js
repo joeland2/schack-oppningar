@@ -1,7 +1,7 @@
 // Pros & VIPs: the pro and the streamer of the week, each with why and a few words on them, then everyone
 // by when they last played. From week.json, which the pros function writes every 6 hours (see supabase/functions/pros).
-import { BIOS, keptTypes } from './profile.js?v=20261101135510';
-import { nick, isCC } from './chesscom.js?v=20261101135510';
+import { BIOS, keptTypes } from './profile.js?v=20261101155736';
+import { nick, isCC } from './chesscom.js?v=20261101155736';
 const WEEK = 'https://duhlvhjtxoofgnjegspa.supabase.co/storage/v1/object/public/pros/week.json';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
