@@ -1,0 +1,21 @@
+# Every Sunday night: the pros' and VIPs' games analysed with Stockfish (tools/analyse_pros.py) and sent to
+# the analyses function, so their cards stay whole as they play new games. Four runners, a quarter of the accounts each.
+name: Analyse pros
+on:
+  schedule: [{ cron: '0 2 * * 0' }]
+  workflow_dispatch:
+jobs:
+  analyse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix: { part: [0, 1, 2, 3] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: sudo apt-get install -y stockfish && pip install chess==1.11.2
+      - run: |
+          export PATH=/usr/games:$PATH
+          python tools/analyse_pros.py $(python -c "import sys; sys.path.insert(0, 'tools'); import analyse_pros as a; print(' '.join(a.accounts()[${{ matrix.part }}::4]))")
