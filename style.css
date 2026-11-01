@@ -2490,7 +2490,9 @@ main.profile:has(#admin) { max-width: 1320px; }
 .top-me summary:not(.top-bug):hover, .top-me[open] summary:not(.top-bug) { background: var(--surface); }
 .top-me summary.top-bug { border-left: 0; color: var(--bg); padding: 0 18px; }
 .top-me-menu { position: absolute; right: 0; top: 100%; z-index: 30; min-width: 180px; display: grid; padding: 6px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--rule); border-radius: 0 0 var(--radius) var(--radius); box-shadow: 0 12px 30px rgb(0 0 0 / .25); }
-.top-me-menu a { padding: 10px 12px; border-radius: 4px; color: var(--ink); text-decoration: none; font-weight: 600; }
+.top-me-menu a, .top-me-menu button { padding: 10px 12px; border: 0; border-radius: 4px; background: none; color: var(--ink); text-decoration: none; font: 600 16px var(--font-body); text-align: left; cursor: pointer; }
+.top-me-menu .top-me-out { margin-top: 4px; border-top: 1px solid var(--line); border-radius: 0 0 4px 4px; color: var(--muted); }
+.top-me-menu button:hover, .top-me-menu button:focus-visible { background: var(--raised); color: var(--ink); }
 .top-me-menu a:hover, .top-me-menu a:focus-visible, .top-me-menu a[aria-current] { background: var(--raised); }
 @media (max-width: 560px) {
   .top-me summary { min-height: 50px; padding: 0 10px; font-size: 13px; }

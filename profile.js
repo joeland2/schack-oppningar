@@ -3,9 +3,9 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, logout, finishLogin } from './lichess.js?v=20261101114256';
-import { STYLE_OF } from './styles.js?v=20261101114256';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261101114256';
+import { account, login, finishLogin } from './lichess.js?v=20261101120956';
+import { STYLE_OF } from './styles.js?v=20261101120956';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess } from './chesscom.js?v=20261101120956';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1399,11 +1399,6 @@ function cardNote(name, p, me) {
   const main = p.speeds[0];
   if (!main) return '';
   return `<details class="pf-card-help"><summary>How the stats work</summary><p class="pf-card-note"><b>Every stat compares ${me ? 'you' : esc(nick(name))} with ${me ? 'your' : 'their'} own opponents</b>, rated ${main.rating - PEER}–${main.rating + PEER}, in the same games. A higher rating starts the card higher; the big number is the average of the six skills. <a href="#pf-skills">What each skill measures</a></p></details>`;
-}
-// Logged in: a small log-out button in the top bar, on the profile only.
-if (account()) {
-  document.querySelector('#theme')?.insertAdjacentHTML('beforebegin', `<button id="pf-logout" class="ghost theme" type="button" title="Log out of Lichess (${account().name})" aria-label="Log out"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11"/></svg></button>`);
-  document.querySelector('#pf-logout')?.addEventListener('click', () => { if (confirm(`Log out of Lichess (${account().name})?`)) { logout(); location.href = './'; } });
 }
 
 // ---------- The leaderboard ----------

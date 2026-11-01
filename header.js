@@ -60,13 +60,20 @@
       const cur = (p) => (page === p ? ' aria-current="page"' : '');
       const head = btn ? `<span class="top-me-name">${esc(who)}</span>` : rating ? `<small>${esc(speed)}<br>${esc(who)}</small><strong>${esc(rating)}</strong>` : `<span class="top-me-name">${esc(who)}</span>`;
       const menu = `<details class="top-me"><summary class="${rating && !btn ? 'top-bug' : ''}" title="Your profile and practice">${head}</summary><div class="top-me-menu">
-        <a href="profile.html?u=${encodeURIComponent(who)}"${cur('profile.html')}>Profile</a><a href="practice.html"${cur('practice.html')}>My practice</a></div></details>`;
+        <a href="profile.html?u=${encodeURIComponent(who)}"${cur('profile.html')}>Profile</a><a href="practice.html"${cur('practice.html')}>My practice</a><button type="button" class="top-me-out">Log out</button></div></details>`;
       if (btn) { btn.insertAdjacentHTML('beforebegin', menu); btn.style.display = 'none'; } // Openings: in place of its name button
       else at?.insertAdjacentHTML('beforebegin', menu);
       const me = document.querySelector('.top-me');
       // Hover opens it where there is a mouse; a tap or click opens it anywhere.
       if (matchMedia('(hover: hover)').matches) { me.addEventListener('mouseenter', () => { me.open = true; }); me.addEventListener('mouseleave', () => { me.open = false; }); }
       addEventListener('click', (e) => { if (me.open && !me.contains(e.target)) me.open = false; });
+      // Log out (as lichess.js logout(), which this plain script cannot import): forget the login, and revoke its token on Lichess.
+      me.querySelector('.top-me-out').addEventListener('click', () => {
+        let tk = null;
+        try { tk = JSON.parse(localStorage.getItem('chess-trainer-lichess-login'))?.token; localStorage.removeItem('chess-trainer-lichess-login'); } catch {}
+        if (tk) fetch('https://lichess.org/api/token', { method: 'DELETE', keepalive: true, headers: { Authorization: `Bearer ${tk}` } }).catch(() => {});
+        location.href = './';
+      });
     }
     if (ADMINS.includes(user()?.toLowerCase())) document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', `<a class="nav-admin" href="admin.html"${page === 'admin.html' ? ' aria-current="page"' : ''} aria-label="Admin"><span class="wide-only">Admin</span><svg class="ico narrow-only" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></a>`);
   });
