@@ -22,5 +22,5 @@ jobs:
       - if: env.SUPABASE_ACCESS_TOKEN != ''
         run: |
           for f in supabase/functions/*/; do
-            supabase functions deploy "$(basename "$f")" --project-ref duhlvhjtxoofgnjegspa --no-verify-jwt
+            supabase functions deploy "$(basename "$f")" --project-ref duhlvhjtxoofgnjegspa --no-verify-jwt --yes
           done
