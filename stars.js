@@ -1,7 +1,7 @@
-// Pros & VIPs: the pro and the streamer of the week, each with why and a few words on them, then everyone
+// Pro & VIP: the pro and the streamer of the week, each with why and a few words on them, then everyone
 // by when they last played. From week.json, which the pros function writes every 6 hours (see supabase/functions/pros).
-import { BIOS, keptTypes, TYPE_ABOUT } from './profile.js?v=20261102111825';
-import { nick, isCC } from './chesscom.js?v=20261102111825';
+import { BIOS, keptTypes, TYPE_ABOUT } from './profile.js?v=20261102111958';
+import { nick, isCC } from './chesscom.js?v=20261102111958';
 const WEEK = 'https://duhlvhjtxoofgnjegspa.supabase.co/storage/v1/object/public/pros/week.json';
 const TAB = 'opening-book-v2-stars-tab'; // the list last shown on a phone
 const SORT = 'opening-book-v2-stars-sort'; // how the lists are ordered
@@ -56,13 +56,13 @@ const rowOf = (r, sk) => `<li><a class="st-row" href="${link(r)}"><span class="s
   // Desktop: two columns, each under its card of the week. Phone: both cards, then tabs showing one list.
   let tab = 'pro';
   try { tab = localStorage.getItem(TAB) === 'vip' ? 'vip' : 'pro'; } catch {}
-  const col = (kind, list) => `<section class="st-col st-${kind}" role="tabpanel" id="st-${kind}"><h2 class="st-h2">${kind === 'pro' ? 'Pros' : 'VIPs'} <span>· ${list.length}</span></h2><ol class="st-rows">${list.map((r) => rowOf(r, SKILLS.includes(sort) && sort)).join('')}</ol></section>`;
+  const col = (kind, list) => `<section class="st-col st-${kind}" role="tabpanel" id="st-${kind}"><h2 class="st-h2">${kind === 'pro' ? 'Pro' : 'VIP'} <span>· ${list.length}</span></h2><ol class="st-rows">${list.map((r) => rowOf(r, SKILLS.includes(sort) && sort)).join('')}</ol></section>`;
   const pick = `<label class="st-sort">Sort by <select id="st-sort">${[['active', 'Recently active'], ['rated', 'Highest rated'], ['gained', 'Most gained this week']].map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}
     <optgroup label="Style: strongest first">${SKILLS.map((k) => `<option value="${k}">${k}</option>`).join('')}</optgroup></select></label>`;
-  const btn = (kind, n) => `<button type="button" role="tab" class="${kind}" aria-controls="st-${kind}" data-tab="${kind}">${kind === 'pro' ? 'Pros' : 'VIPs'} · ${n}</button>`;
+  const btn = (kind, n) => `<button type="button" role="tab" class="${kind}" aria-controls="st-${kind}" data-tab="${kind}">${kind === 'pro' ? 'Pro' : 'VIP'} · ${n}</button>`;
   const split = $('#st-split');
   split.innerHTML = weekCard(by(data.pick?.pro), 'pro') + weekCard(by(data.pick?.vip), 'vip')
-    + pick + `<div class="st-tabs" role="tablist" aria-label="Pros or VIPs">${btn('pro', pros.length)}${btn('vip', vips.length)}</div>` + col('pro', pros) + col('vip', vips);
+    + pick + `<div class="st-tabs" role="tablist" aria-label="Pro or VIP">${btn('pro', pros.length)}${btn('vip', vips.length)}</div>` + col('pro', pros) + col('vip', vips);
   const sel = split.querySelector('#st-sort');
   sel.value = sort;
   sel.addEventListener('change', () => {
