@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261102222816';
-import { api as chatApi, openChat } from './chat.js?v=20261102222816';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102222816';
+import { account, login, finishLogin } from './lichess.js?v=20261102225155';
+import { api as chatApi, openChat } from './chat.js?v=20261102225155';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102225155';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -235,7 +235,8 @@ const evIcon = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><
 // How one run of a line went: the mode, how it ended and the mistakes.
 const runHow = (x) => `${MODE[x.m] || esc(x.m)} · ${x.k === 'done' ? 'finished' : x.k === 'wrong' ? `wrong on move ${Math.floor(x.n / 2) + 1}` : `left at move ${Math.ceil((x.p || 0) / 2)}`}${x.x ? ` · ${x.x} mistake${x.x === 1 ? '' : 's'}` : ''}`;
 // A visitor by their Lichess name, else by where they were.
-const personName = (v) => (v.name ? `<button type="button" class="link pd-name" data-person="${esc(v.name)}">${esc(v.name)}</button>` : `<span class="adm-muted">${flag(v.country)}${esc(v.city || 'Visitor')}</span>`);
+const personName = (v) => (v.name ? `<button type="button" class="link pd-name" data-person="${esc(v.name)}">${esc(v.name)}</button>` : `<button type="button" class="link pd-name adm-muted" data-visitor="${esc(v.id)}">${flag(v.country)}${esc(v.city || 'Visitor')}</button>`);
+const showIp = (ip) => esc(ip.replace(/\.0$/, '.x').replace(/::$/, ':x'));
 // Icons for the groups and the cards' titles.
 const IC = { ...EV_ICON, people: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1M16 3.1a4 4 0 0 1 0 7.8M22 21v-1a6 6 0 0 0-4-5.6',
   globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18', pin: 'M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12zM12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
@@ -339,8 +340,7 @@ function personHtml(v, all) {
 // browsers they used together. Time on a page comes from 'leave' events (seconds in view, sent as the page
 // is left); visits from before those were sent count the time to the next event, up to 10 minutes.
 const dur = (sec) => (sec < 60 ? `${Math.round(sec)} s` : sec < 3600 ? `${Math.round(sec / 60)} min` : `${Math.floor(sec / 3600)} h ${Math.round((sec % 3600) / 60)} min`);
-function dataHtml(v, all) {
-  const same = v.name ? all.filter((w) => w.name === v.name) : [v];
+function dataHtml(v, same) {
   const events = same.flatMap((w) => w.events.map((e) => ({ ...e, w }))).sort((a, b) => a.at.localeCompare(b.at));
   if (!events.length) return '<p class="info">No events recorded.</p>';
   // Visits: events less than 30 minutes apart. Each page view gets its time: the leave events after it, or the gap to the next event.
@@ -389,7 +389,7 @@ function dataHtml(v, all) {
   return `<div class="pd">
     <section class="pd-hero">
       <div class="pd-id"><span class="pd-avatar">${esc((v.name || v.city || 'V').slice(0, 2).toUpperCase())}</span>
-        <div><h3>${v.name ? esc(v.name) : 'Visitor'}</h3><p>${v.name ? `Logged in with Lichess${same.length > 1 ? ` · ${same.length} browsers` : ''}` : 'Not logged in'} · first seen ${when(events[0].at)} · last seen ${when(events.at(-1).at)}</p></div></div>
+        <div><h3>${v.name ? esc(v.name) : 'Visitor'}</h3><p>${v.name ? `Logged in with Lichess${same.length > 1 ? ` · ${same.length} browsers` : ''}` : `Not logged in${same.length > 1 ? ` · ${same.length} browsers on this IP` : ''}`} · first seen ${when(events[0].at)} · last seen ${when(events.at(-1).at)}</p></div></div>
       <dl class="pd-facts">
         <div><dt>From</dt><dd>${places.map((w) => `${flag(w.country)}${esc(w.city ? `${w.city}, ` : '')}${esc(land(w.country).replace(/ \(..\)$/, ''))}`).join('<br>') || '–'}</dd></div>
         <div><dt>Came in via</dt><dd>${sources.map((x) => `<span class="pd-src">${esc(x)}</span>`).join(' ') || '–'}</dd></div>
@@ -428,18 +428,19 @@ const count = (xs) => Object.entries(xs.filter(Boolean).reduce((m, x) => ({ ...m
 // A name's menu: their profile, or their data.
 function personMenu(b, body) {
   document.querySelector('.pd-menu')?.remove();
-  const name = b.dataset.person, id = b.dataset.visitor, r = b.getBoundingClientRect();
+  const name = b.dataset.person, id = b.dataset.visitor, ip = b.dataset.ip, r = b.getBoundingClientRect();
   const m = Object.assign(document.createElement('div'), { className: 'pd-menu' });
   m.innerHTML = `${name ? `<a href="profile.html?u=${encodeURIComponent(name)}">${evIcon('profile')}Profile</a>` : ''}<button type="button">${evIcon('view')}Data</button>`;
   m.style.left = `${Math.min(r.left + scrollX, innerWidth - 180)}px`; m.style.top = `${r.bottom + scrollY + 4}px`;
   document.body.append(m);
   m.querySelector('button').onclick = () => {
     m.remove();
-    const v = body.visitors.find((x) => (name ? x.name?.toLowerCase() === name.toLowerCase() : x.id === id));
+    // A name gathers all its browsers; an IP all the browsers seen on it (people who never logged in).
+    const same = body.visitors.filter((x) => (name ? x.name?.toLowerCase() === name.toLowerCase() : ip ? x.ip === ip : x.id === id)), v = same[0];
     const d = document.createElement('dialog');
     d.className = 'chat adm-actions pd-dialog';
-    d.innerHTML = `<header class="chat-head"><h2>${esc(name || 'Visitor')}</h2>${name ? `<a href="profile.html?u=${encodeURIComponent(name)}">Profile</a>` : ''}<button type="button" class="chat-x" aria-label="Close">×</button></header>
-      <div class="adm-actions-body">${v ? dataHtml(v, body.visitors) : '<p class="info">No visits recorded for this player.</p>'}</div>`;
+    d.innerHTML = `<header class="chat-head"><h2>${name ? esc(name) : ip ? `IP ${showIp(ip)}` : 'Visitor'}</h2>${name ? `<a href="profile.html?u=${encodeURIComponent(name)}">Profile</a>` : ''}<button type="button" class="chat-x" aria-label="Close">×</button></header>
+      <div class="adm-actions-body">${v ? dataHtml(v, same) : '<p class="info">No visits recorded for this player.</p>'}</div>`;
     document.body.append(d); d.showModal();
     const close = () => { d.close(); d.remove(); };
     d.querySelector('.chat-x').onclick = close; d.addEventListener('cancel', close);
@@ -503,7 +504,7 @@ function render(s) {
     <section class="pf-card"><div class="adm-head"><h2>${ic('people')}Unique visitors · ${s.visitors.length}</h2><small>Every visitor once, newest first. IP addresses without their last part. Click one to see what they did.</small></div>
       ${s.visitors.length ? `<div class="adm-visitors"><div class="adm-v-head"><span>Location</span><span>IP</span><span>Lichess</span><span>Device</span><span>Visits</span><span>Last seen</span></div>${s.visitors.map((v) => `<details class="adm-visitor"><summary>
           <span class="adm-v-where">${flag(v.country)}${esc(v.country ? land(v.country).replace(/ \(..\)$/, '') : 'Unknown')}${v.city ? ` · ${esc(v.city)}` : ''}</span>
-          <span class="num">${esc((v.ip || '–').replace(/\.0$/, '.x').replace(/::$/, ':x'))}</span>
+          <span class="num">${v.ip ? `<button type="button" class="link pd-name" data-ip="${esc(v.ip)}">${showIp(v.ip)}</button>` : '–'}</span>
           <span>${v.name ? `<button type="button" class="link pd-name" data-person="${esc(v.name)}">${esc(v.name)}</button>` : `<button type="button" class="link pd-name" data-visitor="${esc(v.id)}">Data</button>`}</span>
           <span>${esc(v.device || '–')}</span>
           <span class="num">${v.views} view${v.views === 1 ? '' : 's'} · since ${day(v.first)}</span>
@@ -703,7 +704,7 @@ function show(body) {
   $('#adm-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = b.dataset.span === 'today' ? 'today' : Number(b.dataset.span);
     $('#adm-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body); });
   // A player's name (or a visitor's Data) opens a menu: their profile, or all their data.
-  $('#admin').onclick = (e) => { const b = e.target.closest('[data-person], [data-visitor]'); if (!b) return; e.preventDefault(); e.stopPropagation(); personMenu(b, body); };
+  $('#admin').onclick = (e) => { const b = e.target.closest('[data-person], [data-visitor], [data-ip]'); if (!b) return; e.preventDefault(); e.stopPropagation(); personMenu(b, body); };
   // The visitor list shows the newest 10 until opened.
   $('[data-more]')?.addEventListener('click', (e) => { const b = e.currentTarget, open = $('.adm-visitors').classList.toggle('open');
     b.setAttribute('aria-expanded', open); b.textContent = open ? 'Show the newest 10' : `Show all ${body.visitors.length}`; });
