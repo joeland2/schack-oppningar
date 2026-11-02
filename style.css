@@ -2892,3 +2892,25 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .why-box.bad { border-color: var(--bad); } .why-box.bad b { color: var(--bad); }
 .why-box.good { border-color: var(--good); } .why-box.good b { color: var(--good); }
 @media (max-width: 560px) { .why-pair { grid-template-columns: 1fr; } }
+
+/* Play: Lichess games on Chess Labs */
+.play-page { align-content: start; }
+.play-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 18px; max-width: 760px; }
+.play-tile { display: grid; gap: 2px; text-align: left; padding: 14px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.play-tile b { font: 400 28px/1 var(--font-poster); } .play-tile span { color: var(--muted); font-size: 13px; }
+.play-tile[aria-pressed="true"] { border-color: var(--data); box-shadow: 0 0 0 1px var(--data); }
+.play-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0 0; }
+.play-friend { display: flex; gap: 6px; } .play-friend input { padding: 9px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; width: 200px; }
+.play-rated { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.play-game { display: grid; grid-template-columns: minmax(0, 620px) minmax(0, 340px); gap: 28px; align-items: start; }
+.play-board-col { display: grid; gap: 10px; }
+.play-pl { display: flex; justify-content: space-between; align-items: center; } .play-pl b span { color: var(--muted); font-weight: 400; }
+.play-clock { font: 600 28px var(--font-mono); background: var(--raised); padding: 4px 12px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.play-pl.to-move .play-clock { background: var(--ink); color: var(--bg); }
+.play-side { display: grid; gap: 14px; }
+.play-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.play-open { margin: 4px 0 0; font: 400 24px/1.05 var(--font-poster); text-transform: uppercase; }
+.play-moves { margin: 0; padding: 10px 14px; max-height: 300px; overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; font: 13px var(--font-mono); color: var(--muted); counter-reset: mv; list-style: none; }
+.play-moves li { display: grid; grid-template-columns: 30px 1fr 1fr; counter-increment: mv; } .play-moves li::before { content: counter(mv) "."; opacity: .6; }
+.play-status { margin: 0; min-height: 1.4em; }
+@media (max-width: 820px) { .play-game { grid-template-columns: minmax(0, 1fr); } .play-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

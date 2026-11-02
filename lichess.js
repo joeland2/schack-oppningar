@@ -26,13 +26,14 @@ export async function siteLogin(what, body) {
   return x;
 }
 
-export async function login() {
+// scope: 'board:play' for the Play page (admins only for now), which lets it seek, play and resign games for you.
+export async function login(scope = '') {
   const verifier = b64(crypto.getRandomValues(new Uint8Array(32)));
   const state = b64(crypto.getRandomValues(new Uint8Array(16)));
   const challenge = b64(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
-  sessionStorage.setItem(PENDING, JSON.stringify({ verifier, state }));
+  sessionStorage.setItem(PENDING, JSON.stringify({ verifier, state, scope }));
   location.href = 'https://lichess.org/oauth?' + new URLSearchParams({
-    response_type: 'code', client_id: CLIENT, redirect_uri: back(), code_challenge_method: 'S256', code_challenge: challenge, state,
+    response_type: 'code', client_id: CLIENT, redirect_uri: back(), code_challenge_method: 'S256', code_challenge: challenge, state, ...(scope && { scope }),
   });
 }
 
@@ -54,7 +55,7 @@ export async function finishLogin() {
   const me = await fetch('https://lichess.org/api/account', { headers: { Authorization: `Bearer ${token}` } });
   if (!me.ok) throw new Error(`Lichess did not accept the login (${me.status}). Try again.`);
   const user = await me.json();
-  try { localStorage.setItem(KEY, JSON.stringify({ token, name: user.username })); } catch {}
+  try { localStorage.setItem(KEY, JSON.stringify({ token, name: user.username, ...(pending.scope && { scope: pending.scope }) })); } catch {}
   window.track?.('login', user.username);
   return user;
 }

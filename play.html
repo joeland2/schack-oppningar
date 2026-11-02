@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Play · Chess Labs</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta property="og:site_name" content="Chess Labs">
+  <meta property="og:title" content="Play · Chess Labs">
+  <meta property="og:description" content="Play rated Lichess games on Chess Labs, with the review straight after.">
+  <meta property="og:image" content="https://chesslabs.gg/og.png">
+  <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="description" content="Play rated Lichess games on Chess Labs, with the review straight after.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="style.css?v=20261102152233">
+  <script src="move.js?v=20261102152233"></script>
+  <script src="header.js?v=20261102152233" defer></script>
+  <script src="theme.js?v=20261102152233"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-in">
+      <a class="brand" href="./">Chess<span>Labs</span></a>
+      <nav class="top-nav" aria-label="Sections"><a href="./#openings">Openings</a><a href="practice.html">My practice</a><a href="profile.html">Profile</a></nav>
+      <form class="top-search" action="profile.html" role="search"><input name="u" type="search" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="Find a player" aria-label="Find a player on Lichess or Chess.com" title="A Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false"></form>
+      <details class="top-players"><summary title="Your starred players" aria-label="Your starred players"><svg class="ico ico-solid" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></summary><div class="top-players-menu"></div></details>
+      <button id="theme" class="ghost theme" type="button" aria-label="Switch theme"></button>
+    </div>
+  </header>
+
+  <main class="wrap play-page">
+    <section id="play-pick">
+      <p class="sups-k" id="play-k">Rated on Lichess</p>
+      <h1 class="pf-h1">Play a game</h1>
+      <div id="play-gate"></div>
+      <div id="play-lobby" hidden>
+        <div class="play-tiles" role="group" aria-label="Time control"></div>
+        <p class="play-acts"><button type="button" class="cta" id="play-seek">Find an opponent</button>
+          <span class="play-friend"><input id="play-who" maxlength="30" placeholder="Friend's Lichess name" aria-label="Friend's Lichess name" autocomplete="off" spellcheck="false"><button type="button" class="ghost" id="play-challenge">Challenge</button></span>
+          <label class="play-rated"><input type="checkbox" id="play-rated" checked> Rated</label></p>
+        <p class="info" id="play-msg" aria-live="polite"></p>
+      </div>
+    </section>
+    <section id="play-game" class="play-game" hidden>
+      <div class="play-board-col">
+        <div class="play-pl" id="pl-top"><b></b><span class="play-clock"></span></div>
+        <div id="board" class="board"></div>
+        <div class="play-pl" id="pl-bot"><b></b><span class="play-clock"></span></div>
+      </div>
+      <aside class="play-side">
+        <div class="play-card"><p class="sups-k">Opening</p><p class="play-open" id="play-open">Starting position</p></div>
+        <ol class="play-moves" id="play-moves"></ol>
+        <p class="play-status" id="play-status" aria-live="polite"></p>
+        <p class="play-acts" id="play-btns"><button type="button" class="ghost" id="play-draw">Offer draw</button><button type="button" class="ghost" id="play-resign">Resign</button></p>
+      </aside>
+    </section>
+  </main>
+
+  <script type="module" src="play.js?v=20261102152233"></script>
+</body>
+</html>
