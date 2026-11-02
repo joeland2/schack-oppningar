@@ -2,8 +2,8 @@
 // The login needs the board:play permission once; then a seek or a challenge starts a game, which Lichess
 // streams here move by move. When it ends, the game page reviews it.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261102154101';
-import { account, login, finishLogin } from './lichess.js?v=20261102154101';
+import { drawBoard, enableDrag } from './board.js?v=20261102154900';
+import { account, login, finishLogin } from './lichess.js?v=20261102154900';
 
 const $ = (s) => document.querySelector(s);
 const API = 'https://lichess.org';
@@ -41,16 +41,32 @@ const post = (url, body) => fetch(API + url, { method: 'POST', headers: auth(), 
   .then(async (r) => { if (!r.ok) throw new Error(await why(r)); });
 
 // Opening names (lichess-org/chess-openings, as on the Openings page): the longest named line the game follows.
-let BOOK = null;
+let BOOK = null; // { names: line → name, next: position (moves so far) → book moves from there }
+const key = (sans) => sans.join(' ').replace(/[+#]/g, '');
 const loadBook = () => (BOOK ??= Promise.all([...'abcde'].map((f) => fetch(`data/${f}.tsv`).then((r) => r.text()))).then((ts) => {
-  const m = new Map();
-  for (const row of ts.flatMap((t) => t.trim().split('\n').slice(1))) { const [, name, pgn] = row.split('\t'); m.set(pgn.replace(/\d+\.\s*/g, '').trim().replace(/[+#]/g, ''), name); }
-  return m;
+  const names = new Map(), next = new Map();
+  for (const row of ts.flatMap((t) => t.trim().split('\n').slice(1))) {
+    const [, name, pgn] = row.split('\t'), ms = pgn.replace(/\d+\.\s*/g, '').trim().split(/\s+/);
+    names.set(key(ms), name);
+    ms.forEach((m, i) => { const k = key(ms.slice(0, i)); if (!next.has(k)) next.set(k, new Set()); next.get(k).add(m.replace(/[+#]/g, '')); });
+  }
+  return { names, next };
 }));
+// The opening as [family, variation], from the longest named line the game follows.
 async function openingOf(sans) {
-  const names = await loadBook();
-  for (let n = sans.length; n > 0; n--) { const hit = names.get(sans.slice(0, n).join(' ').replace(/[+#]/g, '')); if (hit) return hit; }
-  return 'Starting position';
+  const { names } = await loadBook();
+  for (let n = sans.length; n > 0; n--) { const hit = names.get(key(sans.slice(0, n))); if (hit) { const [f, v = ''] = hit.split(': '); return [f, v]; } }
+  return ['Starting position', ''];
+}
+// Where the game left known theory: the first move no named line has, with what the book plays there.
+async function leftBook(sans) {
+  const { next } = await loadBook();
+  for (let i = 0; i < Math.min(sans.length, 30); i++) {
+    const book = next.get(key(sans.slice(0, i)));
+    if (!book) return null;
+    if (!book.has(sans[i].replace(/[+#]/g, ''))) return { ply: i, san: sans[i], book: [...book].slice(0, 3) };
+  }
+  return null;
 }
 
 // ---------- The lobby ----------
@@ -125,7 +141,7 @@ function draw() {
   const sans = g.chess.history();
   $('#play-moves').innerHTML = sans.reduce((a, s, i) => (i % 2 ? a : [...a, `<li><span>${s}</span><span>${sans[i + 1] || ''}</span></li>`]), []).join('');
   $('#play-moves').scrollTop = 1e6;
-  openingOf(sans.slice(0, 24)).then((n) => { $('#play-open').textContent = n; });
+  openingOf(sans.slice(0, 24)).then(([f, v]) => { $('#play-open').innerHTML = `${esc(f)}${v ? `<small>${esc(v)}</small>` : ''}`; });
 }
 function tick() {
   if (!g) return;
@@ -148,8 +164,22 @@ function ended(s) {
   const won = s.winner && s.winner[0] === g.me, how = { mate: 'by checkmate', resign: 'by resignation', outoftime: 'on time', timeout: 'as the other left', draw: '', stalemate: 'by stalemate', aborted: '' }[s.status] ?? '';
   const head = s.status === 'aborted' ? 'Game aborted.' : !s.winner ? `Draw${how ? ` ${how}` : ''}.` : `${won ? 'You won' : 'You lost'} ${how}.`;
   $('#play-status').innerHTML = `<b>${head}</b>`;
+  if (s.status !== 'aborted') review();
   $('#play-btns').innerHTML = `${s.status === 'aborted' ? '' : `<a class="cta" href="game.html?u=${encodeURIComponent(account().name)}&id=${g.id}">Review this game</a>`}<button type="button" class="ghost" id="play-again">New game · ${tc.join('+')}</button>`;
   $('#play-again').addEventListener('click', () => { g = null; $('#play-game').hidden = true; $('#play-pick').hidden = false; resetBtns(); });
+}
+// After the game (never during it: Lichess forbids opening books in live games): where the game left known
+// theory, whether that was your move, and the opening on the Openings page.
+async function review() {
+  const sans = g.chess.history(), [f, v] = await openingOf(sans), out = await leftBook(sans);
+  const mine = out && (out.ply % 2 === 0) === (g.me === 'w'), mv = (i, san) => `${Math.floor(i / 2) + 1}${i % 2 ? '…' : '.'}${san}`;
+  const side = g.me, link = `./?practise=${side}~${encodeURIComponent(f)}`;
+  $('#play-review').innerHTML = `<p class="sups-k">Your opening</p><p class="play-open">${esc(f)}${v ? `<small>${esc(v)}</small>` : ''}</p>
+    ${!out ? '<p>The game stayed in known theory all through the opening.</p>' : mine
+      ? `<p class="play-off bad"><b>${mv(out.ply, out.san)}</b> was your move that left known theory${out.ply ? ` after ${Math.ceil(out.ply / 2)} moves` : ''}. The book plays <b>${out.book.map((b) => mv(out.ply, b)).join('</b> or <b>')}</b>.</p>`
+      : `<p class="play-off">Your opponent left known theory with <b>${mv(out.ply, out.san)}</b>; you were still in the book.</p>`}
+    ${f !== 'Starting position' ? `<p><a class="link" href="${link}">Practise the ${esc(f)} →</a></p>` : ''}`;
+  $('#play-review').hidden = false;
 }
 function resetBtns() {
   $('#play-btns').innerHTML = '<button type="button" class="ghost" id="play-draw">Offer draw</button><button type="button" class="ghost" id="play-resign">Resign</button>';
@@ -162,7 +192,7 @@ function resetBtns() {
 async function openGame(id) {
   if (g?.id === id) return;
   g = { id, me: 'w', chess: new Chess(), white: {}, black: {}, wtime: 0, btime: 0, at: Date.now(), status: 'started', sel: null };
-  $('#play-pick').hidden = true; $('#play-game').hidden = false; resetBtns();
+  $('#play-pick').hidden = true; $('#play-game').hidden = false; $('#play-review').hidden = true; resetBtns();
   $('#play-status').textContent = 'Starting…';
   try {
     await stream(`/api/board/game/stream/${id}`, (x) => {

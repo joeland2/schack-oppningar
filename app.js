@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102154101';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102154101';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102154101';
-import { NAMED_TRAPS } from './traps.js?v=20261102154101';
-import { GUIDE } from './guide.js?v=20261102154101';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102154101';
-import { banner, confetti } from './celebrate.js?v=20261102154101';
-import { maia3Move } from './maia3.js?v=20261102154101';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102154101';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261102154101';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102154101';
-import { openLogin } from './login.js?v=20261102154101';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102154101';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102154900';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102154900';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102154900';
+import { NAMED_TRAPS } from './traps.js?v=20261102154900';
+import { GUIDE } from './guide.js?v=20261102154900';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102154900';
+import { banner, confetti } from './celebrate.js?v=20261102154900';
+import { maia3Move } from './maia3.js?v=20261102154900';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102154900';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261102154900';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102154900';
+import { openLogin } from './login.js?v=20261102154900';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102154900';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
