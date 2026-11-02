@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102161923';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102161923';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102161923';
-import { NAMED_TRAPS } from './traps.js?v=20261102161923';
-import { GUIDE } from './guide.js?v=20261102161923';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102161923';
-import { banner, confetti } from './celebrate.js?v=20261102161923';
-import { maia3Move } from './maia3.js?v=20261102161923';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102161923';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261102161923';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102161923';
-import { openLogin } from './login.js?v=20261102161923';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102161923';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102162051';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102162051';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102162051';
+import { NAMED_TRAPS } from './traps.js?v=20261102162051';
+import { GUIDE } from './guide.js?v=20261102162051';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102162051';
+import { banner, confetti } from './celebrate.js?v=20261102162051';
+import { maia3Move } from './maia3.js?v=20261102162051';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102162051';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261102162051';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102162051';
+import { openLogin } from './login.js?v=20261102162051';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102162051';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -282,6 +282,13 @@ const BAD_MOVES = new Set([
   'e4 e5 Nc3 Nc6 f4 Nf6|Nf3', 'e4 e5 Nf3 Nc6 d4 exd4 Nxd4 Bc5 Nxc6 bxc6 Bc4|Ne7', 'e4 e5 Nf3 Nc6 Bc4 Nf6 Ng5 Nxe4 Bxf7 Ke7|Nxe4',
   'd4 e5|Nf3', 'e4 e5 Nf3 Nc6 Bc4 Nf6 Ng5 Qe7|Nxf7', 'e4 e5 f4 Nc6 fxe5|Nxe5',
 ]);
+// Your move after a trap's slip, where the strong players' choice is half a pawn or more worse than
+// Stockfish's (depth 20, the ?audit-traps run): the trap is punished the best way.
+const BEST_MOVES = new Map([
+  ['d4 d5 Bf4 Nc6 Nc3 Nf6 Nb5 e5 dxe5 Ne4', 'Qxd5'], ['e4 e5 Nf3 Nc6 Bc4 d6 Nc3 Nf6', 'Ng5'],
+  ['e4 e5 Nf3 Nc6 d4 exd4 Nxd4 Nxd4 Qxd4 Nf6 e5 Ng8', 'Nc3'], ['e4 e5 Nf3 Nc6 d4 exd4 Nxd4 Nxd4 Qxd4 d6 Nc3 Be6', 'Bf4'],
+  ['e4 e5 f4 exf4 Nf3 Nc6 d4 Nf6', 'Qe2'], ['e4 e5 Qh5 Nc6 Bc4 Qe7', 'Nc3'], ['e4 e5 Nf3 Nc6 Bc4 d6 Nc3 h6', 'd4'],
+]);
 function userMove(moves, book) {
   const { x: all } = strongGroups(moves);
   const x = { ...all, moves: all.moves.filter((m) => !BAD_MOVES.has(`${lineKey(moves)}|${m.san}`)) };
@@ -325,7 +332,7 @@ function buildLines(op) {
     let moves = l.moves;
     if (moves.length >= MAX_PLY) { done.push(l); continue; }
     if (moves.length % 2 === (op.side === 'w' ? 0 : 1)) {
-      const san = choices[op.id]?.[lineKey(moves)] || userMove(moves, book);
+      const san = choices[op.id]?.[lineKey(moves)] || BEST_MOVES.get(lineKey(moves)) || userMove(moves, book);
       if (!san) { done.push(l); continue; }
       moves = [...moves, san];
     }
@@ -358,7 +365,8 @@ function buildLines(op) {
   const built = done.map((l) => {
     if ((l.moves.length % 2 === 1) !== (op.side === 'w')) return l;
     const reply = gamesAt(l.moves).moves[0];
-    return { ...l, moves: reply ? [...l.moves, reply.san] : l.moves.slice(0, -1) };
+    // a trap's punishment stays, even where no game goes on from it
+    return { ...l, moves: reply ? [...l.moves, reply.san] : l.trap && l.moves.length === l.trap.ply + 2 ? l.moves : l.moves.slice(0, -1) };
   }).filter((l) => l.moves.length && !seen.has(lineKey(l.moves)) && seen.add(lineKey(l.moves)))
     .map((l) => ({ ...l, theory: isTheory(l.moves, op.side) }))
     // Known theory first (every reply one strong players make), then how players at your level most
@@ -372,6 +380,7 @@ function buildLines(op) {
   return [...rest.slice(0, k), ...named, ...avoidTraps(op), ...rest.slice(k)];
 }
 const fenAfter = (moves) => { const g = new Chess(); moves.forEach((m) => g.move(m)); return g.fen(); };
+console.assert([...BEST_MOVES].every(([k, m]) => { try { return new Chess(fenAfter(k.split(' '))).move(m); } catch { return false; } }), 'BEST_MOVES: legal moves');
 console.assert(NAMED_TRAPS.every((t) => { const g = new Chess(); try { t.moves.forEach((m) => g.move(m)); } catch { return false; }
   return t.slip % 2 === (t.side === 'w' ? 1 : 0) && (!t.moves.at(-1).endsWith('#') || g.isCheckmate())
     && (!t.avoid || (t.avoid.ply % 2 === t.slip % 2 && new Chess(fenAfter(t.moves.slice(0, t.avoid.ply))).move(t.avoid.safe))); }), 'named traps: legal moves, the slip is the opponent\'s, mate where marked, a legal safe move');
