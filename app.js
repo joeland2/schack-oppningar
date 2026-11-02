@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102120337';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102120337';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102120337';
-import { NAMED_TRAPS } from './traps.js?v=20261102120337';
-import { GUIDE } from './guide.js?v=20261102120337';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102120337';
-import { banner, confetti } from './celebrate.js?v=20261102120337';
-import { maia3Move } from './maia3.js?v=20261102120337';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102120337';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261102120337';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102120337';
-import { openLogin } from './login.js?v=20261102120337';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102120337';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102121313';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102121313';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102121313';
+import { NAMED_TRAPS } from './traps.js?v=20261102121313';
+import { GUIDE } from './guide.js?v=20261102121313';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102121313';
+import { banner, confetti } from './celebrate.js?v=20261102121313';
+import { maia3Move } from './maia3.js?v=20261102121313';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102121313';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261102121313';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102121313';
+import { openLogin } from './login.js?v=20261102121313';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102121313';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1162,9 +1162,11 @@ function renderMoves() {
   $('#line-at').textContent = lines[lineIdx] && mode !== 'explore' ? `Line ${lineIdx + 1} of ${lines.length}` : '';
   $('#op-line').textContent = lines[lineIdx] && mode !== 'explore' ? lineName(lines[lineIdx]) : '';
   // The phone's bar above the board: the opening, the line and the mode, which the panel shows lower down.
+  // The line is the title, in full (two lines share an opening's name); the opening and its number above it.
+  $('#m-eco').textContent = $('#op-eco').textContent;
   $('#m-name').textContent = $('#op-title').textContent;
-  // The line's own name leads (two lines share an opening's name), its number after.
-  $('#m-line').textContent = lines[lineIdx] && mode !== 'explore' ? `${lineName(lines[lineIdx])} · ${lineIdx + 1}/${lines.length}` : mode === 'explore' ? 'Exploring' : '';
+  $('#m-num').textContent = lines[lineIdx] && mode !== 'explore' ? ` · Line ${lineIdx + 1}/${lines.length}` : '';
+  $('#m-line').textContent = lines[lineIdx] && mode !== 'explore' ? lineName(lines[lineIdx]) : mode === 'explore' ? 'Exploring' : $('#op-title').textContent;
   for (const b of $('.m-modes').children) b.setAttribute('aria-pressed', b.dataset.mode === mode);
   // The path: how many lines wait for review under Practice, and what a step means until a line is learned.
   const st = cur && stats[statKey(cur.id)], due = dueCount(st);
@@ -1649,7 +1651,7 @@ function start(op, keepTraps = false) {
   cur = op;
   window.track?.('practise', `${op.side === 'b' ? 'Black' : 'White'}: ${(isVs(op) ? 'vs ' : '') + op.name}`);
   line = []; lines = []; game = new Chess();
-  $('#op-line').textContent = $('#m-line').textContent = '';
+  $('#op-line').textContent = $('#m-line').textContent = $('#m-num').textContent = '';
   $('#depth-ask').hidden = true;
   showGo(false);
   ply = 0; sel = null; hintSq = []; wrongSq = null; lastMove = null;
@@ -2657,8 +2659,7 @@ function renderLines() {
       <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? `<span class="trap-tag${l.trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(l.trap)}</span> ` : l.avoid ? '<span class="trap-tag">Trap</span> ' : l.theory ? '<span class="trap-tag theory">Theory</span> ' : ''}${lineName(l)}<small>${lineTag(l)}</small></span>
       <span class="line-share">${bigShare(l.share)}</span><span class="line-ok">${star(l)}</span>
     </button></li>`).join('');
-  // The phone picks the line from the same list, stars and all, opened from the bar over the board.
-  $('#m-lines').textContent = lines[lineIdx] ? `${lineIdx + 1}. ${lineName(lines[lineIdx])}` : 'Lines';
+  // The phone picks the line from the same list, stars and all, opened by tapping the title over the board.
   if (linesView === 'tree') renderTree();
 }
 function pickLine(e) {
@@ -2676,7 +2677,7 @@ $('#lines-list').addEventListener('click', pickLine);
 $('#m-lines-pop').addEventListener('click', pickLine);
 const mLines = (open) => { $('#m-lines-pop').hidden = !open; $('#m-lines').setAttribute('aria-expanded', open); };
 $('#m-lines').addEventListener('click', () => mLines($('#m-lines-pop').hidden));
-document.addEventListener('click', (e) => { if (!e.target.closest('.m-mode')) mLines(false); });
+document.addEventListener('click', (e) => { if (!e.target.closest('.m-bar')) mLines(false); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') mLines(false); });
 
 // The lines as a tree, as a course's overview: the moves they share once, a branch where they part,
