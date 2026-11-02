@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102163556';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102163556';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102163556';
-import { NAMED_TRAPS } from './traps.js?v=20261102163556';
-import { GUIDE } from './guide.js?v=20261102163556';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102163556';
-import { banner, confetti } from './celebrate.js?v=20261102163556';
-import { maia3Move } from './maia3.js?v=20261102163556';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102163556';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261102163556';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102163556';
-import { openLogin } from './login.js?v=20261102163556';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102163556';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102164529';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102164529';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102164529';
+import { NAMED_TRAPS } from './traps.js?v=20261102164529';
+import { GUIDE } from './guide.js?v=20261102164529';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102164529';
+import { banner, confetti } from './celebrate.js?v=20261102164529';
+import { maia3Move } from './maia3.js?v=20261102164529';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102164529';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261102164529';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102164529';
+import { openLogin } from './login.js?v=20261102164529';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102164529';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1320,7 +1320,7 @@ $('#go-ask').addEventListener('click', (e) => {
     if (t === 'pick') return showPicker();
     if (t === 'close') return render(); // the card closed: the board
     if (t === 'line') return startTrial(lineIdx); // this line again, for a better time
-    if (t === 'continue') { trial.lineStart = null; return play((lineIdx + 1 + Math.floor(Math.random() * (lines.length - 1))) % lines.length); }
+    if (t === 'continue') { trial.lineStart = null; return play(randomLines ? randomLine() : (lineIdx + 1 + Math.floor(Math.random() * (lines.length - 1))) % lines.length); }
     setMode(t, false); // Practice or Learn, from the next line
     return play(nextLine());
   }
@@ -2469,6 +2469,7 @@ function nextLine() {
     const i = lines.findIndex((l) => !s.played.includes(key(l)));
     return i === -1 ? (lineIdx + 1) % lines.length : i;
   }
+  if (randomLines) return randomLine();
   const due = lines.map((l, i) => [i, s.rep?.[key(l)]]).filter(([, r]) => r && r.box > 0 && r.due <= Date.now())
     .sort((a, b) => a[1].due - b[1].due);
   if (due.length) return due[0][0];
@@ -2480,6 +2481,14 @@ function nextLine() {
   const missed = open.filter((i) => s.rep?.[key(lines[i])] && i !== lineIdx);
   const next = open.find((i) => i > lineIdx) ?? open[0];
   return missed[0] ?? (open.length > 1 && next === lineIdx ? open.find((i) => i !== lineIdx) : next);
+}
+// Random lines (Practice and Time): any line, as often as players at your level reach it, as in a real
+// game; never the one just played. Lines no game counts (a named trap) still come up now and then.
+let randomLines = load(STORE + '-random', false);
+function randomLine() {
+  const w = lines.map((l, i) => (i === lineIdx && lines.length > 1 ? 0 : Math.max(l.share || 0, 0.03)));
+  let r = Math.random() * w.reduce((a, b) => a + b, 0);
+  return Math.max(0, w.findIndex((x) => (r -= x) < 0));
 }
 const COHORT = 3;
 const practiceSet = () => {
@@ -2825,7 +2834,7 @@ function trialSeconds() {
   return Math.max(30, Math.min(120, Math.round((own * 6) / 5) * 5));
 }
 let trial = null; // { end, score, done, timer }
-function startTrial(first = Math.floor(Math.random() * lines.length)) {
+function startTrial(first = randomLines ? randomLine() : Math.floor(Math.random() * lines.length)) {
   stopTrial();
   // The clock waits (end null, left kept) until your first move, and again between lines.
   trial = { end: null, left: trialSeconds() * 1000, full: trialSeconds() * 1000, score: 0, done: 0, timer: setInterval(tickTrial, 100) };
@@ -3506,6 +3515,12 @@ $('#move-form').addEventListener('submit', (e) => {
   sel = null;
   for (const sq of [m.from, m.to]) boardEl.querySelector(`[data-sq="${sq}"]`)?.click();
   $('#move-in').focus();
+});
+function showRandom() { const b = $('#rand'); b.setAttribute('aria-pressed', randomLines); b.textContent = `Random lines: ${randomLines ? 'on' : 'off'}`; }
+showRandom();
+$('#rand').addEventListener('click', () => {
+  randomLines = !randomLines; store(STORE + '-random', randomLines); showRandom();
+  say(randomLines ? 'Random lines: the next line can be any of them, as often as it comes up in real games at your level.' : 'Lines in course order again.', 'good');
 });
 $('.m-modes').addEventListener('click', (e) => e.target.dataset.mode && $(`#mode-${e.target.dataset.mode}`).click());
 function setMode(m, restart = true, remember = true) {
