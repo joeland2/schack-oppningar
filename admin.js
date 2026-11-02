@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261102225155';
-import { api as chatApi, openChat } from './chat.js?v=20261102225155';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102225155';
+import { account, login, finishLogin } from './lichess.js?v=20261102225843';
+import { api as chatApi, openChat } from './chat.js?v=20261102225843';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102225843';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -340,9 +340,7 @@ function personHtml(v, all) {
 // browsers they used together. Time on a page comes from 'leave' events (seconds in view, sent as the page
 // is left); visits from before those were sent count the time to the next event, up to 10 minutes.
 const dur = (sec) => (sec < 60 ? `${Math.round(sec)} s` : sec < 3600 ? `${Math.round(sec / 60)} min` : `${Math.floor(sec / 3600)} h ${Math.round((sec % 3600) / 60)} min`);
-function dataHtml(v, same) {
-  const events = same.flatMap((w) => w.events.map((e) => ({ ...e, w }))).sort((a, b) => a.at.localeCompare(b.at));
-  if (!events.length) return '<p class="info">No events recorded.</p>';
+function pageTime(events) {
   // Visits: events less than 30 minutes apart. Each page view gets its time: the leave events after it, or the gap to the next event.
   const visits = [];
   for (const e of events) { const last = visits.at(-1); if (last && Date.parse(e.at) - Date.parse(last.at(-1).at) < 30 * 6e4) last.push(e); else visits.push([e]); }
@@ -356,6 +354,32 @@ function dataHtml(v, same) {
     }
   });
   for (const x of views) if (!x.measured) x.sec = x.gap || 0;
+  return { visits, views };
+}
+// Who stands out: per person (a name gathers its browsers, else one browser) the time, actions, visits,
+// names looked up and lines played, each as a top 5 to click into.
+function topHtml(visitors) {
+  const people = new Map();
+  for (const v of visitors) { const k = v.name ? `n:${v.name.toLowerCase()}` : `v:${v.id}`; const p = people.get(k) || { v, ws: [] }; p.ws.push(v); people.set(k, p); }
+  const rows = [...people.values()].map(({ v, ws }) => {
+    const events = ws.flatMap((w) => w.events).sort((a, b) => a.at.localeCompare(b.at));
+    const { visits, views } = pageTime(events), of = (k) => events.filter((e) => e.kind === k);
+    const lines = of('line').map((e) => runOf(e.target)).filter((x) => x?.o);
+    return { v, sec: views.reduce((t, x) => t + x.sec, 0), acts: events.filter((e) => !['view', 'leave'].includes(e.kind)).length, visits: visits.length,
+      looked: new Set(of('profile').map((e) => (e.target || '').split(' #')[0].toLowerCase())).size, lines: lines.length, openings: new Set(lines.map((x) => `${x.s}|${x.o}`)).size };
+  });
+  const list = (title, k, fmt) => {
+    const top = rows.filter((r) => r[k] > 0).sort((a, b) => b[k] - a[k]).slice(0, 5);
+    return `<div class="adm-top"><h3>${title}</h3>${top.length ? `<ol>${top.map((r) => `<li><span>${personName(r.v)}</span><b class="num">${fmt(r[k])}</b></li>`).join('')}</ol>` : '<p class="info">Nobody yet.</p>'}</div>`;
+  };
+  const n = (x) => String(x);
+  return `<section class="pf-card"><div class="adm-head"><h2>${ic('people')}Top visitors</h2><small>From the last ${visitors.length} visitors. A name counts all its browsers. Click one for their data.</small></div>
+    <div class="adm-tops">${list('Most time on the site', 'sec', dur)}${list('Most things done', 'acts', n)}${list('Most visits', 'visits', n)}${list('Most names looked up', 'looked', n)}${list('Most lines played', 'lines', n)}${list('Most openings played', 'openings', n)}</div></section>`;
+}
+function dataHtml(v, same) {
+  const events = same.flatMap((w) => w.events.map((e) => ({ ...e, w }))).sort((a, b) => a.at.localeCompare(b.at));
+  if (!events.length) return '<p class="info">No events recorded.</p>';
+  const { visits, views } = pageTime(events);
   const total = views.reduce((t, x) => t + x.sec, 0), perPage = new Map();
   for (const x of views) { const k = pageName(x.e.page); const o = perPage.get(k) || { sec: 0, n: 0 }; o.sec += x.sec; o.n++; perPage.set(k, o); }
   const pages = [...perPage].sort((a, b) => b[1].sec - a[1].sec || b[1].n - a[1].n), topSec = Math.max(1, ...pages.map(([, o]) => o.sec));
@@ -501,6 +525,7 @@ function render(s) {
         ${(s.openings || []).length ? openedHtml(s.openings) : rows(s.practised)}</section>
     </div>
     ${group('people')}
+    ${topHtml(s.visitors)}
     <section class="pf-card"><div class="adm-head"><h2>${ic('people')}Unique visitors · ${s.visitors.length}</h2><small>Every visitor once, newest first. IP addresses without their last part. Click one to see what they did.</small></div>
       ${s.visitors.length ? `<div class="adm-visitors"><div class="adm-v-head"><span>Location</span><span>IP</span><span>Lichess</span><span>Device</span><span>Visits</span><span>Last seen</span></div>${s.visitors.map((v) => `<details class="adm-visitor"><summary>
           <span class="adm-v-where">${flag(v.country)}${esc(v.country ? land(v.country).replace(/ \(..\)$/, '') : 'Unknown')}${v.city ? ` · ${esc(v.city)}` : ''}</span>
