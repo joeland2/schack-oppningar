@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102174720';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102174720';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102174720';
-import { NAMED_TRAPS } from './traps.js?v=20261102174720';
-import { GUIDE } from './guide.js?v=20261102174720';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102174720';
-import { banner, confetti } from './celebrate.js?v=20261102174720';
-import { maia3Move } from './maia3.js?v=20261102174720';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102174720';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261102174720';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102174720';
-import { openLogin } from './login.js?v=20261102174720';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102174720';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102192533';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102192533';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102192533';
+import { NAMED_TRAPS } from './traps.js?v=20261102192533';
+import { GUIDE } from './guide.js?v=20261102192533';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102192533';
+import { banner, confetti } from './celebrate.js?v=20261102192533';
+import { maia3Move } from './maia3.js?v=20261102192533';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102192533';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261102192533';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102192533';
+import { openLogin } from './login.js?v=20261102192533';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102192533';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2584,7 +2584,7 @@ const trapStory = (l) => (l.trap.kind === 'named'
   ? `The ${l.trap.name}, a known trap. ${l.trap.share ? `About 1 in ${Math.round(1 / l.trap.share)} opponents at your level fall for <b>${trapMove(l.trap)}</b> here. ` : `Players at your level rarely reach it, but it is worth knowing. `}${slipGives(l.trap)}${scoreAfter(l.trap)}This line shows how to spring it.`
   : `${howOften(l.trap)} <b>${trapMove(l.trap)}</b> here. ${l.trap.kind === 'trap' && l.trap.win
   ? `It loses ${l.trap.win}` : l.trap.kind === 'mistake' ? `It is no blunder, but it hands you the easier game. ${mistakeWhy(l.trap)?.why.replace(/\.$/, '') || 'It costs time'}` : 'It lets you win'}${scoreAfter(l.trap, (p) => `: you score ${p} after it`)}. This line shows how to punish it.`);
-const TRAPS_KEY = STORE + '-traps-v2'; // { [fen before | move]: { kind, win } }, so Stockfish looks once
+const TRAPS_KEY = STORE + '-traps-v3'; // { [fen before | move]: { kind, win } }, so Stockfish looks once
 // What a run of moves wins for the side to move at its start: the pieces each side loses, as words.
 function winOf(fen, pv) {
   const g = new Chess(fen), me = g.turn(), lost = { [me]: [], other: [] };
@@ -2625,11 +2625,14 @@ async function classifyTraps() {
         const alt = await search(g2.fen(), { ms: 600 });
         if (alt && toCp(after) + toCp(alt) >= 50) answer = clean(best.san);
       }
+      // A slip Stockfish sees as costing next to nothing is no trap: the line stays, as a common reply.
       known[key] = { ...(w.mate ? { kind: 'trap', win: 'the game: there is a mate' }
-        : w.net >= 1 && drop >= 100 ? { kind: 'trap', win: w.text } : { kind: 'mistake' }), answer };
+        : w.net >= 1 && drop >= 100 ? { kind: 'trap', win: w.text } : drop < 30 ? { kind: 'none' } : { kind: 'mistake' }), answer };
       store(TRAPS_KEY, known);
     }
-    for (const x of mine) if (x.trap && x.trap.ply === t.ply && x.trap.san === t.san && lineKey(x.moves.slice(0, t.ply)) === lineKey(l.moves.slice(0, t.ply))) Object.assign(x.trap, known[key]);
+    for (const x of mine) if (x.trap && x.trap.ply === t.ply && x.trap.san === t.san && lineKey(x.moves.slice(0, t.ply)) === lineKey(l.moves.slice(0, t.ply))) {
+      if (known[key].kind === 'none') x.trap = null; else Object.assign(x.trap, known[key]);
+    }
     if (lines !== mine) return; // another opening or rebuilt lines: they get their own run
     renderLines(); renderLineBox(); renderWhy();
   }
