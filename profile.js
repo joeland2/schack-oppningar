@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102163051';
-import { openLogin } from './login.js?v=20261102163051';
-import { STYLE_OF } from './styles.js?v=20261102163051';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102163051';
-import { PEOPLE } from './pros.js?v=20261102163051';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102163436';
+import { openLogin } from './login.js?v=20261102163436';
+import { STYLE_OF } from './styles.js?v=20261102163436';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102163436';
+import { PEOPLE } from './pros.js?v=20261102163436';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -385,7 +385,8 @@ function typeOf(p, keep = null) {
   // The strength: the one furthest above the player's own opponents (50 is even). One that stands out
   // (64 or more) wins; failing that, everyone still gets the one they are best at, if above their opponents.
   // Defense has no strength of its own: being best at it is the Guardian style.
-  const ranked = strengths.filter((x) => x.label !== 'Defense' && x.v !== null && x.v > 50 && x.label !== SAME[style.name]).sort((x, y) => y.v - x.v);
+  // Fighter says how games go, not a skill: it only shows when it clearly stands out, never as the fallback.
+  const ranked = strengths.filter((x) => x.label !== 'Defense' && x.v !== null && x.v > 50 && x.label !== SAME[style.name] && (x.label !== 'Fighter' || x.v >= 64)).sort((x, y) => y.v - x.v);
   const keptS = keep && ranked.find((x) => (STRENGTH[x.label] || x.label) === keep.strength);
   const best = keptS && keptS.v >= ranked[0].v - KEEP_V ? keptS : ranked[0];
   const second = best ? { name: STRENGTH[best.label] || best.label, why: STRENGTH[best.label] ? `${best.label} is where you beat your level most: ${best.why}` : best.why } : styles[1].lean >= 1 ? styles[1] : null; // a second style only when it is top-tenth
