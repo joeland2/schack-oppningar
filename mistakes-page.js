@@ -1,6 +1,6 @@
-import { drill } from './drill.js?v=20261102143045';
-import { THEMES } from './mistakes.js?v=20261102143045';
-import { explainMistake, dangerAfter } from './ideas.js?v=20261102143045';
+import { drill } from './drill.js?v=20261102143110';
+import { THEMES } from './mistakes.js?v=20261102143110';
+import { explainMistake, dangerAfter } from './ideas.js?v=20261102143110';
 
 // Positions from your own games where you went wrong, saved by "Find my mistakes" on the openings page.
 // Everything is explained here, on the board: what your move did wrong, nudges while you look for
@@ -35,10 +35,10 @@ if (!found.length) {
         <div class="why-box good"><span>Better</span><b>${f.best}</b><p>${e.right}</p></div></div>
         ${(f.solution || []).length > 1 ? `<p><b>The idea:</b> ${f.solution.join(' ')}</p>` : ''}
         <p><b>What to take with you:</b> ${theme.tip}</p>`,
-      wrong: (san) => {
+      wrong: (san, fen = f.fen) => {
         tries++;
-        if (san === f.played) return `That is the move from your game. ${e.wrong} Try something else.`;
-        const danger = dangerAfter(f.fen, san);
+        if (fen === f.fen && san === f.played) return `That is the move from your game. ${e.wrong} Try something else.`;
+        const danger = dangerAfter(fen, san); // the position now, which is past the start once you are into the solution
         if (danger) return `${danger} Try again.`;
         return tries >= 2 ? `${e.nudge} Press Hint if you want the piece to move.` : `${san} is not the best here. ${e.nudge}`;
       },

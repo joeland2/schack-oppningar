@@ -1,10 +1,10 @@
 // Shared "play the right move" trainer for the Basics and Pros pages.
-// item: { id, group, title, tag, side, fen, solution: [san…], intro, explain (html), wrong?(san), played? (san: the
+// item: { id, group, title, tag, side, fen, solution: [san…], intro, explain (html), wrong?(san, fen before it), played? (san: the
 // move made in the game, a red arrow until the position is solved) }
 // Moves at odd positions in solution are the opponent's replies and are played automatically.
-import { banner, confetti } from './celebrate.js?v=20261102143045';
+import { banner, confetti } from './celebrate.js?v=20261102143110';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake, instruction } from './board.js?v=20261102143045';
+import { drawBoard, enableDrag, shake, instruction } from './board.js?v=20261102143110';
 
 const $ = (s) => document.querySelector(s);
 const clean = (san) => san.replace(/[+#]/g, '');
@@ -80,7 +80,7 @@ export function drill(items, storeKey) {
       game.undo();
       wrong = to; sel = null;
       draw(); shake(boardEl);
-      say((cur.wrong && cur.wrong(m.san)) || `${m.san} isn't it. Try again.`, 'bad');
+      say((cur.wrong && cur.wrong(m.san, m.before)) || `${m.san} isn't it. Try again.`, 'bad');
       setTimeout(() => { wrong = null; draw(); }, 700);
       return true;
     }
