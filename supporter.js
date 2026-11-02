@@ -11,7 +11,7 @@ const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-
 // The price as Stripe's Checkout will show it: the one price is in USD, EUR, GBP, SEK, NOK, DKK, INR, CAD and AUD,
 // picked by where you are (here guessed from the time zone; Stripe goes by the buyer's location).
 const EURO = /^Europe\/(Amsterdam|Andorra|Athens|Berlin|Bratislava|Brussels|Dublin|Helsinki|Lisbon|Ljubljana|Luxembourg|Madrid|Malta|Monaco|Paris|Riga|Rome|San_Marino|Tallinn|Vatican|Vienna|Vilnius|Zagreb)$|^Asia\/(Nicosia|Famagusta)$|^Atlantic\/(Azores|Madeira|Canary)$/;
-const PRICE = (() => { let tz = ''; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch {} return /^Europe\/(Stockholm|Oslo)$/.test(tz) ? '55 kr' : tz === 'Europe/Copenhagen' ? '35 kr' : tz === 'Europe/London' ? '£4' : EURO.test(tz) ? '€5'
+export const PRICE = (() => { let tz = ''; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch {} return /^Europe\/(Stockholm|Oslo)$/.test(tz) ? '55 kr' : tz === 'Europe/Copenhagen' ? '35 kr' : tz === 'Europe/London' ? '£4' : EURO.test(tz) ? '€5'
   : /^Asia\/(Kolkata|Calcutta)$/.test(tz) ? '₹400' : /^Australia\//.test(tz) ? 'A$8'
   : /^America\/(Toronto|Vancouver|Edmonton|Winnipeg|Halifax|St_Johns|Regina|Moncton|Whitehorse|Iqaluit|Yellowknife)$/.test(tz) ? 'CA$7' : '$5'; })();
 const login = () => { try { return JSON.parse(localStorage.getItem('chess-trainer-lichess-login')) || null; } catch { return null; } };
@@ -107,7 +107,7 @@ export async function openSupport() {
   dlg.querySelector('.chat-x').addEventListener('click', close);
   dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
   const body = dlg.querySelector('.sup-body');
-  dlg.addEventListener('click', async (e) => { if (e.target.closest('[data-sup-idea]')) { close(); (await import('./chat.js?v=20261102141013')).openChat(); } });
+  dlg.addEventListener('click', async (e) => { if (e.target.closest('[data-sup-idea]')) { close(); (await import('./chat.js?v=20261102141237')).openChat(); } });
   const grid = (pick, on) => `<div class="sup-frames${pick ? '' : ' locked'}">${FRAMES.map(([k, t]) => `<button type="button" class="sup-frame${k === on ? ' on' : ''}" data-frame="${k}"${pick ? '' : ' disabled'}><span class="sup-fx fx-${k}"><span class="sup-mini"></span></span><small>${t}</small></button>`).join('')}</div>`;
   const pitch = `<p class="sup-lead"><b>Everything on Chess Labs is free, and always will be.</b> No paywall, no ads, no locked features.</p>
     <p>This isn't a site to make money from. It costs money to run, though: the servers, the database and the analysis. If you want to help keep it going, you can support it for <b>${PRICE} a month</b>, and you get something small back.</p>
