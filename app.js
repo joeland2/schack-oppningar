@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102142642';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102142642';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102142642';
-import { NAMED_TRAPS } from './traps.js?v=20261102142642';
-import { GUIDE } from './guide.js?v=20261102142642';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102142642';
-import { banner, confetti } from './celebrate.js?v=20261102142642';
-import { maia3Move } from './maia3.js?v=20261102142642';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102142642';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261102142642';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102142642';
-import { openLogin } from './login.js?v=20261102142642';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102142642';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102142723';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102142723';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102142723';
+import { NAMED_TRAPS } from './traps.js?v=20261102142723';
+import { GUIDE } from './guide.js?v=20261102142723';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102142723';
+import { banner, confetti } from './celebrate.js?v=20261102142723';
+import { maia3Move } from './maia3.js?v=20261102142723';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102142723';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261102142723';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102142723';
+import { openLogin } from './login.js?v=20261102142723';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102142723';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2297,15 +2297,16 @@ function careful(before, want) {
 }
 
 // ---------- Trap training: the traps of your openings, one after another ----------
-// The traps (and common mistakes) of your starred openings, or of the ten most played White openings,
-// in a random order. Each starts right before the opponent's slip; you punish it, then Next trap.
+// The traps (and common mistakes) of the openings you play: starred, then the ones from your Lichess games
+// (else the ten most played White openings). Each starts right before the opponent's slip; once you punish
+// it, Next trap goes straight on, without playing the line out.
 // It does not count towards clearing lines (you did not play them from the start).
 let trapRun = null; // { queue: [{ op, key, ply }], now, done, total }
 function startTraps() {
   if (needTree(startTraps)) return;
-  const trapsOf = (ops) => ops.flatMap((op) => buildLines(op).filter((l) => l.trap).map((l) => ({ op, key: lineKey(l.moves), ply: l.trap.ply })))
-    .sort(() => Math.random() - 0.5).slice(0, 15);
-  let queue = trapsOf(OPENINGS.filter((o) => repertoire.has(o.id)));
+  // Opening by opening, its traps in line order, so you stay in one opening until its traps are done.
+  const trapsOf = (ops) => ops.flatMap((op) => buildLines(op).filter((l) => l.trap).map((l) => ({ op, key: lineKey(l.moves), ply: l.trap.ply }))).slice(0, 30);
+  let queue = trapsOf([...OPENINGS.filter((o) => repertoire.has(o.id)), ...mostPlayed().filter((o) => !repertoire.has(o.id))]);
   if (!queue.length) queue = trapsOf(shown().filter((o) => o.side === 'w').slice(0, 10)); // starred ones without traps: the most played
   if (!queue.length) return say('No common blunders to punish in these openings at your level.');
   trapRun = { queue, done: 0, total: queue.length };
@@ -2512,11 +2513,13 @@ function punishArrow(t) {
 // Right after you punish the line's slip: why your move was right, and what it brings.
 function punished(m) {
   const t = lines[lineIdx]?.trap, i = game.history().length - 1;
-  if (!t || i !== t.ply + 1 || mode === 'time') return;
+  if (!t || i !== t.ply + 1 || mode === 'time') return false;
   const idea = ideaAt(new Chess(m.before), m.san), them = sideName(m.color === 'w' ? 'b' : 'w');
   moment('good', game.isCheckmate() ? 'Checkmate!' : 'Punished!', `<b>${moveLabel(i, m.san)}</b> is the answer to ${trapMove(t)}${idea && !game.isCheckmate() ? `: ${idea.replace(/^./, (c) => c.toLowerCase())}` : '.'} ${game.isCheckmate() ? `${them} is mated.`
     : t.kind === 'named' ? `It gives you ${t.win}.` : t.kind === 'trap' && t.win
-    ? `Now ${them} cannot hold everything: you win ${t.win}.` : `${them} is now behind in time and development: you have the easier game.`}`, [{ label: 'Got it', run: () => {} }], null, null, null);
+    ? `Now ${them} cannot hold everything: you win ${t.win}.` : `${them} is now behind in time and development: you have the easier game.`}`, [trapRun ? { label: 'Next trap', run: nextTrap } : { label: 'Got it', run: () => {} }], null, null, null);
+  if (trapRun) { banner('Punished!'); confetti(60); say(`Punished. ${trapRun.queue.length ? 'Next trap when you are ready.' : 'That was the last one.'}`, 'good'); }
+  return true;
 }
 function punishText(t) {
   const l = lines[lineIdx], san = l.moves[t.ply + 1];
@@ -2938,7 +2941,7 @@ function tryMove(from, to) {
   say(mode === 'time' ? `Right: ${m.san}. +${TRIAL_RIGHT} s` : moved === 'swap' ? `${m.san} first is fine: same moves, another order. The line goes on.` : moved ? `${m.san} reaches the same position by another move order. Fine: the line goes on from here.` : `Right: ${moveWords(m)}.`, 'good');
   notes[ply - 1] = 'book';
   render();
-  punished(m);
+  if (punished(m) && trapRun) return true; // blunder training: the trap is done, no need to play the line out
   if (ply >= line.length) finish(); else reply();
   return true;
 }

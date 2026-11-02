@@ -1,6 +1,6 @@
 // Supporters: everyone who supports Chess Labs and chose to be listed (longest first, or newest first), each in the frame they
 // picked, linking to their profile.
-import { supportersReady, PRICE } from './supporter.js?v=20261102142642';
+import { supportersReady, PRICE } from './supporter.js?v=20261102142723';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const HEART = '<svg class="sups-heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C1 8.6 3 5 6.5 5c2 0 3.6 1.1 4.5 2.6l1 1.4 1-1.4C13.9 6.1 15.5 5 17.5 5 21 5 23 8.6 21.6 11.8 19.5 16.4 12 21 12 21z"/></svg>';
 const nick = (n) => n.replace(/^cc:/, '');
