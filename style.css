@@ -2764,7 +2764,7 @@ a.st-wk:hover h2 { text-decoration: underline; }
 }
 .msg-foot { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .sup-dlg { width: min(560px, calc(100vw - 32px)); }
-.sup-body { padding: 18px; display: grid; gap: 12px; overflow-y: auto; }
+.sup-body { padding: 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; overflow-y: auto; overflow-wrap: anywhere; }
 .sup-body p { margin: 0; }
 .sup-perks { margin: 0; padding-left: 18px; color: var(--muted); display: grid; gap: 4px; }
 .sup-k { font: 600 11px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }

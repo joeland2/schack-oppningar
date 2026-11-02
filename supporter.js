@@ -73,7 +73,7 @@ export async function openSupport() {
   dlg.querySelector('.chat-x').addEventListener('click', close);
   dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
   const body = dlg.querySelector('.sup-body');
-  dlg.addEventListener('click', async (e) => { if (e.target.closest('[data-sup-idea]')) { close(); (await import('./chat.js?v=20261102091849')).openChat(); } });
+  dlg.addEventListener('click', async (e) => { if (e.target.closest('[data-sup-idea]')) { close(); (await import('./chat.js?v=20261102092343')).openChat(); } });
   const grid = (pick, on) => `<div class="sup-frames${pick ? '' : ' locked'}">${FRAMES.map(([k, t]) => `<button type="button" class="sup-frame${k === on ? ' on' : ''}" data-frame="${k}"${pick ? '' : ' disabled'}><span class="sup-fx fx-${k}"><span class="sup-mini"></span></span><small>${t}</small></button>`).join('')}</div>`;
   const pitch = `<p class="sup-lead"><b>Everything on Chess Labs is free, and always will be.</b> No paywall, no ads, no locked features.</p>
     <p>This isn't a site to make money from. It costs money to run, though: the servers, the database and the analysis. If you want to help keep it going, you can support it for <b>$5 a month</b>, and you get something small back.</p>
@@ -91,7 +91,7 @@ export async function openSupport() {
       <button type="button" class="cta sup-go">Support for $5 a month</button><p class="info">Paid through Stripe. Cancel any time.</p>${err}`;
     body.querySelector('.sup-go').addEventListener('click', async (e) => {
       e.target.disabled = true;
-      try { location.href = (await api('?checkout', {})).url; } catch (x) { fail(x.message); e.target.disabled = false; }
+      try { location.href = (await api('?checkout', {})).url; } catch (x) { console.warn(x.message); fail('Could not open the payment page. Try again in a minute, or message the admins.'); e.target.disabled = false; }
     });
     return;
   }
