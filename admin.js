@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261101235424';
-import { api as chatApi, openChat } from './chat.js?v=20261101235424';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261101235424';
+import { account, login, finishLogin } from './lichess.js?v=20261102070452';
+import { api as chatApi, openChat } from './chat.js?v=20261102070452';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102070452';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -397,7 +397,7 @@ function render(s) {
       <section class="pf-card"><h2>${ic('login')}Logged-in players · ${s.days} days</h2>${s.users.length
         ? `<p class="adm-online-k">${s.users.filter(isOn).length} active in the last hour</p><ul class="adm-online">${[...s.users].sort((a, b) => b.last.localeCompare(a.last)).map((u) => `<li>
           <span class="adm-dot${isOn(u) ? ' on' : ''}"></span><button type="button" class="adm-online-who" data-actions="${esc(u.name)}"><b>${esc(u.name)}</b><small>${isOn(u) ? 'active now' : `last ${when(u.last)}`}</small></button><span class="adm-online-n"><b>${u.n}</b> actions</span></li>`).join('')}</ul>` : '<p class="info">Nobody yet.</p>'}</section>
-      <section class="pf-card"><h2>${ic('plus')}Profiles created · ${s.registered.length}</h2>${s.registered.length ? `<p class="adm-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>
+      ${joinedHtml(s, link)}
       <section class="pf-card"><h2>${ic('profile')}Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>
     </div>
     <div class="adm-three">
@@ -521,6 +521,20 @@ async function threads() {
   el.innerHTML = `<div class="adm-head"><h2>${ic('people')}Threads · ${ts.length}</h2><small>${waiting ? `${waiting} waiting for an answer` : 'All answered'}</small></div>
     ${ts.length ? `<ul class="pf-rows adm-recent">${ts.map((t) => `<li><button type="button" class="link adm-thread" data-thread="${esc(t.player)}"><b>${esc(t.player)}</b> ${t.author === t.player ? '<span class="chip pagar">Waiting</span>' : ''}<small>${esc(t.body.slice(0, 90))}${t.body.length > 90 ? '…' : ''}</small></button><small>${t.n} · ${when(t.at)}</small></li>`).join('')}</ul>` : '<p class="info">No messages yet.</p>'}`;
   el.querySelectorAll('[data-thread]').forEach((b) => b.addEventListener('click', () => { markSeen(); openChat(b.dataset.thread); document.querySelector('dialog.chat')?.addEventListener('close', threads); }));
+}
+// Profiles created: a bar for each of the last 30 days, and the newest profiles with their day.
+// Without dates (an older admin-stats), the names as before.
+function joinedHtml(s, link) {
+  const js = s.joined || [], head = (sub) => `<div class="adm-head"><h2>${ic('plus')}Profiles created · ${s.registered.length}</h2>${sub ? `<small>${sub}</small>` : ''}</div>`;
+  if (!js.length) return `<section class="pf-card">${head()}${s.registered.length ? `<p class="adm-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>`;
+  const D = 30, today = new Date().setHours(0, 0, 0, 0), per = Array(D).fill(0);
+  for (const j of js) { const d = Math.floor((today - new Date(j.at).setHours(0, 0, 0, 0)) / 864e5); if (d >= 0 && d < D) per[D - 1 - d]++; }
+  const m = Math.max(1, ...per), week = per.slice(-7).reduce((a, b) => a + b, 0);
+  const dayOf = (i) => day(new Date(today - (D - 1 - i) * 864e5).toISOString());
+  return `<section class="pf-card">${head(`+${week} this week`)}
+    <div class="adm-grow" role="img" aria-label="Profiles created each day, the last ${D} days">${per.map((v, i) => `<i style="height:${Math.max(4, (v / m) * 100)}%" title="${dayOf(i)}: ${v}"></i>`).join('')}</div>
+    <p class="adm-grow-ax"><span>${dayOf(0)}</span><span>Today</span></p>
+    <p class="adm-chips">${js.slice(0, 8).map((j) => `<span class="adm-chip">${link({ name: j.n })}<small>${day(j.at)}</small></span>`).join('')}</p></section>`;
 }
 // Supporters: who has the heart and frame. Paying ones come from Stripe; here an admin ticks anyone in or out by hand.
 const SUP = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/supporter';
@@ -660,7 +674,7 @@ function demoData() {
     profiles: count(events.filter((e) => e.kind === 'profile').map((e) => e.target)),
     recentProfiles: events.filter((e) => e.kind === 'profile').slice(0, 40).map((e) => ({ at: e.at, target: e.target, country: 'SE', city: 'Malmö', device: 'iPhone · Safari' })), compares: count(events.filter((e) => e.kind === 'compare').map((e) => e.target)),
     usage: count(events.filter((e) => !['view', 'profile'].includes(e.kind)).map((e) => e.kind)), practised: count(events.filter((e) => e.kind === 'practise').map((e) => e.target)),
-    visitors, registered: registered.sort(), users: registered.map((name) => ({ name, n: 5 + Math.floor(rnd() * 40), last: iso(now - rnd() * 6 * 864e5) })),
+    visitors, registered: registered.sort(), joined: registered.map((n) => ({ n, at: iso(now - rnd() * 30 * 864e5) })).sort((a, b) => b.at.localeCompare(a.at)), users: registered.map((name) => ({ name, n: 5 + Math.floor(rnd() * 40), last: iso(now - rnd() * 6 * 864e5) })),
   };
 }
 async function start() {

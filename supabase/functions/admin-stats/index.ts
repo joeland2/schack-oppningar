@@ -214,6 +214,8 @@ Deno.serve(async (req) => {
       return out.slice(-40).reverse();
     })(),
     registered: registered.sort((a, b) => a.localeCompare(b)),
+    // When each profile was created: the first event with that Lichess name (rows come oldest first), newest first.
+    joined: (() => { const at = new Map<string, string>(); for (const r of rows) if (r.user_name && !at.has(r.user_name)) at.set(r.user_name, r.at); return [...at].map(([n, t]) => ({ n, at: t })).reverse(); })(),
     compares: count(recent.filter((r) => r.kind === 'compare').map((r) => r.target)),
     usage: count(recent.filter((r) => r.kind !== 'view' && r.kind !== 'profile').map((r) => r.kind)),
     practised: count(recent.filter((r) => r.kind === 'practise' && !r.target?.startsWith('done ')).map((r) => r.target)),

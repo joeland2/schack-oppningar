@@ -2794,3 +2794,10 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .adm-sup { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1; min-width: 0; }
 .adm-sup input { width: 18px; height: 18px; accent-color: var(--hot); }
 .adm-sups small { color: var(--muted); font-size: 12px; }
+/* Admin: profiles created, a bar a day */
+.adm-grow { display: flex; align-items: flex-end; gap: 3px; height: 80px; }
+.adm-grow i { flex: 1; background: var(--data); border-radius: 3px 3px 0 0; }
+.adm-grow-ax { display: flex; justify-content: space-between; margin: 6px 0 12px; font: 500 11px var(--font-mono); color: var(--muted); }
+.adm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.adm-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--raised); font-size: 13px; }
+.adm-chip small { color: var(--muted); font: 500 11px var(--font-mono); }
