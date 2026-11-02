@@ -73,16 +73,21 @@ export async function openSupport() {
   dlg.querySelector('.chat-x').addEventListener('click', close);
   dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
   const body = dlg.querySelector('.sup-body');
+  dlg.addEventListener('click', async (e) => { if (e.target.closest('[data-sup-idea]')) { close(); (await import('./chat.js?v=20261102091642')).openChat(); } });
   const grid = (pick, on) => `<div class="sup-frames${pick ? '' : ' locked'}">${FRAMES.map(([k, t]) => `<button type="button" class="sup-frame${k === on ? ' on' : ''}" data-frame="${k}"${pick ? '' : ' disabled'}><span class="sup-fx fx-${k}"><span class="sup-mini"></span></span><small>${t}</small></button>`).join('')}</div>`;
-  const pitch = `<p>Chess Labs is free, with no ads. If it helps your chess, <b>$5 a month</b> pays for the servers, Maia and the analysis.</p>
-    <ul class="sup-perks"><li>A heart by your name, everywhere on the site</li><li>A frame of your choice around your player card</li><li>A say in what we build next</li></ul>`;
+  const pitch = `<p class="sup-lead"><b>Everything on Chess Labs is free, and always will be.</b> No paywall, no ads, no locked features.</p>
+    <p>This isn't a site to make money from. It costs money to run, though: the servers, the database and the analysis. If you want to help keep it going, you can support it for <b>$5 a month</b>, and you get something small back.</p>
+    <p class="sup-k">What supporters get</p>
+    <ul class="sup-perks"><li>A heart by your name, everywhere on the site</li><li>A frame of your choice around your player card</li></ul>
+    <p class="sup-k">The frames</p>${grid(false)}
+    <div class="sup-idea"><p><b>Chess Labs is made by the community, for the community.</b> What should supporters get? Tell us your ideas.</p><button type="button" class="ghost" data-sup-idea>Suggest a perk</button></div>`;
   if (!me) { body.innerHTML = `${pitch}<p><a class="cta" href="profile.html?login">Log in with Lichess</a></p><p class="info">Supporting is tied to your Lichess name, so log in first.</p>`; return; }
   let st;
   try { st = await api('?me'); } catch (e) { body.innerHTML = `<p class="chat-err">${esc(e.message)}</p>`; return; }
   const err = '<p class="chat-err" role="alert" hidden></p>';
   const fail = (m) => { const p = body.querySelector('.chat-err'); p.textContent = m; p.hidden = false; };
   if (!st.active) {
-    body.innerHTML = `${pitch}<p class="sup-k">The frames you can pick from</p>${grid(false)}
+    body.innerHTML = `${pitch}
       <button type="button" class="cta sup-go">Support for $5 a month</button><p class="info">Paid through Stripe. Cancel any time.</p>${err}`;
     body.querySelector('.sup-go').addEventListener('click', async (e) => {
       e.target.disabled = true;
@@ -91,6 +96,7 @@ export async function openSupport() {
     return;
   }
   body.innerHTML = `<p><b>Thank you for supporting Chess Labs, ${esc(me.name)}.</b> Pick the frame around your card:</p>${grid(true, st.frame)}${err}
+    <div class="sup-idea"><p>What else should supporters get? Chess Labs is made by the community, for the community.</p><button type="button" class="ghost" data-sup-idea>Suggest a perk</button></div>
     ${st.customer ? '<button type="button" class="ghost sup-portal">Cancel the subscription or change card</button>' : ''}`;
   body.querySelectorAll('[data-frame]').forEach((b) => b.addEventListener('click', async () => {
     try {

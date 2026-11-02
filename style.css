@@ -2766,7 +2766,7 @@ a.st-wk:hover h2 { text-decoration: underline; }
 .sup-frame { display: grid; justify-items: center; gap: 8px; padding: 10px 4px 6px; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--ink); cursor: pointer; font: inherit; }
 .sup-frame small { font-size: 12px; color: var(--muted); }
 .sup-frame:hover:not(:disabled), .sup-frame.on { border-color: var(--hot); background: color-mix(in srgb, var(--hot) 8%, transparent); }
-.sup-frame:disabled { cursor: default; }
+.sup-frame:disabled { cursor: default; opacity: 1; filter: none; }
 .sup-frame .sup-fx::before { inset: -4px; }
 .sup-mini { position: relative; z-index: 1; display: block; width: 40px; height: 54px; border-radius: 3px; background: var(--card); }
 .sup-frame .fx-none .sup-mini { outline: 1px dashed var(--muted); outline-offset: 3px; }
@@ -2801,3 +2801,7 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .adm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 .adm-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--raised); font-size: 13px; }
 .adm-chip small { color: var(--muted); font: 500 11px var(--font-mono); }
+/* Support dialog: the free-forever lead and the ideas box */
+.sup-lead { font-size: 16px; }
+.sup-idea { display: grid; gap: 10px; padding: 14px; border: 1px dashed var(--line); border-radius: 8px; }
+.sup-idea .ghost { justify-self: start; }
