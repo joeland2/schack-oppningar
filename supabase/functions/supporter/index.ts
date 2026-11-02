@@ -5,7 +5,8 @@
 // POST ?checkout: a Stripe Checkout page for the subscription, { url }. POST ?portal: Stripe's page to
 // change or cancel it, { url }. POST ?webhook: Stripe's events, which set who is active.
 // Admins only: GET ?all lists every row; POST ?admin { player, active } marks a player a supporter by hand (no Stripe).
-// Secrets (Supabase, set by the owner): STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_ID.
+// Secrets (Supabase, set by the owner): STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_ID (used only when no
+// price has the lookup key chesslabs_supporter).
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const SITE = 'https://chesslabs.gg';
@@ -102,9 +103,12 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'bad' }, 405);
   try {
     if (q.has('checkout')) {
-      if (!KEY || !PRICE) return json({ error: 'Supporting opens soon.' }, 503);
+      // The price by its lookup key (one price in USD, EUR, GBP and SEK; Checkout shows the buyer's own), else STRIPE_PRICE_ID.
+      if (!KEY) return json({ error: 'Supporting opens soon.' }, 503);
+      const price = (await stripe('prices?lookup_keys[]=chesslabs_supporter&active=true', {}, 'GET')).data?.[0]?.id || PRICE;
+      if (!KEY || !price) return json({ error: 'Supporting opens soon.' }, 503);
       const s = await stripe('checkout/sessions', {
-        mode: 'subscription', 'line_items[0][price]': PRICE, 'line_items[0][quantity]': '1', client_reference_id: id,
+        mode: 'subscription', 'line_items[0][price]': price, 'line_items[0][quantity]': '1', client_reference_id: id,
         'subscription_data[metadata][player]': id, allow_promotion_codes: 'true',
         ...(me?.customer ? { customer: me.customer } : {}),
         success_url: `${SITE}/profile.html?u=${encodeURIComponent(id)}&supported=1`, cancel_url: `${SITE}/profile.html?u=${encodeURIComponent(id)}`,
