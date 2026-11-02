@@ -1,0 +1,26 @@
+# On every push to main that changes supabase/functions: the Edge Functions deployed to Supabase, so no
+# one pastes code into the dashboard. Needs the repo secret SUPABASE_ACCESS_TOKEN (an access token from
+# supabase.com/dashboard/account/tokens); without it the job skips. Every function takes its own login
+# (a Lichess or Chess Labs token), so none checks Supabase's JWT.
+name: Deploy functions
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/functions/**']
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+      - uses: supabase/setup-cli@v1
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+        with: { version: latest }
+      - if: env.SUPABASE_ACCESS_TOKEN != ''
+        run: |
+          for f in supabase/functions/*/; do
+            supabase functions deploy "$(basename "$f")" --project-ref duhlvhjtxoofgnjegspa --no-verify-jwt
+          done
