@@ -2964,3 +2964,27 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .ch-pop { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: grid; gap: 6px; width: min(340px, calc(100vw - 32px)); padding: 16px 18px; border-radius: 12px; background: var(--surface); border: 1px solid var(--data); box-shadow: 0 12px 40px rgba(0, 0, 0, .45); color: var(--ink); }
 .ch-pop p { margin: 0; font-size: 15px; } .ch-pop small { color: var(--muted); } .ch-pop div { display: flex; gap: 8px; margin-top: 6px; }
 .ch-pop .cta { background: var(--data); border-color: var(--data); color: #141414; }
+
+/* Trap pages (traps/, made by tools/make_trap_pages.mjs): text for search engines beside a board to step through. */
+.trap-page { max-width: 1080px; margin: 0 auto; padding-block: 24px 48px; }
+.trap-page h2 { margin: 22px 0 6px; font-size: 1.05rem; }
+.trap-page p { max-width: 65ch; line-height: 1.55; }
+.trap-crumbs { margin: 0; font-size: .85rem; color: var(--muted); }
+.trap-crumbs a, .trap-more a { color: inherit; }
+.trap-lead { font-size: 1.1rem; }
+.trap-grid { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 28px; align-items: start; margin-top: 16px; }
+.trap-ctl { display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
+.trap-ctl button { min-width: 44px; }
+.trap-moves { display: flex; flex-wrap: wrap; gap: 4px; font-family: var(--font-mono, monospace); }
+.trap-moves button { padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; }
+.trap-moves button.slip { border-color: var(--bad); color: var(--bad); font-weight: 700; }
+.trap-moves button.punish { border-color: var(--good); }
+.trap-moves button.now { background: var(--data); color: var(--data-ink); border-color: var(--data); }
+.trap-cta { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 24px; }
+.trap-cta small { color: var(--muted); }
+.trap-list { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.trap-list a { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); text-decoration: none; }
+.trap-list a:hover { border-color: var(--data); }
+.trap-list span { font-size: .85rem; color: var(--muted); }
+.trap-more { padding-left: 18px; columns: 2 220px; }
+@media (max-width: 760px) { .trap-grid { grid-template-columns: minmax(0, 1fr); } }

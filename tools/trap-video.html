@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trap video frames</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@500;700&family=Geist+Mono:wght@500&display=swap">
+<style>body { margin: 0; background: #12100e; } canvas { width: 360px; }</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<!-- Frames of a vertical (9:16) short for one named trap, drawn on a canvas. tools/make_trap_videos.mjs
+     calls setup(i) for the trap's index in traps.js, then frame(n) for each frame, and joins them with ffmpeg. -->
+<script type="module">
+import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
+import { NAMED_TRAPS } from '/traps.js';
+
+const FPS = 30, W = 1080, B = 1000, BX = 40, BY = 470, SQ = B / 8;
+const C = { bg: '#12100e', ink: '#f4efe6', muted: '#a8a093', hot: '#ff6a2f', light: '#efe8db', dark: '#b58863', bad: '#ff6b6b', good: '#5fc48a' };
+const ctx = document.getElementById('c').getContext('2d');
+const img = {};
+await Promise.all(['w', 'b'].flatMap((c) => 'PNBRQK'.split('').map((p) => new Promise((ok) => {
+  const i = new Image(); i.onload = ok; i.src = `/pieces/${c}${p}.svg`; img[c + p] = i;
+}))));
+await document.fonts.load('80px Anton'); await document.fonts.load('700 40px Geist'); await document.fonts.load('500 40px Geist Mono');
+
+let T, plan, total;
+const sideName = (c) => (c === 'w' ? 'White' : 'Black');
+const num = (moves, i) => (i % 2 ? `${Math.floor(i / 2) + 1}...` : `${i / 2 + 1}.`) + moves[i];
+// A beat per move: how long it holds, and what the caption says while it does.
+window.setup = (i) => {
+  const t = NAMED_TRAPS[i], g = new Chess(), fens = [g.fen()], made = [];
+  for (const m of t.moves) { made.push(g.move(m)); fens.push(g.fen()); }
+  const me = sideName(t.side), them = sideName(t.side === 'w' ? 'b' : 'w');
+  plan = [{ ply: 0, s: 1.6, cap: `A trap for ${me}` }];
+  t.moves.forEach((m, k) => {
+    if (k < t.slip) plan.push({ ply: k + 1, s: 0.6, cap: `A trap for ${me}` });
+    else if (k === t.slip) plan.push({ ply: k + 1, s: 2.6, cap: `${num(t.moves, k)}?? looks natural…`, slip: true });
+    else plan.push({ ply: k + 1, s: 1.1, cap: `…but ${me} strikes: ${num(t.moves, k)}`, punish: true });
+  });
+  plan.push({ ply: t.moves.length, s: 2.4, cap: '', end: true });
+  plan.push({ ply: t.moves.length, s: 2.2, outro: true });
+  let at = 0; for (const p of plan) { p.from = at; at += Math.round(p.s * FPS); }
+  total = at;
+  T = { ...t, fens, made, me, them };
+  return { total, name: t.name };
+};
+
+const xy = (sq) => { const f = sq.charCodeAt(0) - 97, r = 8 - Number(sq[1]); return T.side === 'w' ? [f, r] : [7 - f, 7 - r]; };
+function board(ply, k) {
+  const g = new Chess(T.fens[ply]), m = ply ? T.made[ply - 1] : null, slipped = ply === T.slip + 1, punish = ply > T.slip + 1;
+  for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
+    ctx.fillStyle = (r + f) % 2 ? C.dark : C.light; ctx.fillRect(BX + f * SQ, BY + r * SQ, SQ, SQ);
+  }
+  if (m) for (const sq of [m.from, m.to]) {
+    const [f, r] = xy(sq); ctx.fillStyle = slipped ? 'rgba(255,80,80,.55)' : punish ? 'rgba(80,200,120,.5)' : 'rgba(255,170,40,.45)'; ctx.fillRect(BX + f * SQ, BY + r * SQ, SQ, SQ);
+  }
+  // The moving piece slides in over the first 8 frames of its beat.
+  const e = Math.min(1, k / 8), ease = e < 0.5 ? 2 * e * e : 1 - (-2 * e + 2) ** 2 / 2;
+  for (const row of g.board()) for (const p of row) {
+    if (!p) continue;
+    let [f, r] = xy(p.square);
+    if (m && p.square === m.to && e < 1) { const [f0, r0] = xy(m.from); f = f0 + (f - f0) * ease; r = r0 + (r - r0) * ease; }
+    ctx.drawImage(img[p.color + p.type.toUpperCase()], BX + f * SQ + 4, BY + r * SQ + 4, SQ - 8, SQ - 8);
+  }
+  if (slipped && k > 6) { const [f, r] = xy(m.to); badge(BX + (f + 1) * SQ - 18, BY + r * SQ + 18, '??', C.bad); }
+  if (m?.san.endsWith('#') && k > 6) { const [f, r] = xy(m.to); badge(BX + (f + 1) * SQ - 18, BY + r * SQ + 18, '#', C.good); }
+}
+function badge(x, y, text, color) {
+  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, 34, 0, 7); ctx.fill();
+  ctx.fillStyle = '#141414'; ctx.font = '700 34px Geist'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x, y + 2);
+}
+function wrap(text, x, y, max, lh) {
+  const words = text.split(' '); let line = '';
+  for (const w of words) { if (ctx.measureText(line + w).width > max && line) { ctx.fillText(line.trim(), x, y); y += lh; line = ''; } line += w + ' '; }
+  ctx.fillText(line.trim(), x, y); return y;
+}
+window.frame = (n) => {
+  const p = plan.findLast((x) => x.from <= n), k = n - p.from;
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, 1920);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  if (p.outro) {
+    ctx.fillStyle = C.hot; ctx.font = '120px Anton'; wrap('LEARN EVERY OPENING TRAP', W / 2, 760, 960, 130);
+    ctx.fillStyle = C.ink; ctx.font = '700 64px Geist'; ctx.fillText('chesslabs.gg', W / 2, 1160);
+    ctx.fillStyle = C.muted; ctx.font = '500 40px Geist'; wrap('Practise against the moves real players at your rating make. Free.', W / 2, 1260, 860, 54);
+    return document.getElementById('c').toDataURL('image/jpeg', 0.92);
+  }
+  ctx.fillStyle = C.ink; ctx.font = '104px Anton'; const y = wrap(T.name.toUpperCase(), W / 2, 200, 1000, 110);
+  ctx.fillStyle = C.muted; ctx.font = '500 40px Geist'; ctx.fillText(`A trap for ${T.me}`, W / 2, Math.min(y + 70, 430));
+  board(p.ply, k);
+  ctx.fillStyle = p.slip ? C.bad : p.punish || p.end ? C.good : C.ink;
+  ctx.font = p.end ? '84px Anton' : '700 56px Geist';
+  wrap(p.end ? (T.win === 'mate' ? 'CHECKMATE' : `${T.me.toUpperCase()} GETS ${T.win.split(/[,:]/)[0].toUpperCase()}`) : p.ply ? (p.slip || p.punish ? p.cap : num(T.moves, p.ply - 1)) : 'Watch the trap', W / 2, BY + B + 110, 1000, p.end ? 92 : 66);
+  ctx.fillStyle = C.hot; ctx.font = '700 40px Geist'; ctx.fillText('chesslabs.gg', W / 2, 1860);
+  return document.getElementById('c').toDataURL('image/jpeg', 0.92);
+};
+window.ready = true;
+</script>
+</body>
+</html>
