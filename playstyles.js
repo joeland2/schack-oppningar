@@ -1,6 +1,6 @@
 // Play styles: every style and strength a card can show, what it means, how the card reads it from
 // the games, and what it wins with and loses to. ?s= and ?t= mark the visitor's own (from the profile).
-import { TYPE_ABOUT } from './profile.js?v=20261102164529';
+import { TYPE_ABOUT } from './profile.js?v=20261102164811';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -8,8 +8,8 @@ const slug = (n) => n.toLowerCase().replace(/\W+/g, '-');
 const SWORD = 'M14 3h7v7l-9 9-4-4zM3 21l5-5', SHIELD = 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z', CLOCK = 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l3 2M9 2h6';
 // [name, how the card reads it, icon]; the style is how someone plays, the strength where they beat their level.
 const STYLES = [
-  ['Striker', 'Plays attacking openings and gambits in many more games than most.', SWORD],
-  ['Solid builder', 'Plays solid or positional openings in most games, with few gambits.', 'M3 7h18v5H3zM3 12h18v5H3zM9 7v5M15 12v5'],
+  ['Striker', 'Chooses attacking openings and gambits far more often than most.', SWORD],
+  ['Solid builder', 'Chooses solid or positional openings in most games, with few gambits.', 'M3 7h18v5H3zM3 12h18v5H3zM9 7v5M15 12v5'],
   ['Endgame artist', 'The queens come off before move 25 in many of their games.', 'M7 21h10M8 21l-1-8h10l-1 8M12 2v4M10 4h4M7 13c-2-3 0-6 5-5 5-1 7 2 5 5'],
   ['Time scrambler', 'Ends games short of time clearly more often than their opponents at the same level.', CLOCK],
   ['Trickster', 'Wins within 25 moves far more often than their opponents at the same level.', 'M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z'],
