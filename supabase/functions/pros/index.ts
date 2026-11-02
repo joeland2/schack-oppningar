@@ -161,7 +161,7 @@ async function week() {
   };
   const { data: old } = await db.storage.from(BUCKET).download('week.json');
   const kept = old ? JSON.parse(await old.text()).pick : null;
-  const pick = kept?.week === monday && kept.v === 2 ? kept : { v: 2, week: monday, pro: best('pro'), vip: best('vip') };
+  const pick = kept?.week === monday && kept.v === 3 ? kept : { v: 3, week: monday, pro: best('pro'), vip: best('vip') };
   const out = { at: Date.now(), pick, people: rows };
   const { error } = await db.storage.from(BUCKET).upload('week.json', JSON.stringify(out), { upsert: true, contentType: 'application/json', cacheControl: '600' });
   return { week: pick.week, pro: pick.pro?.who, vip: pick.vip?.who, people: rows.length, error: error?.message };
