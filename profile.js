@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102163436';
-import { openLogin } from './login.js?v=20261102163436';
-import { STYLE_OF } from './styles.js?v=20261102163436';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102163436';
-import { PEOPLE } from './pros.js?v=20261102163436';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102163556';
+import { openLogin } from './login.js?v=20261102163556';
+import { STYLE_OF } from './styles.js?v=20261102163556';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102163556';
+import { PEOPLE } from './pros.js?v=20261102163556';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1052,7 +1052,7 @@ function portrait(name, p, skills, me, part = 'lead') {
   const and = (xs) => xs.join(' and ');
   const out = [];
   const t = p.type.map((x) => x.name.toLowerCase());
-  out.push(`${you} ${are} ${article(t[0])} ${t[0]}${t[1] ? ` with a ${t[1]}'s streak` : ''}${w.length || b.length ? `, reaching for ${[w.length && `the ${and(w)} as White`, b.length && `the ${and(b)} as Black`].filter(Boolean).join(' and ')}` : ''}.`);
+  out.push(`${you} ${are} ${article(t[0])} ${t[0]}${t[1] ? ` ${{ 'well prepared': 'who comes well prepared', 'killer instinct': 'with a killer instinct', 'sure hand': 'with a sure hand' }[t[1]] || `with a ${t[1]}'s streak`}` : ''}${w.length || b.length ? `, reaching for ${[w.length && `the ${and(w)} as White`, b.length && `the ${and(b)} as Black`].filter(Boolean).join(' and ')}` : ''}.`);
   const known = skills.filter((x) => x.v !== null).sort((a, b) => b.v - a.v);
   const leak = leakOf(skills);
   const named = (x) => ({ 'Early game': 'the early game', 'Late game': 'the late game' }[x.label || x.title] || (x.label || x.title).toLowerCase());
