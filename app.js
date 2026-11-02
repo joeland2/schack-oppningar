@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102141237';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102141237';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102141237';
-import { NAMED_TRAPS } from './traps.js?v=20261102141237';
-import { GUIDE } from './guide.js?v=20261102141237';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102141237';
-import { banner, confetti } from './celebrate.js?v=20261102141237';
-import { maia3Move } from './maia3.js?v=20261102141237';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102141237';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261102141237';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102141237';
-import { openLogin } from './login.js?v=20261102141237';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102141237';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102141414';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102141414';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102141414';
+import { NAMED_TRAPS } from './traps.js?v=20261102141414';
+import { GUIDE } from './guide.js?v=20261102141414';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102141414';
+import { banner, confetti } from './celebrate.js?v=20261102141414';
+import { maia3Move } from './maia3.js?v=20261102141414';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102141414';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261102141414';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102141414';
+import { openLogin } from './login.js?v=20261102141414';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102141414';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1167,6 +1167,12 @@ function renderMoves() {
   $('#m-name').textContent = $('#op-title').textContent;
   $('#m-num').textContent = lines[lineIdx] && mode !== 'explore' ? ` · Line ${lineIdx + 1}/${lines.length}` : '';
   $('#m-line').textContent = lines[lineIdx] && mode !== 'explore' ? lineName(lines[lineIdx]) : mode === 'explore' ? 'Exploring' : $('#op-title').textContent;
+  // On a computer the line above the board: the opening as a trail, the line's first part as the title, the rest under it.
+  { const l = mode !== 'explore' && lines[lineIdx], [head, ...rest] = (l ? lineName(l) : $('#op-title').textContent).split(', ');
+    const tag = l?.trap ? `<span class="trap-tag${l.trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(l.trap)}</span>` : l?.theory ? '<span class="trap-tag theory">Theory</span>' : '';
+    $('#d-crumb').textContent = l && head !== $('#op-title').textContent ? `${$('#op-title').textContent} ›` : $('#op-eco').textContent;
+    $('#d-name').textContent = head;
+    $('#d-sub').innerHTML = l ? `${rest.length ? `<span>› ${rest.join(', ').replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`)}</span>` : ''}${tag}<span class="d-num">${lineIdx + 1}/${lines.length}</span>` : mode === 'explore' ? 'Exploring' : ''; }
   for (const b of $('.m-modes').children) b.setAttribute('aria-pressed', b.dataset.mode === mode);
   // The path: how many lines wait for review under Practice, and what a step means until a line is learned.
   const st = cur && stats[statKey(cur.id)], due = dueCount(st);
