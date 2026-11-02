@@ -2,8 +2,8 @@
 // The login needs the board:play permission once; then a seek or a challenge starts a game, which Lichess
 // streams here move by move. When it ends, the game page reviews it.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261102154930';
-import { account, login, finishLogin } from './lichess.js?v=20261102154930';
+import { drawBoard, enableDrag } from './board.js?v=20261102155039';
+import { account, login, finishLogin } from './lichess.js?v=20261102155039';
 
 const $ = (s) => document.querySelector(s);
 const API = 'https://lichess.org';
@@ -128,9 +128,16 @@ async function lastGames(name) {
 let g = null; // { id, me ('w'|'b'), chess, white, black, wtime, btime, at, status, sel }
 const boardEl = $('#board');
 const clock = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return s < 60 && ms < 20000 ? (ms / 1000).toFixed(1) : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+// view: how many moves the board shows while you look back with the arrow keys; null is now.
+let view = null;
 function draw() {
-  const last = g.chess.history({ verbose: true }).at(-1);
-  drawBoard(boardEl, g.chess, { side: g.me, sel: g.sel, last });
+  const all = g.chess.history();
+  if (view !== null && view >= all.length) view = null;
+  const b = view === null ? g.chess : new Chess();
+  if (view !== null) all.slice(0, view).forEach((m) => b.move(m));
+  drawBoard(boardEl, b, { side: g.me, sel: view === null ? g.sel : null, last: b.history({ verbose: true }).at(-1) || null });
+  boardEl.classList.toggle('looking-back', view !== null);
+  [...$('#play-moves').querySelectorAll('[data-ply]')].forEach((x) => x.classList.toggle('now', Number(x.dataset.ply) === (view ?? all.length) - 1));
   const top = g.me === 'w' ? 'b' : 'w';
   for (const [el, c] of [[$('#pl-top'), top], [$('#pl-bot'), g.me]]) {
     const p = c === 'w' ? g.white : g.black;
@@ -139,8 +146,9 @@ function draw() {
   }
   tick();
   const sans = g.chess.history();
-  $('#play-moves').innerHTML = sans.reduce((a, s, i) => (i % 2 ? a : [...a, `<li><span>${s}</span><span>${sans[i + 1] || ''}</span></li>`]), []).join('');
-  $('#play-moves').scrollTop = 1e6;
+  $('#play-moves').innerHTML = sans.reduce((a, s, i) => (i % 2 ? a : [...a, `<li><span data-ply="${i}">${s}</span><span data-ply="${i + 1}">${sans[i + 1] || ''}</span></li>`]), []).join('');
+  $('#play-moves').querySelector(`[data-ply="${(view ?? sans.length) - 1}"]`)?.classList.add('now');
+  if (view === null) $('#play-moves').scrollTop = 1e6;
   openingOf(sans.slice(0, 24)).then(([f, v]) => { $('#play-open').innerHTML = `${esc(f)}${v ? `<small>${esc(v)}</small>` : ''}`; });
 }
 function tick() {
@@ -191,6 +199,7 @@ function resetBtns() {
 }
 async function openGame(id) {
   if (g?.id === id) return;
+  view = null;
   g = { id, me: 'w', chess: new Chess(), white: {}, black: {}, wtime: 0, btime: 0, at: Date.now(), status: 'started', sel: null };
   $('#play-pick').hidden = true; $('#play-game').hidden = false; $('#play-review').hidden = true; resetBtns();
   $('#play-status').textContent = 'Starting…';
@@ -206,6 +215,7 @@ async function openGame(id) {
   } catch (e) { $('#play-status').textContent = e.message; }
 }
 function tryMove(from, to) {
+  if (view !== null) { view = null; draw(); return true; } // looking back: a click brings you to now
   if (!g || g.status !== 'started' || g.chess.turn() !== g.me) return false;
   let m;
   try { m = g.chess.move({ from, to, promotion: 'q' }); } catch { return false; }
@@ -213,8 +223,19 @@ function tryMove(from, to) {
   post(`/api/board/game/${g.id}/move/${m.from}${m.to}${m.promotion || ''}`).catch((e) => { g.chess.undo(); draw(); $('#play-status').textContent = e.message; });
   return true;
 }
-enableDrag(boardEl, { canDrag: (sq) => g && g.status === 'started' && g.chess.turn() === g.me && g.chess.get(sq)?.color === g.me, onDrop: (f, t) => { if (!tryMove(f, t)) draw(); } });
+enableDrag(boardEl, { canDrag: (sq) => view === null && g && g.status === 'started' && g.chess.turn() === g.me && g.chess.get(sq)?.color === g.me, onDrop: (f, t) => { if (!tryMove(f, t)) draw(); } });
+// ← → step through the moves, ↑ to the start, ↓ back to now; a move in the list jumps there.
+const browse = (to) => { if (!g) return; const n = g.chess.history().length; view = to >= n ? null : Math.max(0, to); g.sel = null; draw(); };
+document.addEventListener('keydown', (e) => {
+  if (!g || e.target.closest('input, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+  const n = g.chess.history().length, at = view ?? n;
+  const to = { ArrowLeft: at - 1, ArrowRight: at + 1, ArrowUp: 0, ArrowDown: n }[e.key];
+  if (to === undefined) return;
+  e.preventDefault(); browse(to);
+});
+$('#play-moves').addEventListener('click', (e) => { const x = e.target.closest('[data-ply]'); if (x && x.textContent) browse(Number(x.dataset.ply) + 1); });
 boardEl.addEventListener('click', (e) => {
+  if (view !== null) { view = null; return draw(); }
   const sq = e.target.closest('.sq')?.dataset.sq;
   if (!g || !sq) return;
   if (g.sel && g.sel !== sq && tryMove(g.sel, sq)) return;
