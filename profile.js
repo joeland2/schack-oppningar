@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102162051';
-import { openLogin } from './login.js?v=20261102162051';
-import { STYLE_OF } from './styles.js?v=20261102162051';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102162051';
-import { PEOPLE } from './pros.js?v=20261102162051';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102163051';
+import { openLogin } from './login.js?v=20261102163051';
+import { STYLE_OF } from './styles.js?v=20261102163051';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102163051';
+import { PEOPLE } from './pros.js?v=20261102163051';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -360,7 +360,9 @@ function traitsOf(p) {
       why: `You win ${pct(p.winW)} as White and ${pct(p.winB)} as Black.` },
     // Decided games or many draws say how a player's games go, not how they play, so they are
     // strengths (on the same scale: 64 or more stands out) rather than styles.
-    { label: 'Fighter', v: clamp(50 + ((usualDraws(rating) / Math.max(p.draws, 0.005)) / 2 * Math.sqrt(35 / Math.max(p.moves, 15)) - 0.6) * 35),
+    // Counted in percentage points below the usual, not as a ratio: below 2000 draws are rare for
+    // everyone (about 5%), so 1% is no style there; 64 needs 6 points fewer, which only strong players' games allow.
+    { label: 'Fighter', v: clamp(50 + (usualDraws(rating) - p.draws) * 233 * Math.sqrt(35 / Math.max(p.moves, 15))),
       why: `Only ${pct(p.draws)} draws, where about ${pct(usualDraws(rating))} is usual at your level: your games are decided, one way or the other.` },
     // What happens once a game is clearly decided (±3 pawns, analysed games): saving the lost ones and
     // winning the won ones. Among 42 players checked the median saves 33% (top tenth 54%) and wins 70%
