@@ -1247,16 +1247,16 @@ a { text-underline-offset: .18em; }
 }
 /* Profile parts a player hides from others: gone for visitors, marked on their own profile */
 #profile [data-off] { display: none !important; }
-#profile :has(> .pf-vis) { position: relative; padding-right: 16px; }
+#profile :has(> .pf-vis) { position: relative; }
 /* The label on each part of your own profile, a sticker like the card's flag: Public, or Only you */
-/* Standing on the card's right edge, half off it; your own view stays as it is, the label alone says who sees it */
-.pf-vis { position: absolute; top: 50%; right: 0; z-index: 2; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 3px solid #fff; border-radius: 4px; background: #f4efe6; color: #141414; font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; box-shadow: 0 4px 8px rgb(0 0 0 / .35); transform: translate(50%, -50%) rotate(-87deg); cursor: pointer; transition: transform .15s; }
-.pf-vis:hover { transform: translate(50%, -50%) rotate(-90deg) scale(1.08); box-shadow: 0 6px 14px rgb(0 0 0 / .45); }
+/* On the part's top right corner, a little off its edge; your own view stays as it is, the label alone says who sees it */
+.pf-vis { position: absolute; top: -13px; right: -8px; z-index: 2; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 3px solid #fff; border-radius: 4px; background: #f4efe6; color: #141414; font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; box-shadow: 0 4px 8px rgb(0 0 0 / .35); transform: rotate(-4deg); cursor: pointer; transition: transform .15s; }
+.pf-vis:hover { transform: rotate(0deg) scale(1.08); box-shadow: 0 6px 14px rgb(0 0 0 / .45); }
 .pf-vis:focus-visible { outline: 2px solid var(--data); outline-offset: 2px; }
 .pf-vis svg { width: 11px; height: 11px; margin-left: 2px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: .55; }
 .pf-vis:hover svg { opacity: 1; }
 .pf-vis i { width: 8px; height: 8px; border-radius: 50%; background: #2f9e5b; }
-.pf-vis[data-state="off"] { background: #141414; color: #f4efe6; transform: translate(50%, -50%) rotate(-93deg); }
+.pf-vis[data-state="off"] { background: #141414; color: #f4efe6; transform: rotate(3deg); }
 .pf-vis[data-state="off"] i { background: #e05a4f; }
 /* Skeleton while the games are read */
 .pf-skeleton .pf-pcard { min-height: 380px; opacity: .55; }

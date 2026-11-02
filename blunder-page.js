@@ -1,6 +1,6 @@
 // Spot the blunder (blunder.html): rounds from your own games, kept in this browser by your profile.
-import { blunders, puzzles, puzzlesFromGames, spotTheBlunder } from './blunder.js?v=20261102100747';
-import { myName, storedGames, gamesReady } from './profile.js?v=20261102100747';
+import { blunders, puzzles, puzzlesFromGames, spotTheBlunder } from './blunder.js?v=20261102101035';
+import { myName, storedGames, gamesReady } from './profile.js?v=20261102101035';
 
 const msg = document.querySelector('#message'), name = myName();
 if (!name) msg.innerHTML = 'Log in with Lichess on <a href="profile.html?login">your profile</a> first: the rounds come from your own games.';
