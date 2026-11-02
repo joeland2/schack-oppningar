@@ -2596,8 +2596,9 @@ main.profile:has(#admin) { max-width: 1320px; }
   .st-split:not([data-tab="vip"]) > .st-vip, .st-split[data-tab="vip"] > .st-pro { display: none; }
   .st-col .st-h2 { display: none; }
 }
-.st-wk { display: grid; gap: 8px; align-content: start; padding: 16px 18px; border-radius: 6px; background: #12100e; color: #f4efe6; text-decoration: none; }
+.st-wk { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; border-radius: 6px; background: #12100e; color: #f4efe6; text-decoration: none; }
 a.st-wk:hover h2 { text-decoration: underline; }
+.st-split > .st-wk { align-self: stretch; } .st-wk > .st-stats { margin-top: auto; } /* the pro's and the VIP's the same height, numbers at the foot */
 .st-wk.pro { box-shadow: 0 0 0 3px #d4a017; } .st-wk.vip { box-shadow: 0 0 0 3px #e0459b; }
 .st-k { font: 400 12px var(--font-poster); letter-spacing: .14em; } .st-wk.pro .st-k { color: #d4a017; } .st-wk.vip .st-k { color: #ff8cc6; }
 .st-wk h2 { margin: 0; font: 400 clamp(26px, 4vw, 32px)/.95 var(--font-poster); text-transform: uppercase; }
