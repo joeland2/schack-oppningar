@@ -2,12 +2,12 @@
 // decided it (yours and your opponent's mistakes, with the better move), and a short read of what
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
-import { banner, confetti } from './celebrate.js?v=20261102133206';
+import { banner, confetti } from './celebrate.js?v=20261102133359';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261102133206';
-import { account, lichessAuth } from './lichess.js?v=20261102133206';
-import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261102133206';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261102133206';
+import { drawBoard, enableDrag } from './board.js?v=20261102133359';
+import { account, lichessAuth } from './lichess.js?v=20261102133359';
+import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261102133359';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261102133359';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -310,7 +310,7 @@ async function tryMove(from, to) {
   if (t.c.isGameOver()) return drawTry(), ended(t), true;
   t.busy = true; drawTry();
   const legal = t.c.moves({ verbose: true });
-  const { maia3Move } = await import('./maia3.js?v=20261102133206'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261102133206'); // loaded on the first move only: the nets are big
+  const { maia3Move } = await import('./maia3.js?v=20261102133359'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261102133359'); // loaded on the first move only: the nets are big
   let r = null;
   try { r = (await within(20000, maia3Move(t.c.fen(), legal, t.rating, t.rating))).move; } catch (e) { console.warn(e); }
   if (!r && t.rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(t.rating, [t.c.fen()], legal))).move; } catch (e) { console.warn(e); }

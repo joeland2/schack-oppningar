@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261102133206';
-import { api as chatApi, openChat } from './chat.js?v=20261102133206';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102133206';
+import { account, login, finishLogin } from './lichess.js?v=20261102133359';
+import { api as chatApi, openChat } from './chat.js?v=20261102133359';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102133359';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -145,6 +145,11 @@ function visitorLine(ds) {
 function bindLine(body) {
   const ds = spanPoints(body), box = $('#adm-line');
   box.innerHTML = visitorLine(ds);
+  // The span in sums beside the graph: each visitor once over the whole span, not added up hour by hour.
+  const sum = body.spans?.[span === Infinity ? 'all' : span], sums = $('#adm-span-sums');
+  sums.hidden = !sum;
+  if (sum) sums.innerHTML = [['Visitors', sum.visitors, 'each counted once'], ['New', sum.fresh, 'first visit'], ['Came back', sum.back, 'been before'], ['Page views', sum.views, '']]
+    .map(([t, n, s]) => `<div><dt>${t}</dt><dd>${n.toLocaleString('en')}</dd>${s ? `<small>${s}</small>` : ''}</div>`).join('');
   const svg = box.querySelector('svg'), cross = svg.querySelector('.adm-cross'), dot = svg.querySelector('.adm-dot'), tip = box.querySelector('.adm-tip');
   const top = ds.top;
   svg.addEventListener('pointermove', (e) => {
@@ -373,7 +378,7 @@ function render(s) {
     ${liveHtml(s)}
     ${overviewHtml(s)}
     <section class="pf-card"><div class="adm-head"><h2>${ic('analyse')}Visitors</h2><div class="seg" role="group" aria-label="Time span" id="adm-span">${SPANS.map(([l, n]) => `<button type="button" data-span="${n}" aria-pressed="${n === span}">${l}</button>`).join('')}</div></div>
-      <div id="adm-line" class="adm-line-box"></div><div id="adm-notes" class="adm-notes"></div></section>
+      <div class="adm-vis"><dl id="adm-span-sums" class="adm-span-sums"></dl><div id="adm-line" class="adm-line-box"></div></div><div id="adm-notes" class="adm-notes"></div></section>
     ${group('openings')}
     ${openingsHtml(s)}
     ${practiceHtml(s)}

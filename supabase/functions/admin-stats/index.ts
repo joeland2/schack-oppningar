@@ -189,6 +189,13 @@ Deno.serve(async (req) => {
       week: seenIn(7), new7: newIn(7), month: seenIn(DAYS), new30: newIn(DAYS), all: visitors.length, views: views.length, registered: registered.length,
       mobile: recentVisitors.length ? mobile / recentVisitors.length : 0, loggedIn: Object.keys(logins).length,
     },
+    // Each span of the visitors graph in sums: page views, the visitors in it (each once), the new ones
+    // among them (first visit in the span) and those who had been before.
+    spans: Object.fromEntries(['today', 7, 30, 182, 365, 'all'].map((k) => {
+      const inIt = (iso: string) => (k === 'today' ? day(iso) === today : k === 'all' || Date.parse(iso) >= Date.now() - (k as number) * 864e5);
+      const rs = views.filter((r) => inIt(r.at)), seen = new Set(rs.map((r) => r.visitor)), fresh = visitors.filter((w) => inIt(w.first)).length;
+      return [k, { views: rs.length, visitors: seen.size, fresh, back: Math.max(0, seen.size - fresh) }];
+    })),
     perDay: Object.entries(days).map(([d, x]) => ({ day: d, fresh: x.fresh, visitors: x.visitors.size, views: x.views })),
     perHour: Object.entries(hours48).map(([h, x]) => ({ hour: h, fresh: x.fresh, visitors: x.visitors.size, views: x.views })),
     pages: count(recentViews.map((r) => r.page)).map((x) => ({ ...x, unique: visitorsIn(recentViews.filter((r) => r.page === x.name)) })),
