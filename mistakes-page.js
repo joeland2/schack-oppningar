@@ -1,7 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drill } from './drill.js?v=20261102213418';
-import { THEMES } from './mistakes.js?v=20261102213418';
-import { explainMistake, dangerAfter } from './ideas.js?v=20261102213418';
+import { lichessAuth } from './lichess.js?v=20261102214247';
+import { drill } from './drill.js?v=20261102214247';
+import { THEMES } from './mistakes.js?v=20261102214247';
+import { explainMistake, dangerAfter } from './ideas.js?v=20261102214247';
 
 // Positions from your own games where you went wrong, saved by "Find my mistakes" on the openings page.
 // Everything is explained here, on the board: what your move did wrong, nudges while you look for
@@ -58,15 +59,21 @@ else if (!found.length) {
 async function trainKind(k) {
   const theme = THEMES[k];
   document.querySelector('#title').textContent = `Loading puzzles: ${theme.title.toLowerCase()}…`;
-  // One at a time: Lichess turns away many requests at once (429), and stops us when it has had enough.
-  const got = [];
-  for (let i = 0; i < 8; i++) {
-    const r = await fetch(`https://lichess.org/api/puzzle/next?angle=${ANGLE[k]}`).catch(() => null);
+  // Puzzles are kept in this browser per kind, so a visit fetches only what is new to it. Fetched one at a
+  // time, with your Lichess login when there is one (its own limit, and puzzles near your puzzle rating);
+  // a 429 means Lichess has had enough: stop, and keep away for a minute, as its API asks.
+  const KEEP = `chesslabs-puzzles-${k}`, read = (key, d) => { try { return JSON.parse(localStorage.getItem(key)) ?? d; } catch { return d; } };
+  const pool = read(KEEP, []), done = new Set(read('mistakes-kind-solved-v1', [])), fresh = pool.filter((x) => !done.has(`lp-${x.puzzle.id}`));
+  const got = fresh.slice(0, 8);
+  for (let i = got.length; i < 8 && Date.now() > read('chesslabs-lichess-wait', 0); i++) {
+    const r = await fetch(`https://lichess.org/api/puzzle/next?angle=${ANGLE[k]}`, { headers: lichessAuth() }).catch(() => null);
+    if (r?.status === 429) { try { localStorage.setItem('chesslabs-lichess-wait', Date.now() + 61000); } catch {} break; }
     if (!r?.ok) break;
     got.push(await r.json());
     document.querySelector('#title').textContent = `Loading puzzles: ${theme.title.toLowerCase()} ${i + 1}/8`;
     await new Promise((ok) => setTimeout(ok, 400));
   }
+  try { localStorage.setItem(KEEP, JSON.stringify([...new Map([...pool, ...got].map((x) => [x.puzzle.id, x])).values()].slice(-60))); } catch {}
   const seen = new Set(), items = [];
   for (const x of got) {
     if (!x || seen.has(x.puzzle.id)) continue;
@@ -83,7 +90,7 @@ async function trainKind(k) {
     } catch { /* a puzzle whose moves do not replay is skipped */ }
   }
   if (!items.length) {
-    document.querySelector('.layout').innerHTML = `<section class="picker"><h1>No puzzles came</h1><p class="info">Lichess did not answer. <a href="mistakes.html?kind=${k}">Try again</a>.</p></section>`;
+    document.querySelector('.layout').innerHTML = `<section class="picker"><h1>No puzzles came</h1><p class="info">Lichess did not answer, or wants a short break. <a href="mistakes.html?kind=${k}">Try again</a> in a minute.</p></section>`;
     return;
   }
   drill(items, 'mistakes-kind-solved-v1');
