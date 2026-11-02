@@ -2903,6 +2903,7 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .play-tile:hover { border-color: var(--muted); }
 .play-tile[aria-pressed="true"] { border-color: var(--data); box-shadow: 0 0 0 1px var(--data); }
 .play-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 22px 0 0; }
+.play-go:disabled { background: var(--raised); border-color: var(--line); color: var(--muted); cursor: default; }
 .play-go { background: var(--data); color: #141414; border-color: var(--data); padding: 13px 22px; font-size: 16px; }
 .play-friend { display: flex; gap: 8px; margin: 12px 0 0; } .play-friend input { padding: 9px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; width: 240px; max-width: 100%; }
 .play-rated { display: flex; align-items: center; gap: 6px; color: var(--muted); }

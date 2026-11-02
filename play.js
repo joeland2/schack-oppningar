@@ -2,13 +2,15 @@
 // The login needs the board:play permission once; then a seek or a challenge starts a game, which Lichess
 // streams here move by move. When it ends, the game page reviews it.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261102153259';
-import { account, login, finishLogin } from './lichess.js?v=20261102153259';
+import { drawBoard, enableDrag } from './board.js?v=20261102153423';
+import { account, login, finishLogin } from './lichess.js?v=20261102153423';
 
 const $ = (s) => document.querySelector(s);
 const API = 'https://lichess.org';
-// No blitz or bullet: Lichess lets outside sites play rapid and slower only (a blitz seek gets "Invalid time control").
-const GROUPS = [['Rapid', [[10, 0], [10, 5], [15, 10]]], ['Classical', [[30, 0], [30, 20]]]];
+// Lichess's Board API: seeks are rapid and slower only (a blitz seek gets "Invalid time control"); a direct
+// challenge may also be blitz. Bullet is never allowed. So blitz is for challenging a friend.
+const GROUPS = [['Rapid', [[10, 0], [10, 5], [15, 10]]], ['Classical', [[30, 0], [30, 20]]], ['Blitz · friends only', [[3, 0], [3, 2], [5, 0], [5, 3]]]];
+const blitz = () => tc[0] + tc[1] * 2 / 3 < 8;
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const auth = () => ({ Authorization: `Bearer ${account()?.token}` });
 // Lichess's error in words: { error: '…' }, or a form's errors as { field: ['…'] }.
@@ -55,7 +57,8 @@ async function openingOf(sans) {
 let tc = (() => { try { const x = JSON.parse(localStorage.getItem('opening-book-v2-play-tc')); return x && GROUPS.some(([, xs]) => xs.some(([m, i]) => m === x[0] && i === x[1])) ? x : [10, 0]; } catch { return [10, 0]; } })();
 function lobby() {
   $('.play-tiles').innerHTML = GROUPS.map(([h, xs]) => `<p class="sups-k">${h}</p><div class="play-row" role="group" aria-label="${h}">${xs.map(([m, i]) => `<button type="button" class="play-tile" aria-pressed="${m === tc[0] && i === tc[1]}" data-tc="${m}+${i}">${m}+${i}</button>`).join('')}</div>`).join('');
-  $('#play-seek').textContent = `Find an opponent · ${tc.join('+')}`;
+  $('#play-seek').textContent = blitz() ? 'Blitz: challenge a friend below' : `Find an opponent · ${tc.join('+')}`;
+  $('#play-seek').disabled = blitz();
 }
 $('.play-tiles').addEventListener('click', (e) => {
   const b = e.target.closest('[data-tc]');
