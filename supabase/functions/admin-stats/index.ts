@@ -96,12 +96,14 @@ Deno.serve(async (req) => {
   const token = req.headers.get('x-lichess-token');
   if (!token) return json({ error: 'Log in with Lichess first.' }, 401);
   // Who you are, kept 10 minutes per token: Lichess limits how often one server may ask.
-  let id = who.get(token)?.at > Date.now() - 600_000 ? who.get(token)!.id : '';
+  const known = who.get(token);
+  let id = known && known.at > Date.now() - 600_000 ? known.id : '';
   if (!id) {
-    const me = await fetch('https://lichess.org/api/account', { headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
+    let me: Response | null = null;
+    try { me = await fetch('https://lichess.org/api/account', { headers: { Authorization: `Bearer ${token}` } }); } catch { me = null; }
     if (me?.status === 401) return json({ error: 'Lichess did not accept the login. Log in again.' }, 401);
     if (!me?.ok) return json({ error: `Lichess is busy (${me?.status || 'no answer'}). Try again in a minute.` }, 503);
-    id = (await me.json()).id;
+    id = String((await me.json()).id || '');
     who.set(token, { id, at: Date.now() });
   }
   if (!ADMINS.includes(id)) return json({ error: 'This page is for the admins only.' }, 403);
