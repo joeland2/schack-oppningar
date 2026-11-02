@@ -243,7 +243,7 @@ Deno.serve(async (req) => {
       return out.slice(-40).reverse();
     })(),
     registered: registered.sort((a, b) => a.localeCompare(b)),
-    members: [...members.values()].sort((a, b) => b.last.localeCompare(a.last)).map(({ days, ...m }) => ({ ...m, days: days.size })),
+    members: [...members.values()].sort((a, b) => b.last.localeCompare(a.last)).map(({ days, ...m }) => ({ ...m, days: days.size, admin: ADMINS.includes(m.name.toLowerCase()) })),
     // When each profile was created: the first event with that Lichess name (rows come oldest first), newest first.
     joined: (() => { const at = new Map<string, string>(); for (const r of rows) if (r.user_name && !at.has(r.user_name)) at.set(r.user_name, r.at); return [...at].map(([n, t]) => ({ n, at: t })).reverse(); })(),
     compares: count(recent.filter((r) => r.kind === 'compare').map((r) => r.target)),

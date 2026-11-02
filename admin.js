@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261102230006';
-import { api as chatApi, openChat } from './chat.js?v=20261102230006';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102230006';
+import { account, login, finishLogin } from './lichess.js?v=20261102230917';
+import { api as chatApi, openChat } from './chat.js?v=20261102230917';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102230917';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -671,8 +671,8 @@ async function threads() {
 function membersHtml(s) {
   const ms = s.members || [];
   return `<section class="pf-card"><div class="adm-head"><h2>${ic('people')}All registered players · ${ms.length}</h2><small>Everyone who has logged in, last active first. Click a name for their profile or data.</small></div>
-    ${ms.length ? `<div class="adm-members"><table><thead><tr><th>Player</th><th>Account</th><th>From</th><th>Joined</th><th>Last seen</th><th class="num">Days</th><th class="num">Actions</th></tr></thead><tbody>${ms.map((m) => `<tr>
-      <td><button type="button" class="link pd-name" data-person="${esc(m.name)}">${esc(m.name.replace(/^cc:/, ''))}</button></td>
+    ${ms.length ? `<input type="search" class="adm-members-q" placeholder="Search players" aria-label="Search registered players" autocomplete="off"><div class="adm-members"><table><thead><tr><th>Player</th><th>Account</th><th>From</th><th>Joined</th><th>Last seen</th><th class="num">Days</th><th class="num">Actions</th></tr></thead><tbody>${ms.map((m) => `<tr data-q="${esc(m.name.toLowerCase())}">
+      <td><button type="button" class="link pd-name" data-person="${esc(m.name)}">${esc(m.name.replace(/^cc:/, ''))}</button>${m.admin ? ' <small class="adm-tag">admin</small>' : ''}</td>
       <td>${m.name.startsWith('cc:') ? 'Chess.com' : 'Lichess'}</td>
       <td>${m.country ? `${flag(m.country)}${esc(m.city || land(m.country).replace(/ \(..\)$/, ''))}` : '–'}</td>
       <td class="num">${day(m.joined)}</td><td class="num">${when(m.last)}</td><td class="num">${m.days}</td><td class="num">${m.actions}</td></tr>`).join('')}</tbody></table></div>` : '<p class="info">Nobody yet.</p>'}</section>`;
@@ -740,6 +740,11 @@ function show(body) {
   $('#adm-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = b.dataset.span === 'today' ? 'today' : Number(b.dataset.span);
     $('#adm-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body); });
   // A player's name (or a visitor's Data) opens a menu: their profile, or all their data.
+  $('#admin').oninput = (e) => {
+    if (!e.target.matches('.adm-members-q')) return;
+    const q = e.target.value.trim().toLowerCase();
+    for (const tr of e.target.nextElementSibling.querySelectorAll('tbody tr')) tr.hidden = !!q && !tr.dataset.q.includes(q);
+  };
   $('#admin').onclick = (e) => { const b = e.target.closest('[data-person], [data-visitor], [data-ip]'); if (!b) return; e.preventDefault(); e.stopPropagation(); personMenu(b, body); };
   // The visitor list shows the newest 10 until opened.
   $('[data-more]')?.addEventListener('click', (e) => { const b = e.currentTarget, open = $('.adm-visitors').classList.toggle('open');
