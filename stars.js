@@ -1,7 +1,7 @@
 // Pros & VIPs: the pro and the streamer of the week, each with why and a few words on them, then everyone
 // by when they last played. From week.json, which the pros function writes every 6 hours (see supabase/functions/pros).
-import { BIOS, keptTypes, TYPE_ABOUT } from './profile.js?v=20261102105855';
-import { nick, isCC } from './chesscom.js?v=20261102105855';
+import { BIOS, keptTypes, TYPE_ABOUT } from './profile.js?v=20261102111825';
+import { nick, isCC } from './chesscom.js?v=20261102111825';
 const WEEK = 'https://duhlvhjtxoofgnjegspa.supabase.co/storage/v1/object/public/pros/week.json';
 const TAB = 'opening-book-v2-stars-tab'; // the list last shown on a phone
 const SORT = 'opening-book-v2-stars-sort'; // how the lists are ordered
@@ -19,16 +19,19 @@ const styleOf = (r) => (r.style ? `<p class="st-style"><b>${esc(r.style)}</b>${r
 // Why they are of the week, in the week's own numbers.
 function why(r, kind) {
   const op = (o, side) => o && o.games >= 5 ? ` Played the ${esc(o.name)} most as ${side} (${o.games} games, ${pct(o.score)}).` : '';
-  return `Gained the most blitz rating of all ${kind === 'pro' ? 'pros' : 'streamers'} this week: <b>${signed(r.change)}</b> in ${r.blitzGames} blitz games, scoring <b>${pct(r.score)}</b> in all ${r.games}.${op(r.white, 'White')}${op(r.black, 'Black')}`;
+  const sp = r.speed || 'blitz', n = r.speedGames ?? r.blitzGames;
+  const lead = r.qualified === false ? `Played the most games of all ${kind === 'pro' ? 'pros' : 'streamers'} last week: <b>${r.games}</b>, scoring <b>${pct(r.score)}</b>.`
+    : `Gained the most ${sp} rating of all ${kind === 'pro' ? 'pros' : 'streamers'} last week: <b>${signed(r.change)}</b> in ${n} ${sp} games, scoring <b>${pct(r.score)}</b> in all ${r.games}.`;
+  return `${lead}${op(r.white, 'White')}${op(r.black, 'Black')}`;
 }
 function weekCard(r, kind) {
-  if (!r) return `<article class="st-wk ${kind}"><span class="st-k">${kind.toUpperCase()} OF THE WEEK</span><p class="st-why">Nobody played 20 blitz games this week yet.</p></article>`;
+  if (!r) return `<article class="st-wk ${kind}"><span class="st-k">${kind.toUpperCase()} OF THE WEEK</span><p class="st-why">Nobody played last week.</p></article>`;
   const b = BIOS[r.who];
   const about = r.style && TYPE_ABOUT[r.style]?.split('. ')[0]; // what marks their style, in its first sentence
   return `<a class="st-wk ${kind}" href="${link(r)}"><span class="st-k">${kind.toUpperCase()} OF THE WEEK</span><h2>${esc(r.who)}</h2>
     ${b ? `<p class="st-bio">${b[0] ? `From ${esc(b[0])}. ` : ''}${esc(b[1])}</p>` : ''}${styleOf(r)}${about ? `<p class="st-bio">${esc(about.replace(/\.$/, ''))}.</p>` : ''}
     <p class="st-why">${why(r, kind)}</p>
-    <div class="st-stats"><div><b>${r.blitz ?? '–'}</b><small>Blitz</small></div><div><b>${signed(r.change)}</b><small>This week</small></div><div><b>${r.games}</b><small>Games</small></div></div></a>`;
+    <div class="st-stats"><div><b>${r.rating ?? r.blitz ?? '–'}</b><small>${r.speed || 'Blitz'}</small></div><div><b>${signed(r.change)}</b><small>Last week</small></div><div><b>${r.games}</b><small>Games</small></div></div></a>`;
 }
 const rowOf = (r, sk) => `<li><a class="st-row" href="${link(r)}"><span class="st-av ${r.kind}">${esc(initials(r.who))}</span>
   <span class="st-who"><b>${esc(r.who)}</b><small>${[sk && r.skills?.[sk] != null ? `${sk} ${r.skills[sk]}` : '', r.style, r.last ? `played ${ago(r.last)}` : 'no games this week', r.accounts.some(isCC) ? (r.accounts.some((a) => !isCC(a)) ? 'Both sites' : 'Chess.com') : 'Lichess'].filter(Boolean).map(esc).join(' · ')}</small></span>

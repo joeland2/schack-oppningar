@@ -125,29 +125,43 @@ async function ccWeek(a: string, since: number): Promise<G[]> {
 // Per person: the games of the last 7 days on all their accounts, the blitz rating change on the account
 // with most blitz games, the score, and the opening played most as White and as Black.
 async function week() {
-  const since = Date.now() - 7 * DAY, people = new Map<string, { kind: string; accounts: string[]; games: G[]; blitz: Map<string, G[]> }>();
+  const day = new Date(), mon = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate() - (day.getUTCDay() + 6) % 7);
+  const monday = new Date(mon).toISOString().slice(0, 10), lastMon = mon - 7 * DAY, recent = Date.now() - 7 * DAY;
+  const since = Math.min(recent, lastMon); // the list's last 7 days, and all of last week for the picks
+  const people = new Map<string, { kind: string; accounts: string[]; games: (G & { acct: string })[] }>();
   for (const [a, who, kind] of ACCOUNTS) {
     const gs = await (isCC(a) ? ccWeek(a, since) : lichessWeek(a, since)).catch(() => []);
-    const p = people.get(who) ?? { kind, accounts: [], games: [], blitz: new Map() };
-    p.accounts.push(a); p.games.push(...gs); p.blitz.set(a, gs.filter((g) => g.speed === 'blitz').sort((x, y) => x.at - y.at));
+    const p = people.get(who) ?? { kind, accounts: [], games: [] };
+    p.accounts.push(a); p.games.push(...gs.map((g) => ({ ...g, acct: a })));
     people.set(who, p);
   }
   const top = (gs: G[]) => { const m = new Map<string, number[]>(); for (const g of gs) if (g.opening) m.set(g.opening, [...(m.get(g.opening) || []), g.score]);
     const [name, s] = [...m.entries()].sort((x, y) => y[1].length - x[1].length)[0] || []; return name ? { name, games: s!.length, score: s!.reduce((a, b) => a + b, 0) / s!.length } : null; };
-  const rows = [...people.entries()].map(([who, p]) => {
-    const [acct, bl] = [...p.blitz.entries()].sort((x, y) => y[1].length - x[1].length)[0];
-    return { who, kind: p.kind, accounts: p.accounts, account: acct, games: p.games.length, score: p.games.length ? p.games.reduce((a, g) => a + g.score, 0) / p.games.length : null,
-      blitz: bl.length ? bl.at(-1)!.rating : null, change: bl.length > 1 ? bl.at(-1)!.rating - bl[0].rating : 0, blitzGames: bl.length,
-      white: top(p.games.filter((g) => g.white)), black: top(p.games.filter((g) => !g.white)),
-      last: p.games.length ? Math.max(...p.games.map((g) => g.at)) : null };
-  });
-  // Of the week: the most blitz rating gained in the 7 days before, among those with at least 20 blitz
-  // games; chosen at the first count of each week (from Monday, UTC) and kept, with its numbers, all week.
-  const best = (kind: string) => rows.filter((r) => r.kind === kind && r.blitzGames >= 20).sort((x, y) => y.change - x.change || y.games - x.games)[0] ?? null;
-  const day = new Date(), monday = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate() - (day.getUTCDay() + 6) % 7)).toISOString().slice(0, 10);
+  // One time control's games, on the account with most of them, oldest first.
+  const most = (gs: (G & { acct: string })[], speed: string) => { const by = new Map<string, G[]>(); for (const g of gs) if (g.speed === speed) by.set(g.acct, [...(by.get(g.acct) || []), g]);
+    const [acct, list] = [...by.entries()].sort((x, y) => y[1].length - x[1].length)[0] || ([null, []] as [string | null, G[]]); return { acct, list: list.sort((x, y) => x.at - y.at) }; };
+  const sum = (who: string, p: { kind: string; accounts: string[] }, gs: (G & { acct: string })[]) => {
+    const bl = most(gs, 'blitz'), acct = bl.acct ?? most(gs, 'bullet').acct ?? p.accounts[0];
+    return { who, kind: p.kind, accounts: p.accounts, account: acct, games: gs.length, score: gs.length ? gs.reduce((a, g) => a + g.score, 0) / gs.length : null,
+      blitz: bl.list.length ? bl.list.at(-1)!.rating : null, change: bl.list.length > 1 ? bl.list.at(-1)!.rating - bl.list[0].rating : 0, blitzGames: bl.list.length,
+      white: top(gs.filter((g) => g.white)), black: top(gs.filter((g) => !g.white)), last: gs.length ? Math.max(...gs.map((g) => g.at)) : null };
+  };
+  const rows = [...people.entries()].map(([who, p]) => sum(who, p, p.games.filter((g) => g.at >= recent)));
+  // Of the week: last week's (Monday to Sunday, UTC) most rating gained in blitz or bullet, whichever gained
+  // more, among those with at least 20 games in it; else whoever played most last week, so there is always
+  // one. Chosen once a week and kept, with its numbers, all week.
+  const best = (kind: string) => {
+    const cands = [...people.entries()].filter(([, p]) => p.kind === kind).map(([who, p]) => {
+      const gs = p.games.filter((g) => g.at >= lastMon && g.at < mon), r = sum(who, p, gs);
+      const sp = ['blitz', 'bullet'].map((speed) => { const { acct, list } = most(gs, speed); return { speed, acct, n: list.length, rating: list.at(-1)?.rating ?? null, gain: list.length > 1 ? list.at(-1)!.rating - list[0].rating : 0 }; })
+        .sort((x, y) => (y.n >= 20 ? 1 : 0) - (x.n >= 20 ? 1 : 0) || y.gain - x.gain)[0];
+      return { ...r, account: sp.acct ?? r.account, speed: sp.speed, rating: sp.rating, change: sp.gain, speedGames: sp.n, qualified: sp.n >= 20 };
+    }).filter((r) => r.games);
+    return cands.sort((x, y) => Number(y.qualified) - Number(x.qualified) || (x.qualified ? y.change - x.change : y.games - x.games) || y.games - x.games)[0] ?? null;
+  };
   const { data: old } = await db.storage.from(BUCKET).download('week.json');
   const kept = old ? JSON.parse(await old.text()).pick : null;
-  const pick = kept?.week === monday ? kept : { week: monday, pro: best('pro'), vip: best('vip') };
+  const pick = kept?.week === monday && kept.v === 2 ? kept : { v: 2, week: monday, pro: best('pro'), vip: best('vip') };
   const out = { at: Date.now(), pick, people: rows };
   const { error } = await db.storage.from(BUCKET).upload('week.json', JSON.stringify(out), { upsert: true, contentType: 'application/json', cacheControl: '600' });
   return { week: pick.week, pro: pick.pro?.who, vip: pick.vip?.who, people: rows.length, error: error?.message };
