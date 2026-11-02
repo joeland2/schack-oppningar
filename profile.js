@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102164811';
-import { openLogin } from './login.js?v=20261102164811';
-import { STYLE_OF } from './styles.js?v=20261102164811';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102164811';
-import { PEOPLE } from './pros.js?v=20261102164811';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102171622';
+import { openLogin } from './login.js?v=20261102171622';
+import { STYLE_OF } from './styles.js?v=20261102171622';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102171622';
+import { PEOPLE } from './pros.js?v=20261102171622';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -235,21 +235,21 @@ console.assert(opponentsOf(Array(10).fill({ result: 0, rating: 1500, them: 1500,
 
 // What each type means, shown above the evidence from the games.
 const TYPE_ABOUT = {
-  Striker: 'Chooses attacking openings and gambits: wants open lines and the initiative early, and takes some risk for it.',
-  'Solid builder': 'Chooses solid and positional openings: builds a safe position first and strikes when the moment is right.',
-  'Endgame artist': 'Happy to trade the queens early and play it out. Trusts long-term edges more than tactics.',
+  Striker: 'Goes after the king early, wants open lines and the initiative, and takes some risk for it. Dangerous when the attack lands, shaky when it does not.',
+  'Solid builder': 'Builds a safe position first and strikes when the moment is right. Hard to beat quickly, but can let wins slip by being too careful.',
+  'Endgame artist': 'Happy to trade pieces and win slowly with technique. Trusts long-term edges more than tactics.',
   Fighter: 'Plays every game for a result and rarely settles for a draw. Wins and losses both come quickly.',
   Houdini: 'Keeps finding chances in bad positions and turns lost games around. Stubborn defence is a real strength.',
-  'Time scrambler': 'Thinks long early and plays the end on the clock, more often than players at the same level. Scrambles decide many of their games.',
+  'Time scrambler': 'Spends a lot of time early and plays the end on the clock. Thrives in the chaos, but some games are lost on time.',
   'Killer instinct': 'Gets attacks going and finishes them: quick wins, clear advantages, and few slips once ahead.',
   Guardian: 'Hard to break down: solid openings, holds against attacks, saves bad positions and rarely lets the opponent get ahead.',
   'Well prepared': 'Comes out of the opening better than players at the same level: knows the lines and the plans behind them.',
   Grinder: 'Scores more in endgames than players at the same level: the long games are theirs.',
   'Sure hand': 'Blunders less than players at the same level: rarely throws a piece or a game away.',
-  Trickster: 'Sets traps and wins fast: more quick wins, before move 25, than players at the same level.',
-  Specialist: 'Plays a narrow repertoire, the same few openings again and again.',
+  Trickster: 'Sets traps and wins fast. Many games are over before move 25.',
+  Specialist: 'Plays a narrow repertoire and knows it inside out. Rarely surprised in the opening.',
   Explorer: 'Tries many different openings. Hard to prepare against, but each line is known less deeply.',
-  Marathoner: 'Plays longer games than players at the same level. Patient, and keeps going deep into the game.',
+  Marathoner: 'Plays long games and keeps going. Patient, and comfortable deep into the endgame.',
   Finisher: 'Wins the won positions: turns a clear advantage into a win more often than players at the same level.',
   'Giant killer': 'Beats stronger players more often than the rating gap predicts.',
   'White specialist': 'Much stronger with the white pieces.',
