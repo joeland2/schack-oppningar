@@ -467,6 +467,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   .top-in { padding-block: 10px; }
   .picker { display: flex; flex-direction: column; }
   .picker > .mine { order: 10; }
+  .picker > .pf-search { flex: none; width: 100%; } /* its flex basis is a width in a row, not a height in this column */
   .filters .seg:has([data-style]) { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
   .ocard { grid-template-columns: 84px minmax(0, 1fr); gap: 12px; padding: 12px; }
   .ocard .board.mini { width: 84px; }
