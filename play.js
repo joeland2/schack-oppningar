@@ -2,8 +2,8 @@
 // The login needs the board:play permission once; then a seek or a challenge starts a game, which Lichess
 // streams here move by move. When it ends, the game page reviews it.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261102155039';
-import { account, login, finishLogin } from './lichess.js?v=20261102155039';
+import { drawBoard, enableDrag } from './board.js?v=20261102155302';
+import { account, login, finishLogin } from './lichess.js?v=20261102155302';
 
 const $ = (s) => document.querySelector(s);
 const API = 'https://lichess.org';
@@ -135,7 +135,7 @@ function draw() {
   if (view !== null && view >= all.length) view = null;
   const b = view === null ? g.chess : new Chess();
   if (view !== null) all.slice(0, view).forEach((m) => b.move(m));
-  drawBoard(boardEl, b, { side: g.me, sel: view === null ? g.sel : null, last: b.history({ verbose: true }).at(-1) || null });
+  drawBoard(boardEl, b, { side: g.me, sel: view === null ? g.sel : null, last: b.history({ verbose: true }).at(-1) || null, pre: g.pre && view === null ? [g.pre.from, g.pre.to] : [] });
   boardEl.classList.toggle('looking-back', view !== null);
   [...$('#play-moves').querySelectorAll('[data-ply]')].forEach((x) => x.classList.toggle('now', Number(x.dataset.ply) === (view ?? all.length) - 1));
   const top = g.me === 'w' ? 'b' : 'w';
@@ -165,8 +165,10 @@ function setState(s) {
   for (const u of s.moves ? s.moves.split(' ') : []) c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] });
   g.chess = c; g.wtime = s.wtime; g.btime = s.btime; g.at = Date.now(); g.status = s.status; g.sel = null;
   draw();
-  if (s.status !== 'started') ended(s);
-  else $('#play-status').textContent = c.turn() === g.me ? 'Your move.' : '';
+  if (s.status !== 'started') { g.pre = null; return ended(s); }
+  $('#play-status').textContent = c.turn() === g.me ? 'Your move.' : '';
+  // Your premove, played the moment it is your turn, if it is still legal.
+  if (c.turn() === g.me && g.pre) { const p = g.pre; g.pre = null; if (!tryMove(p.from, p.to)) draw(); }
 }
 function ended(s) {
   const won = s.winner && s.winner[0] === g.me, how = { mate: 'by checkmate', resign: 'by resignation', outoftime: 'on time', timeout: 'as the other left', draw: '', stalemate: 'by stalemate', aborted: '' }[s.status] ?? '';
@@ -216,14 +218,16 @@ async function openGame(id) {
 }
 function tryMove(from, to) {
   if (view !== null) { view = null; draw(); return true; } // looking back: a click brings you to now
-  if (!g || g.status !== 'started' || g.chess.turn() !== g.me) return false;
+  if (!g || g.status !== 'started') return false;
+  // Not your turn: a premove, kept until the opponent has moved (shown on the board; a click elsewhere drops it).
+  if (g.chess.turn() !== g.me) { if (from === to || g.chess.get(from)?.color !== g.me) return false; g.pre = { from, to }; g.sel = null; draw(); return true; }
   let m;
   try { m = g.chess.move({ from, to, promotion: 'q' }); } catch { return false; }
   g.sel = null; draw();
   post(`/api/board/game/${g.id}/move/${m.from}${m.to}${m.promotion || ''}`).catch((e) => { g.chess.undo(); draw(); $('#play-status').textContent = e.message; });
   return true;
 }
-enableDrag(boardEl, { canDrag: (sq) => view === null && g && g.status === 'started' && g.chess.turn() === g.me && g.chess.get(sq)?.color === g.me, onDrop: (f, t) => { if (!tryMove(f, t)) draw(); } });
+enableDrag(boardEl, { canDrag: (sq) => view === null && g && g.status === 'started' && g.chess.get(sq)?.color === g.me, onDrop: (f, t) => { if (!tryMove(f, t)) draw(); } });
 // ← → step through the moves, ↑ to the start, ↓ back to now; a move in the list jumps there.
 const browse = (to) => { if (!g) return; const n = g.chess.history().length; view = to >= n ? null : Math.max(0, to); g.sel = null; draw(); };
 document.addEventListener('keydown', (e) => {
@@ -234,10 +238,12 @@ document.addEventListener('keydown', (e) => {
   e.preventDefault(); browse(to);
 });
 $('#play-moves').addEventListener('click', (e) => { const x = e.target.closest('[data-ply]'); if (x && x.textContent) browse(Number(x.dataset.ply) + 1); });
+boardEl.addEventListener('contextmenu', (e) => { if (g?.pre) { e.preventDefault(); g.pre = null; draw(); } }); // right-click drops a premove
 boardEl.addEventListener('click', (e) => {
   if (view !== null) { view = null; return draw(); }
   const sq = e.target.closest('.sq')?.dataset.sq;
   if (!g || !sq) return;
+  if (g.pre && !g.sel) { g.pre = null; if (g.chess.get(sq)?.color !== g.me) return draw(); } // a click drops the premove
   if (g.sel && g.sel !== sq && tryMove(g.sel, sq)) return;
   g.sel = g.chess.get(sq)?.color === g.me && g.sel !== sq ? sq : null;
   draw();
