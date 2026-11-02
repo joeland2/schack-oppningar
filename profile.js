@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102114609';
-import { openLogin } from './login.js?v=20261102114609';
-import { STYLE_OF } from './styles.js?v=20261102114609';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102114609';
-import { PEOPLE } from './pros.js?v=20261102114609';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102114852';
+import { openLogin } from './login.js?v=20261102114852';
+import { STYLE_OF } from './styles.js?v=20261102114852';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102114852';
+import { PEOPLE } from './pros.js?v=20261102114852';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1123,6 +1123,7 @@ const BIOS = {
   'Levy Rozman': ['the United States', 'An International Master behind GothamChess, the most-subscribed chess channel on YouTube.'],
   'Anna Cramling': ['Sweden', 'A streamer and Woman FIDE Master, daughter of grandmasters Pia Cramling and Juan Manuel Bellón.'],
   'Alexandra Botez': ['Canada and the United States', 'A Woman FIDE Master and streamer, who started BotezLive with her sister Andrea.'],
+  'Andrea Botez': ['Canada and the United States', 'A streamer, who started BotezLive with her sister Alexandra.'],
   'Nemo Zhou': ['Canada', 'A Woman Grandmaster and streamer.'],
   'Eric Hansen': ['Canada', 'A grandmaster and one of the founders of Chessbrah.'],
   'Jerry (ChessNetwork)': ['the United States', 'A National Master who has taught chess on YouTube as ChessNetwork since 2007.'],

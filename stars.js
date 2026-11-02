@@ -1,7 +1,7 @@
 // Pro & VIP: the pro and the streamer of the week, each with why and a few words on them, then everyone
 // by when they last played. From week.json, which the pros function writes every 6 hours (see supabase/functions/pros).
-import { BIOS, keptTypes, TYPE_ABOUT } from './profile.js?v=20261102114609';
-import { nick, isCC } from './chesscom.js?v=20261102114609';
+import { BIOS, keptTypes, TYPE_ABOUT } from './profile.js?v=20261102114852';
+import { nick, isCC } from './chesscom.js?v=20261102114852';
 const WEEK = 'https://duhlvhjtxoofgnjegspa.supabase.co/storage/v1/object/public/pros/week.json';
 const TAB = 'opening-book-v2-stars-tab'; // the list last shown on a phone
 const SORT = 'opening-book-v2-stars-sort'; // how the lists are ordered
@@ -15,7 +15,7 @@ const initials = (who) => who.replace(/\(.*\)/, '').trim().split(/\s+/).slice(0,
 const ago = (t) => { const h = (Date.now() - t) / 36e5; return h < 1 ? 'within the hour' : h < 24 ? `${Math.round(h)} h ago` : `${Math.round(h / 24)} d ago`; };
 const link = (r) => `profile.html?u=${encodeURIComponent(r.account)}${r.accounts.some(isCC) && r.accounts.some((a) => !isCC(a)) ? '&all=1' : ''}`;
 // The name people know them by, after their own: their channel, where it differs.
-const CHANNEL = { 'Levy Rozman': 'GothamChess', 'Eric Hansen': 'Chessbrah', 'Alexandra Botez': 'BotezLive', 'Antonio Radić': 'agadmator',
+const CHANNEL = { 'Levy Rozman': 'GothamChess', 'Eric Hansen': 'Chessbrah', 'Alexandra Botez': 'BotezLive', 'Andrea Botez': 'BotezLive', 'Antonio Radić': 'agadmator',
   'Nemo Zhou': 'Nemsko', 'Zachary Saine': 'TheChessNerd', 'Alexandra Kosteniuk': 'ChessQueen', 'Hikaru Nakamura': 'GMHikaru', 'Tuan Minh Le': 'Wonderfultime' };
 const named = (who) => { const n = who.replace(/^W?[GIF]M /, ''); return esc(CHANNEL[n] ? `${n} (${CHANNEL[n]})` : n); };
 const styleOf = (r) => (r.style ? `<p class="st-style"><b>${esc(r.style)}</b>${r.strength ? `<span>+ ${esc(r.strength)}</span>` : ''}</p>` : '');

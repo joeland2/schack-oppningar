@@ -42,6 +42,7 @@ export const PEOPLE = [
   ["cc:GothamChess","IM Levy Rozman","vip"],
   ["cc:AnnaCramling","Anna Cramling","vip"],
   ["cc:AlexandraBotez","Alexandra Botez","vip"],
+  ["cc:SuperSecret12345","Andrea Botez","vip"],
   ["cc:NemsKo","Nemo Zhou","vip"],
   ["cc:Chessbrah","GM Eric Hansen","vip"],
   ["cc:ChessNetwork","Jerry (ChessNetwork)","vip"],
