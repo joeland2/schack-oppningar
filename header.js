@@ -86,8 +86,12 @@
         location.href = './';
       });
     }
-    // Play: Lichess games on Chess Labs, admins only while it is tried out; first in the menu.
-    if (ADMINS.includes(user()?.toLowerCase())) document.querySelector('.top-nav')?.insertAdjacentHTML('afterbegin', `<a href="play.html"${page === 'play.html' ? ' aria-current="page"' : ''}>Play</a>`);
+    // Play: Lichess games on Chess Labs, for supporters (who try new things first) and admins while it is tried
+    // out; first in the menu. Supporter state as supporter.js keeps it.
+    let sup = null;
+    try { sup = JSON.parse(localStorage.getItem('chess-trainer-supporter-me')); } catch {}
+    const supporter = !!(sup?.active && sup.name === user()?.toLowerCase() && sup.prefs?.early !== false);
+    if (supporter || ADMINS.includes(user()?.toLowerCase())) document.querySelector('.top-nav')?.insertAdjacentHTML('afterbegin', `<a href="play.html"${page === 'play.html' ? ' aria-current="page"' : ''}>Play</a>`);
     if (ADMINS.includes(user()?.toLowerCase())) document.querySelector('.top-nav')?.insertAdjacentHTML('beforeend', `<a class="nav-admin" href="admin.html"${page === 'admin.html' ? ' aria-current="page"' : ''} aria-label="Admin"><span class="wide-only">Admin</span><svg class="ico narrow-only" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></a>`);
   });
 })();
@@ -266,9 +270,9 @@ addEventListener('DOMContentLoaded', () => {
     const row = document.querySelector('.foot-row');
     if (row) row.insertAdjacentHTML('beforeend', b);
     else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
-    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261102155302')).openChat());
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261102155839')).openChat());
     // Supporters: the hearts and card frames on every page, and Support (header and bottom) opens its dialog.
-    const sup = import('./supporter.js?v=20261102155302');
+    const sup = import('./supporter.js?v=20261102155839');
     document.addEventListener('click', async (e) => { if (e.target.closest('[data-support]')) (await sup).openSupport(); });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();

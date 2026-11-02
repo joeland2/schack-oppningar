@@ -16,10 +16,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261102155302">
-  <script src="move.js?v=20261102155302"></script>
-  <script src="header.js?v=20261102155302" defer></script>
-  <script src="theme.js?v=20261102155302"></script>
+  <link rel="stylesheet" href="style.css?v=20261102155839">
+  <script src="move.js?v=20261102155839"></script>
+  <script src="header.js?v=20261102155839" defer></script>
+  <script src="theme.js?v=20261102155839"></script>
 </head>
 <body>
   <header class="top">
@@ -43,8 +43,17 @@
     <p class="sups-sort" role="group" hidden aria-label="Order"><button type="button" class="chip-btn" data-sups-sort="old" aria-pressed="true">Longest first</button><button type="button" class="chip-btn" data-sups-sort="new" aria-pressed="false">Newest first</button></p>
     <ul id="sups-list" class="sups-list" aria-live="polite"><li class="info">Loading…</li></ul>
     <p class="sups-join"><span><span id="sups-price">Support for $5 a month</span>: a heart by your name, a frame on your card and a vote on what comes next.</span> <button type="button" class="cta" data-support>Support</button></p>
+    <section class="sups-trying" aria-labelledby="sups-trying-h">
+      <p class="sups-k">What supporters are trying now</p>
+      <h2 id="sups-trying-h">Play Lichess on this site</h2>
+      <p>Real rated Lichess games, played on Chess Labs. Find an opponent at rapid or classical, or challenge a friend at blitz. When the game ends you see where you left the opening and what the book plays, with a link to practise it.</p>
+      <div class="sups-shots">
+        <figure><img src="img/supporters/play-lobby.jpg" alt="The Play page: Play first in the menu, time controls for rapid, classical and blitz, and your last games" loading="lazy"><figcaption>Play in the menu: pick a time and find an opponent</figcaption></figure>
+        <figure><img src="img/supporters/play-game.jpg" alt="A game on Chess Labs: the board with both clocks, the opening named, and the moves" loading="lazy"><figcaption>During a game: the board, the clocks and the opening</figcaption></figure>
+      </div>
+    </section>
   </main>
 
-  <script type="module" src="supporters.js?v=20261102155302"></script>
+  <script type="module" src="supporters.js?v=20261102155839"></script>
 </body>
 </html>

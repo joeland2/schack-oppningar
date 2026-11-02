@@ -2,8 +2,8 @@
 // The login needs the board:play permission once; then a seek or a challenge starts a game, which Lichess
 // streams here move by move. When it ends, the game page reviews it.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261102155302';
-import { account, login, finishLogin } from './lichess.js?v=20261102155302';
+import { drawBoard, enableDrag } from './board.js?v=20261102155839';
+import { account, login, finishLogin } from './lichess.js?v=20261102155839';
 
 const $ = (s) => document.querySelector(s);
 const API = 'https://lichess.org';
@@ -279,6 +279,11 @@ function incoming(c) {
 (async () => {
   try { await finishLogin(); } catch (e) { $('#play-gate').innerHTML = `<p class="info">${esc(e.message)}</p>`; }
   const a = account();
+  // Supporters (who try new things first) and the admins, while Play is tried out.
+  let sup = null;
+  try { sup = JSON.parse(localStorage.getItem('chess-trainer-supporter-me')); } catch {}
+  const early = a && (['joelandersson', 'sicko88'].includes(a.name.toLowerCase()) || (sup?.active && sup.name === a.name.toLowerCase() && sup.prefs?.early !== false));
+  if (a && !a.site && !early) { $('#play-gate').innerHTML = '<p class="info">Play is new, and supporters try it first. <a href="supporters.html">See what supporters get</a>.</p> <button type="button" class="cta" data-support>Become a supporter</button>'; return; }
   if (!a || a.site) { $('#play-gate').innerHTML = '<p class="info">Playing goes through Lichess. <button type="button" class="cta" id="play-login">Log in with Lichess</button></p>'; }
   else if (!String(a.scope || '').includes('board:play')) {
     $('#play-gate').innerHTML = '<p class="info">To play from here, Lichess asks you once to let Chess Labs play games for you. Your games stay normal Lichess games. <button type="button" class="cta" id="play-login">Allow playing</button></p>';
