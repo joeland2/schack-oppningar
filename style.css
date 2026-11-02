@@ -1605,7 +1605,7 @@ button.depth-btn:hover { border-color: var(--ink); }
 .legend-mini .legend-badge { position: static; flex: none; width: 20px; height: 20px; font-size: 11px; animation: none; }
 .foot-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
 .foot-row .link { font-size: 12px; color: var(--muted); }
-.foot-row label.link { font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.foot-row label.link { font-weight: 700; cursor: pointer; } .foot-row label.link:hover { text-decoration: underline; }
 .foot-row .privacy summary { cursor: pointer; }
 .foot-row .privacy p { margin: 6px 0 0; max-width: 70ch; }
 /* A starred opening wears the star's yellow round its card */
@@ -2696,7 +2696,6 @@ a.st-wk:hover h2 { text-decoration: underline; }
 .msg-admins { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border: 1px solid var(--hot); border-radius: 99px; background: color-mix(in srgb, var(--hot) 10%, transparent); color: var(--ink); font: 600 14px var(--font-body); cursor: pointer; }
 .msg-admins .ico { width: 16px; height: 16px; stroke: var(--hot); fill: none; stroke-width: 2; stroke-linejoin: round; }
 .msg-admins:hover { background: color-mix(in srgb, var(--hot) 20%, transparent); }
-.foot-row .msg-admins { margin-left: auto; }
 
 /* Endgames: How to think, always open, each step a box; pointing at one shows an example on the board */
 .eg-how { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
@@ -2755,7 +2754,14 @@ a.st-wk:hover h2 { text-decoration: underline; }
 .top-support:hover { background: color-mix(in srgb, var(--hot) 10%, transparent); }
 @media (max-width: 720px) { .top-support span { display: none; } }
 .sup-foot .ico { fill: var(--hot); stroke: none; }
-.foot-row .sup-foot { margin-left: auto; } .foot-row .sup-foot + .msg-admins { margin-left: 0; }
+.foot-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.foot-row .foot-acts { margin-left: auto; }
+/* Phone: the two buttons get a row of their own, stacked at full width. */
+@media (max-width: 600px) {
+  .foot-row .foot-acts { flex-basis: 100%; margin: 12px 0 0; }
+  .foot-acts { flex-direction: column; width: 100%; }
+  .foot-acts .msg-admins { justify-content: center; padding: 11px 16px; }
+}
 .msg-foot { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .sup-dlg { width: min(560px, calc(100vw - 32px)); }
 .sup-body { padding: 18px; display: grid; gap: 12px; overflow-y: auto; }
