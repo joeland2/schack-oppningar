@@ -2,9 +2,9 @@
 // item: { id, group, title, tag, side, fen, solution: [san…], intro, explain (html), wrong?(san), played? (san: the
 // move made in the game, a red arrow until the position is solved) }
 // Moves at odd positions in solution are the opponent's replies and are played automatically.
-import { banner, confetti } from './celebrate.js?v=20261102142723';
+import { banner, confetti } from './celebrate.js?v=20261102143045';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake, instruction } from './board.js?v=20261102142723';
+import { drawBoard, enableDrag, shake, instruction } from './board.js?v=20261102143045';
 
 const $ = (s) => document.querySelector(s);
 const clean = (san) => san.replace(/[+#]/g, '');
@@ -17,8 +17,18 @@ export function drill(items, storeKey) {
 
   let mark = null;
   const playedArrow = () => { if (!cur.played || step) return []; try { const m = new Chess(cur.fen).move(cur.played); return [[m.from, m.to, 'var(--bad)']]; } catch { return []; } };
-  const draw = () => drawBoard(boardEl, game, { side: cur.side, sel, last, hint, wrong, arrow: hint.length === 2 ? hint : null, arrows: playedArrow(),
-    mark: mark || (wrong && { sq: wrong, ok: false }) });
+  // Back and forward through the moves played here (arrow keys or the ‹ › buttons); a move goes back to now.
+  let view = null;
+  const shown = () => { const g = new Chess(cur.fen), h = game.history(); h.slice(0, view).forEach((m) => g.move(m)); return g; };
+  const draw = () => {
+    if (view !== null) { const g = shown(); return drawBoard(boardEl, g, { side: cur.side, last: g.history({ verbose: true }).at(-1) || null, arrows: view ? [] : playedArrow() }); }
+    drawBoard(boardEl, game, { side: cur.side, sel, last, hint, wrong, arrow: hint.length === 2 ? hint : null, arrows: playedArrow(),
+      mark: mark || (wrong && { sq: wrong, ok: false }) });
+  };
+  const browse = (d) => {
+    const n = game.history().length, at = Math.max(0, Math.min(n, (view ?? n) + d));
+    view = at === n ? null : at; sel = null; draw();
+  };
   const expected = () => new Chess(game.fen()).move(cur.solution[step]);
   const finished = () => step >= cur.solution.length;
 
@@ -42,7 +52,7 @@ export function drill(items, storeKey) {
   function open(n) {
     idx = n; cur = items[n];
     game = new Chess(cur.fen);
-    step = 0; sel = null; last = null; hint = []; wrong = null; busy = false;
+    step = 0; sel = null; last = null; hint = []; wrong = null; busy = false; view = null;
     $('#title').textContent = cur.title;
     $('#intro').textContent = cur.intro;
     $('#explain').innerHTML = '';
@@ -63,6 +73,7 @@ export function drill(items, storeKey) {
   }
 
   function tryMove(from, to) {
+    if (view !== null) { view = null; draw(); return true; } // looking back: a click brings you to now
     let m;
     try { m = game.move({ from, to, promotion: 'q' }); } catch { return false; }
     if (clean(m.san) !== clean(cur.solution[step])) {
@@ -89,11 +100,12 @@ export function drill(items, storeKey) {
   }
 
   enableDrag(boardEl, {
-    canDrag: (sq) => !busy && !finished() && game.get(sq)?.color === cur.side,
+    canDrag: (sq) => view === null && !busy && !finished() && game.get(sq)?.color === cur.side,
     onDrop: (from, to) => { sel = null; if (!tryMove(from, to)) draw(); },
   });
   boardEl.addEventListener('click', (e) => {
     const b = e.target.closest('.sq');
+    if (view !== null) { view = null; return draw(); }
     if (!b || busy || finished()) return;
     const sq = b.dataset.sq;
     const p = game.get(sq);
@@ -113,6 +125,14 @@ export function drill(items, storeKey) {
     say(`The move: ${instruction(m)}.`);
   });
   $('#next').addEventListener('click', () => open((idx + 1) % items.length));
+  $('#hint').insertAdjacentHTML('beforebegin', '<button type="button" id="back" aria-label="Back a move">‹</button><button type="button" id="fwd" aria-label="Forward a move">›</button>');
+  $('#back').addEventListener('click', () => browse(-1));
+  $('#fwd').addEventListener('click', () => browse(1));
+  document.addEventListener('keydown', (e) => {
+    if (e.target.closest('input, textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); browse(-1); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); browse(1); }
+  });
 
   const firstOpen = items.findIndex((it) => !solved.has(it.id));
   open(firstOpen === -1 ? 0 : firstOpen);
