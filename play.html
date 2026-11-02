@@ -16,10 +16,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261102152719">
-  <script src="move.js?v=20261102152719"></script>
-  <script src="header.js?v=20261102152719" defer></script>
-  <script src="theme.js?v=20261102152719"></script>
+  <link rel="stylesheet" href="style.css?v=20261102153012">
+  <script src="move.js?v=20261102153012"></script>
+  <script src="header.js?v=20261102153012" defer></script>
+  <script src="theme.js?v=20261102153012"></script>
 </head>
 <body>
   <header class="top">
@@ -33,17 +33,22 @@
   </header>
 
   <main class="wrap play-page">
-    <section id="play-pick">
-      <p class="sups-k" id="play-k">Rated on Lichess</p>
-      <h1 class="pf-h1">Play a game</h1>
-      <div id="play-gate"></div>
-      <div id="play-lobby" hidden>
-        <div class="play-tiles" role="group" aria-label="Time control"></div>
-        <p class="play-acts"><button type="button" class="cta" id="play-seek">Find an opponent</button>
-          <span class="play-friend"><input id="play-who" maxlength="30" placeholder="Friend's Lichess name" aria-label="Friend's Lichess name" autocomplete="off" spellcheck="false"><button type="button" class="ghost" id="play-challenge">Challenge</button></span>
-          <label class="play-rated"><input type="checkbox" id="play-rated" checked> Rated</label></p>
-        <p class="info" id="play-msg" aria-live="polite"></p>
+    <section id="play-pick" class="play-lobby-wrap">
+      <div class="play-main">
+        <p class="sups-k" id="play-k">Rated on Lichess</p>
+        <h1 class="pf-h1">Play</h1>
+        <div id="play-gate"></div>
+        <div id="play-lobby" hidden>
+          <div class="play-tiles"></div>
+          <p class="play-acts"><button type="button" class="cta play-go" id="play-seek">Find an opponent</button><label class="play-rated"><input type="checkbox" id="play-rated" checked> Rated</label></p>
+          <p class="play-friend"><input id="play-who" maxlength="30" placeholder="Or a friend's Lichess name" aria-label="Friend's Lichess name" autocomplete="off" spellcheck="false"><button type="button" class="ghost" id="play-challenge">Challenge</button></p>
+          <p class="info" id="play-msg" aria-live="polite"></p>
+        </div>
       </div>
+      <aside class="play-aside" id="play-aside" hidden>
+        <div class="play-card"><p class="sups-k">Today</p><p class="play-today" id="play-today">–</p></div>
+        <div class="play-card"><p class="sups-k">Last games</p><ul class="play-last" id="play-last"><li class="info">Loading…</li></ul></div>
+      </aside>
     </section>
     <section id="play-game" class="play-game" hidden>
       <div class="play-board-col">
@@ -60,6 +65,6 @@
     </section>
   </main>
 
-  <script type="module" src="play.js?v=20261102152719"></script>
+  <script type="module" src="play.js?v=20261102153012"></script>
 </body>
 </html>

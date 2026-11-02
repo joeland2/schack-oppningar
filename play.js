@@ -2,21 +2,28 @@
 // The login needs the board:play permission once; then a seek or a challenge starts a game, which Lichess
 // streams here move by move. When it ends, the game page reviews it.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261102152719';
-import { account, login, finishLogin } from './lichess.js?v=20261102152719';
+import { drawBoard, enableDrag } from './board.js?v=20261102153012';
+import { account, login, finishLogin } from './lichess.js?v=20261102153012';
 
 const $ = (s) => document.querySelector(s);
 const API = 'https://lichess.org';
-const TCS = [[3, 0], [3, 2], [5, 0], [5, 3], [10, 0], [10, 5], [15, 10], [30, 0]];
-const word = (m) => (m < 3 ? 'Bullet' : m < 8 ? 'Blitz' : m < 25 ? 'Rapid' : 'Classical');
+const GROUPS = [['Blitz', [[3, 0], [3, 2], [5, 0], [5, 3]]], ['Rapid', [[10, 0], [10, 5], [15, 10]]], ['Classical', [[30, 0], [30, 20]]]];
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const auth = () => ({ Authorization: `Bearer ${account()?.token}` });
+// Lichess's error in words: { error: '…' }, or a form's errors as { field: ['…'] }.
+async function why(r) {
+  const t = await r.text().catch(() => '');
+  let x = {}; try { x = JSON.parse(t); } catch {}
+  const e = x.error ?? x.global ?? x;
+  const s = typeof e === 'string' ? e : Object.values(e || {}).flat().join(' ') || t.slice(0, 200);
+  return `${s || 'Lichess said no'} (${r.status})`;
+}
 const say = (t) => { $('#play-msg').textContent = t; };
 
 // Lichess streams answers as one JSON object per line; onLine gets each one.
 async function stream(url, onLine, opts = {}) {
   const r = await fetch(API + url, { ...opts, headers: { ...auth(), ...(opts.headers || {}) } });
-  if (!r.ok) { const x = await r.json().catch(() => ({})); throw new Error(x.error || `Lichess said no (${r.status}).`); }
+  if (!r.ok) throw new Error(await why(r));
   const rd = r.body.getReader(), dec = new TextDecoder();
   let buf = '';
   for (;;) {
@@ -28,7 +35,7 @@ async function stream(url, onLine, opts = {}) {
   }
 }
 const post = (url, body) => fetch(API + url, { method: 'POST', headers: auth(), body: body && new URLSearchParams(body) })
-  .then(async (r) => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `Lichess said no (${r.status}).`); });
+  .then(async (r) => { if (!r.ok) throw new Error(await why(r)); });
 
 // Opening names (lichess-org/chess-openings, as on the Openings page): the longest named line the game follows.
 let BOOK = null;
@@ -46,7 +53,7 @@ async function openingOf(sans) {
 // ---------- The lobby ----------
 let tc = (() => { try { return JSON.parse(localStorage.getItem('opening-book-v2-play-tc')) || [3, 2]; } catch { return [3, 2]; } })();
 function lobby() {
-  $('.play-tiles').innerHTML = TCS.map(([m, i]) => `<button type="button" class="play-tile" aria-pressed="${m === tc[0] && i === tc[1]}" data-tc="${m}+${i}"><b>${m}+${i}</b><span>${word(m + i * 2 / 3)}</span></button>`).join('');
+  $('.play-tiles').innerHTML = GROUPS.map(([h, xs]) => `<p class="sups-k">${h}</p><div class="play-row" role="group" aria-label="${h}">${xs.map(([m, i]) => `<button type="button" class="play-tile" aria-pressed="${m === tc[0] && i === tc[1]}" data-tc="${m}+${i}">${m}+${i}</button>`).join('')}</div>`).join('');
   $('#play-seek').textContent = `Find an opponent · ${tc.join('+')}`;
 }
 $('.play-tiles').addEventListener('click', (e) => {
@@ -76,6 +83,22 @@ $('#play-challenge').addEventListener('click', async () => {
     say(`Challenge sent to ${who}. The game starts here when they accept it on Lichess.`);
   } catch (e) { say(e.message); }
 });
+
+// Your last games on Lichess and today's rating change, beside the time controls.
+async function lastGames(name) {
+  $('#play-aside').hidden = false;
+  const gs = [];
+  try { await stream(`/api/games/user/${encodeURIComponent(name)}?max=6&opening=true&moves=false`, (x) => gs.push(x), { headers: { Accept: 'application/x-ndjson' } }); } catch {}
+  const me = name.toLowerCase(), side = (x) => (x.players.white.user?.id === me ? 'white' : 'black');
+  const today = gs.filter((x) => new Date(x.createdAt).toDateString() === new Date().toDateString());
+  const diff = today.reduce((n, x) => n + (x.players[side(x)].ratingDiff || 0), 0);
+  const won = today.filter((x) => x.winner === side(x)).length, lost = today.filter((x) => x.winner && x.winner !== side(x)).length;
+  $('#play-today').innerHTML = today.length ? `<b class="${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '+' : '−'}${Math.abs(diff)}</b><span>${won} won · ${lost} lost</span>` : '<span>No games yet today</span>';
+  $('#play-last').innerHTML = gs.length ? gs.map((x) => {
+    const s = side(x), o = x.players[s === 'white' ? 'black' : 'white'], r = !x.winner ? 'd' : x.winner === s ? 'w' : 'l';
+    return `<li><a href="game.html?u=${encodeURIComponent(name)}&id=${x.id}"><span class="chip r-${r}">${{ w: 'Won', l: 'Lost', d: 'Draw' }[r]}</span> <b>${esc(o.user?.name || 'Anonymous')}</b><small>${esc((x.opening?.name || '').split(':')[0])} · ${x.clock ? `${x.clock.initial / 60}+${x.clock.increment}` : x.speed}</small></a></li>`;
+  }).join('') : '<li class="info">No games yet.</li>';
+}
 
 // ---------- A game ----------
 let g = null; // { id, me ('w'|'b'), chess, white, black, wtime, btime, at, status, sel }
@@ -170,7 +193,7 @@ boardEl.addEventListener('click', (e) => {
     $('#play-gate').innerHTML = '<p class="info">To play from here, Lichess asks you once to let Chess Labs play games for you. Your games stay normal Lichess games. <button type="button" class="cta" id="play-login">Allow playing</button></p>';
   } else {
     $('#play-k').textContent = `Rated on Lichess · ${a.name}`;
-    $('#play-lobby').hidden = false; lobby();
+    $('#play-lobby').hidden = false; lobby(); lastGames(a.name);
     // Every game that starts for you (a seek taken, a challenge accepted, or one still running) arrives here.
     stream('/api/stream/event', (x) => { if (x.type === 'gameStart') openGame(x.game.gameId || x.game.id); })
       .catch((e) => say(e.message));
