@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261102225843';
-import { api as chatApi, openChat } from './chat.js?v=20261102225843';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102225843';
+import { account, login, finishLogin } from './lichess.js?v=20261102230006';
+import { api as chatApi, openChat } from './chat.js?v=20261102230006';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102230006';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -525,6 +525,7 @@ function render(s) {
         ${(s.openings || []).length ? openedHtml(s.openings) : rows(s.practised)}</section>
     </div>
     ${group('people')}
+    ${membersHtml(s)}
     ${topHtml(s.visitors)}
     <section class="pf-card"><div class="adm-head"><h2>${ic('people')}Unique visitors · ${s.visitors.length}</h2><small>Every visitor once, newest first. IP addresses without their last part. Click one to see what they did.</small></div>
       ${s.visitors.length ? `<div class="adm-visitors"><div class="adm-v-head"><span>Location</span><span>IP</span><span>Lichess</span><span>Device</span><span>Visits</span><span>Last seen</span></div>${s.visitors.map((v) => `<details class="adm-visitor"><summary>
@@ -665,6 +666,16 @@ async function threads() {
   el.innerHTML = `<div class="adm-head"><h2>${ic('people')}Threads · ${ts.length}</h2><small>${waiting ? `${waiting} waiting for an answer` : 'All answered'}</small></div>
     ${ts.length ? `<ul class="pf-rows adm-recent">${ts.map((t) => `<li><button type="button" class="link adm-thread" data-thread="${esc(t.player)}"><b>${esc(t.player)}</b> ${t.author === t.player ? '<span class="chip pagar">Waiting</span>' : ''}<small>${esc(t.body.slice(0, 90))}${t.body.length > 90 ? '…' : ''}</small></button><small>${t.n} · ${when(t.at)}</small></li>`).join('')}</ul>` : '<p class="info">No messages yet.</p>'}`;
   el.querySelectorAll('[data-thread]').forEach((b) => b.addEventListener('click', () => { markSeen(); openChat(b.dataset.thread); document.querySelector('dialog.chat')?.addEventListener('close', threads); }));
+}
+// Every registered player in one table: newest activity first, each a click from their profile or data.
+function membersHtml(s) {
+  const ms = s.members || [];
+  return `<section class="pf-card"><div class="adm-head"><h2>${ic('people')}All registered players · ${ms.length}</h2><small>Everyone who has logged in, last active first. Click a name for their profile or data.</small></div>
+    ${ms.length ? `<div class="adm-members"><table><thead><tr><th>Player</th><th>Account</th><th>From</th><th>Joined</th><th>Last seen</th><th class="num">Days</th><th class="num">Actions</th></tr></thead><tbody>${ms.map((m) => `<tr>
+      <td><button type="button" class="link pd-name" data-person="${esc(m.name)}">${esc(m.name.replace(/^cc:/, ''))}</button></td>
+      <td>${m.name.startsWith('cc:') ? 'Chess.com' : 'Lichess'}</td>
+      <td>${m.country ? `${flag(m.country)}${esc(m.city || land(m.country).replace(/ \(..\)$/, ''))}` : '–'}</td>
+      <td class="num">${day(m.joined)}</td><td class="num">${when(m.last)}</td><td class="num">${m.days}</td><td class="num">${m.actions}</td></tr>`).join('')}</tbody></table></div>` : '<p class="info">Nobody yet.</p>'}</section>`;
 }
 // Profiles created: a bar for each of the last 30 days, and the newest profiles with their day.
 // Without dates (an older admin-stats), the names as before.
@@ -815,6 +826,7 @@ function demoData() {
     recentProfiles: events.filter((e) => e.kind === 'profile').slice(0, 40).map((e) => ({ at: e.at, target: e.target, country: 'SE', city: 'Malmö', device: 'iPhone · Safari' })), compares: count(events.filter((e) => e.kind === 'compare').map((e) => e.target)),
     usage: count(events.filter((e) => !['view', 'profile'].includes(e.kind)).map((e) => e.kind)), practised: count(events.filter((e) => e.kind === 'practise').map((e) => e.target)),
     visitors, registered: registered.sort(), joined: registered.map((n) => ({ n, at: iso(now - rnd() * 30 * 864e5) })).sort((a, b) => b.at.localeCompare(a.at)), users: registered.map((name) => ({ name, n: 5 + Math.floor(rnd() * 40), last: iso(now - rnd() * 6 * 864e5) })),
+    members: registered.map((name) => { const vs = visitors.filter((v) => v.name === name); return { name, joined: vs.map((v) => v.first).sort()[0], last: vs.map((v) => v.last).sort().at(-1), days: 1 + Math.floor(rnd() * 9), actions: 3 + Math.floor(rnd() * 60), country: vs[0].country, city: vs[0].city, device: vs[0].device }; }).sort((a, b) => b.last.localeCompare(a.last)),
   };
 }
 async function start() {
