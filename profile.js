@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102172316';
-import { openLogin } from './login.js?v=20261102172316';
-import { STYLE_OF } from './styles.js?v=20261102172316';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102172316';
-import { PEOPLE } from './pros.js?v=20261102172316';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102174720';
+import { openLogin } from './login.js?v=20261102174720';
+import { STYLE_OF } from './styles.js?v=20261102174720';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102174720';
+import { PEOPLE } from './pros.js?v=20261102174720';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -190,6 +190,16 @@ export function profileOf(games) {
     ...(() => { const sc = games.filter((g) => g.lowTime && g.oppLowTime); return { clutchN: sc.length, clutchScore: score(sc) }; })(),
     // The openings the player chose: a gambit played against them says nothing of their style.
     attacking: share(games.filter((g) => g.chosen), (g) => styleOf(g.family).includes('attacking')),
+    // What players at your level choose: your opponents' own openings with the same colour as yours, in
+    // the same games (your openings as White against theirs as White when you had Black), weighted by
+    // how often you choose with each colour. Gambits are much more common at some levels than others.
+    attackingUsual: (() => {
+      const att = (g) => styleOf(g.family).includes('attacking'), parts = ['w', 'b'].map((c) => {
+        const mine = games.filter((g) => g.chosen && g.side === c), theirs = games.filter((g) => !g.chosen && g.side !== c);
+        return theirs.length >= 10 ? [mine.length, share(theirs, att)] : null;
+      }).filter(Boolean), n = sum(parts, ([k]) => k);
+      return n ? sum(parts, ([k, x]) => k * x) / n : null;
+    })(),
     solid: share(games.filter((g) => g.chosen), (g) => styleOf(g.family).some((s) => s === 'solid' || s === 'positional')),
     castled: share(games, (g) => g.castled !== null && g.castled < 30), noCastle: share(games.filter((g) => g.plies > 40), (g) => g.castled === null),
     queensOff: share(games, (g) => g.queensOff !== null && g.queensOff < 50),
@@ -336,7 +346,10 @@ const PAR = { Striker: [0.74, 1.3], 'Solid builder': [0.66, 1.4], 'Endgame artis
 function traitsOf(p) {
   const q = p.peer || {}, rating = p.speeds?.[0]?.rating, raw = rawSkills(p), def = raw.find((x) => x.label === 'Defense');
   const styles = [
-    { name: 'Striker', w: p.attacking / 0.4, why: `${pct(p.attacking)} of the openings you choose are attacking openings or gambits.` },
+    // Against what players at your level choose when it is known: 22 points more is the top tenth, as the
+    // spread between the median and the top tenth was among the players checked.
+    { name: 'Striker', w: p.attacking / 0.4, ...(p.attackingUsual != null && { lean: (p.attacking - p.attackingUsual) / 0.22 }),
+      why: `${pct(p.attacking)} of the openings you choose are attacking openings or gambits${p.attackingUsual != null ? `, where players at your level choose ${pct(p.attackingUsual)}` : ''}.` },
     { name: 'Solid builder', w: (p.solid / 0.55) * (p.attacking < 0.25 ? 1 : 0.6), why: `${pct(p.solid)} of the openings you choose are solid or positional.` },
     { name: 'Endgame artist', w: p.queensOff / 0.4, why: `The queens come off before move 25 in ${pct(p.queensOff)} of your games: you are happy to trade and play it out.` },
     // Ending short of time is common in fast games for everyone, so it counts only when the player does
@@ -352,7 +365,7 @@ function traitsOf(p) {
     // The counterpart of Striker: a player whose Defense (solid openings, holding against attacks, saving
     // bad positions, rarely letting opponents get ahead) is clearly above their own opponents'.
     { name: 'Guardian', w: def.v !== null ? (def.v - 50) / 9 : 0, why: `You defend clearly better than your opponents at your level. ${def.why}` },
-  ].map((x) => ({ ...x, lean: (x.w - PAR[x.name][0]) / (PAR[x.name][1] - PAR[x.name][0]) })).sort((x, y) => y.lean - x.lean);
+  ].map((x) => ({ ...x, lean: x.lean ?? (x.w - PAR[x.name][0]) / (PAR[x.name][1] - PAR[x.name][0]) })).sort((x, y) => y.lean - x.lean);
   // Giant killer needs a clear surplus: upsets are common in fast games. Speed counts winning on time half,
   // since much of it is the opponent's doing.
   const extra = [

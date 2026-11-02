@@ -2,9 +2,9 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261102172316';
-import { blunders, puzzles, puzzlesFromGames } from './blunder.js?v=20261102172316';
-import { current, cache, myName, skillsOf, storedGames } from './profile.js?v=20261102172316';
+import { login } from './lichess.js?v=20261102174720';
+import { blunders, puzzles, puzzlesFromGames } from './blunder.js?v=20261102174720';
+import { current, cache, myName, skillsOf, storedGames } from './profile.js?v=20261102174720';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -22,7 +22,8 @@ function render(name, p) {
   // One exercise: [icon, title, a line on it, link, button].
   const ex = {
     puzzles: ['🧩', 'Puzzles from your games', mine.length ? `${mine.length} positions where you went wrong: find the move you missed.` : 'The positions in your games where you went wrong, as puzzles.', mine.length ? 'mistakes.html' : './?do=mistakes', mine.length ? 'Solve' : 'Find them'],
-    spot: spot.length && ['👁', 'Spot the blunder', `A few moves from one of your ${spot.length} games: which of yours threw it away?`, 'blunder.html', 'Play'],
+    spot: false && spot.length && ['👁', // off for now, while it is reworked; blunder.html still works by its link
+      'Spot the blunder', `A few moves from one of your ${spot.length} games: which of yours threw it away?`, 'blunder.html', 'Play'],
     traps: ['⚡', 'Traps in your openings', 'The traps players at your level fall into in your openings: spot the slip and punish it.', './?do=traps', 'Practise'],
     learnfrom: ['👤', 'A player to learn from', 'Someone a bit above you in your main opening: what they play where you go wrong.', './?do=learnfrom', 'Find one'],
     endgames: ['♚', 'Endgames', 'Win the basic endgames to mate, move by move, then against the clock.', 'endgames.html', 'Train'],
