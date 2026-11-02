@@ -1,6 +1,6 @@
 // The Log in dialog: Lichess (lichess.js), or a Chess Labs account with a Chess.com name linked, for
 // players without Lichess. Chess.com lets no other site log its players in, which the dialog says.
-import { login, siteLogin } from './lichess.js?v=20261102161034';
+import { login, siteLogin } from './lichess.js?v=20261102161923';
 
 let dlg = null;
 export function openLogin() {
