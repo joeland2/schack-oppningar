@@ -17,9 +17,17 @@ const PRICE = (() => { let tz = ''; try { tz = Intl.DateTimeFormat().resolvedOpt
 const login = () => { try { return JSON.parse(localStorage.getItem('chess-trainer-lichess-login')) || null; } catch { return null; } };
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
-let map = new Map();
-try { map = new Map(JSON.parse(localStorage.getItem(CACHE)) || []); } catch {}
+let map = new Map(), wall = [];
+try { const kept = JSON.parse(localStorage.getItem(CACHE)) || []; map = new Map(kept.map((x) => (Array.isArray(x) ? x : [x.p, x.f]))); wall = kept.filter((x) => !Array.isArray(x)); } catch {}
 const frameOf = (name) => map.get(String(name || '').toLowerCase());
+// Whether a name supports Chess Labs (and shows it), for other scripts: the animated card, the Supporters page.
+export const supporterOf = (name) => map.has(String(name || '').toLowerCase());
+export const supportersList = () => wall;
+window.supporterOf = supporterOf;
+// Ideas supporters vote on: what to build next (the ids are kept with their votes, so keep them).
+export const IDEAS = [['more-frames', 'More frames, animated ones too'], ['card-colour', 'Pick the colour of your card'], ['confetti', 'Your own confetti and stamp colours'],
+  ['more-games', 'Read your last 1,000 games, not 500'], ['repertoire', 'Save your own repertoire and drill it'], ['own-puzzles', 'Puzzle rush from your own games'],
+  ['clubs', 'Club pages: a club’s cards side by side'], ['chesscom-login', 'Log in with Chess.com']];
 
 async function api(query = '', body) {
   const r = await fetch(API + query, { method: body ? 'POST' : 'GET', headers: { apikey: KEY, 'x-lichess-token': login()?.token || '', 'content-type': 'application/json' }, body: body && JSON.stringify(body) });
@@ -47,7 +55,26 @@ function decorate() {
 let queued = false;
 new MutationObserver(() => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; decorate(); }); } }).observe(document.body, { childList: true, subtree: true });
 decorate();
-api().then((xs) => { map = new Map(xs.map((x) => [x.p, x.f])); try { localStorage.setItem(CACHE, JSON.stringify([...map])); } catch {} decorate(); }).catch(() => {});
+const listed = api().then((xs) => { wall = xs; map = new Map(xs.map((x) => [x.p, x.f])); try { localStorage.setItem(CACHE, JSON.stringify(xs)); } catch {} decorate(); return xs; }).catch(() => wall);
+export const supportersReady = () => listed;
+
+// Your own supporter state (kept, so the menu and early features are there at once): Supporter settings in the
+// menu under your name, and data-early on the page for features supporters try first.
+const ME = 'chess-trainer-supporter-me';
+let mine = null;
+try { mine = JSON.parse(localStorage.getItem(ME)); } catch {}
+function applyMine() {
+  const on = !!(login() && mine?.active && mine.name === login().name?.toLowerCase());
+  document.documentElement.toggleAttribute('data-early', on && !!mine.prefs?.early);
+  const menu = document.querySelector('.top-me-menu');
+  if (menu && on && !menu.querySelector('[data-sup-settings]')) menu.querySelector('.top-me-out')?.insertAdjacentHTML('beforebegin', '<button type="button" data-sup-settings>Supporter settings</button>');
+  if (menu && !on) menu.querySelector('[data-sup-settings]')?.remove();
+}
+const keepMine = (st) => { mine = { ...st, name: login()?.name?.toLowerCase() }; try { localStorage.setItem(ME, JSON.stringify(mine)); } catch {} applyMine(); };
+if (login()) api('?me').then(keepMine).catch(() => {});
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyMine); else applyMine();
+setTimeout(applyMine, 500); // the menu is drawn by header.js once the page is in
+document.addEventListener('click', (e) => { if (e.target.closest?.('[data-sup-settings]')) { e.target.closest('details')?.removeAttribute('open'); openSupport(); } });
 
 // 3D tilt: the card leans toward the pointer, and the shine follows it.
 document.addEventListener('pointermove', (e) => {
@@ -79,12 +106,12 @@ export async function openSupport() {
   dlg.querySelector('.chat-x').addEventListener('click', close);
   dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
   const body = dlg.querySelector('.sup-body');
-  dlg.addEventListener('click', async (e) => { if (e.target.closest('[data-sup-idea]')) { close(); (await import('./chat.js?v=20261102133851')).openChat(); } });
+  dlg.addEventListener('click', async (e) => { if (e.target.closest('[data-sup-idea]')) { close(); (await import('./chat.js?v=20261102140058')).openChat(); } });
   const grid = (pick, on) => `<div class="sup-frames${pick ? '' : ' locked'}">${FRAMES.map(([k, t]) => `<button type="button" class="sup-frame${k === on ? ' on' : ''}" data-frame="${k}"${pick ? '' : ' disabled'}><span class="sup-fx fx-${k}"><span class="sup-mini"></span></span><small>${t}</small></button>`).join('')}</div>`;
   const pitch = `<p class="sup-lead"><b>Everything on Chess Labs is free, and always will be.</b> No paywall, no ads, no locked features.</p>
     <p>This isn't a site to make money from. It costs money to run, though: the servers, the database and the analysis. If you want to help keep it going, you can support it for <b>${PRICE} a month</b>, and you get something small back.</p>
     <p class="sup-k">What supporters get</p>
-    <ul class="sup-perks"><li>A heart by your name, everywhere on the site</li><li>A frame of your choice around your player card</li></ul>
+    <ul class="sup-perks"><li>A heart by your name, everywhere on the site: your profile, the leaderboard, comparisons</li><li>A frame of your choice around your player card</li><li>Your name on the Supporters page</li><li>A vote on what gets built next</li><li>New features before everyone else</li><li>Your card as a video, to share</li></ul>
     <p class="sup-k">The frames</p>${grid(false)}
     <div class="sup-idea"><p><b>Chess Labs is made by the community, for the community.</b> What should supporters get? Tell us your ideas.</p><button type="button" class="ghost" data-sup-idea>Suggest a perk</button></div>`;
   if (!me) { body.innerHTML = `${pitch}<p><a class="cta" href="profile.html?login">Log in with Lichess</a></p><p class="info">Supporting is tied to your Lichess name, so log in first.</p>`; return; }
@@ -101,9 +128,30 @@ export async function openSupport() {
     });
     return;
   }
-  body.innerHTML = `<p><b>Thank you for supporting Chess Labs, ${esc(me.name)}.</b> Pick the frame around your card:</p>${grid(true, st.frame)}${err}
-    <div class="sup-idea"><p>What else should supporters get? Chess Labs is made by the community, for the community.</p><button type="button" class="ghost" data-sup-idea>Suggest a perk</button></div>
+  keepMine(st);
+  dlg.querySelector('.chat-head h2').textContent = 'Supporter settings';
+  const prefs = { badge: true, wall: true, early: false, ...st.prefs }, votes = new Set(st.votes || []);
+  const toggle = (k, t, s) => `<label class="sup-opt"><input type="checkbox" data-pref="${k}"${prefs[k] ? ' checked' : ''}><span><b>${t}</b><small>${s}</small></span></label>`;
+  body.innerHTML = `<p><b>Thank you for supporting Chess Labs, ${esc(me.name)}.</b></p>
+    <p class="sup-k">Your frame</p>${grid(true, st.frame)}
+    <p class="sup-k">Show and try</p>
+    ${toggle('badge', 'Show my heart and frame', 'By your name and around your card, on your profile, the leaderboard and in comparisons.')}
+    ${toggle('wall', 'List me on the Supporters page', 'Your name on <a href="supporters.html">the page that thanks supporters</a>.')}
+    ${toggle('early', 'Try new features first', 'New things are switched on for you a while before everyone else.')}
+    <p class="sup-k">Vote: what should be built next?</p><p class="info">Pick as many as you like. Only supporters vote.</p>
+    <ul class="sup-votes">${IDEAS.map(([k, t]) => `<li><label class="sup-vote"><input type="checkbox" data-vote="${k}"${votes.has(k) ? ' checked' : ''}><span>${esc(t)}</span><b data-count="${k}"></b></label></li>`).join('')}</ul>
+    <div class="sup-idea"><p>Something else? Chess Labs is made by the community, for the community.</p><button type="button" class="ghost" data-sup-idea>Suggest an idea</button></div>${err}
     ${st.customer ? '<button type="button" class="ghost sup-portal">Cancel the subscription or change card</button>' : ''}`;
+  const counts = () => api('?votes').then(({ counts: c }) => body.querySelectorAll('[data-count]').forEach((b) => { const n = c[b.dataset.count] || 0; b.textContent = n ? `${n} vote${n === 1 ? '' : 's'}` : ''; })).catch(() => {});
+  counts();
+  body.querySelectorAll('[data-pref]').forEach((c) => c.addEventListener('change', async () => {
+    try { const r = await api('', { prefs: { [c.dataset.pref]: c.checked } }); keepMine({ ...st, prefs: r.prefs }); if (c.dataset.pref === 'badge') location.reload(); }
+    catch (x) { c.checked = !c.checked; fail(x.message); }
+  }));
+  body.querySelectorAll('[data-vote]').forEach((c) => c.addEventListener('change', async () => {
+    c.checked ? votes.add(c.dataset.vote) : votes.delete(c.dataset.vote);
+    try { await api('', { votes: [...votes] }); counts(); } catch (x) { c.checked = !c.checked; fail(x.message); }
+  }));
   body.querySelectorAll('[data-frame]').forEach((b) => b.addEventListener('click', async () => {
     try {
       const { frame } = await api('', { frame: b.dataset.frame });

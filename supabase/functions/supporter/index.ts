@@ -1,7 +1,10 @@
 // supporter: who supports Chess Labs with a monthly Stripe subscription, and the frame each picked for
 // their card. The Lichess login is the key, checked with Lichess as in messages.
 // GET: every active supporter, [{ p: player, f: frame }] (public: the badge and frame show to everyone).
-// GET ?me: your own { active, frame, customer }. POST { frame }: pick your frame (supporters only).
+// GET ?me: your own { active, frame, customer, prefs, votes }. POST { frame }: pick your frame; POST { prefs }:
+// { badge, wall, early } (heart and frame shown to others, on the Supporters page, new features first); POST
+// { votes: [idea ids] }: the ideas you want built next (all three supporters only). GET ?votes: votes per idea.
+// The columns prefs (jsonb) and votes (jsonb) may be missing on an older table: read with select('*').
 // POST ?checkout: a Stripe Checkout page for the subscription, { url }. POST ?portal: Stripe's page to
 // change or cancel it, { url }. POST ?webhook: Stripe's events, which set who is active.
 // Admins only: GET ?all lists every row; POST ?admin { player, active } marks a player a supporter by hand (no Stripe).
@@ -77,10 +80,19 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   const q = new URL(req.url).searchParams;
   if (req.method === 'POST' && q.has('webhook')) return hook(req);
-  if (req.method === 'GET' && !q.has('me') && !q.has('all')) { // ?all is the admins' full list, below
-    const { data, error } = await db.from('supporters').select('player, frame').eq('active', true).limit(5000);
+  if (req.method === 'GET' && q.has('votes')) {
+    const { data, error } = await db.from('supporters').select('*').eq('active', true).limit(5000);
     if (error) return json({ error: 'error' }, 500);
-    return new Response(JSON.stringify(data.map((r) => ({ p: r.player, f: r.frame || 'holo' }))), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
+    const counts: Record<string, number> = {};
+    for (const r of data) for (const v of Array.isArray(r.votes) ? r.votes : []) counts[v] = (counts[v] || 0) + 1;
+    return json({ counts, voters: data.filter((r) => Array.isArray(r.votes) && r.votes.length).length });
+  }
+  if (req.method === 'GET' && !q.has('me') && !q.has('all')) { // ?all is the admins' full list, below
+    const { data, error } = await db.from('supporters').select('*').eq('active', true).limit(5000);
+    if (error) return json({ error: 'error' }, 500);
+    // Who chose to hide the heart and frame is left out; w: on the Supporters page.
+    const shown = data.filter((r) => r.prefs?.badge !== false).map((r) => ({ p: r.player, f: r.frame || 'holo', w: r.prefs?.wall === false ? 0 : 1, since: r.since }));
+    return new Response(JSON.stringify(shown), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
   }
   const id = await idOf(req.headers.get('x-lichess-token'));
   if (!id) return json({ error: 'Log in first.' }, 401);
@@ -100,8 +112,8 @@ Deno.serve(async (req) => {
     const { error } = await (had ? db.from('supporters').update(row).eq('player', player) : db.from('supporters').insert(row));
     return error ? json({ error: 'error' }, 500) : json({ ok: true });
   }
-  const { data: me } = await db.from('supporters').select('active, frame, customer').eq('player', id).maybeSingle();
-  if (req.method === 'GET') return json({ active: !!me?.active, frame: me?.frame || 'holo', customer: !!me?.customer });
+  const { data: me } = await db.from('supporters').select('*').eq('player', id).maybeSingle();
+  if (req.method === 'GET') return json({ active: !!me?.active, frame: me?.frame || 'holo', customer: !!me?.customer, prefs: me?.prefs || {}, votes: Array.isArray(me?.votes) ? me.votes : [] });
   if (req.method !== 'POST') return json({ error: 'bad' }, 405);
   try {
     if (q.has('checkout')) {
@@ -123,9 +135,20 @@ Deno.serve(async (req) => {
       return json({ url: s.url });
     }
   } catch (e) { return json({ error: (e as Error).message }, 502); }
-  let b: { frame?: unknown } = {};
+  let b: { frame?: unknown; prefs?: Record<string, unknown>; votes?: unknown } = {};
   try { b = JSON.parse(await req.text()); } catch { return json({ error: 'bad' }, 400); }
-  if (!me?.active) return json({ error: 'Frames are for supporters.' }, 403);
+  if (!me?.active) return json({ error: 'This is for supporters.' }, 403);
+  if (b.prefs && typeof b.prefs === 'object') {
+    const prefs = { ...(me.prefs || {}) };
+    for (const k of ['badge', 'wall', 'early']) if (typeof b.prefs[k] === 'boolean') prefs[k] = b.prefs[k];
+    const { error } = await db.from('supporters').update({ prefs, updated: new Date().toISOString() }).eq('player', id);
+    return error ? json({ error: 'Settings could not be saved yet.' }, 500) : json({ prefs });
+  }
+  if (Array.isArray(b.votes)) {
+    const votes = [...new Set(b.votes.filter((v) => typeof v === 'string' && /^[a-z0-9-]{1,40}$/.test(v)))].slice(0, 20);
+    const { error } = await db.from('supporters').update({ votes, updated: new Date().toISOString() }).eq('player', id);
+    return error ? json({ error: 'Votes could not be saved yet.' }, 500) : json({ votes });
+  }
   if (typeof b.frame !== 'string' || !FRAMES.includes(b.frame)) return json({ error: 'No such frame.' }, 400);
   const { error } = await db.from('supporters').update({ frame: b.frame, updated: new Date().toISOString() }).eq('player', id);
   return error ? json({ error: 'error' }, 500) : json({ frame: b.frame });

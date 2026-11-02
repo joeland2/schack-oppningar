@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102133851';
-import { openLogin } from './login.js?v=20261102133851';
-import { STYLE_OF } from './styles.js?v=20261102133851';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102133851';
-import { PEOPLE } from './pros.js?v=20261102133851';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102140058';
+import { openLogin } from './login.js?v=20261102140058';
+import { STYLE_OF } from './styles.js?v=20261102140058';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102140058';
+import { PEOPLE } from './pros.js?v=20261102140058';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1325,8 +1325,9 @@ function drawFrame(ctx, [kind, cs, glow]) {
   ctx.restore();
 }
 // One card, 600 x 780 units, top left at (x, y).
-function drawCard(ctx, x, y, name, p, t, skills, piece, flag = null) {
-  const known = skills.filter((k) => k.v !== null), ovr = known.length ? String(Math.round(sum(known, (k) => k.v) / known.length)) : '–', main = p.speeds[0];
+// k (0 to 1): how far the numbers and bars have counted up, for the video (cardVideo); 1 is the card as it is.
+function drawCard(ctx, x, y, name, p, t, skills, piece, flag = null, k = 1) {
+  const known = skills.filter((s) => s.v !== null), ovr = known.length ? String(Math.round(k * sum(known, (s) => s.v) / known.length)) : '–', main = p.speeds[0];
   const band = CARD.band(level(name, main));
   ctx.save(); ctx.translate(x, y);
   if (fxOf(name)) drawFrame(ctx, fxOf(name));
@@ -1359,12 +1360,12 @@ function drawCard(ctx, x, y, name, p, t, skills, piece, flag = null) {
   ctx.fillStyle = CARD.line; ctx.fillRect(40, 292, 520, 2); ctx.fillRect(40, 392, 520, 2);
   ctx.fillStyle = CARD.ink; ctx.textAlign = 'center'; fit(ctx, nick(name).toUpperCase(), '400 #px Anton', 60, 520); ctx.fillText(nick(name).toUpperCase(), 300, 366); ctx.textAlign = 'left';
   // The six skills as bars, in the card's colour.
-  skills.forEach((k, i) => {
+  skills.forEach((s, i) => {
     const cy = 452 + i * 50;
-    ctx.fillStyle = CARD.muted; ctx.font = '400 28px Anton'; ctx.fillText(ABBR[k.label], 44, cy);
+    ctx.fillStyle = CARD.muted; ctx.font = '400 28px Anton'; ctx.fillText(ABBR[s.label], 44, cy);
     ctx.fillStyle = CARD.line; ctx.beginPath(); ctx.roundRect(150, cy - 20, 330, 14, 3); ctx.fill();
-    if (k.v) { ctx.fillStyle = band; ctx.beginPath(); ctx.roundRect(150, cy - 20, 330 * k.v / 100, 14, 3); ctx.fill(); }
-    ctx.fillStyle = CARD.ink; ctx.font = '400 38px Anton'; ctx.textAlign = 'right'; ctx.fillText(String(k.v ?? '–'), 558, cy + 2); ctx.textAlign = 'left';
+    if (s.v) { ctx.fillStyle = band; ctx.beginPath(); ctx.roundRect(150, cy - 20, Math.max(1, 330 * k * s.v / 100), 14, 3); ctx.fill(); }
+    ctx.fillStyle = CARD.ink; ctx.font = '400 38px Anton'; ctx.textAlign = 'right'; ctx.fillText(s.v == null ? '–' : String(Math.round(s.v * k)), 558, cy + 2); ctx.textAlign = 'left';
   });
   ctx.fillStyle = CARD.muted; ctx.textAlign = 'center'; ctx.font = '600 20px Geist'; ctx.letterSpacing = '4px';
   ctx.fillText(`${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} GAMES`, 300, 738);
@@ -1478,6 +1479,39 @@ async function cardPng(name, p, t, skills, detail, btn) {
     const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')), file = new File([blob], `${nick(name)}-chess-${detail ? 'profile' : 'card'}-${cardLook()}.png`, { type: 'image/png' });
     await saveImage(blob, file, `${nick(name)}'s chess card`);
   } catch (err) { $('#profile-msg').textContent = `The image could not be made: ${err.message}`; }
+  btn.disabled = false; btn.textContent = label;
+}
+// The card as a short video, for supporters: it slides in, the overall and the skills count up, then it holds.
+// Recorded from the canvas as it plays (MP4 where the browser can, else WebM), about four seconds.
+async function cardVideo(name, p, t, skills, btn) {
+  const type = window.MediaRecorder && ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find((x) => MediaRecorder.isTypeSupported?.(x));
+  if (!type) { $('#profile-msg').textContent = 'This browser cannot make videos. Try Chrome, Edge, Firefox or Safari 14.1+.'; return; }
+  const label = btn.textContent; btn.disabled = true; btn.textContent = 'Making the video…';
+  window.track?.('card', `${name} · video · ${cardLook()} #${cardCode(p, t, skills)}`);
+  try {
+    CARD = CARDS[cardLook()];
+    await Promise.all(['400 40px Anton', '400 20px Geist', '600 20px Geist'].map((f) => document.fonts.load(f)));
+    const piece = await new Promise((ok) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = `pieces/${CARD.piece}${(p.piece || 'n').toUpperCase()}.svg`; });
+    const flag = await flagImage(name), S = 2, W = 680, H = 860;
+    const canvas = Object.assign(document.createElement('canvas'), { width: W * S, height: H * S }), ctx = canvas.getContext('2d');
+    const ease = (x) => 1 - (1 - Math.min(1, Math.max(0, x))) ** 3;
+    const frame = (s) => { // s: seconds in
+      ctx.setTransform(S, 0, 0, S, 0, 0); ctx.fillStyle = CARD.paper; ctx.fillRect(0, 0, W, H);
+      const a = ease(s / 0.5), z = 0.9 + 0.1 * a;
+      ctx.globalAlpha = a; ctx.translate(W / 2, H / 2 + (1 - a) * 40); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
+      drawCard(ctx, 40, 40, name, p, t, skills, piece, flag, ease((s - 0.4) / 1.6)); ctx.globalAlpha = 1;
+    };
+    frame(0);
+    const rec = new MediaRecorder(canvas.captureStream(30), { mimeType: type, videoBitsPerSecond: 6e6 }), parts = [];
+    rec.ondataavailable = (e) => e.data.size && parts.push(e.data);
+    const done = new Promise((ok) => { rec.onstop = ok; });
+    rec.start();
+    const t0 = performance.now();
+    await new Promise((ok) => { const step = () => { const s = (performance.now() - t0) / 1000; frame(s); if (s < 4.2) requestAnimationFrame(step); else ok(); }; requestAnimationFrame(step); });
+    rec.stop(); await done;
+    const ext = type.startsWith('video/mp4') ? 'mp4' : 'webm', blob = new Blob(parts, { type: type.split(';')[0] });
+    await saveImage(blob, new File([blob], `${nick(name)}-chess-card-${cardLook()}.${ext}`, { type: blob.type }), `${nick(name)}'s chess card`);
+  } catch (err) { $('#profile-msg').textContent = `The video could not be made: ${err.message}`; }
   btn.disabled = false; btn.textContent = label;
 }
 // The downloaded image as a canvas, in the given look: the card alone, or with detail the style image
@@ -1670,7 +1704,7 @@ function render(name, at, full) {
     ${accountsRow(name)}${combo && comboOwn ? comboRow() : ''}${nameRow(name)}${proLine(name)}${proBio(name, p)}
     <section class="pf-hero">
       <div class="pf-card-col">${playerCard(name, p, t, skills)}${combo ? '' : speedBar(name, full, sp, avail)}${combo ? '' : `<p class="pf-ago">${me ? 'Your' : 'The'} card from ${AGO.map(([m, t]) => `<a href="${agoLink(name, m)}">${t.replace(' ago', '')}</a>`).join(' · ')} ago</p>`}${me ? starsStrip() : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
-        <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button></div></details>${cardNote(name, p, me)}</div>
+        <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button>${me && window.supporterOf?.(name) ? '<button type="button" data-card-video title="The card counting up, about four seconds">Video</button>' : ''}</div></details>${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h2 class="pf-h1">${esc(t[0].name)}</h2>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}<a class="pf-all-styles" href="playstyles.html?s=${encodeURIComponent(t[0].name)}${t[1] ? `&t=${encodeURIComponent(t[1].name)}` : ''}">See all styles →</a></div>${tasteLine(p.styleMix, me)}</div>
@@ -1741,6 +1775,7 @@ function render(name, at, full) {
     if (k !== 'style') await cardPng(name, p, t, skills, false, b);
     if (k !== 'card') await cardPng(name, p, t, skills, true, b);
   }));
+  document.querySelector('[data-card-video]')?.addEventListener('click', (e) => { e.currentTarget.closest('details').open = false; cardVideo(name, p, t, skills, e.currentTarget); });
   bindSearch();
   if (!combo) { bindAnalyse(name); quickLook(name); }
   if (rise && !$('#profile .pf-skeleton')) { rise = false; const el = $('#profile'); el.classList.remove('pf-rise'); void el.offsetWidth; el.classList.add('pf-rise'); }
@@ -2484,7 +2519,7 @@ function renderCompare(A, B, speed = 'all', avail = []) {
   const lead = (x, y, dir) => (dir && x != null && y != null && x !== y ? ((x > y) === (dir > 0) ? 'a' : 'b') : '');
   $('#profile').innerHTML = `
     <div class="pf-players"><a class="ghost" href="${profileLink(A.name)}">← ${esc(nick(A.name))}</a><a class="ghost" href="${profileLink(B.name)}">${esc(nick(B.name))} →</a></div>
-    <header class="cmp-head"><h1 class="pf-h1"><a href="${profileLink(A.name)}">${esc(nick(A.name))}</a> <span>vs</span> <a href="${profileLink(B.name)}">${esc(nick(B.name))}</a></h1>
+    <header class="cmp-head"><h1 class="pf-h1"><a href="${profileLink(A.name)}" data-supporter-name="${esc(A.name.toLowerCase())}">${esc(nick(A.name))}</a> <span>vs</span> <a href="${profileLink(B.name)}" data-supporter-name="${esc(B.name.toLowerCase())}">${esc(nick(B.name))}</a></h1>
       <div class="pf-seg cmp-speeds" role="group" aria-label="Time control">${['all', ...SPEEDS].map((sp) => `<button type="button" data-speed="${sp}" aria-pressed="${sp === speed}" ${sp === 'all' || avail.includes(sp) ? '' : `disabled title="Fewer than ${MIN_SPEED} ${sp} games for one of you"`}>${sp === 'all' ? 'All games' : sp[0].toUpperCase() + sp.slice(1)}</button>`).join('')}</div>
       <p class="info cmp-scope">${speed === 'all' ? 'Every number below is from all rated games.' : `Every number below is from ${speed} games only, the same games as each profile's ${speed} card.`}</p></header>
     <section class="cmp-cards">

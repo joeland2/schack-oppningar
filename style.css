@@ -2853,3 +2853,15 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .login-why summary { cursor: pointer; color: var(--muted); font-size: 14px; }
 .login-why p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
 .gm-try-btns { display: inline-flex; gap: 8px; margin-left: 8px; vertical-align: middle; } /* game page: play from here */
+
+/* Supporters page: each supporter's name in the frame they picked */
+.sups-list { display: flex; flex-wrap: wrap; gap: 18px; margin: 24px 0; padding: 0; list-style: none; }
+.sups-list .sup-fx { display: block; text-decoration: none; } .sups-list .sup-fx::after { opacity: .35; }
+.sups-name { position: relative; z-index: 1; display: flex; align-items: center; gap: 6px; padding: 14px 20px; border-radius: 8px; background: var(--surface); color: var(--ink); font: 400 22px/1 var(--font-poster); text-transform: uppercase; letter-spacing: .02em; }
+.sups-join { margin-top: 8px; }
+/* Supporter settings: switches and votes */
+.sup-opt, .sup-vote { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; cursor: pointer; }
+.sup-opt input, .sup-vote input { margin-top: 3px; accent-color: var(--data); }
+.sup-opt span { display: grid; gap: 2px; } .sup-opt small { color: var(--muted); font-size: 13px; }
+.sup-votes { margin: 0; padding: 0; list-style: none; }
+.sup-vote span { flex: 1; } .sup-vote b { color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
