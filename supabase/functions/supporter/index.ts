@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   const q = new URL(req.url).searchParams;
   if (req.method === 'POST' && q.has('webhook')) return hook(req);
-  if (req.method === 'GET' && !q.has('me')) {
+  if (req.method === 'GET' && !q.has('me') && !q.has('all')) { // ?all is the admins' full list, below
     const { data, error } = await db.from('supporters').select('player, frame').eq('active', true).limit(5000);
     if (error) return json({ error: 'error' }, 500);
     return new Response(JSON.stringify(data.map((r) => ({ p: r.player, f: r.frame || 'holo' }))), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
