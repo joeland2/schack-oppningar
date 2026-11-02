@@ -266,9 +266,9 @@ addEventListener('DOMContentLoaded', () => {
     const row = document.querySelector('.foot-row');
     if (row) row.insertAdjacentHTML('beforeend', b);
     else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
-    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261102154900')).openChat());
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261102154930')).openChat());
     // Supporters: the hearts and card frames on every page, and Support (header and bottom) opens its dialog.
-    const sup = import('./supporter.js?v=20261102154900');
+    const sup = import('./supporter.js?v=20261102154930');
     document.addEventListener('click', async (e) => { if (e.target.closest('[data-support]')) (await sup).openSupport(); });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
@@ -305,4 +305,43 @@ addEventListener('DOMContentLoaded', () => {
   };
   addEventListener('pointerover', prefetch, { passive: true });
   addEventListener('touchstart', prefetch, { passive: true });
+})();
+
+// A Lichess challenge to you pops up on any page once you have allowed Play (board:play): Accept takes you to
+// Play, where the game starts. The Play page listens itself.
+(() => {
+  if (/play(\.html)?$/.test(location.pathname)) return;
+  let a = null;
+  try { a = JSON.parse(localStorage.getItem('chess-trainer-lichess-login')); } catch {}
+  if (!a || a.site || !String(a.scope || '').includes('board:play')) return;
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+  const auth = { Authorization: `Bearer ${a.token}` }, me = a.name.toLowerCase();
+  function show(c) {
+    if (document.querySelector(`[data-pop-ch="${c.id}"]`)) return;
+    const tc = c.timeControl?.limit ? `${c.timeControl.limit / 60}+${c.timeControl.increment}` : c.speed;
+    document.body.insertAdjacentHTML('beforeend', `<div class="ch-pop" role="alertdialog" aria-label="Challenge" data-pop-ch="${esc(c.id)}">
+      <p><b>${esc(c.challenger?.name)}</b>${c.challenger?.rating ? ` (${c.challenger.rating})` : ''} challenges you</p><small>${esc(tc)} · ${c.rated ? 'rated' : 'casual'} · on Chess Labs</small>
+      <div><button type="button" class="cta" data-acc>Accept</button><button type="button" class="ghost" data-dec>Decline</button></div></div>`);
+    const el = document.querySelector(`[data-pop-ch="${c.id}"]`), act = (w) => fetch(`https://lichess.org/api/challenge/${c.id}/${w}`, { method: 'POST', headers: auth });
+    el.querySelector('[data-acc]').addEventListener('click', () => act('accept').then(() => { location.href = 'play.html'; }));
+    el.querySelector('[data-dec]').addEventListener('click', () => { act('decline'); el.remove(); });
+  }
+  fetch('https://lichess.org/api/stream/event', { headers: auth }).then(async (r) => {
+    if (!r.ok) return;
+    const rd = r.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { done, value } = await rd.read();
+      if (done) return;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!line) continue;
+        const x = JSON.parse(line);
+        if (x.type === 'challenge' && x.challenge?.destUser?.id === me) show(x.challenge);
+        if (x.type === 'challengeCanceled' || x.type === 'challengeDeclined') document.querySelector(`[data-pop-ch="${x.challenge?.id}"]`)?.remove();
+      }
+    }
+  }).catch(() => {});
 })();
