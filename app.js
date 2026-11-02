@@ -1,16 +1,16 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102105001';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102105001';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102105001';
-import { NAMED_TRAPS } from './traps.js?v=20261102105001';
-import { GUIDE } from './guide.js?v=20261102105001';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102105001';
-import { maia3Move } from './maia3.js?v=20261102105001';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102105001';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261102105001';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102105001';
-import { openLogin } from './login.js?v=20261102105001';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102105001';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102105855';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102105855';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102105855';
+import { NAMED_TRAPS } from './traps.js?v=20261102105855';
+import { GUIDE } from './guide.js?v=20261102105855';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102105855';
+import { maia3Move } from './maia3.js?v=20261102105855';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102105855';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261102105855';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102105855';
+import { openLogin } from './login.js?v=20261102105855';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102105855';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3493,8 +3493,11 @@ document.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('clic
   if (OPENINGS.length) renderList();
 }));
 $('#back').addEventListener('click', showPicker);
-if (PHONE.matches) $('#filters').open = false; // a phone starts with them folded: all openings at your rating
-PHONE.addEventListener('change', (e) => { if (!e.matches) $('#filters').open = true; }); // on a computer the filters never fold
+// The filters fold away by their summary line, on a phone or a computer, and stay as you left them; a phone
+// starts with them folded (all openings at your rating), a computer open.
+{ const f = $('#filters'), was = load(STORE + '-filters', null);
+  f.open = was ? was === 'open' : !PHONE.matches;
+  f.addEventListener('toggle', () => store(STORE + '-filters', f.open ? 'open' : 'shut')); }
 $('#m-back').addEventListener('click', showPicker);
 // Typing a move: the keyboard's way to play, as if the piece and then its square were clicked.
 $('#move-form').addEventListener('submit', (e) => {

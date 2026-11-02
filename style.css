@@ -462,7 +462,6 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .filters > summary::-webkit-details-marker { display: none; }
 .filters > summary span { color: var(--muted); font-weight: 500; }
 .filters[open] .choices { margin: 12px 0 4px; }
-@media (min-width: 561px) { .filters > summary { display: none; } .filters[open] .choices { margin-top: 0; } }
 @media (max-width: 560px) {
   .top-in { padding-block: 10px; }
   .picker { display: flex; flex-direction: column; }
