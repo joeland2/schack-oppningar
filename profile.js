@@ -3,10 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin } from './lichess.js?v=20261102092343';
-import { STYLE_OF } from './styles.js?v=20261102092343';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102092343';
-import { PEOPLE } from './pros.js?v=20261102092343';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102093629';
+import { openLogin } from './login.js?v=20261102093629';
+import { STYLE_OF } from './styles.js?v=20261102093629';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102093629';
+import { PEOPLE } from './pros.js?v=20261102093629';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -483,10 +484,9 @@ console.assert(rawSkills({ peer: { analysed: 120, ups: 36, downs: 12, after12: 1
 // ---------- Fetching ----------
 async function fetchGames(name, onGame, since = null, perf = 'bullet,blitz,rapid,classical', until = null) {
   if (isCC(name)) return fetchCC(name, onGame, since, perf, MAX, until);
-  const a = account();
   const res = await fetch(`https://lichess.org/api/games/user/${encodeURIComponent(name)}?` + new URLSearchParams({
     max: MAX, ...(since ? { since } : {}), ...(until ? { until } : {}), rated: 'true', perfType: perf, moves: 'true', opening: 'true', clocks: 'true', evals: 'true', accuracy: 'true',
-  }), { headers: { Accept: 'application/x-ndjson', ...(a ? { Authorization: `Bearer ${a.token}` } : {}) } });
+  }), { headers: { Accept: 'application/x-ndjson', ...lichessAuth() } });
   if (res.status === 404) throw new Error(`Lichess has no player called ${name}.`);
   if (res.status === 429) throw new Error('Lichess is busy right now. Try again in a minute.');
   if (!res.ok) throw new Error(`Lichess answered with an error (${res.status}).`);
@@ -1156,8 +1156,8 @@ const accountsRow = (name) => {
 // On your own profile: add an account on either site, by name (no password).
 const linkForm = (name, open = false) => (isMe(name) && !proOf(name) ? `<form class="pf-link" data-link><label for="pf-link-in">${open ? 'Add an account:' : 'Play on another account too?'}</label>
   <select name="site" aria-label="Site"><option value="cc"${isCC(name) ? '' : ' selected'}>Chess.com</option><option value="li"${isCC(name) ? ' selected' : ''}>Lichess</option></select>
-  <input id="pf-link-in" name="u" autocomplete="off" spellcheck="false" placeholder="Username" required><button type="submit" class="ghost">Link</button><span class="pf-link-msg" role="status"></span>${account() ? '' : '<small class="pf-link-note">Kept in this browser only: <button type="button" class="link" data-link-login>log in with Lichess</button> to have it on every device.</small>'}</form>` : '');
-document.addEventListener('click', (e) => { if (e.target.closest('[data-link-login]')) login(); });
+  <input id="pf-link-in" name="u" autocomplete="off" spellcheck="false" placeholder="Username" required><button type="submit" class="ghost">Link</button><span class="pf-link-msg" role="status"></span>${account() ? '' : '<small class="pf-link-note">Kept in this browser only: <button type="button" class="link" data-link-login>log in</button> to have it on every device.</small>'}</form>` : '');
+document.addEventListener('click', (e) => { if (e.target.closest('[data-link-login]')) openLogin(); });
 // On Combined: which accounts count, each switched on or off (a game account you play badly on stays out), or unlinked.
 const comboRow = () => `<div class="pf-combo"><p class="pf-combo-k">Counts the games of</p><div class="pf-combo-list">${combo.map((n) => `<span class="pf-combo-acct">
   <button type="button" data-off="${esc(n)}" aria-pressed="${!isOff(n)}"><i aria-hidden="true"></i><small>${siteOf(n)}</small>${esc(nick(n))}</button>${same(n, myName()) ? '' : `<button type="button" class="link" data-unlink="${esc(n)}" aria-label="Unlink ${esc(nick(n))}" title="Unlink">×</button>`}</span>`).join('')}</div>${linkForm(myName(), true)}</div>`;
@@ -1927,8 +1927,7 @@ const RANGES = [['1W', 7], ['1M', 30], ['6M', 182], ['1Y', 365], ['All', Infinit
 const DAY = 864e5;
 async function historyOf(name, p) {
   if (!isCC(name)) try {
-    const a = account();
-    const res = await fetch(`https://lichess.org/api/user/${encodeURIComponent(name)}/rating-history`, a ? { headers: { Authorization: `Bearer ${a.token}` } } : {});
+    const res = await fetch(`https://lichess.org/api/user/${encodeURIComponent(name)}/rating-history`, { headers: lichessAuth() });
     const perfs = res.ok ? await res.json() : [];
     const h = {};
     for (const x of perfs) if (x.points.length) h[x.name.toLowerCase()] = x.points.map(([y, m, d, r]) => [Date.UTC(y, m, d), r]);
@@ -1963,7 +1962,7 @@ async function ratingChart(name, p) {
       <div class="pf-seg" role="group" aria-label="Time control">${speeds.map((k) => `<button type="button" data-speed="${k}" aria-pressed="${k === chartState.speed}">${k[0].toUpperCase() + k.slice(1)}</button>`).join('')}</div>
       <div class="pf-seg" role="group" aria-label="Period">${RANGES.map(([k]) => `<button type="button" data-range="${k}" aria-pressed="${k === chartState.range}">${k}</button>`).join('')}</div></div>
       ${pts.length < 2 ? '<p class="info">No rated games in this period.</p>' : lineChart(pts, from, end)}
-      ${covers ? '' : `<p class="info pf-note">The graph starts at ${new Date(first).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}, the oldest of the games read here. ${account() || isCC(name) ? '' : 'Lichess gives the full history only to someone logged in. <button type="button" class="link" data-chart-login>Log in with Lichess</button>'}</p>`}`;
+      ${covers ? '' : `<p class="info pf-note">The graph starts at ${new Date(first).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}, the oldest of the games read here. ${lichessAuth().Authorization || isCC(name) ? '' : 'Lichess gives the full history only to someone logged in. <button type="button" class="link" data-chart-login>Log in with Lichess</button>'}</p>`}`;
     el.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('click', () => { chartState.speed = b.dataset.speed; draw(); }));
     el.querySelectorAll('[data-range]').forEach((b) => b.addEventListener('click', () => { chartState.range = b.dataset.range; chartState.picked = true; draw(); }));
     el.querySelector('[data-chart-login]')?.addEventListener('click', login);
@@ -2019,10 +2018,10 @@ function hover(el) {
 
 function ask() {
   $('#profile').innerHTML = `<section class="picker"><h1>Your profile</h1>
-    <p class="info">Log in with Lichess and this page reads your last ${MAX} rated games: what kind of player you are, what you are good at, what to work on, and your stats.</p>
-    <p><button id="pf-login" class="cta" type="button">Log in with Lichess</button></p>
+    <p class="info">Log in (with Lichess, or with a Chess Labs account for your Chess.com name) and this page reads your last ${MAX} rated games: what kind of player you are, what you are good at, what to work on, and your stats.</p>
+    <p><button id="pf-login" class="cta" type="button">Log in</button></p>
     <p class="info">Or look up any player:</p>${search('Look up')}</section>`;
-  $('#pf-login').addEventListener('click', login);
+  $('#pf-login').addEventListener('click', openLogin);
   bindSearch();
 }
 
@@ -2535,9 +2534,7 @@ document.addEventListener('click', (e) => {
 // Last in the file, so every constant above is defined before the page draws.
 if ($('#profile')) { // the practice page imports this module for the above; only the profile page draws itself
   // The header's Log in (on every page) comes here, so the player lands on their own profile after it.
-  if (new URLSearchParams(location.search).has('login') && !account()) await login();
-  else {
-    try { await finishLogin(); } catch (err) { $('#profile-msg').textContent = err.message; } // back from logging in on this page
-    start();
-  }
+  try { await finishLogin(); } catch (err) { $('#profile-msg').textContent = err.message; } // back from logging in on this page
+  start();
+  if (new URLSearchParams(location.search).has('login') && !account()) openLogin();
 }

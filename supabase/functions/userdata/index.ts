@@ -14,14 +14,20 @@ const json = (x: unknown, status = 200) => new Response(JSON.stringify(x), { sta
 const KEY = /^[A-Za-z0-9:._-]{1,80}$/, MAX = 900_000; // characters in all, a player's whole store
 
 // Lichess says whose token it is; kept a while so a page's few calls ask Lichess once.
+// A Chess Labs account (the account function): its token is cl_…, kept hashed with the player it is ('cc:name').
+async function siteId(token: string, col = 'player') {
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const { data } = await db.from('site_sessions').select(col).eq('hash', hash).maybeSingle();
+  return (data as Record<string, string> | null)?.[col] ?? null;
+}
 const who = new Map<string, { id: string; at: number }>();
 async function idOf(token: string | null) {
   if (!token) return null;
   const c = who.get(token);
   if (c && Date.now() - c.at < 600_000) return c.id;
-  const r = await fetch('https://lichess.org/api/account', { headers: { Authorization: `Bearer ${token}` } });
-  if (!r.ok) return null;
-  const { id } = await r.json();
+  const id = token.startsWith('cl_') ? await siteId(token)
+    : await fetch('https://lichess.org/api/account', { headers: { Authorization: `Bearer ${token}` } }).then(async (r) => (r.ok ? (await r.json()).id : null));
+  if (!id) return null;
   who.set(token, { id, at: Date.now() });
   return id as string;
 }
@@ -49,7 +55,7 @@ Deno.serve(async (req) => {
     return json(Array.isArray(off) ? off.filter((x) => typeof x === 'string').slice(0, 20) : []);
   }
   const id = await idOf(req.headers.get('x-lichess-token'));
-  if (!id) return json({ error: 'Log in with Lichess first.' }, 401);
+  if (!id) return json({ error: 'Log in first.' }, 401);
   const { data: row, error } = await db.from('user_data').select('data').eq('id', id).maybeSingle();
   if (error) return json({ error: 'error' }, 500);
   const have: Record<string, { v: string | null; t: number }> = row?.data || {};

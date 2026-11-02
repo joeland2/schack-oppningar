@@ -16,14 +16,20 @@ const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SE
 const json = (x: unknown, status = 200) => new Response(JSON.stringify(x), { status, headers: { ...cors, 'content-type': 'application/json' } });
 const KEY = Deno.env.get('STRIPE_SECRET_KEY'), HOOK = Deno.env.get('STRIPE_WEBHOOK_SECRET'), PRICE = Deno.env.get('STRIPE_PRICE_ID');
 
+// A Chess Labs account (the account function): its token is cl_…, kept hashed with the player it is ('cc:name').
+async function siteId(token: string, col = 'player') {
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const { data } = await db.from('site_sessions').select(col).eq('hash', hash).maybeSingle();
+  return (data as Record<string, string> | null)?.[col] ?? null;
+}
 const who = new Map<string, { id: string; at: number }>();
 async function idOf(token: string | null) {
   if (!token) return null;
   const c = who.get(token);
   if (c && Date.now() - c.at < 600_000) return c.id;
-  const r = await fetch('https://lichess.org/api/account', { headers: { Authorization: `Bearer ${token}` } });
-  if (!r.ok) return null;
-  const { id } = await r.json();
+  const id = token.startsWith('cl_') ? await siteId(token)
+    : await fetch('https://lichess.org/api/account', { headers: { Authorization: `Bearer ${token}` } }).then(async (r) => (r.ok ? (await r.json()).id : null));
+  if (!id) return null;
   who.set(token, { id, at: Date.now() });
   return id as string;
 }
@@ -76,7 +82,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify(data.map((r) => ({ p: r.player, f: r.frame || 'holo' }))), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
   }
   const id = await idOf(req.headers.get('x-lichess-token'));
-  if (!id) return json({ error: 'Log in with Lichess first.' }, 401);
+  if (!id) return json({ error: 'Log in first.' }, 401);
   if (ADMINS.includes(id) && req.method === 'GET' && q.has('all')) {
     const { data, error } = await db.from('supporters').select('player, active, frame, customer, since').order('since', { ascending: false }).limit(5000);
     return error ? json({ error: 'error' }, 500) : json(data.map((r) => ({ ...r, customer: !!r.customer })));

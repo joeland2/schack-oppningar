@@ -13,8 +13,15 @@ const int = (x: unknown, lo: number, hi: number) => (Number.isFinite(x) ? Math.r
 const num = (x: unknown, lo: number, hi: number) => (Number.isFinite(x) ? Math.max(lo, Math.min(hi, x as number)) : null);
 const str = (x: unknown, n: number) => (typeof x === 'string' && x ? x.slice(0, n) : null);
 
+// A Chess Labs account (the account function): its token is cl_…, kept hashed with the player it is ('cc:name').
+async function siteId(token: string, col = 'player') {
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const { data } = await db.from('site_sessions').select(col).eq('hash', hash).maybeSingle();
+  return (data as Record<string, string> | null)?.[col] ?? null;
+}
 async function whoIs(token: unknown) {
   if (typeof token !== 'string' || !token) return null;
+  if (token.startsWith('cl_')) return siteId(token, 'name');
   const r = await fetch('https://lichess.org/api/account', { headers: { Authorization: `Bearer ${token}` } });
   return r.ok ? ((await r.json()).username as string) : null;
 }

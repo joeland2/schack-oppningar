@@ -7,8 +7,23 @@ const CLIENT = 'chess-trainer-openings';
 const back = () => location.origin + location.pathname;
 const b64 = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
+// Logged in with Lichess, or with a Chess Labs account ({ token: 'cl_…', name: 'cc:<Chess.com name>', site: true },
+// from the account function): both keep the same shape, and only a Lichess token goes to Lichess.
 export function account() {
   try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; }
+}
+export const lichessToken = () => { const a = account(); return a && !a.site ? a.token : null; };
+export const lichessAuth = () => (lichessToken() ? { Authorization: `Bearer ${lichessToken()}` } : {});
+
+const ACCOUNT = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/account';
+// Make a Chess Labs account, or log in to one: what (signup or login) with { email, password, chesscom }.
+export async function siteLogin(what, body) {
+  const r = await fetch(`${ACCOUNT}?${what}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
+  const x = await r?.json().catch(() => ({})) || {};
+  if (!r?.ok) throw new Error(x.error || 'Could not reach Chess Labs. Try again in a minute.');
+  try { localStorage.setItem(KEY, JSON.stringify({ token: x.token, name: x.name, site: true })); } catch {}
+  window.track?.('login', x.name);
+  return x;
 }
 
 export async function login() {
@@ -47,20 +62,21 @@ export async function finishLogin() {
 export function logout() {
   const a = account();
   try { localStorage.removeItem(KEY); } catch {}
-  if (a) fetch('https://lichess.org/api/token', { method: 'DELETE', headers: { Authorization: `Bearer ${a.token}` } }).catch(() => {});
+  if (a?.site) fetch(`${ACCOUNT}?logout`, { method: 'POST', headers: { 'x-lichess-token': a.token } }).catch(() => {});
+  else if (a) fetch('https://lichess.org/api/token', { method: 'DELETE', headers: { Authorization: `Bearer ${a.token}` } }).catch(() => {});
 }
 
 // Real games from all of Lichess for one position: { white, draws, black, moves: [{ san, white, draws,
 // black }] }, most played first. Null when you are not logged in or Lichess does not answer in time.
 const LIVE = new Map();
 export function liveGames(fen, ratings, speed) {
-  const a = account();
-  if (!a) return Promise.resolve(null);
+  const token = lichessToken();
+  if (!token) return Promise.resolve(null);
   const url = 'https://explorer.lichess.org/lichess?' + new URLSearchParams({
     variant: 'standard', fen, speeds: speed, ratings: ratings.join(','), topGames: 0, recentGames: 0,
   });
   if (!LIVE.has(url)) {
-    LIVE.set(url, fetch(url, { headers: { Authorization: `Bearer ${a.token}` }, signal: AbortSignal.timeout(5000) })
+    LIVE.set(url, fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000) })
       .then((r) => {
         if (r.status === 401) logout(); // the token was revoked on Lichess
         if (!r.ok) { LIVE.delete(url); return null; }

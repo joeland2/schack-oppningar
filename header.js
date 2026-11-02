@@ -53,13 +53,14 @@
     // Logged out, Log in sits in the top row instead (Openings has its own button there).
     nav?.querySelector('a[href="profile.html"]')?.remove();
     nav?.querySelector('a[href="practice.html"]')?.remove();
-    if (!user() && !document.querySelector('#lichess-login')) at?.insertAdjacentHTML('beforebegin', '<a class="top-login" href="profile.html?login" title="Log in with Lichess to see your profile">Log in</a>');
+    if (!user() && !document.querySelector('#lichess-login')) at?.insertAdjacentHTML('beforebegin', '<a class="top-login" href="profile.html?login" title="Log in to see your profile">Log in</a>');
     nav?.insertAdjacentHTML('beforeend', `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a><a href="stars.html"${page === 'stars.html' ? ' aria-current="page"' : ''}>PRO/VIP</a><a href="playstyles.html"${page === 'playstyles.html' ? ' aria-current="page"' : ''}>Styles</a>`);
     const who = user();
     if (who) {
       const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`), btn = document.querySelector('#lichess-login');
       const cur = (p) => (page === p ? ' aria-current="page"' : '');
-      const head = btn ? `<span class="top-me-name">${esc(who)}</span>` : rating ? `<span class="top-me-who"><b>${esc(who)}</b><small>Your profile</small></span><strong title="${esc(speed)} rating">${esc(rating)}</strong><i class="top-me-chev" aria-hidden="true">▾</i>` : `<span class="top-me-name">${esc(who)}</span>`;
+      const shownName = who.replace(/^cc:/i, ''); // a Chess Labs account is its Chess.com name
+      const head = btn ? `<span class="top-me-name">${esc(shownName)}</span>` : rating ? `<span class="top-me-who"><b>${esc(shownName)}</b><small>Your profile</small></span><strong title="${esc(speed)} rating">${esc(rating)}</strong><i class="top-me-chev" aria-hidden="true">▾</i>` : `<span class="top-me-name">${esc(shownName)}</span>`;
       const menu = `<details class="top-me"><summary class="${rating && !btn ? 'top-bug' : ''}" title="Your profile">${head}</summary><div class="top-me-menu">
         <a href="profile.html?u=${encodeURIComponent(who)}"${cur('profile.html')}>Profile</a><a href="practice.html"${cur('practice.html')}>My practice</a><button type="button" class="top-me-out">Log out</button></div></details>`;
       if (btn) { btn.insertAdjacentHTML('beforebegin', menu); btn.style.display = 'none'; } // Openings: in place of its name button
@@ -72,11 +73,12 @@
         me.querySelector('summary').addEventListener('click', (e) => { e.preventDefault(); location.href = `profile.html?u=${encodeURIComponent(who)}`; });
       }
       addEventListener('click', (e) => { if (me.open && !me.contains(e.target)) me.open = false; });
-      // Log out (as lichess.js logout(), which this plain script cannot import): forget the login, and revoke its token on Lichess.
+      // Log out (as lichess.js logout(), which this plain script cannot import): forget the login, and end it on Lichess or here.
       me.querySelector('.top-me-out').addEventListener('click', () => {
-        let tk = null;
-        try { tk = JSON.parse(localStorage.getItem('chess-trainer-lichess-login'))?.token; localStorage.removeItem('chess-trainer-lichess-login'); } catch {}
-        if (tk) fetch('https://lichess.org/api/token', { method: 'DELETE', keepalive: true, headers: { Authorization: `Bearer ${tk}` } }).catch(() => {});
+        let tk = null, site = false;
+        try { ({ token: tk, site } = JSON.parse(localStorage.getItem('chess-trainer-lichess-login')) || {}); localStorage.removeItem('chess-trainer-lichess-login'); } catch {}
+        if (tk && site) fetch('https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/account?logout', { method: 'POST', keepalive: true, headers: { 'x-lichess-token': tk } }).catch(() => {}); // a Chess Labs account
+        else if (tk) fetch('https://lichess.org/api/token', { method: 'DELETE', keepalive: true, headers: { Authorization: `Bearer ${tk}` } }).catch(() => {});
         location.href = './';
       });
     }
@@ -257,9 +259,9 @@ addEventListener('DOMContentLoaded', () => {
     const row = document.querySelector('.foot-row');
     if (row) row.insertAdjacentHTML('beforeend', b);
     else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
-    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261102092343')).openChat());
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261102093629')).openChat());
     // Supporters: the hearts and card frames on every page, and Support (header and bottom) opens its dialog.
-    const sup = import('./supporter.js?v=20261102092343');
+    const sup = import('./supporter.js?v=20261102093629');
     document.addEventListener('click', async (e) => { if (e.target.closest('[data-support]')) (await sup).openSupport(); });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();

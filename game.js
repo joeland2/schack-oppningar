@@ -3,10 +3,10 @@
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261102092343';
-import { account } from './lichess.js?v=20261102092343';
-import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261102092343';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261102092343';
+import { drawBoard } from './board.js?v=20261102093629';
+import { account, lichessAuth } from './lichess.js?v=20261102093629';
+import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261102093629';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261102093629';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -26,9 +26,8 @@ async function load() {
   g = [name, ...['bullet', 'blitz', 'rapid', 'classical'].map((sp) => `${name}~${sp}`)].map((k) => (storedGames(k) || []).find((x) => x.id === id)).find(Boolean); // the player's games, or a time control's own
   if (!g) {
     $('#profile-msg').textContent = 'Fetching the game from Lichess…';
-    const a = account();
     const res = await fetch(`https://lichess.org/game/export/${encodeURIComponent(id)}?` + new URLSearchParams({ evals: 'true', clocks: 'true', opening: 'true', accuracy: 'true' }),
-      { headers: { Accept: 'application/json', ...(a ? { Authorization: `Bearer ${a.token}` } : {}) } });
+      { headers: { Accept: 'application/json', ...lichessAuth() } });
     if (!res.ok) throw new Error(`Lichess has no game ${id}.`);
     g = await res.json();
     $('#profile-msg').textContent = '';

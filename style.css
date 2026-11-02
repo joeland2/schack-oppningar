@@ -2764,7 +2764,7 @@ a.st-wk:hover h2 { text-decoration: underline; }
 }
 .msg-foot { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .sup-dlg { width: min(560px, calc(100vw - 32px)); }
-.sup-body { padding: 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; overflow-y: auto; overflow-wrap: anywhere; }
+.sup-body { padding: 18px; display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; gap: 12px; overflow-y: auto; overflow-wrap: anywhere; }
 .sup-body p { margin: 0; }
 .sup-perks { margin: 0; padding-left: 18px; color: var(--muted); display: grid; gap: 4px; }
 .sup-k { font: 600 11px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
@@ -2811,3 +2811,15 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .sup-lead { font-size: 16px; }
 .sup-idea { display: grid; gap: 10px; padding: 14px; border: 1px dashed var(--line); border-radius: 8px; }
 .sup-idea .ghost { justify-self: start; }
+/* The Log in dialog: Lichess, or a Chess Labs account with a Chess.com name. */
+.login-or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+.login-or::before, .login-or::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.login-tabs { justify-self: start; }
+.login-form { display: grid; gap: 12px; }
+.login-form label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
+.login-form label[hidden] { display: none; }
+.login-form input { font: inherit; font-weight: 400; padding: 9px 11px; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius); }
+.login-form small { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.login-form .chat-err { padding: 0; }
+.login-why summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+.login-why p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }

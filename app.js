@@ -1,15 +1,16 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102092343';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102092343';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102092343';
-import { NAMED_TRAPS } from './traps.js?v=20261102092343';
-import { GUIDE } from './guide.js?v=20261102092343';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102092343';
-import { maia3Move } from './maia3.js?v=20261102092343';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102092343';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261102092343';
-import { login, finishLogin, account, liveGames } from './lichess.js?v=20261102092343';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102092343';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102093629';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102093629';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102093629';
+import { NAMED_TRAPS } from './traps.js?v=20261102093629';
+import { GUIDE } from './guide.js?v=20261102093629';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102093629';
+import { maia3Move } from './maia3.js?v=20261102093629';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102093629';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261102093629';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102093629';
+import { openLogin } from './login.js?v=20261102093629';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102093629';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -865,7 +866,7 @@ async function findTeachers(name) {
   const el = $('#learn-from');
   const done = (html) => { el.hidden = false; el.innerHTML = html; };
   const stop = (t) => done(`<h2>A player to learn from</h2><p class="lf-now">${t}</p>`);
-  const token = account()?.token;
+  const token = lichessToken();
   if (!token) { stop('Searching needs the Lichess opening explorer, which needs you to log in. <button type="button" class="link" id="lf-login">Log in with Lichess</button>'); return $('#lf-login').addEventListener('click', login); }
   if (!lastGames) return stop('Check your games first.');
   const me = analyse(lastGames.games, name), o = me.openings.find((x) => x.games >= 5);
@@ -3698,34 +3699,34 @@ if (!account()) Promise.all([fetch('https://duhlvhjtxoofgnjegspa.supabase.co/fun
 // ---------- Lichess login ----------
 // Logged in, the rating is always your own from Lichess; only without a login can it be typed in.
 function lockRating() {
-  const a = account(), el = $('#rating');
+  const a = lichessToken() && account(), el = $('#rating'); // a Chess Labs account has no Lichess rating to fill in
   el.readOnly = !!a;
   el.title = a ? `Your Lichess ${speed} rating, filled in from ${a.name}'s account` : 'Your Lichess rating: change it to see the openings of another level';
 }
 function renderLogin() {
   lockRating();
   const a = account(), b = $('#lichess-login');
-  b.textContent = a ? a.name : 'Log in';
+  b.textContent = a ? nick(a.name) : 'Log in';
   b.classList.toggle('acct-login', !a); // logged out: Log in, always in the top row
-  b.title = a ? `Logged in to Lichess as ${a.name}: your profile (log out there)`
-    : 'Log in with Lichess: play-outs then follow real games from all of Lichess, and your rating and games are filled in.';
+  b.title = a ? `Logged in as ${nick(a.name)}: your profile (log out there)`
+    : 'Log in: with Lichess, play-outs follow real games from all of Lichess, and your rating and games are filled in.';
   b.setAttribute('aria-pressed', String(!!a));
   // Logged out: a note under the rating on what filling it in gives, until closed.
   $('#rating-hint').hidden = !!a || load(STORE + '-hint-closed', false);
 }
-$('[data-hint-login]').addEventListener('click', (e) => { e.preventDefault(); login(); });
+$('[data-hint-login]').addEventListener('click', (e) => { e.preventDefault(); openLogin(); });
 $('[data-hint-close]').addEventListener('click', (e) => { e.preventDefault(); store(STORE + '-hint-closed', true); $('#rating-hint').hidden = true; });
 $('#rating').addEventListener('change', () => { $('#rating-hint').hidden = true; }); // typed in: done
 $('#lichess-login').addEventListener('click', () => {
   const a = account();
-  if (!a) return login();
+  if (!a) return openLogin();
   location.href = `profile.html?u=${encodeURIComponent(a.name)}`;
 });
 renderLogin();
 // Logged in: your Lichess ratings fill in on every visit and stay current, so the openings match your level.
 async function ratingsFromLichess() {
   const a = account();
-  if (!a) return;
+  if (!a || a.site) return;
   try {
     const res = await fetch(`https://lichess.org/api/user/${encodeURIComponent(a.name)}`);
     if (!res.ok) return;
