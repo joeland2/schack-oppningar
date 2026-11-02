@@ -4,6 +4,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const ADMINS = ['joelandersson', 'sicko88'];
+// Who a token belongs to, kept 10 minutes: Lichess limits how often one server may ask.
+const whoIs = new Map<string, { id: string; at: number }>();
 const DAYS = 30; // the lists (pages, countries, …) cover the last 30 days; visitors and the graph all time
 const TZ = 'Europe/Stockholm'; // hours and weekdays are the admin's
 // Not people: the setup test, the assistant's test browser, and automated browsers in Amazon's cloud
@@ -90,7 +92,6 @@ function insights(rows: Ev[], now = Date.now()) {
 }
 // insights:end
 
-const who = new Map<string, { id: string; at: number }>();
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   const token = req.headers.get('x-lichess-token');
@@ -98,7 +99,7 @@ Deno.serve(async (req) => {
   // Who you are, kept 10 minutes per token: Lichess limits how often one server may ask.
   let id = '';
   try {
-  const known = who.get(token);
+  const known = whoIs.get(token);
   id = known && known.at > Date.now() - 600_000 ? known.id : '';
   if (!id) {
     let me: Response | null = null;
@@ -106,7 +107,7 @@ Deno.serve(async (req) => {
     if (me?.status === 401) return json({ error: 'Lichess did not accept the login. Log in again.' }, 401);
     if (!me?.ok) return json({ error: `Lichess is busy (${me?.status || 'no answer'}). Try again in a minute.` }, 503);
     id = String((await me.json()).id || '');
-    who.set(token, { id, at: Date.now() });
+    whoIs.set(token, { id, at: Date.now() });
   }
   } catch (e) { return json({ error: `Login check failed: ${(e as Error).message}` }, 500); }
   if (!ADMINS.includes(id)) return json({ error: 'This page is for the admins only.' }, 403);
