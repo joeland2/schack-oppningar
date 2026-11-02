@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102142413';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102142413';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102142413';
-import { NAMED_TRAPS } from './traps.js?v=20261102142413';
-import { GUIDE } from './guide.js?v=20261102142413';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102142413';
-import { banner, confetti } from './celebrate.js?v=20261102142413';
-import { maia3Move } from './maia3.js?v=20261102142413';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102142413';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261102142413';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102142413';
-import { openLogin } from './login.js?v=20261102142413';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102142413';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102142642';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102142642';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102142642';
+import { NAMED_TRAPS } from './traps.js?v=20261102142642';
+import { GUIDE } from './guide.js?v=20261102142642';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102142642';
+import { banner, confetti } from './celebrate.js?v=20261102142642';
+import { maia3Move } from './maia3.js?v=20261102142642';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102142642';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261102142642';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102142642';
+import { openLogin } from './login.js?v=20261102142642';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102142642';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1455,7 +1455,7 @@ function renderWhy() {
   // are about the move to play at the line's end, so they go once you have played on.
   if (ply >= line.length && hist.length === endLen) {
     lineDone = `<p class="done-head"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${lineName(lines[lineIdx])} done</p>${learnedFacts()}`;
-    lineMore = `<details class="done-more"><summary>Why this is good for you</summary>${lineWhy()}</details>`;
+    lineMore = `<details class="done-more" open><summary>Why this is good for you</summary>${lineWhy()}</details>`;
   }
   // "How to go on" is for the moment you start playing on: shown at the line's end, gone once you move.
   let tips = '';
@@ -2563,7 +2563,7 @@ const trapStory = (l) => (l.trap.kind === 'named'
   ? `The ${l.trap.name}, a known trap. ${l.trap.share ? `About 1 in ${Math.round(1 / l.trap.share)} opponents at your level fall for <b>${trapMove(l.trap)}</b> here. ` : `Players at your level rarely reach it, but it is worth knowing. `}${slipGives(l.trap)}${scoreAfter(l.trap)}This line shows how to spring it.`
   : `${howOften(l.trap)} <b>${trapMove(l.trap)}</b> here. ${l.trap.kind === 'trap' && l.trap.win
   ? `It loses ${l.trap.win}` : l.trap.kind === 'mistake' ? `It is no blunder, but it hands you the easier game. ${mistakeWhy(l.trap)?.why.replace(/\.$/, '') || 'It costs time'}` : 'It lets you win'}${scoreAfter(l.trap, (p) => `: you score ${p} after it`)}. This line shows how to punish it.`);
-const TRAPS_KEY = STORE + '-traps'; // { [fen before | move]: { kind, win } }, so Stockfish looks once
+const TRAPS_KEY = STORE + '-traps-v2'; // { [fen before | move]: { kind, win } }, so Stockfish looks once
 // What a run of moves wins for the side to move at its start: the pieces each side loses, as words.
 function winOf(fen, pv) {
   const g = new Chess(fen), me = g.turn(), lost = { [me]: [], other: [] };
@@ -2595,13 +2595,14 @@ async function classifyTraps() {
       const drop = toCp(before) + toCp(after); // what the slip cost its player, in centipawns
       const w = after.mate > 0 ? { mate: true } : winOf(g.fen(), after.pv);
       // The answer to the slip: Stockfish's best move where the line's own next move (the one most
-      // players at your level make) gives away a pawn or more of it, e.g. 4...e6?? 5.exd5, not 5.Nf3.
+      // players at your level make) gives away half a pawn or more of it, e.g. 4...e6?? 5.exd5, not 5.Nf3, or
+      // 3...Nxe4 4.Qh5, not 4.Nxe4 (which only wins the piece back to equal).
       let answer = null;
       const best = after.move && new Chess(g.fen()).move(after.move), next = l.moves[t.ply + 1];
       if (best && next && clean(best.san) !== clean(next)) {
         const g2 = new Chess(g.fen()); g2.move(next);
         const alt = await search(g2.fen(), { ms: 600 });
-        if (alt && toCp(after) + toCp(alt) >= 100) answer = clean(best.san);
+        if (alt && toCp(after) + toCp(alt) >= 50) answer = clean(best.san);
       }
       known[key] = { ...(w.mate ? { kind: 'trap', win: 'the game: there is a mate' }
         : w.net >= 1 && drop >= 100 ? { kind: 'trap', win: w.text } : { kind: 'mistake' }), answer };
