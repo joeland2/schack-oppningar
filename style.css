@@ -2866,6 +2866,7 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .sups-name { position: relative; z-index: 1; display: flex; align-items: center; gap: 6px; padding: 14px 20px; border-radius: 8px; background: var(--surface); color: var(--ink); font: 400 22px/1 var(--font-poster); text-transform: uppercase; letter-spacing: .02em; }
 .sups-k { margin: 0 0 6px; font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .sups-page .pf-h1 { text-wrap: balance; }
+.sups-page { align-content: start; } /* the page is a tall grid: rows at their own height, not spread out */
 .sups-stats { display: flex; flex-wrap: wrap; gap: 28px; margin: 24px 0 30px; }
 .sups-stats div { padding-left: 12px; border-left: 3px solid var(--line); } .sups-stats div:first-child { border-color: var(--data); }
 .sups-stats dt { font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
