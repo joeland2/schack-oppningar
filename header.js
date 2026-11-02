@@ -34,8 +34,12 @@
     if (!msg || /^Script error\.?$/.test(msg) || said.has(msg) || said.size >= 5) return;
     said.add(msg); window.track('error', msg);
   };
-  addEventListener('error', (e) => window.trackError(e.message));
-  addEventListener('unhandledrejection', (e) => window.trackError(e.reason?.message || e.reason));
+  // Only errors in the site's own files, with where they happened (file:line), so one can be found; what a
+  // browser or an extension adds to the page (window.ethereum, __gCrWeb) is not ours.
+  const at = (file, line) => { const f = String(file || '').match(/\/([\w-]+\.js)/)?.[1]; return f ? ` (${f}:${line || '?'})` : ''; };
+  const ours = (file) => !file || String(file).startsWith(location.origin);
+  addEventListener('error', (e) => { if (ours(e.filename) && !/ethereum|__gCrWeb/.test(e.message)) window.trackError(`${String(e.message).slice(0, 130)}${at(e.filename, e.lineno)}`); });
+  addEventListener('unhandledrejection', (e) => { const r = e.reason, m = String(r?.stack || '').match(/\/[\w-]+\.js[^:]*:(\d+)/); window.trackError(`${String(r?.message || r).slice(0, 130)}${m ? at(m[0], m[1]) : ''}`); });
   // The admin's own menu has an Admin link (the page itself checks the login with Lichess).
   addEventListener('DOMContentLoaded', () => {
     // The scorebug: your rating on every page (Openings has its own, editable one), to your profile.
@@ -259,9 +263,9 @@ addEventListener('DOMContentLoaded', () => {
     const row = document.querySelector('.foot-row');
     if (row) row.insertAdjacentHTML('beforeend', b);
     else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
-    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261102133050')).openChat());
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261102133206')).openChat());
     // Supporters: the hearts and card frames on every page, and Support (header and bottom) opens its dialog.
-    const sup = import('./supporter.js?v=20261102133050');
+    const sup = import('./supporter.js?v=20261102133206');
     document.addEventListener('click', async (e) => { if (e.target.closest('[data-support]')) (await sup).openSupport(); });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();

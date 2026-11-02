@@ -2,6 +2,8 @@
 // per address, so the old address hands it over once: it sends this browser's saved keys along in the
 // link's #fragment (never sent to any server) to the same page on the new address, which saves the ones
 // it does not have yet and drops the fragment. Loaded first on every page, before anything reads storage.
+// Array/String .at() for older Safari (before 15.4), which the site's code uses throughout.
+for (const C of [Array, String]) if (!C.prototype.at) Object.defineProperty(C.prototype, 'at', { configurable: true, writable: true, value(i) { i = Math.trunc(i) || 0; if (i < 0) i += this.length; return i < 0 || i >= this.length ? undefined : this[i]; } });
 (() => {
   const NEW = 'https://chesslabs.gg', OLD = 'joeland2.github.io', TAG = '#moved=';
   const skip = (k) => k === 'chess-trainer-sync' || /-(sf|games|profiles)$/.test(k); // caches, fetched again
