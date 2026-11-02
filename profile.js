@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102095340';
-import { openLogin } from './login.js?v=20261102095340';
-import { STYLE_OF } from './styles.js?v=20261102095340';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102095340';
-import { PEOPLE } from './pros.js?v=20261102095340';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102100138';
+import { openLogin } from './login.js?v=20261102100138';
+import { STYLE_OF } from './styles.js?v=20261102100138';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102100138';
+import { PEOPLE } from './pros.js?v=20261102100138';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1683,7 +1683,6 @@ function render(name, at, full) {
     ${opponentsCard(p, me, name)}
     <section class="pf-card" id="pf-games"></section>
     ${me ? starsCard() : ''}
-    ${me && !isCC(name) ? privacyCard() : ''}
     ${nextActions(name, me, skills)}
     <section class="pf-about-data">
       <h2>About these numbers</h2>
@@ -1855,27 +1854,40 @@ const PANELS = [['chart', 'Rating graph', '#pf-chart'], ['kpis', 'Key numbers', 
 const HIDE = 'opening-book-v2-hidden';
 const myHidden = () => { try { return JSON.parse(localStorage.getItem(HIDE)) || []; } catch { return []; } };
 const HIDDEN = {};
-const hiddenOf = (name) => (HIDDEN[name.toLowerCase()] ??= isCC(name) ? Promise.resolve([])
-  : fetch(`https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/userdata?hidden=${encodeURIComponent(name.toLowerCase())}`).then((r) => (r.ok ? r.json() : [])).catch(() => []));
-// Your own profile shows everything, the hidden parts marked; a visitor's leaves them out.
+const hiddenOf = (name) => (HIDDEN[name.toLowerCase()] ??= fetch(`https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/userdata?hidden=${encodeURIComponent(name.toLowerCase())}`).then((r) => (r.ok ? r.json() : [])).catch(() => []));
+// Your own profile shows everything, each part with a label (Public or Only you) that switches it; a visitor's
+// leaves the hidden parts out.
 function applyHidden(name, me) {
-  if (me) { const off = myHidden(); for (const [k, , sel] of PANELS) $(`#profile ${sel}`)?.toggleAttribute('data-private', off.includes(k)); return; }
+  if (me) return labels();
   hiddenOf(name).then((off) => { if (shown?.[0] !== name || !Array.isArray(off)) return; for (const [k, , sel] of PANELS) if (off.includes(k)) $(`#profile ${sel}`)?.setAttribute('data-off', ''); });
 }
-function privacyCard() {
-  const off = myHidden();
-  return `<section class="pf-card pf-privacy"><h2>What others see</h2>${account()
-    ? `<p class="info">Everyone who opens your profile sees all of it, unless you untick a part here.</p>
-      <div class="pf-priv-list">${PANELS.map(([k, label]) => `<label><input type="checkbox" data-panel="${k}"${off.includes(k) ? '' : ' checked'}> ${label}</label>`).join('')}</div>`
-    : '<p class="info"><button type="button" class="link" data-link-login>Log in with Lichess</button> to choose which parts of your profile others see.</p>'}</section>`;
+function labels() {
+  const on = shown && isMe(shown[0]) && account(), off = myHidden();
+  for (const [k, label, sel] of PANELS) {
+    const el = $(`#profile ${sel}`);
+    if (!el) continue;
+    let b = el.querySelector(':scope > .pf-vis');
+    if (!on) { b?.remove(); continue; }
+    const hid = off.includes(k), state = hid ? 'off' : 'on';
+    el.toggleAttribute('data-private', hid);
+    if (b?.dataset.state === state) continue; // unchanged: no write, so the observer below stays quiet
+    if (!b) { el.insertAdjacentHTML('beforeend', `<button type="button" class="pf-vis" data-panel="${k}"></button>`); b = el.lastElementChild; }
+    b.dataset.state = state;
+    b.innerHTML = `<i aria-hidden="true"></i>${hid ? 'Only you' : 'Public'}`;
+    b.title = hid ? `${label}: only you see it. Tap to show it to everyone` : `${label}: everyone sees it. Tap so only you do`;
+    b.setAttribute('aria-pressed', String(!hid));
+  }
 }
-document.addEventListener('change', (e) => {
-  const box = e.target.closest?.('#profile [data-panel]');
-  if (!box) return;
+// Parts drawn later (the graph, the trend, the games) get their label as they appear.
+let labelling = false;
+new MutationObserver(() => { if (!labelling) { labelling = true; requestAnimationFrame(() => { labelling = false; labels(); }); } }).observe($('#profile') || document.body, { childList: true, subtree: true });
+document.addEventListener('click', (e) => {
+  const b = e.target.closest?.('#profile .pf-vis');
+  if (!b) return;
   const off = new Set(myHidden());
-  if (box.checked) off.delete(box.dataset.panel); else off.add(box.dataset.panel);
+  if (off.has(b.dataset.panel)) off.delete(b.dataset.panel); else off.add(b.dataset.panel);
   try { localStorage.setItem(HIDE, JSON.stringify([...off])); } catch {}
-  if (shown) applyHidden(shown[0], true);
+  labels();
 });
 function starsCard() {
   const { ops, sum } = starCounts();
