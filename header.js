@@ -259,10 +259,43 @@ addEventListener('DOMContentLoaded', () => {
     const row = document.querySelector('.foot-row');
     if (row) row.insertAdjacentHTML('beforeend', b);
     else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
-    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261102113815')).openChat());
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261102114609')).openChat());
     // Supporters: the hearts and card frames on every page, and Support (header and bottom) opens its dialog.
-    const sup = import('./supporter.js?v=20261102113815');
+    const sup = import('./supporter.js?v=20261102114609');
     document.addEventListener('click', async (e) => { if (e.target.closest('[data-support]')) (await sup).openSupport(); });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
+})();
+
+// Preloaded pages: a page whose content comes from the network (Pro & VIP, the leaderboard) shows what it
+// showed last time at once, from this browser, and its own script then draws it fresh over it. The
+// elements named in <main data-snap="id id"> are kept; not under opening-book-v2, as nothing to sync.
+// Links in the menu are fetched ahead on hover or touch, so the next page opens from the cache.
+(() => {
+  const main = document.querySelector('main[data-snap]');
+  if (main) {
+    const key = `chesslabs-snap-${location.pathname.replace(/\.html$/, '').replace(/\W/g, '') || 'index'}`;
+    let kept = null;
+    try { kept = JSON.parse(localStorage.getItem(key)); } catch {}
+    const els = main.dataset.snap.split(' ').map((id) => document.getElementById(id)).filter(Boolean);
+    if (kept) for (const el of els) if (kept[el.id] != null) { el.innerHTML = kept[el.id]; el.removeAttribute('aria-hidden'); }
+    // Kept once the page's script has drawn it (no loading skeleton left), a second after the last change.
+    let t = 0;
+    new MutationObserver(() => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        if (els.some((el) => el.querySelector('.sk') || el.getAttribute('aria-hidden') === 'true')) return;
+        try { localStorage.setItem(key, JSON.stringify(Object.fromEntries(els.map((el) => [el.id, el.innerHTML])))); } catch {}
+      }, 1000);
+    }).observe(main, { childList: true, subtree: true, characterData: true });
+  }
+  const ahead = new Set();
+  const prefetch = (e) => {
+    const a = e.target.closest?.('a[href]');
+    if (!a || a.origin !== location.origin || ahead.has(a.pathname) || a.pathname === location.pathname) return;
+    ahead.add(a.pathname);
+    document.head.append(Object.assign(document.createElement('link'), { rel: 'prefetch', href: a.href }));
+  };
+  addEventListener('pointerover', prefetch, { passive: true });
+  addEventListener('touchstart', prefetch, { passive: true });
 })();

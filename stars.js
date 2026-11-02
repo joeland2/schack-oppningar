@@ -1,7 +1,7 @@
 // Pro & VIP: the pro and the streamer of the week, each with why and a few words on them, then everyone
 // by when they last played. From week.json, which the pros function writes every 6 hours (see supabase/functions/pros).
-import { BIOS, keptTypes, TYPE_ABOUT } from './profile.js?v=20261102113815';
-import { nick, isCC } from './chesscom.js?v=20261102113815';
+import { BIOS, keptTypes, TYPE_ABOUT } from './profile.js?v=20261102114609';
+import { nick, isCC } from './chesscom.js?v=20261102114609';
 const WEEK = 'https://duhlvhjtxoofgnjegspa.supabase.co/storage/v1/object/public/pros/week.json';
 const TAB = 'opening-book-v2-stars-tab'; // the list last shown on a phone
 const SORT = 'opening-book-v2-stars-sort'; // how the lists are ordered
@@ -14,6 +14,10 @@ const signed = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '±0');
 const initials = (who) => who.replace(/\(.*\)/, '').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('');
 const ago = (t) => { const h = (Date.now() - t) / 36e5; return h < 1 ? 'within the hour' : h < 24 ? `${Math.round(h)} h ago` : `${Math.round(h / 24)} d ago`; };
 const link = (r) => `profile.html?u=${encodeURIComponent(r.account)}${r.accounts.some(isCC) && r.accounts.some((a) => !isCC(a)) ? '&all=1' : ''}`;
+// The name people know them by, after their own: their channel, where it differs.
+const CHANNEL = { 'Levy Rozman': 'GothamChess', 'Eric Hansen': 'Chessbrah', 'Alexandra Botez': 'BotezLive', 'Antonio Radić': 'agadmator',
+  'Nemo Zhou': 'Nemsko', 'Zachary Saine': 'TheChessNerd', 'Alexandra Kosteniuk': 'ChessQueen', 'Hikaru Nakamura': 'GMHikaru', 'Tuan Minh Le': 'Wonderfultime' };
+const named = (who) => { const n = who.replace(/^W?[GIF]M /, ''); return esc(CHANNEL[n] ? `${n} (${CHANNEL[n]})` : n); };
 const styleOf = (r) => (r.style ? `<p class="st-style"><b>${esc(r.style)}</b>${r.strength ? `<span>+ ${esc(r.strength)}</span>` : ''}</p>` : '');
 
 // Why they are of the week, in the week's own numbers.
@@ -28,13 +32,13 @@ function weekCard(r, kind) {
   if (!r) return `<article class="st-wk ${kind}"><span class="st-k">${kind.toUpperCase()} OF THE WEEK</span><p class="st-why">Nobody played last week.</p></article>`;
   const b = BIOS[r.who];
   const about = r.style && TYPE_ABOUT[r.style]?.split('. ')[0]; // what marks their style, in its first sentence
-  return `<a class="st-wk ${kind}" href="${link(r)}"><span class="st-k">${kind.toUpperCase()} OF THE WEEK</span><h2>${esc(r.who)}</h2>
+  return `<a class="st-wk ${kind}" href="${link(r)}"><span class="st-k">${kind.toUpperCase()} OF THE WEEK</span><h2>${named(r.who)}</h2>
     ${b ? `<p class="st-bio">${b[0] ? `From ${esc(b[0])}. ` : ''}${esc(b[1])}</p>` : ''}${styleOf(r)}${about ? `<p class="st-bio">${esc(about.replace(/\.$/, ''))}.</p>` : ''}
     <p class="st-why">${why(r, kind)}</p>
     <div class="st-stats"><div><b>${r.rating ?? r.blitz ?? '–'}</b><small>${r.speed || 'Blitz'}</small></div><div><b>${signed(r.change)}</b><small>Last week</small></div><div><b>${r.games}</b><small>Games</small></div></div></a>`;
 }
 const rowOf = (r, sk) => `<li><a class="st-row" href="${link(r)}"><span class="st-av ${r.kind}">${esc(initials(r.who))}</span>
-  <span class="st-who"><b>${esc(r.who)}</b><small>${[sk && r.skills?.[sk] != null ? `${sk} ${r.skills[sk]}` : '', r.style, r.last ? `played ${ago(r.last)}` : 'no games this week', r.accounts.some(isCC) ? (r.accounts.some((a) => !isCC(a)) ? 'Both sites' : 'Chess.com') : 'Lichess'].filter(Boolean).map(esc).join(' · ')}</small></span>
+  <span class="st-who"><b>${named(r.who)}</b><small>${[sk && r.skills?.[sk] != null ? `${sk} ${r.skills[sk]}` : '', r.style, r.last ? `played ${ago(r.last)}` : 'no games this week', r.accounts.some(isCC) ? (r.accounts.some((a) => !isCC(a)) ? 'Both sites' : 'Chess.com') : 'Lichess'].filter(Boolean).map(esc).join(' · ')}</small></span>
   <span class="st-num"><b>${r.blitz ?? '–'}</b>${r.blitzGames > 1 ? `<small class="${r.change >= 0 ? 'up' : 'dn'}">${signed(r.change)}</small>` : ''}</span></a></li>`;
 
 (async () => {

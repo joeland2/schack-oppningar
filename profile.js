@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102113815';
-import { openLogin } from './login.js?v=20261102113815';
-import { STYLE_OF } from './styles.js?v=20261102113815';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102113815';
-import { PEOPLE } from './pros.js?v=20261102113815';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102114609';
+import { openLogin } from './login.js?v=20261102114609';
+import { STYLE_OF } from './styles.js?v=20261102114609';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102114609';
+import { PEOPLE } from './pros.js?v=20261102114609';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -2317,7 +2317,10 @@ function bindPlayerBar(name) {
     const b = e.currentTarget, top = (storedGames(name) || [])[0]?.id, mine = runs;
     b.disabled = true; b.lastChild.textContent = ' Fetching…';
     try {
-      const p = await build(name), after = storedGames(name) || [], i = after.findIndex((g) => g.id === top), added = top ? (i < 0 ? after.length : i) : after.length;
+      const count = () => { const after = storedGames(name) || [], i = after.findIndex((g) => g.id === top); return top ? (i < 0 ? after.length : i) : after.length; };
+      let p = await build(name), added = count();
+      // A game that just ended can take a few seconds to reach Lichess's export: look once more before saying none.
+      if (!added && mine === runs) { await new Promise((r) => setTimeout(r, 5000)); if (mine === runs) { p = await build(name); added = count(); } }
       if (mine !== runs) return;
       render(name, Date.now(), p);
       $('#pf-fetched').textContent = added > 0 ? `${added} new game${added === 1 ? '' : 's'} added just now` : 'No new games: up to date';

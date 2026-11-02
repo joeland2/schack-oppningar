@@ -46,7 +46,7 @@ export const PEOPLE = [
   ["cc:Chessbrah","GM Eric Hansen","vip"],
   ["cc:ChessNetwork","Jerry (ChessNetwork)","vip"],
   ["cc:TheChessNerd","Zachary Saine","vip"],
-  ["cc:HansOnTwitch","GM Hans Niemann","vip"],
+  ["cc:HansOnTwitch","GM Hans Niemann","pro"],
   ["cc:Wonderfultime","GM Tuan Minh Le","vip"],
   ["cc:ChessQueen","GM Alexandra Kosteniuk","vip"],
   ["cc:DinaBelenkaya","WGM Dina Belenkaya","vip"],
