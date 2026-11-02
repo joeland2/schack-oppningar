@@ -70,8 +70,9 @@ function applyMine() {
   if (menu && on && !menu.querySelector('[data-sup-settings]')) menu.querySelector('.top-me-out')?.insertAdjacentHTML('beforebegin', '<button type="button" data-sup-settings>Supporter settings</button>');
   if (menu && !on) menu.querySelector('[data-sup-settings]')?.remove();
 }
-const keepMine = (st) => { mine = { ...st, name: login()?.name?.toLowerCase() }; try { localStorage.setItem(ME, JSON.stringify(mine)); } catch {} applyMine(); };
-if (login()) api('?me').then(keepMine).catch(() => {});
+// At most every 10 minutes: each call asks Lichess who you are, and too many get the server shut out.
+const keepMine = (st) => { mine = { ...st, name: login()?.name?.toLowerCase(), at: Date.now() }; try { localStorage.setItem(ME, JSON.stringify(mine)); } catch {} applyMine(); };
+if (login() && !(mine?.name === login().name?.toLowerCase() && Date.now() - (mine.at || 0) < 600_000)) api('?me').then(keepMine).catch(() => {});
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyMine); else applyMine();
 setTimeout(applyMine, 500); // the menu is drawn by header.js once the page is in
 document.addEventListener('click', (e) => { if (e.target.closest?.('[data-sup-settings]')) { e.target.closest('details')?.removeAttribute('open'); openSupport(); } });
@@ -106,7 +107,7 @@ export async function openSupport() {
   dlg.querySelector('.chat-x').addEventListener('click', close);
   dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
   const body = dlg.querySelector('.sup-body');
-  dlg.addEventListener('click', async (e) => { if (e.target.closest('[data-sup-idea]')) { close(); (await import('./chat.js?v=20261102140648')).openChat(); } });
+  dlg.addEventListener('click', async (e) => { if (e.target.closest('[data-sup-idea]')) { close(); (await import('./chat.js?v=20261102141013')).openChat(); } });
   const grid = (pick, on) => `<div class="sup-frames${pick ? '' : ' locked'}">${FRAMES.map(([k, t]) => `<button type="button" class="sup-frame${k === on ? ' on' : ''}" data-frame="${k}"${pick ? '' : ' disabled'}><span class="sup-fx fx-${k}"><span class="sup-mini"></span></span><small>${t}</small></button>`).join('')}</div>`;
   const pitch = `<p class="sup-lead"><b>Everything on Chess Labs is free, and always will be.</b> No paywall, no ads, no locked features.</p>
     <p>This isn't a site to make money from. It costs money to run, though: the servers, the database and the analysis. If you want to help keep it going, you can support it for <b>${PRICE} a month</b>, and you get something small back.</p>

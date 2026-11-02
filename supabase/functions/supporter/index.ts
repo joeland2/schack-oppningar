@@ -32,7 +32,8 @@ async function idOf(token: string | null) {
   const c = who.get(token);
   if (c && Date.now() - c.at < 600_000) return c.id;
   const id = token.startsWith('cl_') ? await siteId(token)
-    : await fetch('https://lichess.org/api/account', { headers: { Authorization: `Bearer ${token}` } }).then(async (r) => (r.ok ? (await r.json()).id : null));
+    : await fetch('https://lichess.org/api/account', { headers: { Authorization: `Bearer ${token}` } }).then(async (r) => (r.ok ? (await r.json()).id : r.status === 401 ? null : 'busy')).catch(() => 'busy');
+  if (id === 'busy') return id; // Lichess said no for another reason (mostly too many asks): not the same as logged out
   if (!id) return null;
   who.set(token, { id, at: Date.now() });
   return id as string;
@@ -95,6 +96,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify(shown), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
   }
   const id = await idOf(req.headers.get('x-lichess-token'));
+  if (id === 'busy') return json({ error: 'Lichess is busy. Try again in a minute.' }, 503);
   if (!id) return json({ error: 'Log in first.' }, 401);
   if (ADMINS.includes(id) && req.method === 'GET' && q.has('all')) {
     const { data, error } = await db.from('supporters').select('player, active, frame, customer, since').order('since', { ascending: false }).limit(5000);
