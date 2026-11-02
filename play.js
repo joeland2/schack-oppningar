@@ -2,12 +2,13 @@
 // The login needs the board:play permission once; then a seek or a challenge starts a game, which Lichess
 // streams here move by move. When it ends, the game page reviews it.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261102153012';
-import { account, login, finishLogin } from './lichess.js?v=20261102153012';
+import { drawBoard, enableDrag } from './board.js?v=20261102153259';
+import { account, login, finishLogin } from './lichess.js?v=20261102153259';
 
 const $ = (s) => document.querySelector(s);
 const API = 'https://lichess.org';
-const GROUPS = [['Blitz', [[3, 0], [3, 2], [5, 0], [5, 3]]], ['Rapid', [[10, 0], [10, 5], [15, 10]]], ['Classical', [[30, 0], [30, 20]]]];
+// No blitz or bullet: Lichess lets outside sites play rapid and slower only (a blitz seek gets "Invalid time control").
+const GROUPS = [['Rapid', [[10, 0], [10, 5], [15, 10]]], ['Classical', [[30, 0], [30, 20]]]];
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const auth = () => ({ Authorization: `Bearer ${account()?.token}` });
 // Lichess's error in words: { error: '…' }, or a form's errors as { field: ['…'] }.
@@ -51,7 +52,7 @@ async function openingOf(sans) {
 }
 
 // ---------- The lobby ----------
-let tc = (() => { try { return JSON.parse(localStorage.getItem('opening-book-v2-play-tc')) || [3, 2]; } catch { return [3, 2]; } })();
+let tc = (() => { try { const x = JSON.parse(localStorage.getItem('opening-book-v2-play-tc')); return x && GROUPS.some(([, xs]) => xs.some(([m, i]) => m === x[0] && i === x[1])) ? x : [10, 0]; } catch { return [10, 0]; } })();
 function lobby() {
   $('.play-tiles').innerHTML = GROUPS.map(([h, xs]) => `<p class="sups-k">${h}</p><div class="play-row" role="group" aria-label="${h}">${xs.map(([m, i]) => `<button type="button" class="play-tile" aria-pressed="${m === tc[0] && i === tc[1]}" data-tc="${m}+${i}">${m}+${i}</button>`).join('')}</div>`).join('');
   $('#play-seek').textContent = `Find an opponent · ${tc.join('+')}`;
