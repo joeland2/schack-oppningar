@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102101854';
-import { openLogin } from './login.js?v=20261102101854';
-import { STYLE_OF } from './styles.js?v=20261102101854';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102101854';
-import { PEOPLE } from './pros.js?v=20261102101854';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102102730';
+import { openLogin } from './login.js?v=20261102102730';
+import { STYLE_OF } from './styles.js?v=20261102102730';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102102730';
+import { PEOPLE } from './pros.js?v=20261102102730';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1841,7 +1841,7 @@ function opponentsCard(p, me, name) {
 }
 // What others see: logged in, a player can hide parts of their profile from visitors. Kept in
 // opening-book-v2-hidden (synced to their account); the userdata function answers ?hidden=<name> to anyone.
-const PANELS = [['chart', 'Rating graph', '#pf-chart'], ['kpis', 'Key numbers', '.pf-kpis'], ['skills', 'Skills', '#pf-skills'], ['trend', 'Trend', '#pf-trend'],
+const PANELS = [['chart', 'Rating graph', '#pf-chart'], ['kpis', 'Key numbers', '.pf-kpis'], ['lead', 'Latest games', '.pf-lead'], ['skills', 'Skills', '#pf-skills'], ['trend', 'Trend', '#pf-trend'],
   ['more', 'Results and openings', '.pf-more'], ['opps', 'Who you struggle against', '.pf-opps'], ['games', 'Recent games', '#pf-games']];
 const HIDE = 'opening-book-v2-hidden';
 const myHidden = () => { try { return JSON.parse(localStorage.getItem(HIDE)) || []; } catch { return []; } };
