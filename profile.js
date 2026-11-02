@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102100541';
-import { openLogin } from './login.js?v=20261102100541';
-import { STYLE_OF } from './styles.js?v=20261102100541';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102100541';
-import { PEOPLE } from './pros.js?v=20261102100541';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102100747';
+import { openLogin } from './login.js?v=20261102100747';
+import { STYLE_OF } from './styles.js?v=20261102100747';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102100747';
+import { PEOPLE } from './pros.js?v=20261102100747';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1873,7 +1873,7 @@ function labels() {
     if (b?.dataset.state === state) continue; // unchanged: no write, so the observer below stays quiet
     if (!b) { el.insertAdjacentHTML('beforeend', `<button type="button" class="pf-vis" data-panel="${k}"></button>`); b = el.lastElementChild; }
     b.dataset.state = state;
-    b.innerHTML = `<i aria-hidden="true"></i>${hid ? 'Only you' : 'Public'}`;
+    b.innerHTML = `<i aria-hidden="true"></i>${hid ? 'Only you' : 'Public'}<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 5h10M9 2l3 3-3 3M14 11H4M7 8l-3 3 3 3"/></svg>`;
     b.title = hid ? `${label}: only you see it. Tap to show it to everyone` : `${label}: everyone sees it. Tap so only you do`;
     b.setAttribute('aria-pressed', String(!hid));
   }
