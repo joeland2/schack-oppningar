@@ -1,9 +1,10 @@
 // Shared "play the right move" trainer for the Basics and Pros pages.
-// item: { id, group, title, tag, side, fen, solution: [san…], intro, explain (html), wrong?(san) }
+// item: { id, group, title, tag, side, fen, solution: [san…], intro, explain (html), wrong?(san), played? (san: the
+// move made in the game, a red arrow until the position is solved) }
 // Moves at odd positions in solution are the opponent's replies and are played automatically.
-import { banner, confetti } from './celebrate.js?v=20261102140058';
+import { banner, confetti } from './celebrate.js?v=20261102140648';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake, instruction } from './board.js?v=20261102140058';
+import { drawBoard, enableDrag, shake, instruction } from './board.js?v=20261102140648';
 
 const $ = (s) => document.querySelector(s);
 const clean = (san) => san.replace(/[+#]/g, '');
@@ -15,7 +16,8 @@ export function drill(items, storeKey) {
   let idx = 0, cur, game, step, sel, last, hint, wrong, busy;
 
   let mark = null;
-  const draw = () => drawBoard(boardEl, game, { side: cur.side, sel, last, hint, wrong, arrow: hint.length === 2 ? hint : null,
+  const playedArrow = () => { if (!cur.played || step) return []; try { const m = new Chess(cur.fen).move(cur.played); return [[m.from, m.to, 'var(--bad)']]; } catch { return []; } };
+  const draw = () => drawBoard(boardEl, game, { side: cur.side, sel, last, hint, wrong, arrow: hint.length === 2 ? hint : null, arrows: playedArrow(),
     mark: mark || (wrong && { sq: wrong, ok: false }) });
   const expected = () => new Chess(game.fen()).move(cur.solution[step]);
   const finished = () => step >= cur.solution.length;

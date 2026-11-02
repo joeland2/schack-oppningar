@@ -2865,3 +2865,13 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .sup-opt span { display: grid; gap: 2px; } .sup-opt small { color: var(--muted); font-size: 13px; }
 .sup-votes { margin: 0; padding: 0; list-style: none; }
 .sup-vote span { flex: 1; } .sup-vote b { color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+
+/* My mistakes, once solved: your move and the better one side by side */
+.why-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.why-box { display: grid; gap: 4px; align-content: start; padding: 12px 14px; border-radius: 8px; border-left: 4px solid; background: var(--surface); }
+.why-box span { font: 600 11px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.why-box b { font: 400 26px/1 var(--font-poster); }
+.why-box p { margin: 2px 0 0; font-size: 14px; }
+.why-box.bad { border-color: var(--bad); } .why-box.bad b { color: var(--bad); }
+.why-box.good { border-color: var(--good); } .why-box.good b { color: var(--good); }
+@media (max-width: 560px) { .why-pair { grid-template-columns: 1fr; } }

@@ -1,6 +1,6 @@
-import { drill } from './drill.js?v=20261102140058';
-import { THEMES } from './mistakes.js?v=20261102140058';
-import { explainMistake, dangerAfter } from './ideas.js?v=20261102140058';
+import { drill } from './drill.js?v=20261102140648';
+import { THEMES } from './mistakes.js?v=20261102140648';
+import { explainMistake, dangerAfter } from './ideas.js?v=20261102140648';
 
 // Positions from your own games where you went wrong, saved by "Find my mistakes" on the openings page.
 // Everything is explained here, on the board: what your move did wrong, nudges while you look for
@@ -13,8 +13,10 @@ if (!found.length) {
     <p class="info">Open <a href="./">Practise openings</a>, check your Lichess games and press Find my mistakes.
     The positions where you went wrong show up here to train.</p></section>`;
 } else {
-  drill(found.map((f, n) => {
-    const e = explainMistake(f);
+  // A kept position whose moves no longer fit it (an older save) is skipped, not the whole page.
+  const ok = found.flatMap((f, n) => { try { return [[f, n, explainMistake(f)]]; } catch { return []; } });
+  if (!ok.length) document.querySelector('.layout').innerHTML = '<section class="picker"><h1>No mistakes to train</h1><p class="info">Open <a href="./">Practise openings</a> and press Find my mistakes again.</p></section>';
+  else drill(ok.map(([f, n, e]) => {
     const theme = THEMES[f.theme];
     const moveNo = `move ${Math.floor(f.ply / 2) + 1}`;
     let tries = 0;
@@ -26,8 +28,12 @@ if (!found.length) {
       side: f.side,
       fen: f.fen,
       solution: f.solution || [f.best],
-      intro: `From one of your games${f.opening ? ` (${f.opening.split(':')[0]})` : ''}, ${moveNo}. You played ${f.played} here. ${e.wrong} Can you find the better move?`,
-      explain: `<p><b>${f.best}</b> was the move. ${e.right}</p>${(f.solution || []).length > 1 ? `<p><b>The idea:</b> ${f.solution.join(' ')}</p>` : ''}
+      played: f.played, // drawn as a red arrow until it is solved
+      intro: `In your game you played ${f.played} here (the red arrow). Find a better move.`,
+      // Side by side once solved: what was wrong with your move, and what the better one does.
+      explain: `<div class="why-pair"><div class="why-box bad"><span>Your move</span><b>${f.played}</b><p>${e.wrong}</p></div>
+        <div class="why-box good"><span>Better</span><b>${f.best}</b><p>${e.right}</p></div></div>
+        ${(f.solution || []).length > 1 ? `<p><b>The idea:</b> ${f.solution.join(' ')}</p>` : ''}
         <p><b>What to take with you:</b> ${theme.tip}</p>`,
       wrong: (san) => {
         tries++;

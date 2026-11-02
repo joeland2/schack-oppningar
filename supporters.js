@@ -1,6 +1,6 @@
 // Supporters: everyone who supports Chess Labs and chose to be listed, newest first, each in the frame they
 // picked, linking to their profile.
-import { supportersReady } from './supporter.js?v=20261102140058';
+import { supportersReady } from './supporter.js?v=20261102140648';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const nick = (n) => n.replace(/^cc:/, '');
 supportersReady().then((xs) => {
