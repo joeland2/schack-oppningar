@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102101035';
-import { openLogin } from './login.js?v=20261102101035';
-import { STYLE_OF } from './styles.js?v=20261102101035';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102101035';
-import { PEOPLE } from './pros.js?v=20261102101035';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102101854';
+import { openLogin } from './login.js?v=20261102101854';
+import { STYLE_OF } from './styles.js?v=20261102101854';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102101854';
+import { PEOPLE } from './pros.js?v=20261102101854';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1242,20 +1242,20 @@ async function loadFlags(names) {
 }
 // The flag as an image for the downloaded cards (null without one).
 const flagImage = (name) => { const c = FLAGS.get(String(name).toLowerCase()); return c ? new Promise((ok) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => ok(im); im.onerror = () => ok(null); im.src = flagSrc(c); }) : Promise.resolve(null); };
-// The site the rating is from, as a sticker on the card's top edge, so 1221 on Lichess is not read as Chess.com.
-// A Combined card with games from both sites has no single site, so no sticker.
+// The site the rating is from, under it in small text, so 1221 on Lichess is not read as Chess.com.
+// A Combined card with games from both sites has no single site, so no line.
 const bothSites = () => !!combo && combo.some(isCC) && combo.some((n) => !isCC(n));
-const siteTag = (name) => bothSites() ? '' : `<span class="pf-site">${isCC(name) ? 'Chess.com' : 'Lichess'}</span>`;
+const siteName = (name) => bothSites() ? '' : isCC(name) ? 'chess.com' : 'lichess';
 // A pro's Combined card is the person, not one of their accounts.
 const cardName = (name) => (combo && !comboOwn && proOf(name)?.replace(/^(GM|IM) /, '')) || nick(name);
 function playerCard(name, p, t, skills) {
   const known = skills.filter((x) => x.v !== null);
   const ovr = known.length ? Math.round(sum(known, (x) => x.v) / known.length) : '–';
   const main = p.speeds[0];
-  return `<div class="pf-pcard${proClass(name)}" data-player="${esc(name.toLowerCase())}" style="--band:${bandColor(level(name, main))}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}${siteTag(name)}
+  return `<div class="pf-pcard${proClass(name)}" data-player="${esc(name.toLowerCase())}" style="--band:${bandColor(level(name, main))}" role="img" aria-label="Player card: overall ${ovr}, ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''}, ${known.map((x) => `${x.label} ${x.v}`).join(', ')}">${flagHtml(name)}
     <div class="pf-pcard-top"><div><b class="pf-ovr">${ovr}</b><span class="pf-pos">${esc(t[0].name)}</span>${t[1] ? `<span class="pf-str">+ ${esc(t[1].name)}</span>` : ''}</div>
       <div class="pf-pcard-side"><img class="pf-pcard-piece ink-on-light" src="pieces/b${(p.piece || 'n').toUpperCase()}.svg" alt="" aria-hidden="true"><img class="pf-pcard-piece ink-on-dark" src="pieces/${CARD_INK}${(p.piece || 'n').toUpperCase()}.svg" alt="" title="${esc(nick(name))}'s most important piece: the ${PIECE_NAME[p.piece || 'n']}, ${p.pieceWhy === 'chosen' ? `chosen by ${esc(nick(name))}` : p.pieceWhy === 'best' ? `the piece played best, with the fewest mistakes and blunders per move in the analysed games` : 'the piece that does the most in these games (analyse 20 games to see the one played best)'}">
-        ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>` : ''}${p.also ? `<span class="pf-pcard-rating2">${p.also.rating} <small>${p.also.site}</small></span>` : ''}</div></div>
+        ${main ? `<span class="pf-pcard-rating">${main.rating} <small>${main.speed}</small></span>${siteName(name) ? `<span class="pf-pcard-site">${siteName(name)}</span>` : ''}` : ''}${p.also ? `<span class="pf-pcard-rating2">${p.also.rating} <small>${p.also.site}</small></span>` : ''}</div></div>
     <p class="pf-pcard-name">${esc(cardName(name))}</p>
     ${cardBars(skills.map((x) => [ABBR[x.label], x.v]))}
     <p class="pf-pcard-foot">${main ? `VS ${main.rating - PEER}–${main.rating + PEER} · ` : ''}${p.n} ${main && p.speeds.length === 1 ? `${main.speed.toUpperCase()} ` : ''}GAMES</p>
@@ -1313,18 +1313,10 @@ function drawCard(ctx, x, y, name, p, t, skills, piece, flag = null) {
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(-52, -38, 104, 76, 10); ctx.fill(); ctx.shadowColor = 'transparent';
     ctx.beginPath(); ctx.roundRect(-46, -32, 92, 64, 5); ctx.clip(); ctx.drawImage(flag, -46, -32, 92, 64); ctx.restore();
   }
-  if (!bothSites()) { // the site sticker on the top edge, after the PRO tag on a pro's card (as .pf-site)
-    const label = (isCC(name) ? 'Chess.com' : 'Lichess').toUpperCase();
-    ctx.save(); ctx.font = '400 26px Anton'; ctx.letterSpacing = '2px'; const w = ctx.measureText(label).width + 40;
-    ctx.translate((proKind(name) ? 140 : 36) + w / 2, 2); ctx.rotate(-4 * Math.PI / 180);
-    ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 5;
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(-w / 2 - 6, -26, w + 12, 52, 26); ctx.fill(); ctx.shadowColor = 'transparent';
-    ctx.fillStyle = '#141414'; ctx.beginPath(); ctx.roundRect(-w / 2, -20, w, 40, 20); ctx.fill();
-    ctx.fillStyle = '#f4efe6'; ctx.textAlign = 'center'; ctx.fillText(label, 1, 10); ctx.restore();
-  }
   if (main) {
     ctx.textAlign = 'right'; ctx.font = '400 26px Anton'; ctx.fillStyle = CARD.muted; const sp = main.speed.toUpperCase(); ctx.fillText(sp, 560, 232);
     const w = ctx.measureText(sp).width; ctx.font = '400 52px Anton'; ctx.fillStyle = CARD.ink; ctx.fillText(String(main.rating), 560 - w - 10, 232);
+    if (siteName(name)) { ctx.font = '500 20px Geist'; ctx.fillStyle = CARD.muted; ctx.fillText(siteName(name), 560, 262); } // as .pf-pcard-site
     if (p.also) { ctx.font = '400 22px Anton'; ctx.fillStyle = CARD.muted; const s2 = p.also.site.toUpperCase(); ctx.fillText(s2, 560, 268); const w2 = ctx.measureText(s2).width; ctx.font = '400 32px Anton'; ctx.fillStyle = CARD.ink; ctx.fillText(String(p.also.rating), 560 - w2 - 8, 268); }
     ctx.textAlign = 'left';
   }

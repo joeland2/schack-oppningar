@@ -2446,8 +2446,6 @@ main.profile:has(#admin) { max-width: 1320px; }
 #profile .pf-acct[aria-current] small { color: inherit; opacity: .7; }
 #profile .pf-accts-more summary { padding: 0 4px; border: 0; color: var(--muted); }
 /* The site the card's rating is from: a tilted sticker on the top edge, after the PRO / VIP tag when there is one */
-.pf-site { position: absolute; top: -13px; left: 14px; z-index: 2; padding: 4px 11px 3px; border: 3px solid #fff; border-radius: 999px; background: #141414; color: #f4efe6; font: 400 13px/1 var(--font-poster); letter-spacing: .1em; text-transform: uppercase; transform: rotate(-4deg); box-shadow: 0 3px 8px rgb(0 0 0 / .3); pointer-events: none; }
-.pf-pcard.pro .pf-site, .pf-pcard.vip .pf-site { left: 70px; }
 /* Admin, phone: each visitor in two lines: where and when, then their name, device and visits; the IP stays for wide screens */
 @media (max-width: 760px) {
   .adm-visitor summary { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
@@ -2495,6 +2493,7 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-trend-pick { flex-wrap: wrap; }
 .pf-trend .pf-line circle { fill: var(--data); }
 .pf-link-note { flex-basis: 100%; font-size: 12px; }
+.pf-pcard-site { margin-top: -3px; font: 500 11px/1 var(--font-body); opacity: .7; } /* lichess or chess.com, under the rating */
 .pf-pcard-rating2 { display: block; margin-top: 3px; font: 400 15px/1 var(--font-poster); letter-spacing: .02em; text-align: right; opacity: .8; }
 .pf-pcard-rating2 small { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
 /* How the skills changed: one row per skill, all on one scale */
