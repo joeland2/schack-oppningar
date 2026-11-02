@@ -2,8 +2,8 @@
 // The login needs the board:play permission once; then a seek or a challenge starts a game, which Lichess
 // streams here move by move. When it ends, the game page reviews it.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261102152233';
-import { account, login, finishLogin } from './lichess.js?v=20261102152233';
+import { drawBoard, enableDrag } from './board.js?v=20261102152719';
+import { account, login, finishLogin } from './lichess.js?v=20261102152719';
 
 const $ = (s) => document.querySelector(s);
 const API = 'https://lichess.org';
@@ -62,8 +62,10 @@ $('#play-seek').addEventListener('click', async () => {
   seeking = new AbortController();
   $('#play-seek').textContent = 'Searching… press to stop';
   say('Looking for someone at your level. The game starts as soon as one is found.');
-  try { await stream('/api/board/seek', () => {}, { method: 'POST', body: new URLSearchParams({ time: tc[0], increment: tc[1], rated: $('#play-rated').checked }), signal: seeking.signal }); }
-  catch (e) { if (e.name !== 'AbortError') say(e.message); else say(''); }
+  try {
+    await stream('/api/board/seek', () => {}, { method: 'POST', body: new URLSearchParams({ time: tc[0], increment: tc[1], rated: $('#play-rated').checked }), signal: seeking.signal });
+    if (!g) say('Lichess closed the search without a game. Try again, or another time control.');
+  } catch (e) { say(e.name === 'AbortError' ? 'Search stopped.' : `Could not search: ${e.message}`); }
   seeking = null; lobby();
 });
 $('#play-challenge').addEventListener('click', async () => {
