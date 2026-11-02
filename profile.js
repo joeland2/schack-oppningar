@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102121313';
-import { openLogin } from './login.js?v=20261102121313';
-import { STYLE_OF } from './styles.js?v=20261102121313';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102121313';
-import { PEOPLE } from './pros.js?v=20261102121313';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102133050';
+import { openLogin } from './login.js?v=20261102133050';
+import { STYLE_OF } from './styles.js?v=20261102133050';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102133050';
+import { PEOPLE } from './pros.js?v=20261102133050';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -482,7 +482,7 @@ console.assert(rawSkills({ peer: { analysed: 120, ups: 36, downs: 12, after12: 1
 }
 
 // ---------- Fetching ----------
-async function fetchGames(name, onGame, since = null, perf = 'bullet,blitz,rapid,classical', until = null) {
+async function fetchGames(name, onGame, since = null, perf = 'bullet,blitz,rapid,classical', until = null, got = [], tries = 0) {
   if (isCC(name)) return fetchCC(name, onGame, since, perf, MAX, until);
   const res = await fetch(`https://lichess.org/api/games/user/${encodeURIComponent(name)}?` + new URLSearchParams({
     max: MAX, ...(since ? { since } : {}), ...(until ? { until } : {}), rated: 'true', perfType: perf, moves: 'true', opening: 'true', clocks: 'true', evals: 'true', accuracy: 'true',
@@ -490,11 +490,17 @@ async function fetchGames(name, onGame, since = null, perf = 'bullet,blitz,rapid
   if (res.status === 404) throw new Error(`Lichess has no player called ${name}.`);
   if (res.status === 429) throw new Error('Lichess is busy right now. Try again in a minute.');
   if (!res.ok) throw new Error(`Lichess answered with an error (${res.status}).`);
-  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader(), games = [];
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader(), games = got;
   let rest = '';
   // Lichess does not always stop at max, so reading stops by itself once there are enough games.
   while (games.length < MAX) {
-    const { value, done } = await reader.read();
+    let value, done;
+    try { ({ value, done } = await reader.read()); } catch (err) {
+      // The stream broke off ("Error in input stream" in Firefox): go on from the oldest game in, twice at most.
+      if (tries >= 2) { if (games.length) { rest = ''; break; } throw new Error(`The connection to Lichess broke off. Try again.`); }
+      const oldest = games.at(-1)?.createdAt;
+      return fetchGames(name, onGame, since, perf, oldest ? oldest - 1 : until, games, tries + 1);
+    }
     if (done) break;
     const lines = (rest + value).split('\n');
     rest = lines.pop();
@@ -1572,6 +1578,7 @@ function speedsOf(name, full) {
 function forSpeed(name, full, sp) {
   if (sp === 'all') { shownGames = storedGames(name) ? recordsOf(name, storedGames(name)) : []; full.type = stableType(name, 'all', full); return full; }
   const own = storedGames(speedKey(name, sp)), mixed = storedGames(name);
+  if (!mixed) return full; // drawn early, while the games still come in: none kept yet
   const done = new Map(mixed.filter((g) => g.analysis).map((g) => [g.id, g])); // analysed among all the player's games
   // Games played since the time control's own were fetched come in with the player's newest (Refresh and
   // every visit fetch those), so the card always ends on the latest game and rating.
