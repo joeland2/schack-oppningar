@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102103535';
-import { openLogin } from './login.js?v=20261102103535';
-import { STYLE_OF } from './styles.js?v=20261102103535';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102103535';
-import { PEOPLE } from './pros.js?v=20261102103535';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102104147';
+import { openLogin } from './login.js?v=20261102104147';
+import { STYLE_OF } from './styles.js?v=20261102104147';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102104147';
+import { PEOPLE } from './pros.js?v=20261102104147';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -2031,6 +2031,7 @@ function ask() {
 
 let runs = 0; // a newer look-up wins over one still reading games
 async function run(name) {
+  unbusy();
   hiddenOf(name); // asked at once, so the answer is in before the first draw
   await gamesReady;
   combo = null;
@@ -2057,11 +2058,15 @@ async function run(name) {
     try { render(c.name || name, c.at, c.p); } catch (err) { console.warn('saved profile could not be shown, reading it again', err); }
     window.track?.('profile', `${c.name || name} #${shownCode}`); // counted only for a player that was found, with their card for the admin page
     const before = storedGames(name) || [], top = before[0]?.id; // no games kept here yet: redraw once they are, with their time controls
-    quiet = true;
-    try {
-      const p = await build(name), after = storedGames(name);
-      if (mine === runs && (merged || after[0]?.id !== top || after.length !== before.length || !before.length)) { const y = scrollY; render(name, Date.now(), p); scrollTo(0, y); }
-    } catch {} finally { quiet = false; }
+    const fresh = async () => {
+      quiet = true;
+      try {
+        const p = await build(name), after = storedGames(name);
+        if (mine === runs) unbusy();
+        if (mine === runs && (merged || after[0]?.id !== top || after.length !== before.length || !before.length)) { const y = scrollY; render(name, Date.now(), p); scrollTo(0, y); }
+      } catch (err) { if (mine === runs) { if (BUSY.test(err.message)) busy(name, c.at, fresh); else unbusy(); } } finally { quiet = false; }
+    };
+    await fresh();
     if (mine === runs) await ownSpeed(name);
     if (mine === runs) otherSpeeds(name);
     return;
@@ -2159,6 +2164,23 @@ async function otherSpeeds(name) {
     if (!storedGames(speedKey(name, sp))) await loadSpeed(name, sp).done;
   }
 }
+// Lichess or Chess.com said "too many requests". The profile stays as it was saved (or its outline, for a
+// player not seen before), and a line over it counts a minute down and reads the games again by itself.
+const BUSY = /is busy right now/;
+let busyTimer = 0;
+function busy(name, at, retry) {
+  clearInterval(busyTimer);
+  if (!$('#pf-busy')) $('#profile-msg').insertAdjacentHTML('beforebegin', `<div id="pf-busy" class="pf-busy" role="status"><p></p><div class="pf-busy-row"><div class="pf-busy-track"><i></i></div><span class="pf-busy-k"></span><button type="button" class="ghost">Try now</button></div></div>`);
+  const el = $('#pf-busy'), bar = el.querySelector('i'), k = el.querySelector('.pf-busy-k'), end = Date.now() + 60e3;
+  el.querySelector('p').innerHTML = at ? `<b>From games read ${ago(at)}.</b> ${siteOf(name)} is busy right now; new games load by themselves.`
+    : `<b>${siteOf(name)} needs a breather.</b> Lots of people are looking up players right now; ${esc(nick(name))}'s games load by themselves.`;
+  const go = () => { clearInterval(busyTimer); bar.style.width = '100%'; k.textContent = 'Trying again…'; el.querySelector('button').disabled = true; retry(); };
+  el.querySelector('button').disabled = false;
+  el.querySelector('button').onclick = go;
+  const tick = () => { const left = end - Date.now(); if (left <= 0) return go(); bar.style.width = `${100 - left / 600}%`; k.textContent = `Trying again in ${Math.ceil(left / 1000)} s`; };
+  tick(); busyTimer = setInterval(tick, 250);
+}
+function unbusy() { clearInterval(busyTimer); $('#pf-busy')?.remove(); }
 // Something went wrong: say what, and offer to try again (reading the games afresh).
 const retried = new Set(), NET = /Failed to fetch|Load failed|NetworkError/i;
 function failed(name, err) {
@@ -2167,6 +2189,7 @@ function failed(name, err) {
   const net = err instanceof TypeError && NET.test(err.message);
   if (net && !retried.has(name.toLowerCase())) { retried.add(name.toLowerCase()); setTimeout(() => run(name), 1500); return; }
   if (net) err = new Error(`Could not reach ${siteOf(name)}: the connection dropped.`);
+  if (BUSY.test(err.message)) return busy(name, null, () => run(name)); // the outline stays, the line over it waits
   window.trackError?.(`${name}: ${err.message || err}`);
   $('#profile .pf-skeleton')?.remove(); // the loading outline, never a card already drawn
   $('#profile-msg').innerHTML = `${esc(err.message || String(err))} <button type="button" class="link" data-retry>Try again</button>`;

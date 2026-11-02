@@ -1881,6 +1881,15 @@ p, li, dd, small { text-wrap: pretty; }
 /* Fetching a player's games: a thin bar at the top of the page, filling as they come */
 .pf-load { position: sticky; top: 70px; z-index: 5; margin: 0 0 16px; padding: 14px 16px 16px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--data); border-radius: 6px; box-shadow: 0 10px 24px rgb(0 0 0 / .18); transition: opacity .18s ease-out, transform .18s ease-out; }
 .pf-load.out { opacity: 0; transform: translateY(-6px); }
+/* Lichess or Chess.com is busy: a line over the profile, a minute counting down to the next try */
+.pf-busy { position: sticky; top: 70px; z-index: 5; display: grid; gap: 10px; margin: 0 0 16px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--data); border-radius: 6px; box-shadow: 0 10px 24px rgb(0 0 0 / .18); }
+.pf-busy p { margin: 0; font-size: 14px; color: var(--muted); } .pf-busy b { color: var(--ink); font-weight: 600; }
+.pf-busy-row { display: flex; align-items: center; gap: 12px; }
+.pf-busy-track { flex: 1; min-width: 0; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.pf-busy-track i { display: block; height: 100%; width: 0; background: var(--data); transition: width .25s linear; }
+.pf-busy-k { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pf-busy button { flex: none; padding: 6px 12px; font-size: 13px; }
+@media (max-width: 560px) { .pf-busy-row { flex-wrap: wrap; } .pf-busy-track { flex-basis: 100%; } }
 .pf-load-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
 /* One line whatever it says, so nothing below moves while the text changes */
 .pf-load-k { flex: 1; min-width: 0; margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
