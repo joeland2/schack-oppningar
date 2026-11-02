@@ -2,14 +2,14 @@
 // The login needs the board:play permission once; then a seek or a challenge starts a game, which Lichess
 // streams here move by move. When it ends, the game page reviews it.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261102153423';
-import { account, login, finishLogin } from './lichess.js?v=20261102153423';
+import { drawBoard, enableDrag } from './board.js?v=20261102154101';
+import { account, login, finishLogin } from './lichess.js?v=20261102154101';
 
 const $ = (s) => document.querySelector(s);
 const API = 'https://lichess.org';
 // Lichess's Board API: seeks are rapid and slower only (a blitz seek gets "Invalid time control"); a direct
 // challenge may also be blitz. Bullet is never allowed. So blitz is for challenging a friend.
-const GROUPS = [['Rapid', [[10, 0], [10, 5], [15, 10]]], ['Classical', [[30, 0], [30, 20]]], ['Blitz · friends only', [[3, 0], [3, 2], [5, 0], [5, 3]]]];
+const GROUPS = [['Rapid', [[10, 0], [10, 5], [15, 10]]], ['Classical', [[30, 0], [30, 20]]], ['Blitz', [[3, 0], [3, 2], [5, 0], [5, 3]]]];
 const blitz = () => tc[0] + tc[1] * 2 / 3 < 8;
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const auth = () => ({ Authorization: `Bearer ${account()?.token}` });
@@ -56,9 +56,13 @@ async function openingOf(sans) {
 // ---------- The lobby ----------
 let tc = (() => { try { const x = JSON.parse(localStorage.getItem('opening-book-v2-play-tc')); return x && GROUPS.some(([, xs]) => xs.some(([m, i]) => m === x[0] && i === x[1])) ? x : [10, 0]; } catch { return [10, 0]; } })();
 function lobby() {
-  $('.play-tiles').innerHTML = GROUPS.map(([h, xs]) => `<p class="sups-k">${h}</p><div class="play-row" role="group" aria-label="${h}">${xs.map(([m, i]) => `<button type="button" class="play-tile" aria-pressed="${m === tc[0] && i === tc[1]}" data-tc="${m}+${i}">${m}+${i}</button>`).join('')}</div>`).join('');
-  $('#play-seek').textContent = blitz() ? 'Blitz: challenge a friend below' : `Find an opponent · ${tc.join('+')}`;
-  $('#play-seek').disabled = blitz();
+  $('.play-tiles').innerHTML = GROUPS.map(([h, xs]) => `<p class="sups-k">${h}${h === 'Blitz' ? ' <span class="play-only">Friends only</span>' : ''}</p><div class="play-row" role="group" aria-label="${h}">${xs.map(([m, i]) => `<button type="button" class="play-tile" aria-pressed="${m === tc[0] && i === tc[1]}" data-tc="${m}+${i}">${m}+${i}</button>`).join('')}</div>`).join('');
+  // Blitz: no search, only a friend; the friend's challenge becomes the main button.
+  $('#play-seek').textContent = `Find an opponent · ${tc.join('+')}`;
+  $('#play-seek').hidden = blitz();
+  $('#play-challenge').textContent = blitz() ? `Challenge a friend · ${tc.join('+')}` : 'Challenge';
+  $('#play-challenge').className = blitz() ? 'cta play-go' : 'ghost';
+  $('#play-who').placeholder = 'Friend’s Lichess name';
 }
 $('.play-tiles').addEventListener('click', (e) => {
   const b = e.target.closest('[data-tc]');
@@ -188,6 +192,32 @@ boardEl.addEventListener('click', (e) => {
   draw();
 });
 
+// Your friends: the players you follow on Lichess, online ones first; a tap fills in the name.
+async function friends() {
+  const fs = [];
+  try { await stream('/api/rel/following', (x) => fs.push(x), { headers: { Accept: 'application/x-ndjson' } }); } catch { // a login from before follow:read
+    $('#play-friends').innerHTML = '<p class="info"><button type="button" class="link" id="play-fr-login">Show my Lichess friends here</button> (Lichess asks once more)</p>';
+    return $('#play-fr-login').addEventListener('click', () => login('board:play follow:read'));
+  }
+  if (!fs.length) return;
+  let on = new Set();
+  try { on = new Set((await fetch(`${API}/api/users/status?ids=${fs.slice(0, 100).map((f) => f.id).join(',')}`).then((r) => r.json())).filter((x) => x.online).map((x) => x.id)); } catch {}
+  fs.sort((x, y) => on.has(y.id) - on.has(x.id));
+  $('#play-friends').innerHTML = `<p class="sups-k">Your Lichess friends</p><div class="play-row">${fs.slice(0, 16).map((f) => `<button type="button" class="play-fr${on.has(f.id) ? ' on' : ''}" data-fr="${esc(f.username)}">${esc(f.username)}</button>`).join('')}</div>`;
+  $('#play-friends').addEventListener('click', (e) => { const b = e.target.closest('[data-fr]'); if (b) { $('#play-who').value = b.dataset.fr; $('#play-who').focus(); } });
+}
+
+// A friend's challenge to you, sent from Chess Labs or from Lichess: accept, and the game starts here for both.
+function incoming(c) {
+  if (document.querySelector(`[data-ch="${c.id}"]`)) return;
+  const tcw = c.timeControl?.limit ? `${c.timeControl.limit / 60}+${c.timeControl.increment}` : c.speed;
+  $('#play-incoming').insertAdjacentHTML('beforeend', `<div class="play-ch" data-ch="${esc(c.id)}"><span><b>${esc(c.challenger?.name)}</b> ${c.challenger?.rating ? `(${c.challenger.rating}) ` : ''}challenges you · ${esc(tcw)} · ${c.rated ? 'rated' : 'casual'}</span>
+    <button type="button" class="cta play-go" data-acc>Accept</button><button type="button" class="ghost" data-dec>Decline</button></div>`);
+  const el = document.querySelector(`[data-ch="${c.id}"]`);
+  el.querySelector('[data-acc]').addEventListener('click', () => post(`/api/challenge/${c.id}/accept`).then(() => el.remove()).catch((e) => say(e.message)));
+  el.querySelector('[data-dec]').addEventListener('click', () => post(`/api/challenge/${c.id}/decline`).then(() => el.remove()).catch((e) => say(e.message)));
+}
+
 // ---------- Start ----------
 (async () => {
   try { await finishLogin(); } catch (e) { $('#play-gate').innerHTML = `<p class="info">${esc(e.message)}</p>`; }
@@ -197,10 +227,14 @@ boardEl.addEventListener('click', (e) => {
     $('#play-gate').innerHTML = '<p class="info">To play from here, Lichess asks you once to let Chess Labs play games for you. Your games stay normal Lichess games. <button type="button" class="cta" id="play-login">Allow playing</button></p>';
   } else {
     $('#play-k').textContent = `Rated on Lichess · ${a.name}`;
-    $('#play-lobby').hidden = false; lobby(); lastGames(a.name);
+    $('#play-lobby').hidden = false; lobby(); lastGames(a.name); friends();
     // Every game that starts for you (a seek taken, a challenge accepted, or one still running) arrives here.
-    stream('/api/stream/event', (x) => { if (x.type === 'gameStart') openGame(x.game.gameId || x.game.id); })
+    stream('/api/stream/event', (x) => {
+      if (x.type === 'gameStart') openGame(x.game.gameId || x.game.id);
+      if (x.type === 'challenge' && x.challenge?.destUser?.id === a.name.toLowerCase()) incoming(x.challenge);
+      if (x.type === 'challengeCanceled' || x.type === 'challengeDeclined') document.querySelector(`[data-ch="${x.challenge?.id}"]`)?.remove();
+    })
       .catch((e) => say(e.message));
   }
-  $('#play-login')?.addEventListener('click', () => login('board:play'));
+  $('#play-login')?.addEventListener('click', () => login('board:play follow:read'));
 })();

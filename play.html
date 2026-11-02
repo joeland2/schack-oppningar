@@ -16,10 +16,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261102153423">
-  <script src="move.js?v=20261102153423"></script>
-  <script src="header.js?v=20261102153423" defer></script>
-  <script src="theme.js?v=20261102153423"></script>
+  <link rel="stylesheet" href="style.css?v=20261102154101">
+  <script src="move.js?v=20261102154101"></script>
+  <script src="header.js?v=20261102154101" defer></script>
+  <script src="theme.js?v=20261102154101"></script>
 </head>
 <body>
   <header class="top">
@@ -38,15 +38,17 @@
         <p class="sups-k" id="play-k">Rated on Lichess</p>
         <h1 class="pf-h1">Play</h1>
         <div id="play-gate"></div>
+        <div id="play-incoming" class="play-incoming" aria-live="polite"></div>
         <div id="play-lobby" hidden>
           <div class="play-tiles"></div>
           <p class="play-acts"><button type="button" class="cta play-go" id="play-seek">Find an opponent</button><label class="play-rated"><input type="checkbox" id="play-rated" checked> Rated</label></p>
-          <p class="play-friend"><input id="play-who" maxlength="30" placeholder="Or a friend's Lichess name" aria-label="Friend's Lichess name" autocomplete="off" spellcheck="false"><button type="button" class="ghost" id="play-challenge">Challenge</button></p>
+          <div id="play-friends" class="play-friends"></div>
+          <p class="play-friend"><input id="play-who" maxlength="30" placeholder="A friend's Lichess name" aria-label="Friend's Lichess name" autocomplete="off" spellcheck="false"><button type="button" class="ghost" id="play-challenge">Challenge</button></p>
           <p class="info" id="play-msg" aria-live="polite"></p>
-          <p class="info play-note">Lichess lets outside sites find opponents for rapid and classical games. Blitz works when you challenge a friend; bullet is not allowed.</p>
-        </div>
+          </div>
       </div>
       <aside class="play-aside" id="play-aside" hidden>
+        <div class="play-info"><b>Why no fast games with strangers?</b> Lichess lets sites outside lichess.org find opponents for rapid and classical games only. Blitz works when you challenge a friend. Bullet is not possible from here.</div>
         <div class="play-card"><p class="sups-k">Today</p><p class="play-today" id="play-today">–</p></div>
         <div class="play-card"><p class="sups-k">Last games</p><ul class="play-last" id="play-last"><li class="info">Loading…</li></ul></div>
       </aside>
@@ -66,6 +68,6 @@
     </section>
   </main>
 
-  <script type="module" src="play.js?v=20261102153423"></script>
+  <script type="module" src="play.js?v=20261102154101"></script>
 </body>
 </html>
