@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102143110';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102143110';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102143110';
-import { NAMED_TRAPS } from './traps.js?v=20261102143110';
-import { GUIDE } from './guide.js?v=20261102143110';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102143110';
-import { banner, confetti } from './celebrate.js?v=20261102143110';
-import { maia3Move } from './maia3.js?v=20261102143110';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102143110';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261102143110';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102143110';
-import { openLogin } from './login.js?v=20261102143110';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102143110';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261102151655';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261102151655';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261102151655';
+import { NAMED_TRAPS } from './traps.js?v=20261102151655';
+import { GUIDE } from './guide.js?v=20261102151655';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261102151655';
+import { banner, confetti } from './celebrate.js?v=20261102151655';
+import { maia3Move } from './maia3.js?v=20261102151655';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261102151655';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261102151655';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261102151655';
+import { openLogin } from './login.js?v=20261102151655';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261102151655';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -3601,6 +3601,21 @@ if (location.search === '?make-popular') {
   }
   document.body.innerHTML = `<pre id="popular">${JSON.stringify(out).replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`)}</pre>`;
   throw new Error('made the opening lists'); // stop here
+}
+// ?audit-traps: every opening's traps at three levels (blitz), with the line's move after each slip, printed
+// on the page for headless Chrome's --dump-dom, so Stockfish can check the answers outside the page.
+if (location.search === '?audit-traps') {
+  const out = [];
+  speed = 'blitz'; TREE = TREES.blitz = await treeFile('blitz', '');
+  for (const b of [[1, 4], [3, 6], [5, 8]]) {
+    band = b; OPENINGS = await popularFor();
+    for (const op of OPENINGS) {
+      cur = op;
+      try { for (const l of buildLines(op)) if (l.trap) out.push({ level: levelText(), side: op.side, opening: op.name, line: lineName(l), moves: l.moves, ply: l.trap.ply, slip: l.trap.san, next: l.moves[l.trap.ply + 1] || null }); } catch {}
+    }
+  }
+  document.body.innerHTML = `<pre id="audit">${JSON.stringify(out).replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`)}</pre>`;
+  throw new Error('listed the traps'); // stop here
 }
 if (new URLSearchParams(location.search).get('do') === 'learnfrom' && rating) lfPanel(0, 0.02, 'Starting…'); // at once, before the list loads
 showPicker().then(deepLink);

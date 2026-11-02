@@ -2875,7 +2875,7 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .sups-sort button { font: 600 13px var(--font-body); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; }
 .sups-sort button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .sups-heart { width: 16px; height: 16px; fill: var(--data); flex: none; }
-.sups-join { margin-top: 8px; color: var(--muted); max-width: 62ch; } .sups-join .cta { margin-left: 8px; }
+.sups-join { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 8px; color: var(--muted); }
 /* Supporter settings: switches and votes */
 .sup-opt, .sup-vote { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; cursor: pointer; }
 .sup-opt input, .sup-vote input { margin-top: 3px; accent-color: var(--data); }
