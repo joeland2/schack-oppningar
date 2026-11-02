@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261102133359';
-import { api as chatApi, openChat } from './chat.js?v=20261102133359';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102133359';
+import { account, login, finishLogin } from './lichess.js?v=20261102133851';
+import { api as chatApi, openChat } from './chat.js?v=20261102133851';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102133851';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -556,11 +556,16 @@ async function supporters() {
   const on = xs.filter((x) => x.active).length;
   el.innerHTML = `<div class="adm-head"><h2>${ic('people')}Supporters · ${on}</h2><small>Paid through Stripe, or ticked here by hand.</small></div>
     <form class="adm-sup-add"><input name="p" required maxlength="30" pattern="[A-Za-z0-9_\\-]{2,30}" placeholder="Lichess name" aria-label="Lichess name to make a supporter" autocomplete="off" spellcheck="false"><button type="submit" class="cta">Make supporter</button></form>
-    ${xs.length ? `<ul class="adm-online adm-sups">${xs.map((x) => `<li><label class="adm-sup"><input type="checkbox" data-sup="${esc(x.player)}"${x.active ? ' checked' : ''}><b>${esc(x.player)}</b></label><small>${x.customer ? 'pays through Stripe' : 'by hand'} · ${esc(x.frame || 'holo')}</small></li>`).join('')}</ul>` : '<p class="info">No supporters yet.</p>'}
+    ${xs.length ? `<ul class="adm-online adm-sups">${xs.map((x) => `<li><label class="adm-sup"><input type="checkbox" data-sup="${esc(x.player)}"${x.active ? ' checked' : ''}><b>${esc(x.player)}</b></label><small>${x.customer ? 'pays through Stripe' : 'by hand'} · ${esc(x.frame || 'holo')}${x.customer ? '' : ` · <button type="button" class="link" data-unsup="${esc(x.player)}">Remove</button>`}</small></li>`).join('')}</ul>` : '<p class="info">No supporters yet.</p>'}
     <p class="chat-err" role="alert" hidden></p>`;
   const fail = (m) => { const p = el.querySelector('.chat-err'); p.textContent = m; p.hidden = false; };
   const set = async (player, active) => { try { await supApi('?admin', { player, active }); supporters(); } catch (e) { fail(e.message); } };
   el.querySelectorAll('[data-sup]').forEach((c) => c.addEventListener('change', () => set(c.dataset.sup, c.checked)));
+  // Remove asks once on the button itself (the page has no confirm box): the first press arms it.
+  el.querySelectorAll('[data-unsup]').forEach((b) => b.addEventListener('click', async () => {
+    if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Remove for good?'; return; }
+    try { await supApi('?admin', { player: b.dataset.unsup, remove: true }); supporters(); } catch (e) { fail(e.message); }
+  }));
   el.querySelector('form').addEventListener('submit', (e) => { e.preventDefault(); set(e.target.p.value.trim(), true); });
 }
 function show(body) {

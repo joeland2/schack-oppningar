@@ -89,10 +89,12 @@ Deno.serve(async (req) => {
     return error ? json({ error: 'error' }, 500) : json(data.map((r) => ({ ...r, customer: !!r.customer })));
   }
   if (ADMINS.includes(id) && req.method === 'POST' && q.has('admin')) {
-    let b: { player?: unknown; active?: unknown } = {};
+    let b: { player?: unknown; active?: unknown; remove?: unknown } = {};
     try { b = JSON.parse(await req.text()); } catch { return json({ error: 'bad' }, 400); }
     const player = String(b.player || '').toLowerCase();
-    if (!/^[a-z0-9_-]{2,30}$/.test(player)) return json({ error: 'Not a Lichess name.' }, 400);
+    // remove: a row added by mistake goes; one paying through Stripe stays (untick it instead), so its customer is kept.
+    if (b.remove) { const { error } = await db.from('supporters').delete().eq('player', player).is('customer', null); return error ? json({ error: 'error' }, 500) : json({ ok: true }); }
+    if (!/^[a-z0-9_-]{2,30}$/.test(player) || player === 'undefined' || player === 'null') return json({ error: 'Not a Lichess name.' }, 400);
     const { data: had } = await db.from('supporters').select('player').eq('player', player).maybeSingle();
     const row = { player, active: !!b.active, updated: new Date().toISOString() };
     const { error } = await (had ? db.from('supporters').update(row).eq('player', player) : db.from('supporters').insert(row));
