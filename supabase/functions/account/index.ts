@@ -52,11 +52,16 @@ Deno.serve(async (req) => {
     const player = `cc:${typed.toLowerCase()}`, name = `cc:${typed}`;
     const { data: taken } = await db.from('site_accounts').select('uid').eq('player', player).maybeSingle();
     if (taken) return json({ error: `${typed} is already linked to a Chess Labs account. If it is yours, message the admins.` }, 409);
-    // shortcut: no limit on sign-ups per visitor; add one (or a captcha) if fake accounts show up
+    // At most 3 new accounts an hour from one address (kept only hashed, in signup_ips), so a script cannot
+    // make hundreds and take other players' names. Without the table the sign-up still works.
+    const ip = await sha((req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'none');
+    const { count } = await db.from('signup_ips').select('ip', { count: 'exact', head: true }).eq('ip', ip).gte('at', new Date(Date.now() - 36e5).toISOString());
+    if ((count ?? 0) >= 3) return json({ error: 'Too many new accounts from here. Try again in an hour.' }, 429);
     const { data, error } = await db.auth.admin.createUser({ email, password, email_confirm: true });
     if (error || !data.user) return json({ error: /already/i.test(error?.message || '') ? 'There is already an account with that email. Log in instead.' : 'Could not make the account. Try again in a minute.' }, 400);
     const { error: e2 } = await db.from('site_accounts').insert({ uid: data.user.id, player, name });
     if (e2) { await db.auth.admin.deleteUser(data.user.id); return json({ error: `${typed} is already linked to a Chess Labs account.` }, 409); }
+    await db.from('signup_ips').insert({ ip });
     return session(player, name);
   }
   return json({ error: 'bad' }, 400);

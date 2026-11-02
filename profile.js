@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102104147';
-import { openLogin } from './login.js?v=20261102104147';
-import { STYLE_OF } from './styles.js?v=20261102104147';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102104147';
-import { PEOPLE } from './pros.js?v=20261102104147';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261102105001';
+import { openLogin } from './login.js?v=20261102105001';
+import { STYLE_OF } from './styles.js?v=20261102105001';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261102105001';
+import { PEOPLE } from './pros.js?v=20261102105001';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1289,11 +1289,40 @@ function wrap(ctx, text, x, y, max, lh, lines = 99, indent = 0) {
   if (line) put(line);
   return y;
 }
+// A supporter's frame (supporter.js puts it around the card on the page as .sup-fx.fx-<name>), still, for
+// the image: [kind, colours, glow]. 14 units out from the card, as the page's 7px around a 300px card.
+const RAINBOW = ['#ff4d6d', '#ffb84d', '#f9f871', '#5cf2a6', '#4dc9ff', '#a96bff', '#ff4d6d'];
+const FX = {
+  holo: ['conic', RAINBOW], prism: ['linear', RAINBOW], tilt: ['conic', RAINBOW],
+  chrome: ['conic', ['#5b5f66', '#f4f6f8', '#8a8f97', '#2f3236', '#e9ecef', '#5b5f66']],
+  gold: ['conic', ['#7a5410', '#f7d774', '#b8871f', '#fff3c4', '#9c6b12', '#f7d774', '#7a5410'], '#e0b23a'],
+  ice: ['linear', ['#e8fbff', '#7fd4f5', '#bdf0ff', '#4fb8e0', '#e8fbff'], '#7fd4f5'],
+  lava: ['linear', ['#ff2d00', '#ff8a00', '#ffd000', '#ff4500', '#ff2d00'], '#ff4500'],
+  galaxy: ['linear', ['#8b5cf6', '#1e1b4b', '#ec4899', '#1e1b4b', '#22d3ee'], '#8b5cf6'],
+  oil: ['linear', ['#ffd1dc', '#c1f0ff', '#e2ffd1', '#f0d1ff', '#ffd1dc'], '#c1f0ff'],
+  neon: ['line', ['#ff6a2f'], '#ff6a2f'], glitch: ['line', ['#ff6a2f']],
+};
+const fxOf = (name) => FX[document.querySelector(`.sup-fx > .pf-pcard[data-player="${CSS.escape(name.toLowerCase())}"]`)?.parentElement.className.match(/fx-(\w+)/)?.[1]];
+function drawFrame(ctx, [kind, cs, glow]) {
+  ctx.save();
+  if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = 60; }
+  if (kind === 'line') { // neon and glitch: a line, glitch's with a pink and a cyan copy beside it
+    ctx.lineWidth = 6;
+    if (!glow) [['#ff00ea', -6], ['#00f0ff', 6]].forEach(([c, dx]) => { ctx.strokeStyle = c; ctx.beginPath(); ctx.roundRect(-12 + dx, -12, 624, 804, 18); ctx.stroke(); });
+    ctx.strokeStyle = cs[0]; ctx.beginPath(); ctx.roundRect(-12, -12, 624, 804, 18); ctx.stroke();
+  } else {
+    const g = kind === 'conic' ? ctx.createConicGradient(0, 300, 390) : ctx.createLinearGradient(-14, -14, 614, 794);
+    cs.forEach((c, i) => g.addColorStop(i / (cs.length - 1), c));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(-14, -14, 628, 808, 20); ctx.fill();
+  }
+  ctx.restore();
+}
 // One card, 600 x 780 units, top left at (x, y).
 function drawCard(ctx, x, y, name, p, t, skills, piece, flag = null) {
   const known = skills.filter((k) => k.v !== null), ovr = known.length ? String(Math.round(sum(known, (k) => k.v) / known.length)) : '–', main = p.speeds[0];
   const band = CARD.band(level(name, main));
   ctx.save(); ctx.translate(x, y);
+  if (fxOf(name)) drawFrame(ctx, fxOf(name));
   ctx.fillStyle = CARD.bg; ctx.beginPath(); ctx.roundRect(0, 0, 600, 780, 10); ctx.fill();
   ctx.fillStyle = band; ctx.beginPath(); ctx.roundRect(0, 0, 600, 14, [10, 10, 0, 0]); ctx.fill();
   ctx.textBaseline = 'alphabetic'; ctx.letterSpacing = '0px';
