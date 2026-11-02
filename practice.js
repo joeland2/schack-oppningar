@@ -2,9 +2,10 @@
 // Your weakest skills first, then puzzles from your own mistakes, the openings that cost you most,
 // the traps in your openings, and the opening that works best for you, to keep it sharp. Every step
 // links straight into the trainer: ?practise= starts an opening, ?do= starts traps or the mistake check.
-import { login } from './lichess.js?v=20261102203735';
-import { blunders, puzzles, puzzlesFromGames } from './blunder.js?v=20261102203735';
-import { current, cache, myName, skillsOf, storedGames } from './profile.js?v=20261102203735';
+import { login } from './lichess.js?v=20261102213418';
+import { blunders, puzzles, puzzlesFromGames } from './blunder.js?v=20261102213418';
+import { THEMES, byTheme } from './mistakes.js?v=20261102213418';
+import { current, cache, myName, skillsOf, storedGames } from './profile.js?v=20261102213418';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -59,7 +60,7 @@ function render(name, p) {
         <span class="pr-sk-row"><span>${esc(x.label)}</span><b>${x.v}</b></span><span class="pr-sk-bar"><i style="width:${x.v}%"></i></span></button>`).join('')}</div>
         <p class="pr-scale">Against players within your rating range: 50 is as good as them.</p></section>
       <section class="pf-card pr-plan" role="tabpanel" aria-live="polite">${panel()}</section>
-    </div>`;
+    </div>${commonMistakes(mine)}`;
   $('.pr-skills').addEventListener('click', (e) => {
     const b = e.target.closest('[data-skill]');
     if (!b) return;
@@ -67,6 +68,21 @@ function render(name, p) {
     document.querySelectorAll('.pr-sk').forEach((x) => x.setAttribute('aria-selected', x === b));
     $('.pr-plan').innerHTML = panel();
   });
+}
+
+// The kinds of mistake you make most, from the slips found in your games: each with your own positions
+// and more puzzles of the same kind (Lichess puzzles with that theme), so the habit is trained, not one move.
+function commonMistakes(mine) {
+  const groups = byTheme(mine).filter(([k]) => THEMES[k]).slice(0, 4);
+  if (!groups.length) return `<section class="pf-card pr-common"><h2>Your most common mistakes</h2>
+    <p class="info">Check your games once and the kinds of mistake you make most show up here, to train one by one.</p>
+    <a class="cta" href="./?do=mistakes">Find my mistakes</a></section>`;
+  const total = groups.reduce((s, [, xs]) => s + xs.length, 0);
+  return `<section class="pf-card pr-common"><h2>Your most common mistakes</h2>
+    <p class="info">The kinds of mistake in your games, the most frequent first. Train your own positions, then more of the same kind until the habit is gone.</p>
+    <ol class="pr-mis">${groups.map(([k, xs]) => `<li><span class="pr-mis-n"><b>${xs.length}</b><small>${pct(xs.length / total)}</small></span>
+      <span><b>${esc(THEMES[k].title)}</b><small>${esc(THEMES[k].tip)}</small></span>
+      <span class="pr-mis-go"><a class="ghost" href="mistakes.html?theme=${k}">Your ${xs.length}</a><a class="cta" href="mistakes.html?kind=${k}">Train this kind</a></span></li>`).join('')}</ol></section>`;
 }
 
 function ask() {

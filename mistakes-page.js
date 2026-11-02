@@ -1,14 +1,22 @@
-import { drill } from './drill.js?v=20261102203735';
-import { THEMES } from './mistakes.js?v=20261102203735';
-import { explainMistake, dangerAfter } from './ideas.js?v=20261102203735';
+import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
+import { drill } from './drill.js?v=20261102213418';
+import { THEMES } from './mistakes.js?v=20261102213418';
+import { explainMistake, dangerAfter } from './ideas.js?v=20261102213418';
 
 // Positions from your own games where you went wrong, saved by "Find my mistakes" on the openings page.
 // Everything is explained here, on the board: what your move did wrong, nudges while you look for
 // the better move, and what that move does once you find it.
 let found = [];
 try { found = JSON.parse(localStorage.getItem('opening-book-v2-mistakes')) || []; } catch {}
+// From My practice: ?theme= keeps one kind of mistake, ?kind= trains that kind on Lichess puzzles instead.
+const q = new URLSearchParams(location.search), theme = THEMES[q.get('theme')] && q.get('theme'), kind = THEMES[q.get('kind')] && q.get('kind');
+if (theme) found = found.filter((f) => f.theme === theme);
 
-if (!found.length) {
+// The Lichess puzzle theme for each kind of mistake.
+const ANGLE = { 'allowed-mate': 'defensiveMove', 'missed-mate': 'mate', hung: 'hangingPiece', 'missed-win': 'hangingPiece',
+  'missed-check': 'kingsideAttack', opening: 'opening', middlegame: 'middlegame', endgame: 'endgame' };
+if (kind) trainKind(kind);
+else if (!found.length) {
   document.querySelector('.layout').innerHTML = `<section class="picker"><h1>No mistakes yet</h1>
     <p class="info">Open <a href="./">Practise openings</a>, check your Lichess games and press Find my mistakes.
     The positions where you went wrong show up here to train.</p></section>`;
@@ -44,4 +52,39 @@ if (!found.length) {
       },
     };
   }), 'mistakes-solved-v1');
+}
+
+// Lichess puzzles of the same kind as one of your mistakes (its puzzle theme), a fresh set each visit.
+async function trainKind(k) {
+  const theme = THEMES[k];
+  document.querySelector('#title').textContent = `Loading puzzles: ${theme.title.toLowerCase()}…`;
+  // One at a time: Lichess turns away many requests at once (429), and stops us when it has had enough.
+  const got = [];
+  for (let i = 0; i < 8; i++) {
+    const r = await fetch(`https://lichess.org/api/puzzle/next?angle=${ANGLE[k]}`).catch(() => null);
+    if (!r?.ok) break;
+    got.push(await r.json());
+    document.querySelector('#title').textContent = `Loading puzzles: ${theme.title.toLowerCase()} ${i + 1}/8`;
+    await new Promise((ok) => setTimeout(ok, 400));
+  }
+  const seen = new Set(), items = [];
+  for (const x of got) {
+    if (!x || seen.has(x.puzzle.id)) continue;
+    seen.add(x.puzzle.id);
+    try {
+      const g = new Chess();
+      x.game.pgn.split(' ').forEach((m) => g.move(m));
+      const fen = g.fen(), side = g.turn(), solution = x.puzzle.solution.map((u) => g.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] }).san);
+      items.push({ id: `lp-${x.puzzle.id}`, group: theme.title, tag: String(items.length + 1), title: `${theme.title}: puzzle ${items.length + 1}`, side, fen, solution,
+        intro: `From a Lichess game, rated ${x.puzzle.rating}: the same kind of moment as in your games. ${side === 'w' ? 'White' : 'Black'} to play.`,
+        explain: `<p><b>The move:</b> ${solution.filter((_, i) => i % 2 === 0).join(', ')}.</p><p><b>What to take with you:</b> ${theme.tip}</p>
+          <p><a href="https://lichess.org/training/${x.puzzle.id}" target="_blank" rel="noopener">See it on Lichess</a> · <a href="mistakes.html?kind=${k}">More of these</a></p>`,
+        wrong: (san, at) => dangerAfter(at, san) || `${san} is not it. ${theme.tip}` });
+    } catch { /* a puzzle whose moves do not replay is skipped */ }
+  }
+  if (!items.length) {
+    document.querySelector('.layout').innerHTML = `<section class="picker"><h1>No puzzles came</h1><p class="info">Lichess did not answer. <a href="mistakes.html?kind=${k}">Try again</a>.</p></section>`;
+    return;
+  }
+  drill(items, 'mistakes-kind-solved-v1');
 }
