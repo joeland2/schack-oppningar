@@ -2,8 +2,8 @@
 // The login needs the board:play permission once; then a seek or a challenge starts a game, which Lichess
 // streams here move by move. When it ends, the game page reviews it.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261102160446';
-import { account, login, finishLogin } from './lichess.js?v=20261102160446';
+import { drawBoard, enableDrag } from './board.js?v=20261102161034';
+import { account, login, finishLogin } from './lichess.js?v=20261102161034';
 
 const $ = (s) => document.querySelector(s);
 const API = 'https://lichess.org';
@@ -135,7 +135,7 @@ function draw() {
   if (view !== null && view >= all.length) view = null;
   const b = view === null ? g.chess : new Chess();
   if (view !== null) all.slice(0, view).forEach((m) => b.move(m));
-  drawBoard(boardEl, b, { side: g.me, sel: view === null ? g.sel : null, last: b.history({ verbose: true }).at(-1) || null, pre: g.pre && view === null ? [g.pre.from, g.pre.to] : [] });
+  drawBoard(boardEl, b, { side: g.me, sel: view === null ? g.sel : null, last: b.history({ verbose: true }).at(-1) || null, pre: g.pre && view === null ? [g.pre.from, g.pre.to] : [], arrows: g.slip && view === g.slip.ply ? g.slip.arrows : [] });
   boardEl.classList.toggle('looking-back', view !== null);
   [...$('#play-moves').querySelectorAll('[data-ply]')].forEach((x) => x.classList.toggle('now', Number(x.dataset.ply) === (view ?? all.length) - 1));
   const top = g.me === 'w' ? 'b' : 'w';
@@ -148,6 +148,7 @@ function draw() {
   const sans = g.chess.history();
   $('#play-moves').innerHTML = sans.reduce((a, s, i) => (i % 2 ? a : [...a, `<li><span data-ply="${i}">${s}</span><span data-ply="${i + 1}">${sans[i + 1] || ''}</span></li>`]), []).join('');
   $('#play-moves').querySelector(`[data-ply="${(view ?? sans.length) - 1}"]`)?.classList.add('now');
+  if (g.slip) $('#play-moves').querySelector(`[data-ply="${g.slip.ply}"]`)?.classList.add('slip');
   if (view === null) $('#play-moves').scrollTop = 1e6;
   openingOf(sans.slice(0, 24)).then(([f, v]) => { $('#play-open').innerHTML = `${esc(f)}${v ? `<small>${esc(v)}</small>` : ''}`; });
 }
@@ -188,8 +189,18 @@ async function review() {
     ${!out ? '<p>The game stayed in known theory all through the opening.</p>' : mine
       ? `<p class="play-off bad"><b>${mv(out.ply, out.san)}</b> was your move that left known theory${out.ply ? ` after ${Math.ceil(out.ply / 2)} moves` : ''}. The book plays <b>${out.book.map((b) => mv(out.ply, b)).join('</b> or <b>')}</b>.</p>`
       : `<p class="play-off">Your opponent left known theory with <b>${mv(out.ply, out.san)}</b>; you were still in the book.</p>`}
+    ${mine ? '<p class="play-key"><i class="bad"></i>Your move <i class="good"></i>The book <button type="button" class="link" id="play-slip">Show it on the board</button></p>' : ''}
     ${f !== 'Starting position' ? `<p><a class="link" href="${link}">Practise the ${esc(f)} →</a></p>` : ''}`;
   $('#play-review').hidden = false;
+  // Your slip on the board: the position before it, your move in red and the book's in green.
+  if (mine) {
+    const b = new Chess(); sans.slice(0, out.ply).forEach((m) => b.move(m));
+    const arrow = (san, c) => { const m = new Chess(b.fen()).move(san); return [m.from, m.to, c]; };
+    g.slip = { ply: out.ply, arrows: [...out.book.map((x) => arrow(x, 'var(--good)')), arrow(out.san, 'var(--bad)')] };
+    const show = () => { view = g.slip.ply; draw(); };
+    $('#play-slip').addEventListener('click', show);
+    show();
+  }
 }
 function resetBtns() {
   $('#play-btns').innerHTML = '<button type="button" class="ghost" id="play-draw">Offer draw</button><button type="button" class="ghost" id="play-resign">Resign</button>';
