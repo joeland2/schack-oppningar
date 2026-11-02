@@ -2999,3 +2999,57 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .pr-mis li > span:nth-child(2) { display: grid; gap: 2px; }
 .pr-mis-go { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 @media (max-width: 600px) { .pr-mis li { grid-template-columns: 44px minmax(0, 1fr); } .pr-mis-go { grid-column: 1 / -1; justify-content: flex-start; } }
+
+/* Admin: a player's data (admin.js dataHtml), opened from the menu on their name. */
+.pd-name { font: inherit; font-weight: 600; color: inherit; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; cursor: pointer; padding: 0; background: none; border: 0; }
+.pd-name:hover { text-decoration-color: var(--hot); }
+.pd-menu { position: absolute; z-index: 60; display: grid; min-width: 160px; padding: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 30px rgb(0 0 0 / .25); }
+.pd-menu a, .pd-menu button { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border: 0; border-radius: 6px; background: none; color: var(--ink); font: inherit; font-size: 14px; text-decoration: none; text-align: left; cursor: pointer; }
+.pd-menu a:hover, .pd-menu button:hover { background: var(--raised); }
+.pd-menu .ico { width: 16px; height: 16px; color: var(--hot); }
+.pd-dialog { width: min(1100px, 96vw); max-width: none; }
+.pd { display: grid; gap: 16px; }
+.pd-hero { display: grid; gap: 16px; padding: 18px; border-radius: 12px; background: var(--raised); border-top: 4px solid var(--hot); }
+.pd-id { display: flex; gap: 14px; align-items: center; }
+.pd-id h3 { margin: 0; font: 400 clamp(26px, 4vw, 40px)/1 var(--font-poster); text-transform: uppercase; }
+.pd-id p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.pd-avatar { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--hot); color: #141414; font: 400 22px var(--font-poster); }
+.pd-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 0; }
+.pd-facts dt { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.pd-facts dd { margin: 4px 0 0; font-size: 14px; line-height: 1.5; }
+.pd-src { display: inline-block; padding: 1px 8px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); font-size: 12.5px; }
+.pd-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.pd-tile { display: grid; gap: 2px; padding: 12px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+.pd-tile small { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pd-tile b { font: 400 30px/1.1 var(--font-poster); }
+.pd-tile span { font-size: 12.5px; color: var(--muted); }
+.pd-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 800px) { .pd-two { grid-template-columns: minmax(0, 1fr); } }
+.pd-card { padding: 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); min-width: 0; }
+.pd-card h4 { display: flex; justify-content: space-between; gap: 10px; margin: 0 0 12px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+.pd-card h4 small { letter-spacing: 0; text-transform: none; font-weight: 400; color: var(--muted); }
+.pd-card h4:not(:first-child) { margin-top: 18px; }
+.pd-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pd-bars li { display: grid; grid-template-columns: 110px minmax(0, 1fr) 92px; gap: 10px; align-items: center; font-size: 14px; }
+.pd-bars i { height: 10px; border-radius: 5px; background: var(--hot); }
+.pd-bars b { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; } .pd-bars b small { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); }
+.pd-steps { list-style: none; margin: 0; padding: 0; display: grid; }
+.pd-steps li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 0; font-size: 14px; position: relative; color: var(--muted); }
+.pd-steps li i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); z-index: 1; }
+.pd-steps li:not(:last-child)::after { content: ""; position: absolute; left: 7px; top: 24px; bottom: -10px; width: 2px; background: var(--line); }
+.pd-steps li.on { color: var(--ink); } .pd-steps li.on i { border-color: var(--hot); background: var(--hot); }
+.pd-steps small { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pd-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.pd-table th { text-align: left; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.pd-table td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
+.pd-table .pd-op td { font-weight: 600; background: var(--raised); } .pd-table .pd-line td:first-child { padding-left: 28px; color: var(--muted); }
+.pd-hours { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; align-items: end; height: 90px; }
+.pd-hours i { background: var(--hot); border-radius: 3px 3px 0 0; min-height: 2px; }
+.pd-hours-k { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; }
+.pd-cal { display: grid; grid-template-rows: repeat(7, 12px); grid-auto-flow: column; grid-auto-columns: 12px; gap: 3px; }
+.pd-cal i { border-radius: 3px; background: var(--raised); } .pd-cal i.a { background: color-mix(in srgb, var(--hot) 45%, var(--raised)); } .pd-cal i.b { background: var(--hot); }
+.pd-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.pd-list li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: 14px; }
+.pd-list b { font: 400 24px var(--font-poster); text-align: right; } .pd-list small { color: var(--muted); }
+.pd-visits { max-height: 560px; }
+.pd-dur { margin-left: 6px; padding: 0 6px; border-radius: 4px; background: var(--raised); color: var(--muted); font-size: 11.5px; }

@@ -5,7 +5,7 @@
 // the device is read from the browser's user agent; the source is the site the visit came from.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const KINDS = ['view', 'profile', 'compare', 'analyse', 'practise', 'card', 'login', 'line', 'error'];
+const KINDS = ['view', 'profile', 'compare', 'analyse', 'practise', 'card', 'login', 'line', 'error', 'leave'];
 const LONG: Record<string, number> = { card: 600, line: 400, error: 160 }; // the longest target per kind; 80 for the rest
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type' };
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);

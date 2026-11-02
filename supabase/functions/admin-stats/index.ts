@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
   for (const r of recentViews) { hours[Number(F_HOUR.format(new Date(r.at)))]++; weekdays[WD.indexOf(F_WD.format(new Date(r.at)))]++; }
   const mobile = recentVisitors.filter((w) => /iPhone|Android/.test(w.device || '')).length;
   const logins: Record<string, { n: number; last: string }> = {};
-  for (const r of recent) if (r.user_name) logins[r.user_name] = { n: (logins[r.user_name]?.n || 0) + 1, last: r.at };
+  for (const r of recent) if (r.user_name && r.kind !== 'leave') logins[r.user_name] = { n: (logins[r.user_name]?.n || 0) + 1, last: r.at };
 
   return json({
     ...insights(rows),
@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
     // When each profile was created: the first event with that Lichess name (rows come oldest first), newest first.
     joined: (() => { const at = new Map<string, string>(); for (const r of rows) if (r.user_name && !at.has(r.user_name)) at.set(r.user_name, r.at); return [...at].map(([n, t]) => ({ n, at: t })).reverse(); })(),
     compares: count(recent.filter((r) => r.kind === 'compare').map((r) => r.target)),
-    usage: count(recent.filter((r) => r.kind !== 'view' && r.kind !== 'profile').map((r) => r.kind)),
+    usage: count(recent.filter((r) => !['view', 'profile', 'leave'].includes(r.kind)).map((r) => r.kind)),
     practised: count(recent.filter((r) => r.kind === 'practise' && !r.target?.startsWith('done ')).map((r) => r.target)),
     // Per opening: how many opened it, and how many lines were played through in each mode (learn, try, time).
     openings: (() => {
@@ -249,7 +249,7 @@ Deno.serve(async (req) => {
       }
       return Object.values(o).sort((a, b) => b.opened - a.opened).slice(0, 20).map(({ people, ...x }) => ({ ...x, people: people.size }));
     })(),
-    visitors: visitors.sort((a, b) => b.last.localeCompare(a.last)).slice(0, 300).map((w) => ({ ...w, events: w.events.slice(-150).reverse() })),
+    visitors: visitors.sort((a, b) => b.last.localeCompare(a.last)).slice(0, 300).map((w) => ({ ...w, events: w.events.slice(-400).reverse() })),
     users: Object.entries(logins).sort((a, b) => b[1].last.localeCompare(a[1].last)).map(([name, x]) => ({ name, n: x.n, last: x.last })),
   });
 });

@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261102214247';
-import { api as chatApi, openChat } from './chat.js?v=20261102214247';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102214247';
+import { account, login, finishLogin } from './lichess.js?v=20261102222816';
+import { api as chatApi, openChat } from './chat.js?v=20261102222816';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261102222816';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -235,7 +235,7 @@ const evIcon = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><
 // How one run of a line went: the mode, how it ended and the mistakes.
 const runHow = (x) => `${MODE[x.m] || esc(x.m)} · ${x.k === 'done' ? 'finished' : x.k === 'wrong' ? `wrong on move ${Math.floor(x.n / 2) + 1}` : `left at move ${Math.ceil((x.p || 0) / 2)}`}${x.x ? ` · ${x.x} mistake${x.x === 1 ? '' : 's'}` : ''}`;
 // A visitor by their Lichess name, else by where they were.
-const personName = (v) => (v.name ? `<a href="profile.html?u=${encodeURIComponent(v.name)}">${esc(v.name)}</a>` : `<span class="adm-muted">${flag(v.country)}${esc(v.city || 'Visitor')}</span>`);
+const personName = (v) => (v.name ? `<button type="button" class="link pd-name" data-person="${esc(v.name)}">${esc(v.name)}</button>` : `<span class="adm-muted">${flag(v.country)}${esc(v.city || 'Visitor')}</span>`);
 // Icons for the groups and the cards' titles.
 const IC = { ...EV_ICON, people: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1M16 3.1a4 4 0 0 1 0 7.8M22 21v-1a6 6 0 0 0-4-5.6',
   globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18', pin: 'M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12zM12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
@@ -300,7 +300,7 @@ function cardsHtml(s) {
 // Live: who was here in the last 15 minutes, and the last thing each did. Drawn when the page loads.
 function liveHtml(s) {
   const now = Date.now(), ago = (iso) => Math.round((now - Date.parse(iso)) / 6e4), here = s.visitors.filter((v) => ago(v.last) < 15), hour = s.visitors.filter((v) => ago(v.last) < 60).length;
-  const doing = (v) => { const e = v.events[0]; return e ? eventRow(e).replace(/^<li>|<\/li>$/g, '') : ''; };
+  const doing = (v) => { const e = v.events.find((x) => x.kind !== 'leave'); return e ? eventRow(e).replace(/^<li>|<\/li>$/g, '') : ''; };
   return `<section class="pf-card adm-live"><div class="adm-head"><h2><i class="adm-live-dot" aria-hidden="true"></i>Live now <small>${here.length} in the last 15 min · ${hour} in the last hour</small></h2><small>As of ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. Reload for newer.</small></div>
     ${here.length ? `<ul class="adm-live-list">${here.map((v) => `<li><span class="adm-live-who">${personName(v)} <small>${esc(v.device || '')} · ${ago(v.last) < 1 ? 'just now' : `${ago(v.last)} min ago`}</small></span><span class="adm-live-did">${doing(v)}</span></li>`).join('')}</ul>` : '<p class="info">Nobody right now.</p>'}</section>`;
 }
@@ -313,6 +313,7 @@ function eventRow(e) {
     const slip = x.w ? ` · played ${esc(x.g || '?')}, the line has ${esc(x.w)}` : '';
     return `<li>${t}${evIcon(x.k === 'done' ? 'line' : 'left')}<span>${side(x.s)}${esc(x.o)} · ${esc(x.l)} <small>${runHow(x)}${slip}</small></span></li>`;
   }
+  if (e.kind === 'leave') return ''; // time on a page: shown with the page in a player's data
   if (e.kind === 'view') return `<li>${t}${evIcon('view')}<span class="adm-muted">Opened ${esc(pageName(e.page))}</span></li>`;
   return `<li>${t}${evIcon(e.kind)}<span>${esc(KIND[e.kind] || e.kind)}${e.target ? `: <b>${targetHtml(e.kind, e.target)}</b>` : ''}</span></li>`;
 }
@@ -332,6 +333,118 @@ function personHtml(v, all) {
         <dt>Device</dt><dd>${esc(devices.join(', ') || '–')}</dd><dt>Came via</dt><dd>${esc(v.source || '–')}</dd></dl>${chips ? `<p class="adm-chips">${chips}</p>` : ''}</div>
     <ol class="adm-visits">${visits.reverse().map((vs) => `<li><h3>${new Date(vs[0].at).toDateString() === new Date().toDateString() ? 'Today' : day(vs[0].at)}<small>${new Date(vs[0].at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}${mins(vs) ? `–${new Date(vs.at(-1).at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · ${mins(vs)} min` : ''}</small></h3>
       <ul>${vs.slice().reverse().map(eventRow).join('')}</ul></li>`).join('')}</ol></div>`;
+}
+
+// A player's data, opened from their name (Data in its menu): everything the events say about them, all
+// browsers they used together. Time on a page comes from 'leave' events (seconds in view, sent as the page
+// is left); visits from before those were sent count the time to the next event, up to 10 minutes.
+const dur = (sec) => (sec < 60 ? `${Math.round(sec)} s` : sec < 3600 ? `${Math.round(sec / 60)} min` : `${Math.floor(sec / 3600)} h ${Math.round((sec % 3600) / 60)} min`);
+function dataHtml(v, all) {
+  const same = v.name ? all.filter((w) => w.name === v.name) : [v];
+  const events = same.flatMap((w) => w.events.map((e) => ({ ...e, w }))).sort((a, b) => a.at.localeCompare(b.at));
+  if (!events.length) return '<p class="info">No events recorded.</p>';
+  // Visits: events less than 30 minutes apart. Each page view gets its time: the leave events after it, or the gap to the next event.
+  const visits = [];
+  for (const e of events) { const last = visits.at(-1); if (last && Date.parse(e.at) - Date.parse(last.at(-1).at) < 30 * 6e4) last.push(e); else visits.push([e]); }
+  const views = [];
+  for (const vs of visits) vs.forEach((e, i) => {
+    if (e.kind === 'view') views.push({ e, sec: 0, measured: false, visit: vs });
+    else if (e.kind === 'leave' && views.length) { const x = views.at(-1); x.sec += Number(e.target) || 0; x.measured = true; }
+    if (e.kind !== 'leave' && views.length && views.at(-1).visit === vs && !views.at(-1).measured) {
+      const next = vs.slice(i + 1).find((x) => x.kind !== 'leave');
+      if (next && e.kind === 'view') views.at(-1).gap = Math.min(600, (Date.parse(next.at) - Date.parse(e.at)) / 1000);
+    }
+  });
+  for (const x of views) if (!x.measured) x.sec = x.gap || 0;
+  const total = views.reduce((t, x) => t + x.sec, 0), perPage = new Map();
+  for (const x of views) { const k = pageName(x.e.page); const o = perPage.get(k) || { sec: 0, n: 0 }; o.sec += x.sec; o.n++; perPage.set(k, o); }
+  const pages = [...perPage].sort((a, b) => b[1].sec - a[1].sec || b[1].n - a[1].n), topSec = Math.max(1, ...pages.map(([, o]) => o.sec));
+  const runs = events.filter((e) => e.kind === 'line').map((e) => ({ at: e.at, x: runOf(e.target) })).filter((r) => r.x?.o);
+  const days = [...new Set(events.map((e) => dayKey(e.at)))];
+  const of = (k) => events.filter((e) => e.kind === k);
+  const places = [...new Map(same.filter((w) => w.country).map((w) => [`${w.city}|${w.country}`, w])).values()];
+  const sources = [...new Set(same.map((w) => w.source).filter(Boolean))], devices = [...new Set(same.map((w) => w.device).filter(Boolean))];
+  // The exercises: per opening and colour, then its lines, with modes, mistakes and the move most often missed.
+  const ops = new Map();
+  for (const { x } of runs) {
+    const o = ops.get(`${x.s}|${x.o}`) || { s: x.s, o: x.o, runs: 0, done: 0, miss: 0, modes: {}, lines: new Map(), slips: {} };
+    o.runs++; o.miss += x.x || 0; if (x.k === 'done') o.done++; o.modes[x.m] = (o.modes[x.m] || 0) + 1;
+    const l = o.lines.get(x.l) || { runs: 0, done: 0, miss: 0 }; l.runs++; l.miss += x.x || 0; if (x.k === 'done') l.done++; o.lines.set(x.l, l);
+    if (x.w) { const k = `${x.g || '?'} for ${x.w}`; o.slips[k] = (o.slips[k] || 0) + 1; }
+    ops.set(`${x.s}|${x.o}`, o);
+  }
+  const opRows = [...ops.values()].sort((a, b) => b.runs - a.runs);
+  // When they reached each step on the site.
+  const firstOf = (f) => events.find(f)?.at;
+  const steps = [['First visit', events[0].at], ['Looked up a profile', firstOf((e) => e.kind === 'profile')], ['Practised a line', firstOf((e) => e.kind === 'line' || e.kind === 'practise')],
+    ['Finished a line', runs.find((r) => r.x.k === 'done')?.at], ['Logged in', firstOf((e) => e.kind === 'login' || (e.w.name && e.kind === 'view'))], ['Downloaded a card', firstOf((e) => e.kind === 'card')], ['Came back another day', days[1] && events.find((e) => dayKey(e.at) === days[1])?.at]];
+  // When they are here: hours (Swedish time) and the last 12 weeks by day.
+  const hours = Array(24).fill(0), byDay = {};
+  for (const x of views) { hours[Number(hourKey(x.e.at).slice(-2))]++; byDay[dayKey(x.e.at)] = (byDay[dayKey(x.e.at)] || 0) + 1; }
+  const topH = Math.max(1, ...hours), cal = Array.from({ length: 84 }, (_, i) => { const k = dayKey(Date.now() - (83 - i) * 864e5); return byDay[k] || 0; }), topD = Math.max(1, ...cal);
+  let streak = 0; for (let i = 83; i >= 0 && cal[i]; i--) streak++;
+  const looked = count(of('profile').map((e) => (e.target || '').split(' #')[0])), cards = of('card'), compares = of('compare'), errors = of('error');
+  const tile = (label, value, sub = '') => `<div class="pd-tile"><small>${label}</small><b>${value}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;
+  const lastVisit = visits.at(-1), mins = (vs) => Math.round((Date.parse(vs.at(-1).at) - Date.parse(vs[0].at)) / 6e4);
+  return `<div class="pd">
+    <section class="pd-hero">
+      <div class="pd-id"><span class="pd-avatar">${esc((v.name || v.city || 'V').slice(0, 2).toUpperCase())}</span>
+        <div><h3>${v.name ? esc(v.name) : 'Visitor'}</h3><p>${v.name ? `Logged in with Lichess${same.length > 1 ? ` · ${same.length} browsers` : ''}` : 'Not logged in'} · first seen ${when(events[0].at)} · last seen ${when(events.at(-1).at)}</p></div></div>
+      <dl class="pd-facts">
+        <div><dt>From</dt><dd>${places.map((w) => `${flag(w.country)}${esc(w.city ? `${w.city}, ` : '')}${esc(land(w.country).replace(/ \(..\)$/, ''))}`).join('<br>') || '–'}</dd></div>
+        <div><dt>Came in via</dt><dd>${sources.map((x) => `<span class="pd-src">${esc(x)}</span>`).join(' ') || '–'}</dd></div>
+        <div><dt>Device</dt><dd>${devices.map(esc).join('<br>') || '–'}</dd></div>
+        <div><dt>IP</dt><dd class="num">${[...new Set(same.map((w) => w.ip).filter(Boolean))].map((x) => esc(x.replace(/\.0$/, '.x'))).join('<br>') || '–'}</dd></div>
+      </dl>
+    </section>
+    <div class="pd-tiles">${tile('Visits', visits.length, `on ${days.length} day${days.length === 1 ? '' : 's'}`)}${tile('Time on the site', total ? dur(total) : '–', views.some((x) => x.measured) ? 'measured' : 'estimated')}
+      ${tile('Page views', views.length, `${(views.length / visits.length).toFixed(1)} a visit`)}${tile('Lines played', runs.length, `${runs.filter((r) => r.x.k === 'done').length} finished`)}
+      ${tile('Profiles looked up', of('profile').length, `${looked.length} different`)}${tile('Last visit', short(lastVisit[0].at), mins(lastVisit) ? `${mins(lastVisit)} min` : '')}</div>
+    <div class="pd-two">
+      <section class="pd-card"><h4>Time per page</h4>${pages.length ? `<ul class="pd-bars">${pages.map(([k, o]) => `<li><span>${esc(k)}</span><i style="width:${Math.max(2, (o.sec / topSec) * 100)}%"></i><b>${o.sec ? dur(o.sec) : '–'}<small>${o.n} view${o.n === 1 ? '' : 's'}</small></b></li>`).join('')}</ul>` : '<p class="info">No page views.</p>'}</section>
+      <section class="pd-card"><h4>The way through the site</h4><ol class="pd-steps">${steps.map(([t, at]) => `<li class="${at ? 'on' : ''}"><i></i><span>${t}</span><small>${at ? when(at) : 'not yet'}</small></li>`).join('')}</ol></section>
+    </div>
+    <section class="pd-card"><h4>Exercises <small>${runs.length} lines in ${opRows.length} opening${opRows.length === 1 ? '' : 's'}</small></h4>
+      ${opRows.length ? `<div class="adm-table-wrap"><table class="pd-table"><thead><tr><th>Opening</th><th>Lines</th><th>Finished</th><th>Mistakes</th><th>Learn · Practice · Time</th><th>Missed most</th></tr></thead><tbody>${opRows.map((o) => {
+        const slip = Object.entries(o.slips).sort((a, b) => b[1] - a[1])[0];
+        return `<tr class="pd-op"><td>${side(o.s)}${esc(o.o)}</td><td class="num">${o.runs}</td><td>${doneBar({ runs: o.runs, done: o.done })}</td><td class="num">${(o.miss / o.runs).toFixed(1)} a line</td><td class="num">${o.modes.learn || 0} · ${o.modes.try || 0} · ${o.modes.time || 0}</td><td>${slip ? `${esc(slip[0])} <small>×${slip[1]}</small>` : '–'}</td></tr>`
+          + [...o.lines].sort((a, b) => b[1].runs - a[1].runs).map(([n, l]) => `<tr class="pd-line"><td>${esc(n)}</td><td class="num">${l.runs}</td><td>${doneBar(l)}</td><td class="num">${l.miss}</td><td></td><td></td></tr>`).join('');
+      }).join('')}</tbody></table></div>` : '<p class="info">No lines played yet.</p>'}</section>
+    <div class="pd-two">
+      <section class="pd-card"><h4>When they are here <small>Swedish time</small></h4><div class="pd-hours">${hours.map((n, h) => `<i style="height:${(n / topH) * 100}%" title="${h}:00 · ${n} page views"></i>`).join('')}</div><div class="pd-hours-k"><span>0</span><span>6</span><span>12</span><span>18</span><span>23</span></div>
+        <h4>Last 12 weeks <small>${streak ? `${streak} day${streak === 1 ? '' : 's'} in a row now` : ''}</small></h4><div class="pd-cal">${cal.map((n) => `<i class="${n ? (n / topD > 0.5 ? 'b' : 'a') : ''}" title="${n} page views"></i>`).join('')}</div></section>
+      <section class="pd-card"><h4>Other things they did</h4><ul class="pd-list">
+        <li><b>${looked.length}</b><span>Profiles looked up${looked.length ? `: ${looked.slice(0, 8).map((x) => `${plink(x.name)}${x.n > 1 ? ` <small>×${x.n}</small>` : ''}`).join(', ')}` : ''}</span></li>
+        <li><b>${cards.length}</b><span>Cards downloaded${cards.length ? `: ${[...new Set(cards.map((e) => (e.target || '').split(' · ')[0]))].slice(0, 6).map(esc).join(', ')}` : ''}</span></li>
+        <li><b>${compares.length}</b><span>Comparisons${compares.length ? `: ${compares.slice(-4).map((e) => esc(e.target || '')).join(', ')}` : ''}</span></li>
+        <li><b>${of('analyse').length}</b><span>Analyses started</span></li>
+        <li><b>${errors.length}</b><span>Errors they met${errors.length ? `: ${errors.slice(-3).map((e) => esc(e.target || '')).join('; ')}` : ''}</span></li></ul></section>
+    </div>
+    <section class="pd-card"><h4>Every visit <small>newest first</small></h4><ol class="adm-visits pd-visits">${visits.slice().reverse().map((vs) => `<li><h3>${new Date(vs[0].at).toDateString() === new Date().toDateString() ? 'Today' : day(vs[0].at)}<small>${new Date(vs[0].at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · ${vs.find((e) => e.w.source)?.w.source && vs[0] === events.find((e) => e.w === vs[0].w) ? `via ${esc(vs[0].w.source)} · ` : ''}${esc(vs[0].w.device || '')}${mins(vs) ? ` · ${mins(vs)} min` : ''}</small></h3>
+      <ul>${vs.slice().reverse().map((e) => { const x = e.kind === 'view' && views.find((y) => y.e === e); return eventRow(e).replace('</span></li>', x?.sec ? ` <small class="pd-dur">${dur(x.sec)}</small></span></li>` : '</span></li>'); }).join('')}</ul></li>`).join('')}</ol></section>
+  </div>`;
+}
+const count = (xs) => Object.entries(xs.filter(Boolean).reduce((m, x) => ({ ...m, [x]: (m[x] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ name, n }));
+// A name's menu: their profile, or their data.
+function personMenu(b, body) {
+  document.querySelector('.pd-menu')?.remove();
+  const name = b.dataset.person, id = b.dataset.visitor, r = b.getBoundingClientRect();
+  const m = Object.assign(document.createElement('div'), { className: 'pd-menu' });
+  m.innerHTML = `${name ? `<a href="profile.html?u=${encodeURIComponent(name)}">${evIcon('profile')}Profile</a>` : ''}<button type="button">${evIcon('view')}Data</button>`;
+  m.style.left = `${Math.min(r.left + scrollX, innerWidth - 180)}px`; m.style.top = `${r.bottom + scrollY + 4}px`;
+  document.body.append(m);
+  m.querySelector('button').onclick = () => {
+    m.remove();
+    const v = body.visitors.find((x) => (name ? x.name?.toLowerCase() === name.toLowerCase() : x.id === id));
+    const d = document.createElement('dialog');
+    d.className = 'chat adm-actions pd-dialog';
+    d.innerHTML = `<header class="chat-head"><h2>${esc(name || 'Visitor')}</h2>${name ? `<a href="profile.html?u=${encodeURIComponent(name)}">Profile</a>` : ''}<button type="button" class="chat-x" aria-label="Close">×</button></header>
+      <div class="adm-actions-body">${v ? dataHtml(v, body.visitors) : '<p class="info">No visits recorded for this player.</p>'}</div>`;
+    document.body.append(d); d.showModal();
+    const close = () => { d.close(); d.remove(); };
+    d.querySelector('.chat-x').onclick = close; d.addEventListener('cancel', close);
+  };
+  setTimeout(() => addEventListener('click', function off(e) { if (!m.contains(e.target)) { m.remove(); removeEventListener('click', off); } }), 0);
 }
 
 // Openings, the last 30 days: per opening and colour the runs, people, the share finished and the
@@ -391,7 +504,7 @@ function render(s) {
       ${s.visitors.length ? `<div class="adm-visitors"><div class="adm-v-head"><span>Location</span><span>IP</span><span>Lichess</span><span>Device</span><span>Visits</span><span>Last seen</span></div>${s.visitors.map((v) => `<details class="adm-visitor"><summary>
           <span class="adm-v-where">${flag(v.country)}${esc(v.country ? land(v.country).replace(/ \(..\)$/, '') : 'Unknown')}${v.city ? ` · ${esc(v.city)}` : ''}</span>
           <span class="num">${esc((v.ip || '–').replace(/\.0$/, '.x').replace(/::$/, ':x'))}</span>
-          <span>${v.name ? link({ name: v.name }) : '<small>–</small>'}</span>
+          <span>${v.name ? `<button type="button" class="link pd-name" data-person="${esc(v.name)}">${esc(v.name)}</button>` : `<button type="button" class="link pd-name" data-visitor="${esc(v.id)}">Data</button>`}</span>
           <span>${esc(v.device || '–')}</span>
           <span class="num">${v.views} view${v.views === 1 ? '' : 's'} · since ${day(v.first)}</span>
           <span class="num">${when(v.last)}</span></summary>
@@ -401,7 +514,7 @@ function render(s) {
     <div class="adm-three">
       <section class="pf-card"><h2>${ic('login')}Logged-in players · ${s.days} days</h2>${s.users.length
         ? `<p class="adm-online-k">${s.users.filter(isOn).length} active in the last hour</p><ul class="adm-online">${[...s.users].sort((a, b) => b.last.localeCompare(a.last)).map((u) => `<li>
-          <span class="adm-dot${isOn(u) ? ' on' : ''}"></span><button type="button" class="adm-online-who" data-actions="${esc(u.name)}"><b>${esc(u.name)}</b><small>${isOn(u) ? 'active now' : `last ${when(u.last)}`}</small></button><span class="adm-online-n"><b>${u.n}</b> actions</span></li>`).join('')}</ul>` : '<p class="info">Nobody yet.</p>'}</section>
+          <span class="adm-dot${isOn(u) ? ' on' : ''}"></span><button type="button" class="adm-online-who" data-person="${esc(u.name)}"><b>${esc(u.name)}</b><small>${isOn(u) ? 'active now' : `last ${when(u.last)}`}</small></button><span class="adm-online-n"><b>${u.n}</b> actions</span></li>`).join('')}</ul>` : '<p class="info">Nobody yet.</p>'}</section>
       ${joinedHtml(s, link)}
       <section class="pf-card"><h2>${ic('profile')}Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>
     </div>
@@ -589,17 +702,8 @@ function show(body) {
   bindLine(body);
   $('#adm-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = b.dataset.span === 'today' ? 'today' : Number(b.dataset.span);
     $('#adm-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body); });
-  // A logged-in player's name opens what they did: their visits and every action, as under Unique visitors.
-  for (const b of document.querySelectorAll('[data-actions]')) b.onclick = () => {
-    const name = b.dataset.actions.toLowerCase(), v = body.visitors.find((x) => x.name?.toLowerCase() === name);
-    const d = document.createElement('dialog');
-    d.className = 'chat adm-actions';
-    d.innerHTML = `<header class="chat-head"><h2>${esc(b.dataset.actions)}</h2><a href="profile.html?u=${encodeURIComponent(b.dataset.actions)}">Profile</a><button type="button" class="chat-x" aria-label="Close">×</button></header>
-      <div class="adm-actions-body">${v ? personHtml(v, body.visitors) : '<p class="info">No visits recorded for this player.</p>'}</div>`;
-    document.body.append(d); d.showModal();
-    const close = () => { d.close(); d.remove(); };
-    d.querySelector('.chat-x').onclick = close; d.addEventListener('cancel', close);
-  };
+  // A player's name (or a visitor's Data) opens a menu: their profile, or all their data.
+  $('#admin').onclick = (e) => { const b = e.target.closest('[data-person], [data-visitor]'); if (!b) return; e.preventDefault(); e.stopPropagation(); personMenu(b, body); };
   // The visitor list shows the newest 10 until opened.
   $('[data-more]')?.addEventListener('click', (e) => { const b = e.currentTarget, open = $('.adm-visitors').classList.toggle('open');
     b.setAttribute('aria-expanded', open); b.textContent = open ? 'Show the newest 10' : `Show all ${body.visitors.length}`; });

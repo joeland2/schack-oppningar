@@ -26,6 +26,11 @@
       body: JSON.stringify({ kind, page, target: target && String(target).slice(0, kind === 'line' ? 400 : kind === 'error' ? 160 : 80), visitor, user_name: user(), source: kind === 'view' ? source : null }) }).catch(() => {});
   };
   window.track('view');
+  // Time on the page: the seconds it was in view, sent when the tab is hidden or the page is left.
+  let shown = document.visibilityState === 'visible' ? Date.now() : 0, spent = 0;
+  const flush = () => { if (shown) { spent += Date.now() - shown; shown = 0; } if (spent >= 2000) { window.track('leave', Math.round(spent / 1000)); spent = 0; } };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); else shown = Date.now(); });
+  addEventListener('pagehide', flush);
   // Errors the page meets, so the admin page shows what breaks: each message once, at most five a page.
   // Errors from other sites' scripts come as a bare "Script error." and say nothing, so they are left out.
   const said = new Set();
@@ -270,9 +275,9 @@ addEventListener('DOMContentLoaded', () => {
     const row = document.querySelector('.foot-row');
     if (row) row.insertAdjacentHTML('beforeend', b);
     else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
-    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261102214247')).openChat());
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261102222816')).openChat());
     // Supporters: the hearts and card frames on every page, and Support (header and bottom) opens its dialog.
-    const sup = import('./supporter.js?v=20261102214247');
+    const sup = import('./supporter.js?v=20261102222816');
     document.addEventListener('click', async (e) => { if (e.target.closest('[data-support]')) (await sup).openSupport(); });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
