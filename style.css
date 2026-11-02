@@ -639,13 +639,18 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
 
 /* Checkmate: a banner over the board, and confetti */
 .board-frame { position: relative; container-type: inline-size; }
-.mate-banner { position: absolute; inset: 0; display: grid; place-items: center; z-index: 20; pointer-events: none;
-  font: 700 clamp(20px, 11cqi, 64px) var(--font-body); color: #fff; text-shadow: 0 2px 12px rgb(0 0 0 / .6);
-  background: rgb(46 125 50 / .35); border-radius: var(--radius); animation: mate-in .4s ease-out; }
-@keyframes mate-in { from { opacity: 0; transform: scale(.9); } }
-.confetti { position: fixed; z-index: 60; width: 8px; height: 12px; border-radius: 2px; pointer-events: none; animation: confetti-fall linear forwards; }
-@keyframes confetti-fall { to { transform: translate(var(--dx), 80vh) rotate(var(--rot)); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .mate-banner { animation: none; } }
+.mate-banner { --c: #ff6a2f; position: absolute; inset: 0; display: grid; place-items: center; z-index: 20; pointer-events: none;
+  background: rgb(20 20 20 / .38); border-radius: var(--radius); animation: mate-dim .25s ease-out; }
+.mate-banner .stamp { padding: .18em .42em .1em; border: 5px solid var(--c); border-radius: 8px; background: rgb(20 20 20 / .82); color: var(--c);
+  font: 400 clamp(28px, 12cqi, 72px)/1 var(--font-poster); letter-spacing: .02em; text-transform: uppercase; white-space: nowrap; text-align: center;
+  box-shadow: 0 12px 30px rgb(0 0 0 / .5); transform: rotate(-8deg); animation: stamp .45s cubic-bezier(.2, 1.6, .4, 1) both; }
+.mate-banner .stamp small { display: block; margin-top: .3em; font: 600 clamp(10px, 2.6cqi, 14px) var(--font-body); letter-spacing: .14em; color: #f4efe6; }
+@keyframes stamp { from { transform: rotate(-14deg) scale(2.6); opacity: 0; } 70% { opacity: 1; } }
+@keyframes mate-dim { from { opacity: 0; } }
+.board-frame.thud { animation: thud .35s .3s; }
+@keyframes thud { 30% { transform: translate(3px, 2px); } 60% { transform: translate(-2px, -1px); } }
+.confetti { position: fixed; inset: 0; z-index: 60; width: 100vw; height: 100vh; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .mate-banner, .mate-banner .stamp, .board-frame.thud { animation: none; } }
 
 /* The start of a line: what the opening is about and which line this is */
 .coach .why .intro { color: var(--ink); font-size: 15px; }
@@ -1539,8 +1544,8 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .op-guide ul { margin: 6px 0 0; padding-left: 1.1em; display: grid; gap: 4px; line-height: 1.45; }
 .op-guide-k { font: 600 11px var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .trap-tag.theory { background: var(--raised); color: var(--ink); }
-.mate-banner.draw { background: rgb(120 110 95 / .45); font-size: clamp(18px, 8cqi, 48px); }
-.mate-banner.lost { background: rgb(180 35 24 / .35); }
+.mate-banner.draw { --c: #d3c8b3; } .mate-banner.draw .stamp { font-size: clamp(24px, 10cqi, 60px); }
+.mate-banner.lost { --c: #e05a4f; }
 
 /* Under the board: the opening's name, what it is about, your plan and its idea (the panel beside the
    board is for the moves you play now) */
