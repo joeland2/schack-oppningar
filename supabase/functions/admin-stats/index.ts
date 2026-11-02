@@ -90,13 +90,20 @@ function insights(rows: Ev[], now = Date.now()) {
 }
 // insights:end
 
+const who = new Map<string, { id: string; at: number }>();
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   const token = req.headers.get('x-lichess-token');
   if (!token) return json({ error: 'Log in with Lichess first.' }, 401);
-  const me = await fetch('https://lichess.org/api/account', { headers: { Authorization: `Bearer ${token}` } });
-  if (!me.ok) return json({ error: 'Lichess did not accept the login. Log in again.' }, 401);
-  const { id } = await me.json();
+  // Who you are, kept 10 minutes per token: Lichess limits how often one server may ask.
+  let id = who.get(token)?.at > Date.now() - 600_000 ? who.get(token)!.id : '';
+  if (!id) {
+    const me = await fetch('https://lichess.org/api/account', { headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
+    if (me?.status === 401) return json({ error: 'Lichess did not accept the login. Log in again.' }, 401);
+    if (!me?.ok) return json({ error: `Lichess is busy (${me?.status || 'no answer'}). Try again in a minute.` }, 503);
+    id = (await me.json()).id;
+    who.set(token, { id, at: Date.now() });
+  }
   if (!ADMINS.includes(id)) return json({ error: 'This page is for the admins only.' }, 403);
   // The admin page's "Update all pros now": every pro's and VIP's games fetched again and their profiles
   // snapshotted, by the GitHub workflow (.github/workflows/snapshot-pros.yml). GH_DISPATCH_TOKEN: a fine-grained
