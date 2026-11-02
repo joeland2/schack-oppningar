@@ -2,11 +2,12 @@
 // decided it (yours and your opponent's mistakes, with the better move), and a short read of what
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
+import { banner, confetti } from './celebrate.js?v=20261102113815';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261102113416';
-import { account, lichessAuth } from './lichess.js?v=20261102113416';
-import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261102113416';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261102113416';
+import { drawBoard, enableDrag } from './board.js?v=20261102113815';
+import { account, lichessAuth } from './lichess.js?v=20261102113815';
+import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261102113815';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261102113815';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -296,16 +297,20 @@ function drawTry() {
   $('#try-back').onclick = () => go(t.from);
   $('#try-undo').onclick = () => { if (t.busy) return; c.undo(); if (c.turn() !== t.me) c.undo(); t.sel = null; const h = c.history({ verbose: true }).at(-1); t.last = h ? { from: h.from, to: h.to } : null; drawTry(); };
 }
+function ended(t) {
+  if (t.c.isCheckmate()) t.c.turn() === t.me ? banner('Checkmated', 'lost') : (banner('Checkmate!'), confetti(110));
+  else if (t.c.isDraw()) banner('Draw', 'draw');
+}
 async function tryMove(from, to) {
   const t = tryOut;
   if (!t || t.busy || t.c.turn() !== t.me) return false;
   let m;
   try { m = t.c.move({ from, to, promotion: 'q' }); } catch { return false; }
   t.sel = null; t.last = { from: m.from, to: m.to };
-  if (t.c.isGameOver()) return drawTry(), true;
+  if (t.c.isGameOver()) return drawTry(), ended(t), true;
   t.busy = true; drawTry();
   const legal = t.c.moves({ verbose: true });
-  const { maia3Move } = await import('./maia3.js?v=20261102113416'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261102113416'); // loaded on the first move only: the nets are big
+  const { maia3Move } = await import('./maia3.js?v=20261102113815'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261102113815'); // loaded on the first move only: the nets are big
   let r = null;
   try { r = (await within(20000, maia3Move(t.c.fen(), legal, t.rating, t.rating))).move; } catch (e) { console.warn(e); }
   if (!r && t.rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(t.rating, [t.c.fen()], legal))).move; } catch (e) { console.warn(e); }
@@ -313,7 +318,7 @@ async function tryMove(from, to) {
   if (!r) { const e = await engineEval(t.c.fen()); r = e.best && { from: e.best.slice(0, 2), to: e.best.slice(2, 4), promotion: e.best[4] }; }
   t.busy = false;
   if (r) { const a = t.c.move({ from: r.from, to: r.to, promotion: r.promotion || 'q' }); t.last = { from: a.from, to: a.to }; }
-  drawTry();
+  drawTry(); ended(t);
   return true;
 }
 enableDrag($('#board'), {

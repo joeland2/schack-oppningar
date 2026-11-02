@@ -1,10 +1,11 @@
 // Spot the blunder: a few moves from one of your own games play out on the board, and one of yours was
 // a blunder. Pick it. From the slips Find my mistakes and your analysed games have found (the puzzles
 // on mistakes.html), with the game's moves from the games kept in this browser.
+import { banner, confetti } from './celebrate.js?v=20261102113815';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261102113416';
-import { THEMES, findMistakes, pickPuzzles } from './mistakes.js?v=20261102113416';
-import { storedGames, gamesReady } from './profile.js?v=20261102113416';
+import { drawBoard } from './board.js?v=20261102113815';
+import { THEMES, findMistakes, pickPuzzles } from './mistakes.js?v=20261102113815';
+import { storedGames, gamesReady } from './profile.js?v=20261102113815';
 
 const PUZZLES = 'opening-book-v2-mistakes';
 export const puzzles = () => { try { return JSON.parse(localStorage.getItem(PUZZLES)) || []; } catch { return []; } };
@@ -88,6 +89,7 @@ export function spotTheBlunder(all) {
       drawBoard(board, g, { side: f.side, arrow: [best.from, best.to] });
       chips.forEach((c) => { c.disabled = true; c.hidden = false; if (+c.dataset.ply === f.ply) c.classList.add('bd-hit'); });
       msg.className = `message ${ok ? 'good' : 'bad'}`;
+      if (ok) { banner('Caught it!', '', board); confetti(80, board); }
       msg.innerHTML = `${ok ? '<b>Caught it!</b> ' : ''}<b>${esc(label(f.ply, f.played))}??</b> was the blunder. <b>${esc(f.best)}</b> was the move here (the arrow). ${esc(THEMES[f.theme]?.tip || '')} Press <b>Next game</b> for another.`;
     }
     chips.forEach((c) => c.addEventListener('click', () => {

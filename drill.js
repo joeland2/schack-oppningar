@@ -1,8 +1,9 @@
 // Shared "play the right move" trainer for the Basics and Pros pages.
 // item: { id, group, title, tag, side, fen, solution: [san…], intro, explain (html), wrong?(san) }
 // Moves at odd positions in solution are the opponent's replies and are played automatically.
+import { banner, confetti } from './celebrate.js?v=20261102113815';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake, instruction } from './board.js?v=20261102113416';
+import { drawBoard, enableDrag, shake, instruction } from './board.js?v=20261102113815';
 
 const $ = (s) => document.querySelector(s);
 const clean = (san) => san.replace(/[+#]/g, '');
@@ -54,6 +55,7 @@ export function drill(items, storeKey) {
     try { localStorage.setItem(storeKey, JSON.stringify([...solved])); } catch {}
     renderList();
     say('Solved!', 'good');
+    banner('Solved!'); confetti(80);
     $('#explain').innerHTML = cur.explain;
     $('#explain').hidden = false;
   }

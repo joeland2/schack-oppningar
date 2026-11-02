@@ -3,8 +3,9 @@
 // and Time (mate as fast as you can). There are no fixed lines: every position is new, and the
 // Lichess tablebase (tablebase.lichess.ovh, exact for up to 7 pieces) says what every move is worth
 // and plays the defence. A slip is a move that lets the win go: a draw, stalemate or a piece given away.
+import { banner, confetti } from './celebrate.js?v=20261102113815';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake, instruction, flyStar } from './board.js?v=20261102113416';
+import { drawBoard, enableDrag, shake, instruction, flyStar } from './board.js?v=20261102113815';
 
 const $ = (s) => document.querySelector(s);
 // { [id]: { learned: 0|1, box, due, times: [your three best ms] } }, synced with your account (header.js). Numbers
@@ -308,7 +309,7 @@ async function tryMove(from, to) {
     if (g !== gen) return true;
     const reply = r.moves[0]; // the defence that holds out longest
     last = game.move({ from: reply.uci.slice(0, 2), to: reply.uci.slice(2, 4), promotion: reply.uci[4] });
-    if (game.isDraw()) { over = true; draw(); return say('Fifty moves without a capture or a pawn move: that is a draw. Press New position to try again.', 'bad'), true; }
+    if (game.isDraw()) { over = true; draw(); banner('Draw · fifty moves', 'draw'); return say('Fifty moves without a capture or a pawn move: that is a draw. Press New position to try again.', 'bad'), true; }
     info = await probe(game.fen());
     if (g !== gen) return true;
   } catch (e) { busy = false; say(e.message, 'bad'); return true; }
@@ -340,6 +341,7 @@ function finish() {
     r.times = [...(r.times || []), Math.round(elapsed)].sort((a, b) => a - b).slice(0, 3);
     say(`Checkmate in ${clock(elapsed)}.${!was ? '' : elapsed < was ? ` A new best: it was ${clock(was)}.` : ` Your best is ${clock(was)}.`} Press New position to go again.`, 'good');
   }
+  banner('Checkmate!'); confetti(mode === 'try' && (misses || assisted) ? 50 : 110);
   save(); renderList(); renderPath();
   // A star newly earned flies from the middle of the screen to its place in the list.
   const kind = mode === 'learn' ? 'green' : mode === 'try' ? 'gold' : 'diamond';
