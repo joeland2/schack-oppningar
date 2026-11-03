@@ -3141,3 +3141,4 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .ofit b { color: var(--hot); font-weight: 600; }
 .tag.foryou { background: var(--hot); color: #fff; }
 @media (max-width: 560px) { .ocard-tags .tag.foryou { display: inline-block; } }
+.ofit-long { font-size: 14px; color: var(--ink); padding: 10px 12px; border-left: 3px solid var(--hot); background: var(--surface); border-radius: 0 6px 6px 0; }

@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103114319';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103114319';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103114319';
-import { NAMED_TRAPS } from './traps.js?v=20261103114319';
-import { GUIDE } from './guide.js?v=20261103114319';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103114319';
-import { banner, confetti } from './celebrate.js?v=20261103114319';
-import { maia3Move } from './maia3.js?v=20261103114319';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103114319';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261103114319';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103114319';
-import { openLogin } from './login.js?v=20261103114319';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103114319';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103115757';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103115757';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103115757';
+import { NAMED_TRAPS } from './traps.js?v=20261103115757';
+import { GUIDE } from './guide.js?v=20261103115757';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103115757';
+import { banner, confetti } from './celebrate.js?v=20261103115757';
+import { maia3Move } from './maia3.js?v=20261103115757';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103115757';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261103115757';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103115757';
+import { openLogin } from './login.js?v=20261103115757';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103115757';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -515,12 +515,15 @@ function fitOf(o) {
   const m = MINE?.ops.get(o), own = m && m.n >= 5 ? m.pts / m.n : null, base = yourScore(o);
   if (o.side === 'w') {
     const fits = MINE?.taste && stylesOf(o).includes(MINE.taste);
-    WHY.set(o, [own !== null && `You play it: ${pct(own)} in ${m.n} games, where White scores ${pct(base)} at your level.`,
+    const why = [own !== null && `You play it: ${pct(own)} in ${m.n} games, where White scores ${pct(base)} at your level.`,
       fits && `Fits your style: you mostly play ${STYLES[MINE.taste].label.toLowerCase()} openings.`,
-      `Scores ${pct(base)} for White at your level.`].filter(Boolean).slice(0, 2).join(' '));
+      `Scores ${pct(base)} for White at your level.`].filter(Boolean);
+    WHY.set(o, { short: why.slice(0, 2).join(' '), long: [...why, own === null ? 'You have not played it yet: learn its main lines here and try it in a few games.'
+      : own >= base ? 'It already works for you: learn more of its lines so it keeps working as you climb.' : 'You score below the rest at your level: the lines here show where the points go.'].join(' ') });
     return base + (fits ? 0.03 : 0) + (own === null ? 0 : (own - base) / 2);
   }
-  WHY.set(o, `${pct(o.share)} of games at your level start this way. ${own === null ? 'Not in your games yet.' : `You score ${pct(own)} in ${m.n} games against it, where Black scores ${pct(base)}.`}`);
+  const why = `${pct(o.share)} of games at your level start this way. ${own === null ? 'Not in your games yet.' : `You score ${pct(own)} in ${m.n} games against it, where Black scores ${pct(base)}.`}`;
+  WHY.set(o, { short: why, long: `${why} ${own === null ? 'You will meet it often, so have an answer ready before you do.' : own < base ? 'You drop more points against it than Black usually does: learning the answer here is the quickest gain for your Black games.' : 'You already hold your own against it; the lines here keep it that way.'}` });
   return o.share * (own === null ? 1 : 1 + Math.max(0, base - own) * 4);
 }
 function shown() {
@@ -549,9 +552,9 @@ function card(o) {
   return `<article class="ocard side-${o.side}" data-id="${o.id}">
     <div class="board mini" data-mini="${o.id}" inert></div>
     <div class="ocard-body">
-      <div class="ocard-top"><h3><button type="button" class="ocard-open">${isVs(o) ? 'vs ' : ''}${o.name}</button></h3><span class="ocard-tags">${FOR.has(o) ? `<span class="tag foryou" title="${WHY.get(o) || ''}">For you</span>` : ''}${tags}${progress}
+      <div class="ocard-top"><h3><button type="button" class="ocard-open">${isVs(o) ? 'vs ' : ''}${o.name}</button></h3><span class="ocard-tags">${FOR.has(o) ? `<span class="tag foryou" title="${WHY.get(o)?.short || ''}">For you</span>` : ''}${tags}${progress}
         <button type="button" class="star" data-star="${o.id}" aria-pressed="${repertoire.has(o.id)}" title="${repertoire.has(o.id) ? 'In your favorites' : 'Add to your favorites'}" aria-label="${repertoire.has(o.id) ? 'Remove from' : 'Add to'} my favorites">★</button></span></div>
-      ${about ? `<p class="odesc">${about}</p>` : ''}${sort === 'you' && WHY.get(o) ? `<p class="ofit"><b>For you:</b> ${WHY.get(o)}</p>` : ''}
+      ${about ? `<p class="odesc">${about}</p>` : ''}${FOR.has(o) && WHY.get(o) ? `<p class="ofit"><b>For you:</b> ${WHY.get(o).short}</p>` : ''}
       <div class="ostats">
         <span>${popularity(o)}</span>
         <span>${sideName(o.side)} wins <b>${pct(win)}</b></span>
@@ -1716,6 +1719,8 @@ function start(op, keepTraps = false) {
   { const gd = GUIDE[op.family] || GUIDE[shortName(op.family)], plan = planOf(op), about = gd ? gd.idea : aboutOf(op);
     $('#op-about').innerHTML = `${about ? `<p>${about}</p>` : ''}${plan ? `<p><b>Your plan:</b> ${plan}</p>` : ''}${gd ? `<p class="op-guide-k">Main variations</p>
       <ul class="op-lines">${gd.lines.map(([n, t]) => `<li><b>${n}:</b> ${t}</li>`).join('')}</ul><p><b>Watch out:</b> ${gd.watch}</p>` : ''}`; }
+  // Why it fits you, at length (supporters first), above what the opening is about.
+  if (window.earlyAccess?.() && (MINE ??= myOpenings(true))) { fitOf(op); $('#op-about').insertAdjacentHTML('afterbegin', `<p class="ofit ofit-long"><b>For you:</b> ${WHY.get(op).long}</p>`); }
   $('#op-side').textContent = op.side === 'w' ? 'You play White' : 'You play Black';
   $('#restart').textContent = 'Restart';
   $('#picker').hidden = true;
