@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103144049';
-import { openLogin } from './login.js?v=20261103144049';
-import { STYLE_OF } from './styles.js?v=20261103144049';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103144049';
-import { PEOPLE } from './pros.js?v=20261103144049';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103150206';
+import { openLogin } from './login.js?v=20261103150206';
+import { STYLE_OF } from './styles.js?v=20261103150206';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103150206';
+import { PEOPLE } from './pros.js?v=20261103150206';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -2298,20 +2298,53 @@ async function rivalryPage(name, vs, me) {
     const dare = me ? '' : `<p class="rv-dare">${B}, ${r.l > r.w ? `you lead ${r.l}–${r.w}. Prove it again.` : r.l < r.w ? `you trail ${r.l}–${r.w}. Time to pay it back.` : `it is level at ${r.w}–${r.l}. Settle it.`}</p><p class="rv-side"><a href="rivals.html?u=${encodeURIComponent(vs)}&vs=${encodeURIComponent(name)}">Are you ${B}? See it from your side →</a></p>`;
     const challenge = `<a class="pf-rv-btn hot" href="https://lichess.org/?user=${encodeURIComponent(me ? r.name : name)}#friend" target="_blank" rel="noopener">Challenge ${me ? B : A} on Lichess →</a>`;
     const { game } = rivalKit(name, me);
-    const head = (n, title, sub) => `<div class="pf-more-head"><h2><span class="rv-ch">${n}</span>${title}</h2>${sub ? `<span>${sub}</span>` : ''}</div>`;
+    // The race: the score after every game, above the line when name leads.
+    let run = 0; const lead = [0, ...old.map((x) => (run += x.res === 'W' ? 1 : x.res === 'L' ? -1 : 0))];
+    const top = Math.max(1, ...lead), bot = Math.min(-1, ...lead), RX = (i) => (i / (lead.length - 1)) * 1000, RY = (v) => ((top - v) / (top - bot)) * 200;
+    const rpts = lead.map((v, i) => `${RX(i).toFixed(1)},${RY(v).toFixed(1)}`).join(' ');
+    let tick = '';
+    old.forEach((x, i) => { const m = mk(x.g.createdAt); if (i && m === mk(old[i - 1].g.createdAt)) return; tick += `<line x1="${RX(i)}" x2="${RX(i)}" y1="0" y2="200" class="rv-tick"/>`; });
+    const months2 = [...new Set(old.map((x) => mk(x.g.createdAt)))], mLab = (k) => new Date(`${k}-15`).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+    const race = `<figure class="rv-race"><div class="rv-race-plot"><span class="rv-race-up">↑ ${me ? 'you lead' : `${A} leads`}</span><span class="rv-race-down">↓ ${B} leads</span>
+      <svg viewBox="0 0 1000 200" preserveAspectRatio="none" role="img" aria-label="The score after each of the ${r.n} games: ${lead.at(-1) >= 0 ? '+' : ''}${lead.at(-1)} now, best ${top}, worst ${bot}">${tick}
+        <line x1="0" x2="1000" y1="${RY(0)}" y2="${RY(0)}" class="rv-zero"/><polygon points="0,${RY(0)} ${rpts} 1000,${RY(0)}" class="rv-area"/><polyline points="${rpts}" class="rv-run"/></svg></div>
+      <figcaption><span>${mLab(months2[0])}</span><b>${lead.at(-1) > 0 ? '+' : ''}${lead.at(-1)} now · ${me ? 'your' : `${A}'s`} best ${Math.max(...lead) > 0 ? `+${Math.max(...lead)}` : Math.max(...lead)} · worst ${Math.min(...lead)}</b><span>${mLab(months2.at(-1))}</span></figcaption></figure>`;
+    // The tug of war: the wins as one rope, halfway marked.
+    const tug = `<div class="rv-tug" role="img" aria-label="${r.w} wins to ${r.l}, ${r.d} drawn"><div class="wdl"><span class="w" style="width:${(r.w / r.n) * 100}%"></span><span class="d" style="width:${(r.d / r.n) * 100}%"></span><span class="l" style="width:${(r.l / r.n) * 100}%"></span></div><i></i>
+      <span class="rv-tug-a">${r.w} ${me ? 'you' : A}</span><span class="rv-tug-b">${B} ${r.l}</span></div>`;
+    // Who is better at what: name's share of the points (or of the wins) in each part of the game, as a tug of war each.
+    const share = (xs) => (xs.length ? pts(xs) / xs.length : null), endsBy = (res, st) => g.filter((x) => x.res === res && x.g.status === st).length;
+    const sp = (k) => k[0].toUpperCase() + k.slice(1), part = (a, b) => (a + b ? a / (a + b) : null);
+    const best = [[`${me ? 'You' : A} with White`, share(g.filter((x) => x.side === 'white')), `${g.filter((x) => x.side === 'white').length} games`],
+      [`${me ? 'You' : A} with Black`, share(g.filter((x) => x.side === 'black')), `${g.filter((x) => x.side === 'black').length} games`],
+      ...group((x) => x.g.speed).filter(([, xs]) => xs.length >= 3).sort((a, b) => b[1].length - a[1].length).map(([k, xs]) => [sp(k), share(xs), `${xs.length} games`]),
+      ['Best run', part(runOf(old, 'W'), runOf(old, 'L')), `${runOf(old, 'W')} vs ${runOf(old, 'L')}`],
+      ['Wins by mate', part(endsBy('W', 'mate'), endsBy('L', 'mate')), `${endsBy('W', 'mate')} vs ${endsBy('L', 'mate')}`],
+      ['Wins on time', part(endsBy('W', 'outoftime'), endsBy('L', 'outoftime')), `${endsBy('W', 'outoftime')} vs ${endsBy('L', 'outoftime')}`]].filter(([, v]) => v != null);
+    const better = (v) => (Math.abs(v - 0.5) < 0.03 ? 'Even' : v > 0.5 ? (me ? 'You' : A) : B);
+    const bestRows = best.map(([label, v, n]) => `<div class="rv-bw"><span class="rv-bw-k">${label}</span><span class="rv-bw-bar"><i class="${v >= 0.5 ? 'a' : 'b'}" style="${v >= 0.5 ? 'right:50%' : 'left:50%'};width:${Math.abs(v - 0.5) * 100}%"></i></span><small class="rv-bw-n">${pct(v)} · ${n}</small><b>${better(v)}</b></div>`).join('');
+    // The same, in words: the colours, the time controls, who finishes games.
+    const wS = best[0][1], bS = best[1][1], spd = best.slice(2, -3), hiS = spd.slice().sort((a, b) => b[1] - a[1])[0], loS = spd.slice().sort((a, b) => a[1] - b[1])[0];
+    const mateA = endsBy('W', 'mate'), mateB = endsBy('L', 'mate');
+    const words = [`${me ? 'You score' : `${A} scores`} ${pct(wS)} with White and ${pct(bS)} with Black${Math.abs(wS - bS) >= 0.1 ? `: ${me ? 'you do' : `${A} does`} better with ${wS > bS ? 'White' : 'Black'}` : ''}.`,
+      spd.length >= 2 && hiS !== loS ? `${me ? 'You are' : `${A} is`} closest in ${hiS[0].toLowerCase()} (${pct(hiS[1])}) and furthest off in ${loS[0].toLowerCase()} (${pct(loS[1])}).` : '',
+      mateA + mateB >= 4 ? (mateB > mateA ? `${B} finishes games: ${mateB} of ${r.l} wins by mate.` : `${me ? 'You finish' : `${A} finishes`} games: ${mateA} of ${r.w} wins by mate.`) : ''].filter(Boolean).join(' ');
+    let ch = 0; // chapters number themselves, in the order the template reads them
+    const head = (title, sub) => `<div class="pf-more-head"><h2><span class="rv-ch">${++ch}</span>${title}</h2>${sub ? `<span>${sub}</span>` : ''}</div>`;
     el.classList.toggle('rv-neutral', !me); // a visitor gets one colour per player, not green and red for one side
     const who = (x) => (x.res === 'W' ? A : B);
     el.innerHTML = `<section class="rv-head"><span class="kicker-k">Rivalry · ${games(r.n)} since ${new Date(old[0].g.createdAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</span>
         <h1>${me ? 'You' : A} <span>vs</span> <a href="rivals.html?u=${encodeURIComponent(vs)}&vs=${encodeURIComponent(name)}" title="The same rivalry from ${esc(nick(vs))}'s side">${B}</a></h1>
         <div class="rv-score"><b class="${r.w > r.l ? 'good' : r.w < r.l ? 'bad' : ''} p-a">${r.w}</b><span>–</span><b class="${r.l > r.w ? 'good' : r.l < r.w ? 'bad' : ''} p-b">${r.l}</b><small>${r.d ? `${r.d} drawn · ` : ''}${me ? 'you score' : `${A} scores`} ${pct(r.score)}</small></div>
-        ${dare}${behind ? `<p class="rv-level">To draw level, ${behind[0]} ${behind[0] === 'you' ? 'need' : 'needs'} <b>${behind[2]} wins in a row</b>. ${behind[3]} best run so far: ${behind[1]}.</p>` : ''}
+        ${tug}${dare}${behind ? `<p class="rv-level">To draw level, ${behind[0]} ${behind[0] === 'you' ? 'need' : 'needs'} <b>${behind[2]} wins in a row</b>. ${behind[3]} best run so far: ${behind[1]}.</p>` : ''}
         <div class="pf-rv-acts">${challenge}</div>${acts(r, true)}<p class="pf-share-note rv-note" aria-live="polite"></p></section>
-      <section class="pf-card">${head(1, 'The story')}<div class="pf-rv-lead${r.score < 0.5 ? ' bad' : ''}">${story(r, true)}</div></section>
-      ${chart || gap.length ? `<section class="pf-card">${head(2, 'Rating and upsets', chart ? `${main[0].toUpperCase() + main.slice(1)}, at the time of each game` : '')}${chart}${gap.length ? `<div class="pf-two">${table('By rating gap', gap)}</div>` : ''}</section>` : ''}
-      ${lines.length ? `<section class="pf-card">${head(3, 'The openings', `How each opening goes for ${me ? 'you' : A} against ${B}, by colour`)}
+      <section class="pf-card">${head('The story')}${race}<div class="pf-rv-lead${r.score < 0.5 ? ' bad' : ''}">${story(r, true)}</div></section>
+      <section class="pf-card">${head('Who is better at what')}<p class="rv-words">${words}</p><div class="rv-best"><div class="rv-bw rv-bw-head"><span></span><span class="rv-bw-bar"><small>← ${me ? 'you' : A} better</small><small>${B} better →</small></span><span></span><span></span></div>${bestRows}</div></section>
+      ${chart || gap.length ? `<section class="pf-card">${head('Rating and upsets', chart ? `${main[0].toUpperCase() + main.slice(1)}, at the time of each game` : '')}${chart}${gap.length ? `<div class="pf-two">${table('By rating gap', gap)}</div>` : ''}</section>` : ''}
+      ${lines.length ? `<section class="pf-card">${head('The openings', `How each opening goes for ${me ? 'you' : A} against ${B}, by colour`)}
         <table class="pf-rv-table"><thead><tr><th>Opening</th><th>Games</th><th>W–D–L</th><th class="wide-only"></th><th>${me ? 'You' : A}</th></tr></thead><tbody>${lines.map(([k, xs]) => wdlRow(`<span class="rv-op">${esc(fam(k))}</span><small class="rv-fam">${me ? 'You' : A} as ${colour(k)}</small>`, xs)).join('')}</tbody></table>
         ${worst ? `<p class="rv-turn"><span><b>Where it goes wrong:</b> as ${colour(worst[0])} in the ${esc(fam(worst[0]))}, ${me ? 'you have' : `${A} has`} won ${worst[1].filter((x) => x.res === 'W').length} of ${worst[1].length} games against ${B}.</span>${me ? ` <a class="pf-rv-btn hot" href="index.html?${esc(new URLSearchParams({ practise: `${worst[0][0] === 'w' ? 'w' : 'b'}:${fam(worst[0])}`, rv: nick(r.name), rn: worst[1].length, rs: Math.round((pts(worst[1]) / worst[1].length) * 100) }).toString())}">Practise the ${esc(fam(worst[0]))} as ${colour(worst[0])} →</a>` : ''}</p>` : ''}</section>` : ''}
-      <section class="pf-card">${head(lines.length ? 4 : 3, 'Records')}<ul class="pf-rv-games">${game(longest, `Longest game · ${Math.ceil(len(longest) / 2)} moves`)}${mate ? game(mate, `Quickest mate · ${who(mate)}, in ${Math.ceil(len(mate) / 2)} moves`) : ''}${upset ? game(upset, `Biggest upset · ${who(upset)} won, ${Math.abs(rt(upset, true) - rt(upset, false))} points lower`) : ''}${quickWin ? game(quickWin, `${me ? 'Your' : `${A}'s`} quickest win`) : ''}${longLoss ? game(longLoss, `${me ? 'Your' : `${A}'s`} longest loss`) : ''}${game(g[0], 'Latest')}</ul></section>
+      <section class="pf-card">${head('Records')}<ul class="pf-rv-games">${game(longest, `Longest game · ${Math.ceil(len(longest) / 2)} moves`)}${mate ? game(mate, `Quickest mate · ${who(mate)}, in ${Math.ceil(len(mate) / 2)} moves`) : ''}${upset ? game(upset, `Biggest upset · ${who(upset)} won, ${Math.abs(rt(upset, true) - rt(upset, false))} points lower`) : ''}${quickWin ? game(quickWin, `${me ? 'Your' : `${A}'s`} quickest win`) : ''}${longLoss ? game(longLoss, `${me ? 'Your' : `${A}'s`} longest loss`) : ''}${game(g[0], 'Latest')}</ul></section>
       ${tw + tl ? `<div class="rv-now"><span class="kicker-k">${new Date().toLocaleDateString('en-GB', { month: 'long' })} · this month</span><b>${thisMonth}</b></div>` : ''}
       <details class="pf-card rv-details"><summary><b>More numbers</b><span>The season month by month, when you play, time controls, how games end</span></summary>
         <div class="pf-two"><section><h3>Month by month <small>· months won: ${A} ${mA}, ${B} ${mB}</small></h3><table class="pf-rv-table"><thead><tr><th></th><th>${me ? 'You' : A}</th><th>${B}</th><th>Won by</th></tr></thead><tbody>${seasonRows}</tbody></table></section>
