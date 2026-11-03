@@ -3133,3 +3133,6 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
   .pf-cardbar .pf-tools > .pf-share > summary, .pf-cardbar .pf-tools > .pf-etc > summary { height: 44px; }
   .pf-cardbar .pf-tools > .pf-etc > summary { width: 44px; }
 }
+/* Openings for you (profile.js fitCard): each row the opening, and under it the numbers */
+.pf-fit .pf-rows li { grid-template-columns: 1fr; }
+.pf-fit .info { margin-top: 12px; }

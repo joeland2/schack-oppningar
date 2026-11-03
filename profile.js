@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103104157';
-import { openLogin } from './login.js?v=20261103104157';
-import { STYLE_OF } from './styles.js?v=20261103104157';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103104157';
-import { PEOPLE } from './pros.js?v=20261103104157';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103113247';
+import { openLogin } from './login.js?v=20261103113247';
+import { STYLE_OF } from './styles.js?v=20261103113247';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103113247';
+import { PEOPLE } from './pros.js?v=20261103113247';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1010,6 +1010,34 @@ const opLink = (side, fam) => `<a class="pf-op-link" href="${practiseLink(side, 
 function openingRows(list, side) {
   return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><a class="pf-op-link" href="${practiseLink(side, o.fam)}" title="Practise the ${esc(o.fam.replace(/^vs /, ''))} lines">${esc(o.fam)}</a><small>${games(o.n)} · ${pct(o.win ?? o.score)} wins</small>${bar(o)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
 }
+// Openings for you (supporters first): your best opening per colour against what players at your rating
+// score with it, one to try that fits your taste and scores well at your rating, and what White plays most
+// at your rating with how you do against it. Rates and counts from data/opening-scores.json.
+function fitCard(p, name) {
+  const main = p.speeds[0], b = SCORES?.buckets, tab = SCORES?.[main?.speed === 'classical' ? 'classical' : 'blitz'];
+  if (!main || !b || !tab) return '';
+  const r = isCC(name) ? asLichess(main.rating, main.speed) : main.rating, i = b.findLastIndex((x) => x <= r);
+  const at = (fam, side) => { const row = tab[fam]; return row && row[0][i] >= 500 && row[1][i] != null ? { n: row[0][i], s: side === 'w' ? row[1][i] : 1 - row[1][i] } : null; };
+  const played = (side) => new Set(p.openings[side].map((o) => o.fam.replace(/^vs /, '')));
+  const best = (side) => p.openings[side].filter((o) => !o.fam.startsWith('vs ') && o.n >= 8)
+    .map((o) => ({ ...o, exp: expectOf(o.fam, side, r, main.speed) ?? 0.5 })).sort((x, y) => (y.score - y.exp) - (x.score - x.exp))[0];
+  const tryOne = (side) => {
+    const k = taste(p.styleMix?.[side])?.k, mine = played(side);
+    const all = Object.keys(tab).filter((f) => blacksName(f) === (side === 'b') && !mine.has(f) && !/Unknown|Accepted|Declined|,/.test(f) && at(f, side)).map((f) => ({ fam: f, ...at(f, side), fits: kindOf(f) === k }));
+    return all.sort((x, y) => (y.fits && y.s >= 0.5) - (x.fits && x.s >= 0.5) || y.s - x.s)[0]; // your taste, if it scores at least even
+  };
+  const pool = Object.keys(tab).filter((f) => !blacksName(f) && !/Pawn Game|Pawn Opening|Knight Opening|Unknown/.test(f) && at(f, 'w')).map((f) => ({ fam: f, n: at(f, 'w').n })).sort((x, y) => y.n - x.n);
+  const total = sum(Object.values(tab), (row) => row[0][i] || 0);
+  const vsMe = (f) => p.openings.b.find((o) => o.fam === `vs ${f}`);
+  const side = (c) => { const x = best(c), t = tryOne(c);
+    return `${x ? `<li><span>Your best: ${opLink(c, x.fam)}</span><small>You score ${pct(x.score)} in ${games(x.n)}, players at your rating ${pct(x.exp)}</small></li>` : ''}
+      ${t ? `<li><span>Worth a try: ${opLink(c, t.fam)}</span><small>Scores ${pct(t.s)} at your rating${t.fits ? `, and fits your taste (${KINDS.find((k) => k[0] === kindOf(t.fam))[2]})` : ''}</small></li>` : ''}`; };
+  return `<section class="pf-card pf-fit"><div class="pf-more-head"><h2>Openings for you</h2><span>Against players rated about ${r} on Lichess</span></div>
+    <div class="pf-two"><section><h3>As White</h3><ul class="pf-rows">${side('w')}</ul><h3>As Black</h3><ul class="pf-rows">${side('b')}</ul></section>
+    <section><h3>What White plays at your rating</h3><ul class="pf-rows">${pool.slice(0, 5).map((o) => { const m = vsMe(o.fam);
+      return `<li><span>${opLink('b', `vs ${o.fam}`)}</span><small>${pct(o.n / total)} of games · ${m ? `you score ${pct(m.score)} in ${games(m.n)}` : 'not in your games yet'}</small></li>`; }).join('')}</ul>
+      <p class="info">Be ready for these first: they are what you will meet most as Black.</p></section></div></section>`;
+}
 // Each bar: what it measures, what the games show, and below 50 how to train it; the words show on request.
 let showSkillText = !matchMedia('(max-width: 640px)').matches; // what each skill measures: open from the start, folded on phones (a wall of text there)
 function skillBars(skills, say, me) {
@@ -1797,6 +1825,7 @@ function render(name, at, full) {
           <h3>Openings as Black</h3>${openingRows(p.openings.b, 'b')}</section>
       </div>
     </section>
+    ${me && window.earlyAccess?.() ? fitCard(p, name) : ''}
     ${opponentsCard(p, me, name)}
     <section class="pf-card" id="pf-games"></section>
     ${me ? starsCard() : ''}
