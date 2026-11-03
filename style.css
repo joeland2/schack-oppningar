@@ -3326,4 +3326,4 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .rv-bw-head .rv-bw-bar small { position: static; font-weight: 600; color: var(--muted); text-shadow: none; }
 
 .rv-bw-n { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-@media (max-width: 560px) { .rv-bw { grid-template-columns: minmax(0, 1fr) auto; } .rv-bw-bar { grid-column: 1 / -1; order: 3; } .rv-bw-n { display: none; } .rv-bw-head .rv-bw-bar { order: 0; } }
+@media (max-width: 560px) { .rv-bw { grid-template-columns: minmax(0, 1fr) auto auto; row-gap: 4px; } .rv-bw-bar { grid-column: 1 / -1; order: 3; } .rv-bw-head .rv-bw-bar { order: 0; } }
