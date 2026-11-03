@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103141320';
-import { openLogin } from './login.js?v=20261103141320';
-import { STYLE_OF } from './styles.js?v=20261103141320';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103141320';
-import { PEOPLE } from './pros.js?v=20261103141320';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103141748';
+import { openLogin } from './login.js?v=20261103141748';
+import { STYLE_OF } from './styles.js?v=20261103141748';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103141748';
+import { PEOPLE } from './pros.js?v=20261103141748';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1814,6 +1814,7 @@ function render(name, at, full) {
         <div class="pf-side-bits">${me ? starsStrip() : ''}${combo ? '' : `<p class="pf-ago">${me ? 'Your' : 'The'} card from ${AGO.map(([m, t]) => `<a href="${agoLink(name, m)}">${t.replace(' ago', '')}</a>`).join(' · ')} ago</p>`}</div>
       </div>
     </section>
+    <nav class="pf-jump" aria-label="Parts of the profile"></nav>
     <section class="pf-card pf-chart" id="pf-chart"></section>
     <dl class="pf-kpis">${kpis.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
     ${leadStory(name, p, skills, me)}
@@ -1857,6 +1858,7 @@ function render(name, at, full) {
       <p class="info">Player types, skills and thresholds are rules of thumb read from the games, not a rating. Win rate counts wins out of all games; an endgame score counts a draw as half.</p>
     </section>`;
   applyHidden(name, me);
+  jumpNav();
   $('#refresh').addEventListener('click', async (e) => { // a seen player is read again quietly: the button says it is working
     Object.assign(e.target, { disabled: true, textContent: 'Reading…' });
     await run(name);
@@ -2327,6 +2329,17 @@ async function rivalryPage(name, vs, me) {
 }
 // What others see: logged in, a player can hide parts of their profile from visitors. Kept in
 // opening-book-v2-hidden (synced to their account); the userdata function answers ?hidden=<name> to anyone.
+// The menu above the rating graph: one link per part the profile shows, each scrolling to it.
+const JUMPS = [['Rating', '#pf-chart'], ['Numbers', '.pf-kpis'], ['Skills', '#pf-skills'], ['Trend', '#pf-trend'], ['Results and openings', '.pf-more'],
+  ['Openings for you', '.pf-fit'], ['Opponents', '.pf-opps'], ['Rivals', '#rivals'], ['Games', '#pf-games'], ['Stars', '#pf-stars']];
+function jumpNav() {
+  const nav = $('#profile .pf-jump');
+  if (nav) nav.innerHTML = JUMPS.filter(([, sel]) => $(`#profile ${sel}`)).map(([label, sel]) => `<button type="button" data-jump="${sel}">${label}</button>`).join('');
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-jump]'); if (!b) return;
+  $(`#profile ${b.dataset.jump}`)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+});
 const PANELS = [['chart', 'Rating graph', '#pf-chart'], ['kpis', 'Key numbers', '.pf-kpis'], ['lead', 'Latest games', '.pf-lead'], ['skills', 'Skills', '#pf-skills'], ['trend', 'Trend', '#pf-trend'],
   ['more', 'Results and openings', '.pf-more'], ['opps', 'Who you struggle against', '.pf-opps'], ['rivals', 'Rivals', '.pf-rivals'], ['games', 'Recent games', '#pf-games']];
 const HIDE = 'opening-book-v2-hidden';
