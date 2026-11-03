@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103101148';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103101148';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103101148';
-import { NAMED_TRAPS } from './traps.js?v=20261103101148';
-import { GUIDE } from './guide.js?v=20261103101148';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103101148';
-import { banner, confetti } from './celebrate.js?v=20261103101148';
-import { maia3Move } from './maia3.js?v=20261103101148';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103101148';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261103101148';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103101148';
-import { openLogin } from './login.js?v=20261103101148';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103101148';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103103133';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103103133';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103103133';
+import { NAMED_TRAPS } from './traps.js?v=20261103103133';
+import { GUIDE } from './guide.js?v=20261103103133';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103103133';
+import { banner, confetti } from './celebrate.js?v=20261103103133';
+import { maia3Move } from './maia3.js?v=20261103103133';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103103133';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261103103133';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103103133';
+import { openLogin } from './login.js?v=20261103103133';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103103133';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2499,13 +2499,9 @@ const practiceSet = () => {
 // ---------- Lines overview and the "opening complete" approval ----------
 // Lines of the current list that are cleared (progress saved for other ratings may hold other lines).
 const cleared = () => lines.filter((l) => stats[statKey(cur.id)]?.done.includes(lineKey(l.moves))).length;
-// The main line is called that, as in a course; the other lines by their opening name. Lines that share a
-// name (every line against the London is "London System") add the move that sets them apart.
-const baseName = (l) => (l.branch === 1 ? (l.theory ? 'Main line' : 'Most played at your level') : l.name ? l.name.split(' · ').at(-1).split(': ').at(-1) : 'Side line');
-function lineName(l) {
-  const n = baseName(l), k = parting(l);
-  return k < 0 || l.trap || l.avoid || lines.filter((o) => baseName(o) === n).length < 2 ? n : `${n}, ${moveLabel(k, l.moves[k])}`;
-}
+// The main line is called that, as in a course; the other lines by their opening name (lineTag tells
+// same-named lines apart).
+const lineName = (l) => (l.branch === 1 ? (l.theory ? 'Main line' : 'Most played at your level') : l.name ? l.name.split(' · ').at(-1).split(': ').at(-1) : 'Side line');
 const moveLabel = (i, san) => `${Math.floor(i / 2) + 1}${i % 2 ? '...' : '.'}${san}`;
 const mine = (i) => (i % 2 === 0) === (cur.side === 'w'); // the move at ply i is the player's own
 // The ply where a line leaves the main line, or, when an earlier line leaves at the same move, where it
