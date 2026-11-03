@@ -1969,6 +1969,15 @@ p, li, dd, small { text-wrap: pretty; }
 .pf-pcard-bars i { height: 8px; border-radius: 2px; background: color-mix(in srgb, currentColor 16%, transparent); overflow: hidden; }
 .pf-pcard-bars i::before { content: ""; display: block; width: var(--v); height: 100%; background: var(--band-ink); }
 .pf-pcard-bars b { font-weight: 400; font-size: 20px; text-align: right; }
+.pf-pcard-bars .locked b { display: grid; justify-items: end; opacity: .55; }
+.pf-pcard-bars .locked span { opacity: .5; }
+.pf-lock { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pf-lock-note { display: flex; gap: 8px; align-items: flex-start; max-width: 340px; margin: 10px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.pf-lock-note .pf-lock { flex: none; margin-top: 2px; }
+.pf-lock-note b { color: var(--ink); font-weight: 600; }
+.pf-lock-note > span > span { display: block; }
+.pf-lock-note > span > span + span { margin-top: 4px; }
+.pf-lock-note a { font-weight: 600; white-space: nowrap; }
 .pf-pcard-bars .on span, .pf-pcard-bars .on b { color: var(--band-ink); opacity: 1; }
 
 /* Profile: the player's name heads the page, the actions in a row under it */
@@ -2328,17 +2337,31 @@ main.profile:has(#admin) { max-width: 1320px; }
 #admin .adm-pair dd { display: flex; gap: clamp(16px, 4vw, 28px); }
 #admin .adm-pair dd span { display: flex; flex-direction: column; }
 #admin .adm-pair dd small { font-family: var(--font-body); }
-/* Profile: who you struggle against. */
-/* One row per kind of opponent: its icon, what it means and the numbers, and a verdict */
-.pf-opp-list { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; max-width: 720px; }
-.pf-opp-list li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 14px; background: var(--raised); }
-.pf-opp-list .ico { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.pf-opp-list b { display: block; font-weight: 600; }
+/* Profile: against each kind of opponent. A bar from the middle: right is better than expected, left worse. */
+.pf-opp-scale { display: flex; justify-content: space-between; max-width: 720px; margin: 16px 0 0; padding: 0 14px; color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.pf-opp-list { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; max-width: 720px; }
+.pf-opp-list li { display: grid; grid-template-columns: 26px minmax(0, 1fr) minmax(120px, 1.1fr) 76px; grid-template-areas: "ico name bar d" "ico num bar d"; gap: 2px 14px; align-items: center; padding: 10px 14px; background: var(--raised); }
+.pf-opp-list .ico { grid-area: ico; width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pf-opp-name { grid-area: name; min-width: 0; }
+.pf-opp-name b { display: block; font-weight: 600; }
 .pf-opp-list small { display: block; color: var(--muted); font-size: 12.5px; }
-.pf-opp-list small.num { color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 2px; }
-.pf-verdict { padding: 5px 9px; border-radius: 4px; background: var(--line); color: var(--muted); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
-.pf-verdict.bad { background: color-mix(in srgb, var(--bad) 22%, transparent); color: var(--hot); }
-.pf-verdict.good { background: color-mix(in srgb, var(--good) 20%, transparent); color: var(--good); }
+.pf-opp-list small.num { grid-area: num; font-variant-numeric: tabular-nums; }
+.pf-opp-bar { grid-area: bar; position: relative; height: 14px; background: color-mix(in srgb, currentColor 7%, transparent); border-radius: 3px; }
+.pf-opp-bar::after { content: ""; position: absolute; left: 50%; top: -4px; bottom: -4px; width: 1.5px; background: var(--muted); transform: translateX(-50%); }
+.pf-opp-bar i { position: absolute; top: 0; bottom: 0; left: 50%; width: var(--w); background: var(--muted); border-radius: 0 3px 3px 0; }
+.pf-opp-bar i.neg { left: auto; right: 50%; border-radius: 3px 0 0 3px; }
+.pf-opp-list .good .pf-opp-bar i { background: var(--good); }
+.pf-opp-list .bad .pf-opp-bar i { background: var(--bad); }
+.pf-opp-list .few .pf-opp-bar i { opacity: .45; }
+.pf-opp-d { grid-area: d; text-align: right; }
+.pf-opp-d b { display: block; font: 400 22px/1 var(--font-poster); font-variant-numeric: tabular-nums; }
+.pf-opp-list .good .pf-opp-d b, .pf-opp-list .good .pf-opp-d small { color: var(--good); }
+.pf-opp-list .bad .pf-opp-d b, .pf-opp-list .bad .pf-opp-d small { color: var(--hot); }
+.pf-opp-d small { font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+@media (max-width: 560px) {
+  .pf-opp-list li { grid-template-columns: 24px minmax(0, 1fr) auto; grid-template-areas: "ico name d" "bar bar bar" "num num num"; gap: 6px 12px; }
+  .pf-opp-scale { padding: 0 2px; font-size: 10px; }
+}
 .pf-opps .pf-skill-scale { margin: 14px 0 0; color: var(--muted); font-size: 12px; max-width: 720px; }
 
 /* The hover card over one of the last ten games: the final position, the opening as its title, the result; cream if they had White, black if Black */
@@ -2526,6 +2549,11 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-pcard-rating2 { display: block; margin-top: 3px; font: 400 15px/1 var(--font-poster); letter-spacing: .02em; text-align: right; opacity: .8; }
 .pf-pcard-rating2 small { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
 /* How the skills changed: one row per skill, all on one scale */
+.pf-tr-how { margin: 4px 0 12px; max-width: 680px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.pf-tr-key { display: inline-flex; gap: 6px; align-items: center; margin-left: 4px; white-space: nowrap; }
+.pf-tr-key i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--data); margin-left: 6px; }
+.pf-tr-key i.lo { background: var(--bad); } .pf-tr-key i.hi { background: var(--good); }
+.pf-tr-axis { display: flex; justify-content: space-between; padding-left: 28px; }
 .pf-tr-span { margin: 0; color: var(--muted); font-size: 13px; }
 .pf-tr-span b { color: var(--ink); font-weight: 600; }
 .pf-tr-rows { display: grid; }
@@ -2536,7 +2564,7 @@ main.profile:has(#admin) { max-width: 1320px; }
 .pf-tr-d { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted); }
 .pf-tr-d.up { color: var(--good); } .pf-tr-d.down { color: var(--bad); }
 .pf-tr-hdr { padding-top: 0; color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
-.pf-tr-hdr span:nth-child(n+3) { text-align: right; }
+.pf-tr-hdr > span:nth-child(n+3) { text-align: right; }
 .pf-trend .pf-line .ax { font-size: 10px; }
 .pf-trend .pf-line .ln { stroke-width: 2; }
 .pf-trend .pf-line circle.lo { fill: var(--bad); stroke: none; }
@@ -2547,7 +2575,7 @@ main.profile:has(#admin) { max-width: 1320px; }
   .pf-tr-row { grid-template-columns: minmax(0, 1fr) auto 42px; gap: 4px 12px; }
   .pf-tr-row > b { font-size: 20px; }
   .pf-tr-row > svg { grid-column: 1 / -1; grid-row: 2; }
-  .pf-tr-hdr span:nth-child(2) { display: none; }
+  .pf-tr-hdr > span:nth-child(2) { display: none; }
 }
 .pf-trend .pf-line { width: auto; max-width: 100%; height: auto; }
 /* Play styles: what each wins with and what it costs, side by side */

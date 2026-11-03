@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103172402';
-import { openLogin } from './login.js?v=20261103172402';
-import { STYLE_OF } from './styles.js?v=20261103172402';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103172402';
-import { PEOPLE } from './pros.js?v=20261103172402';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103210229';
+import { openLogin } from './login.js?v=20261103210229';
+import { STYLE_OF } from './styles.js?v=20261103210229';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103210229';
+import { PEOPLE } from './pros.js?v=20261103210229';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1135,7 +1135,8 @@ const level = (name, main) => (isCC(name) ? asLichess(main?.rating, main?.speed)
 console.assert(bandColor(1226) === '#1aa3a8' && bandColor(3263) === '#d4a017' && bandColor(500) === '#858a91' && tierOf(1400) === 3, 'bandColor');
 const darker = (hex) => `#${[1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.78).toString(16).padStart(2, '0')).join('')}`; // as CSS's 78% mix with black
 // The six skills as bars, so a player's shape reads before the numbers; [label, value] pairs.
-const cardBars = (xs, on = null) => `<div class="pf-pcard-bars">${xs.map(([k, v]) => `<div${k === on ? ' class="on"' : ''}><span>${k}</span><i style="--v:${v ?? 0}%"></i><b>${v ?? '–'}</b></div>`).join('')}</div>`;
+const LOCK = '<svg class="pf-lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+const cardBars = (xs, on = null) => `<div class="pf-pcard-bars">${xs.map(([k, v]) => `<div class="${[k === on && 'on', v == null && 'locked'].filter(Boolean).join(' ')}"><span>${k}</span><i style="--v:${v ?? 0}%"></i><b${v == null ? ' title="Locked: not enough games for this yet"' : ''}>${v ?? LOCK}</b></div>`).join('')}</div>`;
 const ABBR = { Attack: 'ATK', Defense: 'DEF', 'Early game': 'EARLY', 'Late game': 'LATE', Accuracy: 'ACC', Speed: 'SPD' };
 // The card in a few characters, so the admin page can draw it from a download event (80 characters at
 // most): overall/style/strength/the six skills/rating and time control/piece, the types by their place in
@@ -1649,6 +1650,18 @@ async function cardImage(look, name, p, t, skills, detail, lead) {
 }
 // With Share (supporters for now) the card bar is one wide Share button and a ⋯ menu holding the rest
 const more = (share, rest) => share ? `${share}<details class="pf-dl pf-etc"><summary title="More" aria-label="More">⋯</summary><div class="pf-etc-menu">${rest}</div></details>` : rest;
+// Under the card: which skills are still locked and what unlocks them, so a missing EARLY or ACC is not a mystery.
+function lockNote(skills, p, me, panel) {
+  const early = skills.find((x) => x.label === 'Early game' && x.v === null), an = skills.filter((x) => x.needs && x.v === null);
+  if (p.n < MIN_GAMES || (!early && !an.length)) return '';
+  const your = me ? 'your' : 'their', parts = [];
+  const who = `<b>${an.map((x) => ABBR[x.label]).join(' and ')}</b> need${an.length > 1 ? '' : 's'}`;
+  if (an.length) parts.push(p.analysed < an[0].unlockAt
+    ? `${who} analysed games: ${an.length > 1 ? 'they unlock' : 'it unlocks'} at ${an[0].unlockAt} (${p.analysed} so far).${panel ? ' <a href="#pf-analyse">Analyse games</a>' : ''}`
+    : `${who} ${ENOUGH} analysed games against opponents within ${PEER} of ${your} rating (${an[0].have} so far).${panel ? ' <a href="#pf-analyse">Analyse more</a>' : ''}`);
+  if (early) parts.push(`<b>EARLY</b> needs ${EARLY_MIN} games against opponents near ${your} rating that reach move 12${quick ? '; Stockfish is looking at them now' : ` (${p.peer?.n12 ?? 0} so far)`}.`);
+  return `<p class="pf-lock-note">${LOCK}<span>${parts.map((x) => `<span>${x}</span>`).join('')}</span></p>`;
+}
 function cardNote(name, p, me) {
   const main = p.speeds[0];
   if (!main) return '';
@@ -1774,7 +1787,7 @@ function trendCard(full) {
     const ps = pts.map((q, i) => [i, q.v[k]]).filter(([, v]) => v !== null), vs = ps.map(([, v]) => v);
     const low = ps[vs.indexOf(Math.min(...vs))], high = ps[vs.indexOf(Math.max(...vs))], last = ps.at(-1), d = last[1] - ps[0][1];
     const mark = ([i, v], c, below) => `<circle class="${c}" cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3"/><text class="pf-tr-v" x="${(x(i) + (i ? 0 : 5)).toFixed(1)}" y="${(y(v) + (below ? 13 : -6)).toFixed(1)}" text-anchor="${i ? 'middle' : 'start'}">${v}</text>`;
-    return `<div class="pf-tr-row"><span>${k}<small>swung ${Math.max(...vs) - Math.min(...vs)}</small></span>
+    return `<div class="pf-tr-row"><span>${k}<small>low ${Math.min(...vs)} · high ${Math.max(...vs)}</small></span>
       <svg class="pf-line" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${k}: from ${ps[0][1]} to ${last[1]}, low ${low[1]}, high ${high[1]}">
         ${ticks.map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L - 5}" y="${y(v) + 3}" text-anchor="end">${v}</text>`).join('')}
         <path class="ln" d="${ps.map(([i, v], j) => `${j ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('')}"/>
@@ -1782,8 +1795,10 @@ function trendCard(full) {
       </svg><b>${last[1]}</b><span class="pf-tr-d ${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '+' : d < 0 ? '−' : '±'}${Math.abs(d)}</span></div>`;
   };
   const n = pts[0].from + TREND.win, day = (t) => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  el.innerHTML = `<div class="pf-chart-head">${head}<p class="pf-tr-span"><b>Last ${n} games</b> · ${day(games[n - 1].at)} – ${day(games[0].at)} · each point is ${TREND.win} games in a row</p></div>
-    <div class="pf-tr-rows"><div class="pf-tr-row pf-tr-hdr"><span>Skill</span><span>Over these ${n} games</span><span>Now</span><span>Change</span></div>${names.map(row).join('')}</div>`;
+  const short = (t) => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  el.innerHTML = `<div class="pf-chart-head">${head}<p class="pf-tr-span"><b>Last ${n} games</b> · ${day(games[n - 1].at)} – ${day(games[0].at)}</p></div>
+    <p class="pf-tr-how">Each line is one skill's number, worked out the way the card does from ${TREND.win} games in a row. The first point is the oldest ${TREND.win} games, each next point moves ${TREND.step} games on, and the last point is ${me ? 'your' : 'their'} latest ${TREND.win}. Up is better. <span class="pf-tr-key"><i class="lo"></i>lowest <i class="hi"></i>highest <i class="now"></i>latest</span></p>
+    <div class="pf-tr-rows"><div class="pf-tr-row pf-tr-hdr"><span>Skill</span><span class="pf-tr-axis"><span>${short(games[n - 1].at)}</span><span>${short(games[0].at)}</span></span><span title="The latest ${TREND.win} games (the card reads all ${shownGames.length || n}, so it can differ)">Latest</span><span title="The latest point against the first">Change</span></div>${names.map(row).join('')}</div>`;
 }
 let shownP = null;
 let rise = false; // the next draw comes up into place (a first look-up's first card)
@@ -1805,7 +1820,7 @@ function render(name, at, full) {
     ${accountsRow(name)}${combo && comboOwn ? comboRow() : ''}${nameRow(name)}${proLine(name)}${proBio(name, p)}
     <section class="pf-hero">
       <div class="pf-card-col">${playerCard(name, p, t, skills)}<div class="pf-cardbar">${combo ? '' : speedBar(name, full, sp, avail)}<div class="pf-tools">${more(me && window.earlyAccess?.() && shareHtml(name, t), `<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg><span>Download</span></summary>
-        <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button><button type="button" data-card-link title="A link that shows this card when it is shared">Copy link</button>${me && window.supporterOf?.(name) ? '<button type="button" data-card-video title="The card counting up, about four seconds">Video</button>' : ''}</div></details>${cardNote(name, p, me)}`)}</div></div></div>
+        <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button><button type="button" data-card-link title="A link that shows this card when it is shared">Copy link</button>${me && window.supporterOf?.(name) ? '<button type="button" data-card-video title="The card counting up, about four seconds">Video</button>' : ''}</div></details>${cardNote(name, p, me)}`)}</div></div>${combo ? '' : lockNote(skills, p, me, !!(p.todo || full.todo))}</div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h2 class="pf-h1">${esc(t[0].name)}</h2>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}<a class="pf-all-styles" href="playstyles.html?s=${encodeURIComponent(t[0].name)}${t[1] ? `&t=${encodeURIComponent(t[1].name)}` : ''}">See all styles →</a></div>${tasteLine(p.styleMix, me)}</div>
@@ -1892,6 +1907,7 @@ function render(name, at, full) {
   if (!combo) { bindAnalyse(name); quickLook(name); }
   if (rise && !$('#profile .pf-skeleton')) { rise = false; const el = $('#profile'); el.classList.remove('pf-rise'); void el.offsetWidth; el.classList.add('pf-rise'); }
   setTimeout(() => trendCard(full));
+  $('.pf-lock-note a[href="#pf-analyse"]')?.addEventListener('click', (e) => { e.preventDefault(); $('#pf-analyse')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
   $('.pf-card-help a[href="#pf-skills"]')?.addEventListener('click', (e) => { e.preventDefault(); $('#pf-skills').scrollIntoView({ behavior: 'smooth' }); });
   document.querySelectorAll('[data-pf-speed]').forEach((b) => b.addEventListener('click', async () => {
     const sp = b.dataset.pfSpeed, redraw = () => { const y = scrollY; render(...shown); scrollTo(0, y); };
@@ -2002,7 +2018,7 @@ if (matchMedia('(hover: hover)').matches) {
 // without a slip in the time trial; and the openings with the most, each linking to its lines.
 const STAR_PATH = 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z';
 const starIcon = (kind) => `<svg class="line-star ${kind}" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_PATH}"/></svg>`;
-// Who you struggle against, worst first; the headline names the worst when it is clearly below par.
+// Against each kind of opponent, best first; the headline names the worst when it is clearly below par.
 // A face for each kind of opponent: a clock, a sword, a shield, an arrow up or down.
 const OPP_ICON = { 'Fast movers': 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l3 2M9 2h6', Attackers: 'M14 3h7v7l-9 9-4-4zM3 21l5-5', 'Solid players': 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
   'Stronger players': 'M12 19V5M6 11l6-6 6 6', 'Weaker players': 'M12 5v14M6 13l6 6 6-6' };
@@ -2017,11 +2033,19 @@ function opponentsCard(p, me, name) {
   const head = !worst ? `Not enough games against any one kind of opponent to say yet: each needs ${SURE_OPP}.`
     : worst.gain <= -0.04 ? `Against ${against(worst)}, ${me ? 'you' : 'they'} scored ${pct(worst.score)} in ${worst.n} games. With those rating gaps ${me ? 'you' : 'they'}'d expect about ${exp(worst)}, so ${me ? 'you drop' : 'they drop'} more points than ${me ? 'you' : 'they'} should.`
     : `No kind of opponent gives ${me ? 'you' : 'them'} trouble: the results are close to what the ratings predict, or better.`;
-  return `<section class="pf-card pf-opps"><h2>Who ${me ? 'you struggle' : 'they struggle'} against</h2>
+  // One row per kind of opponent, best first: a bar from the middle line, right (green) when the score
+  // beat what the ratings predict, left (red) when it fell short; the full numbers under the name.
+  const pts = (x) => Math.round(x.gain * 100), span = Math.max(10, ...rows.map((x) => Math.abs(pts(x))));
+  return `<section class="pf-card pf-opps"><h2>${me ? 'You' : 'They'} against each kind of opponent</h2>
     <p class="info">${head}${best && best !== worst && best.gain >= 0.04 ? ` Best against ${against(best)}: ${pct(best.score)}, where about ${exp(best)} was expected.` : ''}</p>
-    <ul class="pf-opp-list">${rows.map((x) => { const v = x.gain <= -0.04 ? ['bad', 'Struggles'] : x.gain >= 0.04 ? ['good', 'Strong'] : ['', 'As expected'];
-      return `<li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${OPP_ICON[x.name]}"/></svg><span><b>${x.name}</b><small>${me ? x.about : x.about.replace(/\byou\b/, 'them')}</small><small class="num">${pct(x.score)} · expected ${exp(x)} · ${games(x.n)}${x.n < SURE_OPP ? ' · few games so far' : ''}</small></span><span class="pf-verdict ${v[0]}">${v[1]}</span></li>`; }).join('')}</ul>
-    <p class="pf-skill-scale">Expected: what the rating gaps say ${me ? 'you' : 'they'} should score against these opponents. A game can count in more than one group; groups with fewer than 10 games are left out, and under 20 is too few to read much into.</p></section>`;
+    <div class="pf-opp-scale" aria-hidden="true"><span>← Worse than expected</span><span>Better than expected →</span></div>
+    <ul class="pf-opp-list">${rows.slice().reverse().map((x) => { const d = pts(x), v = x.gain <= -0.04 ? 'bad' : x.gain >= 0.04 ? 'good' : 'even', few = x.n < SURE_OPP;
+      return `<li class="${v}${few ? ' few' : ''}"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${OPP_ICON[x.name]}"/></svg>
+        <span class="pf-opp-name"><b>${x.name}</b><small>${me ? x.about : x.about.replace(/\byou\b/, 'them')}</small></span>
+        <span class="pf-opp-bar" role="img" aria-label="${pct(x.score)}, expected ${exp(x)}"><i style="--w:${(Math.abs(d) / span) * 50}%"${d < 0 ? ' class="neg"' : ''}></i></span>
+        <span class="pf-opp-d"><b>${d > 0 ? '+' : d < 0 ? '−' : '±'}${Math.abs(d)}</b><small>${v === 'good' ? 'Strong' : v === 'bad' ? 'Struggles' : 'As expected'}</small></span>
+        <small class="num">Scored ${pct(x.score)} · expected ${exp(x)} · ${games(x.n)}${few ? ' · few games so far' : ''}</small></li>`; }).join('')}</ul>
+    <p class="pf-skill-scale">The bar is the score against what the rating gaps predict, in percentage points: +5 means 5 points more than expected. A game can count in more than one group; groups with fewer than 10 games are left out, and under 20 is too few to read much into.</p></section>`;
 }
 // Rivals (supporters first): everyone met 3 times or more in the games read, worst for this player first.
 // The nemesis is the worst of those met 5 times or more, if under 50%; the most played gets its own story.
@@ -2379,7 +2403,7 @@ document.addEventListener('click', (e) => {
   $(`#profile ${b.dataset.jump}`)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
 });
 const PANELS = [['chart', 'Rating graph', '#pf-chart'], ['kpis', 'Key numbers', '.pf-kpis'], ['lead', 'Latest games', '.pf-lead'], ['skills', 'Skills', '#pf-skills'], ['trend', 'Trend', '#pf-trend'],
-  ['more', 'Results and openings', '.pf-more'], ['opps', 'Who you struggle against', '.pf-opps'], ['rivals', 'Rivals', '.pf-rivals'], ['games', 'Recent games', '#pf-games']];
+  ['more', 'Results and openings', '.pf-more'], ['opps', 'Against each kind of opponent', '.pf-opps'], ['rivals', 'Rivals', '.pf-rivals'], ['games', 'Recent games', '#pf-games']];
 const HIDE = 'opening-book-v2-hidden';
 const myHidden = () => { try { return JSON.parse(localStorage.getItem(HIDE)) || []; } catch { return []; } };
 const HIDDEN = {};
