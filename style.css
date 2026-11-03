@@ -3140,8 +3140,8 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 /* Openings, sorted For you (app.js fitOf): why each one is there */
 .ofit { margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); max-width: 64ch; }
 .ofit b { color: var(--hot); font-weight: 600; }
-.tag.foryou { background: var(--hot); color: #fff; }
-@media (max-width: 560px) { .ocard-tags .tag.foryou { display: inline-block; } }
+.tag.fy-tag { background: var(--hot); color: var(--bg); }
+@media (max-width: 560px) { .ocard-tags .tag.fy-tag { display: inline-block; } }
 .ofit-long { font-size: 14px; color: var(--ink); padding: 8px 0 0; border-top: 3px solid var(--rule); }
 /* Game review: the eval bar inside the board's frame, left of the board */
 .board-frame:has(.gm-eval:not([hidden])) { padding-left: 30px; }
