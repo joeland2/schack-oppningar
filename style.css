@@ -3155,9 +3155,8 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 /* Openings: the For you panel over the list (app.js forYou) */
 .foryou { margin: 0 0 18px; padding: 14px 16px; border: 1px solid var(--line); border-left: 3px solid var(--hot); border-radius: 0 var(--radius) var(--radius) 0; background: var(--surface); }
 .foryou h3 { margin: 0 0 10px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--hot); }
-.foryou ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
-.foryou li { display: grid; grid-template-columns: 9.5em 1fr; gap: 0 12px; align-items: baseline; }
-.foryou li small { grid-row: span 2; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
-.foryou li button { justify-self: start; font-weight: 700; font-size: 15px; text-align: left; }
-.foryou li span { font-size: 13px; color: var(--muted); }
-@media (max-width: 560px) { .foryou li { grid-template-columns: 1fr; } .foryou li small { grid-row: auto; } }
+.foryou ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 14px 24px; }
+.foryou li { display: grid; gap: 3px; align-content: start; }
+.foryou li small { min-height: 1em; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.foryou li button { justify-self: start; font-weight: 700; font-size: 16px; text-align: left; }
+.foryou li span { font-size: 13px; line-height: 1.4; color: var(--muted); }
