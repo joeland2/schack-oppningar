@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103142350';
-import { openLogin } from './login.js?v=20261103142350';
-import { STYLE_OF } from './styles.js?v=20261103142350';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103142350';
-import { PEOPLE } from './pros.js?v=20261103142350';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103143953';
+import { openLogin } from './login.js?v=20261103143953';
+import { STYLE_OF } from './styles.js?v=20261103143953';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103143953';
+import { PEOPLE } from './pros.js?v=20261103143953';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -2330,8 +2330,8 @@ async function rivalryPage(name, vs, me) {
 // What others see: logged in, a player can hide parts of their profile from visitors. Kept in
 // opening-book-v2-hidden (synced to their account); the userdata function answers ?hidden=<name> to anyone.
 // The menu above the rating graph: one link per part the profile shows, each scrolling to it.
-const JUMPS = [['Rating', '#pf-chart'], ['Numbers', '.pf-kpis'], ['Skills', '#pf-skills'], ['Trend', '#pf-trend'], ['Results and openings', '.pf-more'],
-  ['Openings for you', '.pf-fit'], ['Opponents', '.pf-opps'], ['Rivals', '#rivals'], ['Games', '#pf-games'], ['Stars', '#pf-stars']];
+const JUMPS = [['Rating', '#pf-chart'], ['Numbers', '.pf-kpis'], ['Skills', '#pf-skills'], ['Trend', '#pf-trend'], ['Results', '.pf-more'],
+  ['For you', '.pf-fit'], ['Opponents', '.pf-opps'], ['Rivals', '#rivals'], ['Games', '#pf-games'], ['Stars', '#pf-stars']];
 function jumpNav() {
   const nav = $('#profile .pf-jump');
   if (nav) nav.innerHTML = JUMPS.filter(([, sel]) => $(`#profile ${sel}`)).map(([label, sel]) => `<button type="button" data-jump="${sel}">${label}</button>`).join('');
