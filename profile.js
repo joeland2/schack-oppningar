@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103124805';
-import { openLogin } from './login.js?v=20261103124805';
-import { STYLE_OF } from './styles.js?v=20261103124805';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103124805';
-import { PEOPLE } from './pros.js?v=20261103124805';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103124949';
+import { openLogin } from './login.js?v=20261103124949';
+import { STYLE_OF } from './styles.js?v=20261103124949';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103124949';
+import { PEOPLE } from './pros.js?v=20261103124949';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1056,11 +1056,25 @@ function skillBars(skills, say, me) {
 }
 // Which kind of opening each side mostly picks: the top style when it is a quarter or more of them.
 const taste = (m) => (m && m.n >= 10 ? m.parts.find((x) => x.k !== 'other' && x.share >= 0.25) || null : null);
-function tasteLine(mix, me) {
+function tasteLine(mix, me, practice = '') {
   const w = taste(mix?.w), b = taste(mix?.b);
-  if (!w && !b) return '';
+  if (!w && !b && !practice) return '';
   const tile = (x, c, side) => x ? `<div class="pf-taste-tile"><img src="pieces/${c}K.svg" alt=""><span><small>Openings as ${side}</small><b>${x.label}</b><small>${pct(x.share)} of ${me ? 'your' : 'their'} choices</small></span></div>` : '';
-  return `<div class="pf-taste-tiles" aria-label="Opening taste">${tile(w, 'w', 'White')}${tile(b, 'b', 'Black')}</div>`;
+  return `<div class="pf-taste-tiles" aria-label="Opening taste">${practice}${tile(w, 'w', 'White')}${tile(b, 'b', 'Black')}</div>`;
+}
+// My practice (your own profile only): the opening you have practised most on each side, from the trainer's
+// progress kept in this browser ({ "blitz:King's Gambit": { played, done, total } }), and a link back to it.
+function practiceLine() {
+  let stats = {};
+  try { stats = JSON.parse(localStorage.getItem('opening-book-v2')) || {}; } catch {}
+  const best = { w: null, b: null };
+  for (const [key, s] of Object.entries(stats)) {
+    const id = key.slice(key.indexOf(':') + 1), side = /^(vs|b):/.test(id) ? 'b' : 'w', family = id.replace(/^(vs|b):/, '');
+    const n = new Set([...(s?.played || []), ...(s?.done || [])]).size;
+    if (n && s.total && (!best[side] || n > best[side].n)) best[side] = { n, total: s.total, family, vs: id.startsWith('vs:') };
+  }
+  const tile = (x, c, side) => x ? `<a class="pf-taste-tile pf-practice" href="index.html?practise=${side[0].toLowerCase()}:${encodeURIComponent(x.family)}"><img src="pieces/${c}K.svg" alt=""><span><small>My practice as ${side}</small><b>${x.vs ? 'vs ' : ''}${esc(x.family.replace(/^.*?: /, ''))}</b><small>${Math.min(x.n, x.total)} of ${x.total} lines · Practise →</small></span></a>` : '';
+  return tile(best.w, 'w', 'White') + tile(best.b, 'b', 'Black');
 }
 // How games end: wins and losses split by mate, resignation and time, as numbers with a small bar each.
 function endsGrid(ends) {
@@ -1796,7 +1810,7 @@ function render(name, at, full) {
         <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button><button type="button" data-card-link title="A link that shows this card when it is shared">Copy link</button>${me && window.supporterOf?.(name) ? '<button type="button" data-card-video title="The card counting up, about four seconds">Video</button>' : ''}</div></details>${cardNote(name, p, me)}`)}</div></div></div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h2 class="pf-h1">${esc(t[0].name)}</h2>
-        ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}<a class="pf-all-styles" href="playstyles.html?s=${encodeURIComponent(t[0].name)}${t[1] ? `&t=${encodeURIComponent(t[1].name)}` : ''}">See all styles →</a></div>${tasteLine(p.styleMix, me)}</div>
+        ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}<a class="pf-all-styles" href="playstyles.html?s=${encodeURIComponent(t[0].name)}${t[1] ? `&t=${encodeURIComponent(t[1].name)}` : ''}">See all styles →</a></div>${tasteLine(p.styleMix, me, me ? practiceLine() : '')}</div>
         <p class="pf-portrait">${portrait(name, p, skills, me)}</p>
         <div class="pf-why-type">
           <div class="pf-about">${t.map((x) => `<p><b>${esc(x.name)}.</b> ${esc(TYPE_ABOUT[x.name] || '')} <span>${esc(say(x.why))}</span></p>`).join('')}</div>

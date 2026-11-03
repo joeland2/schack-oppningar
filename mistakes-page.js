@@ -1,8 +1,8 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { lichessAuth } from './lichess.js?v=20261103124805';
-import { drill } from './drill.js?v=20261103124805';
-import { THEMES } from './mistakes.js?v=20261103124805';
-import { explainMistake, dangerAfter } from './ideas.js?v=20261103124805';
+import { lichessAuth } from './lichess.js?v=20261103124949';
+import { drill } from './drill.js?v=20261103124949';
+import { THEMES } from './mistakes.js?v=20261103124949';
+import { explainMistake, dangerAfter } from './ideas.js?v=20261103124949';
 
 // Positions from your own games where you went wrong, saved by "Find my mistakes" on the openings page.
 // Everything is explained here, on the board: what your move did wrong, nudges while you look for
