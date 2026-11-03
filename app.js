@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103114011';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103114011';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103114011';
-import { NAMED_TRAPS } from './traps.js?v=20261103114011';
-import { GUIDE } from './guide.js?v=20261103114011';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103114011';
-import { banner, confetti } from './celebrate.js?v=20261103114011';
-import { maia3Move } from './maia3.js?v=20261103114011';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103114011';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261103114011';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103114011';
-import { openLogin } from './login.js?v=20261103114011';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103114011';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103114319';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103114319';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103114319';
+import { NAMED_TRAPS } from './traps.js?v=20261103114319';
+import { GUIDE } from './guide.js?v=20261103114319';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103114319';
+import { banner, confetti } from './celebrate.js?v=20261103114319';
+import { maia3Move } from './maia3.js?v=20261103114319';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103114319';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261103114319';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103114319';
+import { openLogin } from './login.js?v=20261103114319';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103114319';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -510,7 +510,7 @@ const byChoice = (a, b) => (sort === 'played' ? b.share - a.share : sort === 'yo
 // For you (supporters first): as White, the opening's score at your level, lifted when it fits the style you
 // play most and moved by how you do with it yourself; as Black, the White openings you meet most at your
 // level, pushed up where you score below what Black usually does. WHY says it in words on each card.
-let WHY = new Map(), MINE = null;
+let WHY = new Map(), MINE = null, FOR = new Set(); // FOR: the three that fit you best per side, tagged in any sort
 function fitOf(o) {
   const m = MINE?.ops.get(o), own = m && m.n >= 5 ? m.pts / m.n : null, base = yourScore(o);
   if (o.side === 'w') {
@@ -549,7 +549,7 @@ function card(o) {
   return `<article class="ocard side-${o.side}" data-id="${o.id}">
     <div class="board mini" data-mini="${o.id}" inert></div>
     <div class="ocard-body">
-      <div class="ocard-top"><h3><button type="button" class="ocard-open">${isVs(o) ? 'vs ' : ''}${o.name}</button></h3><span class="ocard-tags">${tags}${progress}
+      <div class="ocard-top"><h3><button type="button" class="ocard-open">${isVs(o) ? 'vs ' : ''}${o.name}</button></h3><span class="ocard-tags">${FOR.has(o) ? `<span class="tag foryou" title="${WHY.get(o) || ''}">For you</span>` : ''}${tags}${progress}
         <button type="button" class="star" data-star="${o.id}" aria-pressed="${repertoire.has(o.id)}" title="${repertoire.has(o.id) ? 'In your favorites' : 'Add to your favorites'}" aria-label="${repertoire.has(o.id) ? 'Remove from' : 'Add to'} my favorites">★</button></span></div>
       ${about ? `<p class="odesc">${about}</p>` : ''}${sort === 'you' && WHY.get(o) ? `<p class="ofit"><b>For you:</b> ${WHY.get(o)}</p>` : ''}
       <div class="ostats">
@@ -598,7 +598,8 @@ gamesReady.then(() => { if (OPENINGS.length) renderList(); }); // the kept games
 function renderList() {
   if (!OPENINGS.length) return; // still loading: the outline stays, never a false "no openings"
   if (sort === 'you' && !window.earlyAccess?.()) sort = 'score';
-  if (sort === 'you') { MINE = myOpenings(true); WHY = new Map(); }
+  MINE = window.earlyAccess?.() ? myOpenings(true) : null; WHY = new Map(); FOR = new Set();
+  if (MINE) for (const side of ['w', 'b']) shown().filter((o) => o.side === side).sort((a, b) => fitOf(b) - fitOf(a)).slice(0, 3).forEach((o) => FOR.add(o));
   const lead = { played: 'Most played first', you: 'The best fit for you first: your results, your style and your level' }[sort] || 'Best results first';
   const about = {
     w: (n) => `${lead}. ${style === 'any'

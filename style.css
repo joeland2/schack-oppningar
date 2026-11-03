@@ -3139,3 +3139,5 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 /* Openings, sorted For you (app.js fitOf): why each one is there */
 .ofit { margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); max-width: 64ch; }
 .ofit b { color: var(--hot); font-weight: 600; }
+.tag.foryou { background: var(--hot); color: #fff; }
+@media (max-width: 560px) { .ocard-tags .tag.foryou { display: inline-block; } }
