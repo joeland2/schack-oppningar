@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103121157';
-import { openLogin } from './login.js?v=20261103121157';
-import { STYLE_OF } from './styles.js?v=20261103121157';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103121157';
-import { PEOPLE } from './pros.js?v=20261103121157';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103121517';
+import { openLogin } from './login.js?v=20261103121517';
+import { STYLE_OF } from './styles.js?v=20261103121517';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103121517';
+import { PEOPLE } from './pros.js?v=20261103121517';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1722,12 +1722,16 @@ async function fetchSpeed(name, sp, onStep = () => {}) {
   saveGames(speedKey(name, sp), raw);
   return true;
 }
+// Each time control with the games played in it in all (from Lichess's or Chess.com's own count, when
+// known); how many the card reads is in its title and on the card.
+const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 function speedBar(name, full, sp, avail) {
   if (avail.length < 2 && sp !== 'all') return '';
-  // A time control with more games on Lichess than the card reads shows the count picking it fetches,
-  // so the number does not jump when it is picked; the one shown says what the card reads.
-  return `<div class="pf-seg pf-speeds" role="group" aria-label="Time control">${[['all', full.n], ...avail].map(([k, n, all = 0]) =>
-    `<button type="button" data-pf-speed="${k}" aria-pressed="${k === sp}"${all > n && n < MAX ? ` title="Pick it to fetch the last ${Math.min(MAX, all)} ${k} games (${n} are among the last ${MAX} of all)"` : k === full.speeds[0]?.speed ? ' title="Played most"' : ''}>${k === full.speeds[0]?.speed ? '<i class="pf-speed-star" aria-label="played most">★</i>' : ''}<span>${k === 'all' ? 'All' : k[0].toUpperCase() + k.slice(1)}</span><small>${k === sp ? n : Math.max(n, Math.min(MAX, all))}</small></button>`).join('')}</div>`;
+  const total = sum(avail, ([, , all = 0]) => all);
+  return `<div class="pf-seg pf-speeds" role="group" aria-label="Time control">${[['all', full.n, total], ...avail].map(([k, n, all = 0]) => {
+    const read = k === sp ? n : Math.max(n, Math.min(MAX, all)), played = Math.max(all, read);
+    return `<button type="button" data-pf-speed="${k}" aria-pressed="${k === sp}" title="${played.toLocaleString('en')} ${k === 'all' ? '' : `${k} `}games played${played > read ? `; the card reads the last ${read}` : ''}${k === full.speeds[0]?.speed ? ' · played most' : ''}">${k === full.speeds[0]?.speed ? '<i class="pf-speed-star" aria-label="played most">★</i>' : ''}<span>${k === 'all' ? 'All' : k[0].toUpperCase() + k.slice(1)}</span><small>${compact.format(played)}</small></button>`;
+  }).join('')}</div>`;
 }
 let shownCode = ''; // render: the card on screen as a short code (cardCode)
 let shownGames = [], trendGames = []; // the games behind the card on screen, newest first
