@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103103133';
-import { openLogin } from './login.js?v=20261103103133';
-import { STYLE_OF } from './styles.js?v=20261103103133';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103103133';
-import { PEOPLE } from './pros.js?v=20261103103133';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103104157';
+import { openLogin } from './login.js?v=20261103104157';
+import { STYLE_OF } from './styles.js?v=20261103104157';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103104157';
+import { PEOPLE } from './pros.js?v=20261103104157';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1603,10 +1603,12 @@ async function cardImage(look, name, p, t, skills, detail, lead) {
     return canvas;
   }
 }
+// With Share (supporters for now) the card bar is one wide Share button and a ⋯ menu holding the rest
+const more = (share, rest) => share ? `${share}<details class="pf-dl pf-etc"><summary title="More" aria-label="More">⋯</summary><div class="pf-etc-menu">${rest}</div></details>` : rest;
 function cardNote(name, p, me) {
   const main = p.speeds[0];
   if (!main) return '';
-  return `<details class="pf-dl pf-card-help"><summary title="How the stats work" aria-label="How the stats work">?</summary><p class="pf-card-note"><b>Every stat compares ${me ? 'you' : esc(nick(name))} with ${me ? 'your' : 'their'} own opponents</b>, rated ${main.rating - PEER}–${main.rating + PEER}, in the same games. A higher rating starts the card higher; the big number is the average of the six skills. <a href="#pf-skills">What each skill measures</a></p></details>`;
+  return `<details class="pf-dl pf-card-help"><summary title="How the stats work" aria-label="How the stats work"><b>?</b><span>How it works</span></summary><p class="pf-card-note"><b>Every stat compares ${me ? 'you' : esc(nick(name))} with ${me ? 'your' : 'their'} own opponents</b>, rated ${main.rating - PEER}–${main.rating + PEER}, in the same games. A higher rating starts the card higher; the big number is the average of the six skills. <a href="#pf-skills">What each skill measures</a></p></details>`;
 }
 
 // ---------- The leaderboard ----------
@@ -1754,8 +1756,8 @@ function render(name, at, full) {
   $('#profile').innerHTML = `
     ${accountsRow(name)}${combo && comboOwn ? comboRow() : ''}${nameRow(name)}${proLine(name)}${proBio(name, p)}
     <section class="pf-hero">
-      <div class="pf-card-col">${playerCard(name, p, t, skills)}<div class="pf-cardbar">${combo ? '' : speedBar(name, full, sp, avail)}<div class="pf-tools">${me && window.earlyAccess?.() ? shareHtml(name, t) : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
-        <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button><button type="button" data-card-link title="A link that shows this card when it is shared">Copy link</button>${me && window.supporterOf?.(name) ? '<button type="button" data-card-video title="The card counting up, about four seconds">Video</button>' : ''}</div></details>${cardNote(name, p, me)}</div></div></div>
+      <div class="pf-card-col">${playerCard(name, p, t, skills)}<div class="pf-cardbar">${combo ? '' : speedBar(name, full, sp, avail)}<div class="pf-tools">${more(me && window.earlyAccess?.() && shareHtml(name, t), `<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg><span>Download</span></summary>
+        <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button><button type="button" data-card-link title="A link that shows this card when it is shared">Copy link</button>${me && window.supporterOf?.(name) ? '<button type="button" data-card-video title="The card counting up, about four seconds">Video</button>' : ''}</div></details>${cardNote(name, p, me)}`)}</div></div></div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h2 class="pf-h1">${esc(t[0].name)}</h2>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}<a class="pf-all-styles" href="playstyles.html?s=${encodeURIComponent(t[0].name)}${t[1] ? `&t=${encodeURIComponent(t[1].name)}` : ''}">See all styles →</a></div>${tasteLine(p.styleMix, me)}</div>
@@ -1828,7 +1830,7 @@ function render(name, at, full) {
     try { await navigator.clipboard.writeText(url); b.textContent = 'Link copied'; } catch { prompt('Copy the link', url); }
   });
   document.querySelectorAll('[data-card-png]').forEach((b) => b.addEventListener('click', async () => {
-    b.closest('details').open = false;
+    b.closest('details').open = false; b.closest('.pf-etc')?.removeAttribute('open');
     const k = b.dataset.cardPng;
     if (k !== 'style') await cardPng(name, p, t, skills, false, b);
     if (k !== 'card') await cardPng(name, p, t, skills, true, b);

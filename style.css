@@ -3112,3 +3112,24 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
   .pf-tools .pf-card-help > summary { width: 44px; height: 44px; }
   .pf-hero .pf-side-bits { order: 5; }
 }
+/* Share wide under the card, the rest in a ⋯ menu (profile.js more()) */
+.pf-tools .pf-dl > summary > span { display: none; }
+.pf-cardbar .pf-tools:has(.pf-etc) { justify-self: stretch; gap: 8px; border: 0; padding: 0; border-radius: 0; }
+.pf-cardbar .pf-tools:has(.pf-etc) > details + details { border-left: 0; }
+.pf-cardbar .pf-tools > .pf-share { flex: 1; }
+.pf-cardbar .pf-tools > .pf-share > summary { display: flex; justify-content: center; align-items: center; width: 100%; height: 40px; gap: 8px; border-radius: 8px; background: var(--hot); color: #fff; font: 700 14px var(--font-body); }
+.pf-cardbar .pf-tools > .pf-share > summary:hover, .pf-cardbar .pf-tools > .pf-share[open] > summary { color: #fff; filter: brightness(1.08); }
+.pf-cardbar .pf-share .pf-dl-menu { left: 0; right: auto; }
+.pf-cardbar .pf-tools > .pf-etc > summary { width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 8px; font: 700 18px var(--font-body); color: var(--ink); line-height: 1; }
+.pf-etc-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: grid; width: max-content; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+.pf-etc-menu .pf-dl > summary, .pf-etc-menu .pf-card-help > summary { justify-content: flex-start; width: auto; height: auto; min-height: 0; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 6px; color: var(--ink); font: 500 14px var(--font-body); }
+.pf-etc-menu .pf-dl > summary:hover, .pf-etc-menu .pf-dl[open] > summary { background: var(--raised); }
+.pf-etc-menu .pf-dl > summary > span { display: inline; }
+.pf-etc-menu .ico { width: 16px; height: 16px; }
+.pf-etc-menu .pf-card-help summary b { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1.5px solid currentColor; border-radius: 50%; font-size: 10px; box-sizing: border-box; }
+.pf-etc-menu > details { justify-self: stretch; margin: 0; }
+.pf-tools .pf-etc-menu .pf-dl-menu, .pf-tools .pf-etc-menu .pf-card-note { position: static; transform: none; width: auto; max-width: 260px; min-width: 0; margin: 2px 0 4px; padding: 4px 10px; border: 0; box-shadow: none; background: none; }
+@media (max-width: 640px) {
+  .pf-cardbar .pf-tools > .pf-share > summary, .pf-cardbar .pf-tools > .pf-etc > summary { height: 44px; }
+  .pf-cardbar .pf-tools > .pf-etc > summary { width: 44px; }
+}
