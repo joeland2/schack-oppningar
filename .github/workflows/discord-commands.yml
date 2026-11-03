@@ -1,0 +1,17 @@
+# Registers the Discord app's slash command /chesslabs (supabase/functions/discord answers it). Run it by
+# hand once, and again when the command changes. Needs the repo secrets DISCORD_APP_ID and DISCORD_BOT_TOKEN
+# (the app's Application ID and its bot token, from discord.com/developers/applications).
+name: Discord commands
+on: workflow_dispatch
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -sf -X PUT "https://discord.com/api/v10/applications/$APP/commands" \
+            -H "Authorization: Bot $TOKEN" -H "Content-Type: application/json" \
+            -d '[{"name":"chesslabs","description":"Show a chess player'"'"'s Chess Labs card: their play style, skills and rating","integration_types":[0,1],"contexts":[0,1,2],
+                  "options":[{"type":3,"name":"name","description":"Their Lichess name","required":true,"max_length":30}]}]'
+        env:
+          APP: ${{ secrets.DISCORD_APP_ID }}
+          TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
