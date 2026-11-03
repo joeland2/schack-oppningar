@@ -2,12 +2,12 @@
 // decided it (yours and your opponent's mistakes, with the better move), and a short read of what
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
-import { banner, confetti } from './celebrate.js?v=20261103120317';
+import { banner, confetti } from './celebrate.js?v=20261103120441';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261103120317';
-import { account, lichessAuth } from './lichess.js?v=20261103120317';
-import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261103120317';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261103120317';
+import { drawBoard, enableDrag } from './board.js?v=20261103120441';
+import { account, lichessAuth } from './lichess.js?v=20261103120441';
+import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261103120441';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261103120441';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -135,6 +135,20 @@ function players(bottom) {
   $('#top-player').innerHTML = strip(bottom === 'w' ? 'b' : 'w');
   $('#bottom-player').innerHTML = strip(bottom);
 }
+// The eval bar beside the board: White's winning chances after the move shown, filled from the side at the
+// bottom, with Stockfish's number (pawns, or M and the moves to mate) at the end of the side ahead.
+function evalBar(bottom) {
+  const el = $('#gm-eval'), i = idx - 1, a = g.analysis?.[i];
+  el.hidden = !g.analysis || tryOut;
+  if (el.hidden) return;
+  const cp = i < 0 ? 0 : cpAt(i) ?? 0, white = winPct(cp), up = bottom === 'w' ? white : 100 - white;
+  const text = a?.mate !== undefined ? `M${Math.abs(a.mate)}` : (Math.abs(cp) / 100).toFixed(1);
+  el.querySelector('i').style.height = `${up}%`;
+  el.querySelector('span').textContent = text;
+  el.classList.toggle('low', up >= 50); // the number sits at the end of the side ahead
+  el.classList.toggle('bw', bottom === 'b'); // black at the bottom: the dark part fills from below
+  el.setAttribute('aria-label', `Evaluation: ${cp >= 0 ? 'White' : 'Black'} ${text}`);
+}
 function drawPosition() {
   if (tryOut) return drawTry();
   $('#board').classList.remove('looking-back');
@@ -154,6 +168,7 @@ function drawPosition() {
   const bottom = (side === 'white') !== flip ? 'w' : 'b';
   drawBoard($('#board'), c, { side: bottom, last, arrows, mark: focus === null && idx && kindOf(idx - 1) ? { sq: moves[idx - 1].to, kind: kindOf(idx - 1) } : null });
   players(bottom);
+  evalBar(bottom);
   const i = idx - 1, j = g.analysis?.[i]?.judgment?.name;
   const fb = focus !== null && idx === focus ? bestMove(focus) : null;
   $('#here').innerHTML = focus !== null && idx === focus
@@ -327,7 +342,7 @@ async function tryMove(from, to) {
   if (t.c.isGameOver()) return drawTry(), ended(t), true;
   t.busy = true; drawTry();
   const legal = t.c.moves({ verbose: true });
-  const { maia3Move } = await import('./maia3.js?v=20261103120317'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261103120317'); // loaded on the first move only: the nets are big
+  const { maia3Move } = await import('./maia3.js?v=20261103120441'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261103120441'); // loaded on the first move only: the nets are big
   let r = null;
   try { r = (await within(20000, maia3Move(t.c.fen(), legal, t.rating, t.rating))).move; } catch (e) { console.warn(e); }
   if (!r && t.rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(t.rating, [t.c.fen()], legal))).move; } catch (e) { console.warn(e); }

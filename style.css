@@ -3142,3 +3142,13 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .tag.foryou { background: var(--hot); color: #fff; }
 @media (max-width: 560px) { .ocard-tags .tag.foryou { display: inline-block; } }
 .ofit-long { font-size: 14px; color: var(--ink); padding: 10px 12px; border-left: 3px solid var(--hot); background: var(--surface); border-radius: 0 6px 6px 0; }
+/* Game review: the eval bar inside the board's frame, left of the board */
+.board-frame:has(.gm-eval:not([hidden])) { padding-left: 30px; }
+.gm-eval { position: absolute; left: 8px; top: 10px; bottom: 10px; width: 16px; overflow: hidden; border-radius: 3px; background: #3a3836; }
+.gm-eval i { position: absolute; left: 0; right: 0; bottom: 0; background: #f4efe6; transition: height .3s ease; }
+.gm-eval span { position: absolute; left: 0; right: 0; top: 4px; font: 700 9px/1 var(--font-body); text-align: center; color: #f4efe6; letter-spacing: -.02em; }
+.gm-eval.low span { top: auto; bottom: 4px; color: #141414; }
+@media (max-width: 640px) { .board-frame:has(.gm-eval:not([hidden])) { padding-left: 22px; } .gm-eval { left: 5px; top: 6px; bottom: 6px; width: 12px; } .gm-eval span { font-size: 7px; } }
+@media (prefers-reduced-motion: reduce) { .gm-eval i { transition: none; } }
+.gm-eval.bw { background: #f4efe6; } .gm-eval.bw i { background: #3a3836; }
+.gm-eval.bw span { color: #141414; } .gm-eval.bw.low span { color: #f4efe6; }
