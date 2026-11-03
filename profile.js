@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103141748';
-import { openLogin } from './login.js?v=20261103141748';
-import { STYLE_OF } from './styles.js?v=20261103141748';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103141748';
-import { PEOPLE } from './pros.js?v=20261103141748';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103142350';
+import { openLogin } from './login.js?v=20261103142350';
+import { STYLE_OF } from './styles.js?v=20261103142350';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103142350';
+import { PEOPLE } from './pros.js?v=20261103142350';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1812,9 +1812,9 @@ function render(name, at, full) {
           <p class="pf-more-portrait">${portrait(name, p, skills, me, 'more')}</p>
         </div>
         <div class="pf-side-bits">${me ? starsStrip() : ''}${combo ? '' : `<p class="pf-ago">${me ? 'Your' : 'The'} card from ${AGO.map(([m, t]) => `<a href="${agoLink(name, m)}">${t.replace(' ago', '')}</a>`).join(' · ')} ago</p>`}</div>
+        <nav class="pf-jump" aria-label="Parts of the profile"></nav>
       </div>
     </section>
-    <nav class="pf-jump" aria-label="Parts of the profile"></nav>
     <section class="pf-card pf-chart" id="pf-chart"></section>
     <dl class="pf-kpis">${kpis.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
     ${leadStory(name, p, skills, me)}

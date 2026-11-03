@@ -3283,9 +3283,8 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .rv-neutral .pf-rv-lead.bad { border-color: var(--line); }
 #profile:has(> .rv-head) { align-content: start; } /* the rivals pages: no stretched rows while games load */
 .rv-op { font-weight: 700; text-transform: none; letter-spacing: 0; font-size: 14px; }
-.pf-jump { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 12px; padding-bottom: 2px; }
-.pf-jump::-webkit-scrollbar { display: none; }
-.pf-jump button { flex: none; min-height: 36px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: 600 13px var(--font-body); cursor: pointer; }
+.pf-jump { display: flex; flex-wrap: wrap; gap: 4px 6px; max-width: 100%; margin: 14px 0 0; }
+.pf-jump button { min-height: 28px; padding: 0 10px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: 600 12px var(--font-body); cursor: pointer; }
 .pf-jump button:hover { border-color: var(--ink); }
 .pf-jump:empty { display: none; }
 #profile .pf-card, #profile .pf-kpis { scroll-margin-top: 80px; }
