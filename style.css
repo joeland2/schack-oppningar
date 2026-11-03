@@ -3222,3 +3222,4 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .pf-rv-btn.hot { background: var(--data); border-color: var(--data); color: var(--data-ink); }
 .pf-rv-tabs { margin-bottom: 8px; }
 .pf-rv-about { margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+.pf-rivals { scroll-margin-top: 72px; }

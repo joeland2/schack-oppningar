@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103131610';
-import { openLogin } from './login.js?v=20261103131610';
-import { STYLE_OF } from './styles.js?v=20261103131610';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103131610';
-import { PEOPLE } from './pros.js?v=20261103131610';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103132001';
+import { openLogin } from './login.js?v=20261103132001';
+import { STYLE_OF } from './styles.js?v=20261103132001';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103132001';
+import { PEOPLE } from './pros.js?v=20261103132001';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -2915,3 +2915,11 @@ if ($('#profile')) { // the practice page imports this module for the above; onl
   start();
   if (new URLSearchParams(location.search).has('login') && !account()) openLogin();
 }
+// profile.html#rivals (My rivals in the menu): Rivals is drawn after the games are read, so the page goes
+// there once it appears, and again when the link is followed on this page.
+if (location.hash === '#rivals') {
+  const seen = new MutationObserver(() => { const el = document.getElementById('rivals'); if (el) { seen.disconnect(); el.scrollIntoView({ block: 'start' }); } });
+  seen.observe(document.body, { childList: true, subtree: true });
+  setTimeout(() => seen.disconnect(), 30000);
+}
+addEventListener('hashchange', () => { if (location.hash === '#rivals') document.getElementById('rivals')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
