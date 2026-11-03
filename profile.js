@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103131402';
-import { openLogin } from './login.js?v=20261103131402';
-import { STYLE_OF } from './styles.js?v=20261103131402';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103131402';
-import { PEOPLE } from './pros.js?v=20261103131402';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103131610';
+import { openLogin } from './login.js?v=20261103131610';
+import { STYLE_OF } from './styles.js?v=20261103131610';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103131610';
+import { PEOPLE } from './pros.js?v=20261103131610';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -2134,9 +2134,7 @@ function rivalsCard(name, me) {
   if (!rated?.length) return '';
   const casual = casualOf(name);
   if (!casual) setTimeout(() => loadCasual(name, me), 2000); // after the profile's own reading
-  const all = [...rated, ...(casual || [])].sort((a, b) => b.createdAt - a.createdAt);
-  const { rivals, nemesis, most } = rivalsOf(name, all), you = me ? 'you' : 'they', your = me ? 'your' : 'their';
-  RIVALS.set(name, rivals);
+  const you = me ? 'you' : 'they', your = me ? 'your' : 'their';
   const link = (r) => `<a href="profile.html?u=${encodeURIComponent(r.name)}">${esc(nick(r.name))}</a>`;
   const rec = (r) => `${r.w}–${r.d}–${r.l}`;
   const day = (g) => new Date(g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
@@ -2158,17 +2156,36 @@ function rivalsCard(name, me) {
   const streakOf = (r) => { let k = 0; while (r.games[k]?.res === 'L') k++; return k; };
   const chip = (t) => `<span class="chip">${t}</span>`;
   const acts = (r) => { if (!me) return ''; const rv = revengeLink(name, r); return `<div class="pf-rv-acts">${rv ? `<a class="pf-rv-btn hot" href="${esc(rv)}">Revenge →</a>` : ''}${r.l > r.w ? `<button type="button" class="pf-rv-btn" data-wanted="${esc(name)}|${esc(r.id)}">Wanted poster ↓</button>` : ''}</div>`; };
-  let html = '';
-  if (most) html += `<div class="pf-rv-lead${most === nemesis ? ' bad' : ''}"><span class="pf-rv-chips">${most === nemesis ? chip(`${me ? 'Your' : 'Their'} nemesis`) : ''}${chip('Most played')}</span><b class="pf-rv-name">${link(most)}</b>${story(most)}${acts(most)}</div>`;
-  if (nemesis && nemesis !== most) html += `<div class="pf-rv-lead bad"><span class="pf-rv-chips">${chip(`${me ? 'Your' : 'Their'} nemesis`)}</span><b class="pf-rv-name">${link(nemesis)}</b>${story(nemesis)}${acts(nemesis)}</div>`;
-  const rest = rivals.slice(0, 10);
-  const victim = rivals.at(-1)?.score > 0.5 && rivals.at(-1).n >= NEMESIS_MIN ? rivals.at(-1) : null;
-  return `<section class="pf-card pf-rivals" id="rivals"><div class="pf-more-head"><h2>Rivals</h2><span>The players ${you} met ${RIVAL_MIN} times or more in the last ${games(rated.length)} rated${casual?.length ? ` and ${casual.length} casual` : ''}</span></div>
-    ${rivals.length ? `${html ? `<div class="pf-rv-top">${html}</div>` : ''}
-    <table class="pf-rv-table"><thead><tr><th>Opponent</th><th>Games</th><th>W–D–L</th><th class="wide-only">Last 10</th><th>${me ? 'You' : 'They'}</th></tr></thead><tbody>
-    ${rest.map((r) => `<tr><td>${link(r)}${r === nemesis ? ' <span class="chip hot">Nemesis</span>' : r === victim ? ` <span class="chip">${me ? 'Your' : 'Their'} victim</span>` : ''}</td><td>${r.n}</td><td>${rec(r)}</td><td class="wide-only">${sparkOf(r.games.slice(0, 10))}</td><td class="${r.score < 0.45 ? 'bad' : r.score > 0.55 ? 'good' : ''}">${pct(r.score)}</td></tr>`).join('')}</tbody></table>`
-    : `<p class="info">${casual ? `No rivals yet: nobody shows up ${RIVAL_MIN} times in ${your} last ${games(all.length)}.` : `Looking for ${your} rivals in ${your} casual games too…`}</p>`}</section>`;
+  // Two lists: Friends, the casual games (challenges, mostly people you know), and Rated, the games the pairing
+  // gave you. Each with its own most played and nemesis; the table goes by games played.
+  const panel = (gs) => {
+    const { rivals, nemesis, most } = rivalsOf(name, gs);
+    let html = '';
+    if (most) html += `<div class="pf-rv-lead${most === nemesis ? ' bad' : ''}"><span class="pf-rv-chips">${most === nemesis ? chip(`${me ? 'Your' : 'Their'} nemesis`) : ''}${chip('Most played')}</span><b class="pf-rv-name">${link(most)}</b>${story(most)}${acts(most)}</div>`;
+    if (nemesis && nemesis !== most) html += `<div class="pf-rv-lead bad"><span class="pf-rv-chips">${chip(`${me ? 'Your' : 'Their'} nemesis`)}</span><b class="pf-rv-name">${link(nemesis)}</b>${story(nemesis)}${acts(nemesis)}</div>`;
+    const victim = rivals.filter((r) => r.n >= NEMESIS_MIN && r.score > 0.5).sort((x, y) => y.score - x.score)[0];
+    const rows = rivals.slice().sort((x, y) => y.n - x.n || x.score - y.score).slice(0, 12);
+    return { rivals, html: rivals.length ? `${html ? `<div class="pf-rv-top">${html}</div>` : ''}
+      <table class="pf-rv-table"><thead><tr><th>Opponent</th><th>Games</th><th>W–D–L</th><th class="wide-only">Last 10</th><th>${me ? 'You' : 'They'}</th></tr></thead><tbody>
+      ${rows.map((r) => `<tr><td>${link(r)}${r === nemesis ? ' <span class="chip hot">Nemesis</span>' : r === victim ? ` <span class="chip">${me ? 'Your' : 'Their'} victim</span>` : ''}</td><td>${r.n}</td><td>${rec(r)}</td><td class="wide-only">${sparkOf(r.games.slice(0, 10))}</td><td class="${r.score < 0.45 ? 'bad' : r.score > 0.55 ? 'good' : ''}">${pct(r.score)}</td></tr>`).join('')}</tbody></table>`
+      : `<p class="info">Nobody shows up ${RIVAL_MIN} times here yet.</p>` };
+  };
+  const friends = casual ? panel(casual) : { rivals: [], html: `<p class="info">Looking for ${your} rivals in ${your} casual games…</p>` }, pool = panel(rated);
+  RIVALS.set(name, [...friends.rivals, ...pool.rivals]);
+  const first = friends.rivals.length || !casual ? 'f' : 'r';
+  const tab = (k, label, n) => `<button type="button" data-rv-tab="${k}" aria-pressed="${k === first}">${label} <span class="og-n">${n}</span></button>`;
+  return `<section class="pf-card pf-rivals" id="rivals"><div class="pf-more-head"><h2>Rivals</h2><span>The players ${you} met ${RIVAL_MIN} times or more</span></div>
+    <div class="seg pf-rv-tabs" role="group" aria-label="Which games">${tab('f', 'Friends', friends.rivals.length)}${tab('r', 'Rated', pool.rivals.length)}</div>
+    <p class="pf-rv-about" data-rv="f"${first === 'f' ? '' : ' hidden'}>Casual games: the challenges, mostly with people ${you} know. From ${your} last ${games(casual?.length || 0)} casual games.</p>
+    <p class="pf-rv-about" data-rv="r"${first === 'r' ? '' : ' hidden'}>Rated games: the opponents the pairing gave ${me ? 'you' : 'them'}. From ${your} last ${games(rated.length)} rated games.</p>
+    <div data-rv="f"${first === 'f' ? '' : ' hidden'}>${friends.html}</div><div data-rv="r"${first === 'r' ? '' : ' hidden'}>${pool.html}</div></section>`;
 }
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-rv-tab]'); if (!b) return;
+  const box = b.closest('.pf-rivals');
+  box.querySelectorAll('[data-rv-tab]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+  box.querySelectorAll('[data-rv]').forEach((x) => { x.hidden = x.dataset.rv !== b.dataset.rvTab; });
+});
 // What others see: logged in, a player can hide parts of their profile from visitors. Kept in
 // opening-book-v2-hidden (synced to their account); the userdata function answers ?hidden=<name> to anyone.
 const PANELS = [['chart', 'Rating graph', '#pf-chart'], ['kpis', 'Key numbers', '.pf-kpis'], ['lead', 'Latest games', '.pf-lead'], ['skills', 'Skills', '#pf-skills'], ['trend', 'Trend', '#pf-trend'],
