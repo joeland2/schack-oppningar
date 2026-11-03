@@ -1252,7 +1252,7 @@ a { text-underline-offset: .18em; }
   .pf-hero .pf-taste-tile b { display: block; font-size: 19px; }
   .pf-hero .pf-taste-tile small:last-child { letter-spacing: 0; font-size: 11.5px; text-transform: none; }
   .pf-hero .pf-portrait { order: 2; margin: 0; } .pf-hero .pf-why-type { order: 3; }
-  .pf-hero .pf-star-strip { order: 4; } .pf-hero .pf-card-col > .pf-dl { grid-area: 4 / 1; justify-self: start; margin: 0; } .pf-hero .pf-dl-menu { right: auto; left: 0; }
+  .pf-hero .pf-star-strip { order: 4; } .pf-hero .pf-card-col > .pf-tools { grid-area: 4 / 1; justify-self: start; margin: 0; } .pf-hero .pf-dl-menu { right: auto; left: 0; }
   /* The time controls on the download button's row, to its right; a player's follow and compare buttons go under them */
   .pf-hero .pf-card-col > .pf-speeds { grid-area: 4 / 1 / 5 / -1; justify-self: stretch; width: auto; margin-left: 56px; }
   #profile .pf-hero:has(.pf-card-col > .pf-speeds) .pf-type-row > .pf-acts { grid-area: 5 / 1 / 6 / -1; justify-self: start; } .pf-hero .pf-card-help { order: 6; max-width: none; }
@@ -3068,13 +3068,14 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .adm-members-q { width: 100%; max-width: 320px; margin: 0 0 10px; padding: 8px 12px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
 .adm-members-q:focus { outline: 2px solid var(--hot); outline-offset: 1px; }
 .adm-members .adm-tag { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--line); color: var(--muted); }
-.pf-share { display: grid; gap: 10px; margin: 14px 0 0; padding: 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
-.pf-share-k { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.pf-share-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.pf-share-b { flex: 1 1 0; min-width: 72px; padding: 9px 12px; font: inherit; font-weight: 600; text-align: center; text-decoration: none; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
-.pf-share-b:hover { border-color: var(--hot); }
-.pf-share-dare { width: 100%; }
-.pf-share-note { margin: 0; font-size: 13px; color: var(--muted); }
+.pf-tools { display: flex; gap: 8px; justify-self: end; margin-top: -6px; }
+.pf-tools > .pf-dl { margin: 0; }
+.pf-share > summary { width: auto; gap: 6px; padding: 0 12px; grid-auto-flow: column; font: 600 13px var(--font-body); }
+.pf-share .pf-dl-menu { min-width: 210px; }
+.pf-dl-menu a { padding: 8px 12px; border-radius: 6px; color: var(--ink); font: 500 14px var(--font-body); text-decoration: none; }
+.pf-dl-menu a:hover, .pf-dl-menu a:focus-visible { background: var(--raised); }
+.pf-share-note { margin: 0; padding: 0 12px; font-size: 12px; color: var(--muted); }
+.pf-share-note:empty { display: none; }
 .pl-acct { margin: 28px 0 0; padding: 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .pl-acct h2 { margin: 0 0 4px; font: 400 clamp(26px, 4vw, 36px)/1.05 var(--font-poster); text-transform: uppercase; }
 .pl-acct h2 small { display: block; margin-top: 4px; font: 500 13px var(--font-body); text-transform: none; color: var(--muted); }

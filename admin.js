@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261103091841';
-import { api as chatApi, openChat } from './chat.js?v=20261103091841';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261103091841';
+import { account, login, finishLogin } from './lichess.js?v=20261103093540';
+import { api as chatApi, openChat } from './chat.js?v=20261103093540';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261103093540';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);

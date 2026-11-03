@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103091841';
-import { openLogin } from './login.js?v=20261103091841';
-import { STYLE_OF } from './styles.js?v=20261103091841';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103091841';
-import { PEOPLE } from './pros.js?v=20261103091841';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103093540';
+import { openLogin } from './login.js?v=20261103093540';
+import { STYLE_OF } from './styles.js?v=20261103093540';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103093540';
+import { PEOPLE } from './pros.js?v=20261103093540';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1279,15 +1279,15 @@ const cardUrl = (name) => `https://chesslabs.gg/profile?u=${encodeURIComponent(n
 const shareText = (t) => `I'm a ${t[0].name}${t[1] ? ` + ${t[1].name}` : ''} on Chess Labs. What's your chess style?`;
 function shareHtml(name, t) {
   const url = encodeURIComponent(cardUrl(name)), text = encodeURIComponent(shareText(t));
-  return `<section class="pf-share" aria-label="Share your card"><p class="pf-share-k">Share your card</p>
-    <div class="pf-share-row">
-      <a class="pf-share-b" data-share="x" href="https://twitter.com/intent/tweet?text=${text}&url=${url}" target="_blank" rel="noopener">X</a>
-      <a class="pf-share-b" data-share="reddit" href="https://www.reddit.com/submit?url=${url}&title=${text}" target="_blank" rel="noopener">Reddit</a>
-      <button type="button" class="pf-share-b" data-share="discord" title="Copies the link; pasted in Discord it shows your card">Discord</button>
-      ${navigator.share ? '<button type="button" class="pf-share-b" data-share="more">More…</button>' : ''}
-    </div>
-    <button type="button" class="cta pf-share-dare" data-share="friend">Compare with a friend</button>
-    <p class="pf-share-note" aria-live="polite">Sends a link where they type their name and see both cards side by side.</p></section>`;
+  return `<details class="pf-dl pf-share"><summary title="Share your card" aria-label="Share your card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7 9l5-5 5 5M5 14v5h14v-5"/></svg>Share</summary>
+    <div class="pf-dl-menu" role="group" aria-label="Share">
+      <button type="button" data-share="friend">Compare with a friend</button>
+      <a data-share="x" href="https://twitter.com/intent/tweet?text=${text}&url=${url}" target="_blank" rel="noopener">Share on X</a>
+      <a data-share="reddit" href="https://www.reddit.com/submit?url=${url}&title=${text}" target="_blank" rel="noopener">Share on Reddit</a>
+      <button type="button" data-share="discord" title="Copies the link; pasted in Discord it shows your card">Copy link for Discord</button>
+      ${navigator.share ? '<button type="button" data-share="more">More…</button>' : ''}
+      <p class="pf-share-note" aria-live="polite"></p>
+    </div></details>`;
 }
 function bindShare(name, t) {
   const box = document.querySelector('.pf-share'); if (!box) return;
@@ -1296,6 +1296,7 @@ function bindShare(name, t) {
   box.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-share]'); if (!b) return;
     const k = b.dataset.share; window.track?.('card', `${nick(name)} · share ${k}`);
+    if (['x', 'reddit', 'more'].includes(k)) box.open = false;
     if (k === 'discord') copy(cardUrl(name), 'Link copied. Paste it in Discord and it shows your card.');
     if (k === 'more') navigator.share({ title: 'Chess Labs', text: shareText(t), url: cardUrl(name) }).catch(() => {});
     if (k === 'friend') {
@@ -1753,8 +1754,8 @@ function render(name, at, full) {
   $('#profile').innerHTML = `
     ${accountsRow(name)}${combo && comboOwn ? comboRow() : ''}${nameRow(name)}${proLine(name)}${proBio(name, p)}
     <section class="pf-hero">
-      <div class="pf-card-col">${playerCard(name, p, t, skills)}${combo ? '' : speedBar(name, full, sp, avail)}${combo ? '' : `<p class="pf-ago">${me ? 'Your' : 'The'} card from ${AGO.map(([m, t]) => `<a href="${agoLink(name, m)}">${t.replace(' ago', '')}</a>`).join(' · ')} ago</p>`}${me ? starsStrip() : ''}${me && window.earlyAccess?.() ? shareHtml(name, t) : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
-        <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button><button type="button" data-card-link title="A link that shows this card when it is shared">Copy link</button>${me && window.supporterOf?.(name) ? '<button type="button" data-card-video title="The card counting up, about four seconds">Video</button>' : ''}</div></details>${cardNote(name, p, me)}</div>
+      <div class="pf-card-col">${playerCard(name, p, t, skills)}${combo ? '' : speedBar(name, full, sp, avail)}${combo ? '' : `<p class="pf-ago">${me ? 'Your' : 'The'} card from ${AGO.map(([m, t]) => `<a href="${agoLink(name, m)}">${t.replace(' ago', '')}</a>`).join(' · ')} ago</p>`}${me ? starsStrip() : ''}<div class="pf-tools">${me && window.earlyAccess?.() ? shareHtml(name, t) : ''}<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></summary>
+        <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button><button type="button" data-card-link title="A link that shows this card when it is shared">Copy link</button>${me && window.supporterOf?.(name) ? '<button type="button" data-card-video title="The card counting up, about four seconds">Video</button>' : ''}</div></details></div>${cardNote(name, p, me)}</div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h2 class="pf-h1">${esc(t[0].name)}</h2>
         ${t.length > 1 ? `<p class="pf-sub">+ ${t.slice(1).map((x) => esc(x.name)).join(' + ')}</p>` : ''}<a class="pf-all-styles" href="playstyles.html?s=${encodeURIComponent(t[0].name)}${t[1] ? `&t=${encodeURIComponent(t[1].name)}` : ''}">See all styles →</a></div>${tasteLine(p.styleMix, me)}</div>
