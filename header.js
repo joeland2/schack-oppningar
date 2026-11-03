@@ -77,7 +77,7 @@
       const shownName = who.replace(/^cc:/i, ''); // a Chess Labs account is its Chess.com name
       const head = btn ? `<span class="top-me-name">${esc(shownName)}</span>` : rating ? `<span class="top-me-who"><b>${esc(shownName)}</b><small>Your profile</small></span><strong title="${esc(speed)} rating">${esc(rating)}</strong><i class="top-me-chev" aria-hidden="true">▾</i>` : `<span class="top-me-name">${esc(shownName)}</span>`;
       const menu = `<details class="top-me"><summary class="${rating && !btn ? 'top-bug' : ''}" title="Your profile">${head}</summary><div class="top-me-menu">
-        <a href="profile.html?u=${encodeURIComponent(who)}"${cur('profile.html')}>Profile</a><a href="practice.html"${cur('practice.html')}>My practice</a><button type="button" class="top-me-out">Log out</button></div></details>`;
+        <a href="profile.html?u=${encodeURIComponent(who)}"${cur('profile.html')}>Profile</a><a href="practice.html"${cur('practice.html')}>My practice</a>${window.earlyAccess?.() ? `<a href="profile.html?u=${encodeURIComponent(who)}#rivals">My rivals</a>` : ''}<button type="button" class="top-me-out">Log out</button></div></details>`;
       if (btn) { btn.insertAdjacentHTML('beforebegin', menu); btn.style.display = 'none'; } // Openings: in place of its name button
       else at?.insertAdjacentHTML('beforebegin', menu);
       const me = document.querySelector('.top-me');
@@ -278,9 +278,9 @@ addEventListener('DOMContentLoaded', () => {
     const row = document.querySelector('.foot-row');
     if (row) row.insertAdjacentHTML('beforeend', b);
     else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
-    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261103124949')).openChat());
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261103130623')).openChat());
     // Supporters: the hearts and card frames on every page, and Support (header and bottom) opens its dialog.
-    const sup = import('./supporter.js?v=20261103124949');
+    const sup = import('./supporter.js?v=20261103130623');
     document.addEventListener('click', async (e) => { if (e.target.closest('[data-support]')) (await sup).openSupport(); });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();

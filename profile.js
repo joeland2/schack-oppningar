@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103124949';
-import { openLogin } from './login.js?v=20261103124949';
-import { STYLE_OF } from './styles.js?v=20261103124949';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103124949';
-import { PEOPLE } from './pros.js?v=20261103124949';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103130623';
+import { openLogin } from './login.js?v=20261103130623';
+import { STYLE_OF } from './styles.js?v=20261103130623';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103130623';
+import { PEOPLE } from './pros.js?v=20261103130623';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1849,6 +1849,7 @@ function render(name, at, full) {
     </section>
     ${me && window.earlyAccess?.() ? fitCard(p, name) : ''}
     ${opponentsCard(p, me, name)}
+    ${window.earlyAccess?.() ? rivalsCard(name, me) : ''}
     <section class="pf-card" id="pf-games"></section>
     ${me ? starsCard() : ''}
     ${nextActions(name, me, skills)}
@@ -2022,10 +2023,112 @@ function opponentsCard(p, me, name) {
       return `<li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${OPP_ICON[x.name]}"/></svg><span><b>${x.name}</b><small>${me ? x.about : x.about.replace(/\byou\b/, 'them')}</small><small class="num">${pct(x.score)} · expected ${exp(x)} · ${games(x.n)}${x.n < SURE_OPP ? ' · few games so far' : ''}</small></span><span class="pf-verdict ${v[0]}">${v[1]}</span></li>`; }).join('')}</ul>
     <p class="pf-skill-scale">Expected: what the rating gaps say ${me ? 'you' : 'they'} should score against these opponents. A game can count in more than one group; groups with fewer than 10 games are left out, and under 20 is too few to read much into.</p></section>`;
 }
+// Rivals (supporters first): everyone met 3 times or more in the games read, worst for this player first.
+// The nemesis is the worst of those met 5 times or more, if under 50%; the most played gets its own story.
+const RIVAL_MIN = 3, NEMESIS_MIN = 5;
+function rivalsOf(name, games) {
+  const me = name.toLowerCase(), by = new Map();
+  for (const g of games) { // newest first
+    const side = g.players?.white?.user?.id === me ? 'white' : g.players?.black?.user?.id === me ? 'black' : null;
+    const opp = side && g.players[side === 'white' ? 'black' : 'white'].user;
+    if (!opp?.id) continue;
+    const res = !g.winner ? 'D' : g.winner === side ? 'W' : 'L';
+    if (!by.has(opp.id)) by.set(opp.id, { id: opp.id, name: opp.name || opp.id, games: [] });
+    by.get(opp.id).games.push({ g, side, res });
+  }
+  const rivals = [...by.values()].filter((r) => r.games.length >= RIVAL_MIN).map((r) => {
+    const n = r.games.length, k = (x) => r.games.filter((y) => y.res === x).length;
+    return { ...r, n, w: k('W'), d: k('D'), l: k('L'), score: (k('W') + k('D') / 2) / n };
+  }).sort((a, b) => a.score - b.score || b.n - a.n);
+  const nemesis = rivals.find((r) => r.n >= NEMESIS_MIN && r.score < 0.5) || null;
+  const most = rivals.filter((r) => r.n >= NEMESIS_MIN).sort((a, b) => b.n - a.n)[0] || null;
+  return { rivals, nemesis, most };
+}
+console.assert((() => { const g = (w, b, winner) => ({ players: { white: { user: { id: w } }, black: { user: { id: b } } }, winner });
+  const x = rivalsOf('me', [g('me', 'a', 'black'), g('a', 'me', 'white'), g('me', 'a', 'black'), g('me', 'a', 'white'), g('a', 'me', 'white'), g('me', 'b', null), g('b', 'me', 'black'), g('me', 'b', 'white')]);
+  return x.nemesis?.id === 'a' && x.nemesis.l === 4 && x.rivals.length === 2 && x.rivals[1].id === 'b' && x.most.id === 'a'; })(), 'rivalsOf');
+const runOf = (games, res) => { let best = 0, k = 0; for (const x of games) { k = x.res === res ? k + 1 : 0; best = Math.max(best, k); } return best; };
+const sparkOf = (games) => `<span class="pf-rv-spark" aria-hidden="true">${games.slice().reverse().map((x) => `<i class="r-${x.res}"></i>`).join('')}</span>`;
+// Against one rival, for each of the two: the opening they play most as White and as Black, and the one
+// that works best for them (3 games or more), from the games between them. A draw is half a point.
+function duel(games, me, r) {
+  const fam = (x) => (x.g.opening?.name || '').split(':')[0];
+  const pts = (x, mine) => (x.res === 'D' ? 0.5 : (x.res === 'W') === mine ? 1 : 0);
+  const of = (mine) => {
+    const most = (side) => { const c = {}; for (const x of games) if ((x.side === side) === mine && fam(x)) c[fam(x)] = (c[fam(x)] || 0) + 1; return Object.entries(c).sort((a, b) => b[1] - a[1])[0]; };
+    const t = {}; for (const x of games) if (fam(x)) { const k = fam(x); t[k] ??= { n: 0, p: 0 }; t[k].n++; t[k].p += pts(x, mine); }
+    const best = Object.entries(t).filter(([, v]) => v.n >= 3).sort((a, b) => b[1].p / b[1].n - a[1].p / a[1].n || b[1].n - a[1].n)[0];
+    return { w: most('white'), b: most('black'), best };
+  };
+  const a = of(true), b = of(false);
+  const cell = (x, f) => (x ? `${esc(x[0])} <small>${f(x[1])}</small>` : '–');
+  const row = (label, f, k) => `<tr><th>${label}</th><td>${cell(a[k], f)}</td><td>${cell(b[k], f)}</td></tr>`;
+  return `<table class="pf-rv-duel"><thead><tr><th></th><th>${me ? 'You' : 'They'}</th><th>${esc(nick(r.name))}</th></tr></thead><tbody>
+    ${row('Most as White', (n) => `${n}×`, 'w')}${row('Most as Black', (n) => `${n}×`, 'b')}${row('Works best', (v) => `${pct(v.p / v.n)} in ${v.n}`, 'best')}</tbody></table>`;
+}
+// Games with friends are mostly casual, and the profile reads only rated games: Rivals fetches the last 300
+// casual ones once a visit (one call, kept for the session) and draws itself again with them.
+const CASUAL = new Map(), CASUAL_KEY = (n) => `chess-trainer-casual:${n.toLowerCase()}`;
+function casualOf(name) {
+  if (CASUAL.has(name.toLowerCase())) return CASUAL.get(name.toLowerCase());
+  try { const v = JSON.parse(sessionStorage.getItem(CASUAL_KEY(name))); if (v) { CASUAL.set(name.toLowerCase(), v); return v; } } catch {}
+  return null;
+}
+async function loadCasual(name, me) {
+  if (isCC(name) || casualOf(name)) return;
+  CASUAL.set(name.toLowerCase(), []); // tried: never twice a visit, whatever happens
+  const res = await fetch(`https://lichess.org/api/games/user/${encodeURIComponent(name)}?` + new URLSearchParams({ max: 300, rated: 'false', moves: 'true', opening: 'true' }),
+    { headers: { Accept: 'application/x-ndjson', ...lichessAuth() } }).catch(() => null);
+  if (!res?.ok) return; // a 429 or an error: Rivals stays with the rated games
+  const games = (await res.text()).split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l)).filter((g) => g.variant === 'standard')
+    .map((g) => ({ id: g.id, createdAt: g.createdAt, winner: g.winner, moves: g.moves, opening: g.opening && { name: g.opening.name }, players: g.players, casual: true }));
+  CASUAL.set(name.toLowerCase(), games);
+  try { sessionStorage.setItem(CASUAL_KEY(name), JSON.stringify(games)); } catch {}
+  const el = document.getElementById('rivals');
+  if (el && games.length) el.outerHTML = rivalsCard(name, me);
+}
+function rivalsCard(name, me) {
+  const rated = storedGames(name) || (RAW_NAME.toLowerCase() === name.toLowerCase() ? RAW : null);
+  if (!rated?.length) return '';
+  const casual = casualOf(name);
+  if (!casual) setTimeout(() => loadCasual(name, me), 2000); // after the profile's own reading
+  const all = [...rated, ...(casual || [])].sort((a, b) => b.createdAt - a.createdAt);
+  const { rivals, nemesis, most } = rivalsOf(name, all), you = me ? 'you' : 'they', your = me ? 'your' : 'their';
+  const link = (r) => `<a href="profile.html?u=${encodeURIComponent(r.name)}">${esc(nick(r.name))}</a>`;
+  const rec = (r) => `${r.w}–${r.d}–${r.l}`;
+  const day = (g) => new Date(g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const game = (x, what) => `<li><a href="${x.g.casual ? `https://lichess.org/${x.g.id}" target="_blank" rel="noopener` : `game.html?u=${encodeURIComponent(name)}&id=${x.g.id}`}"><span class="pf-res r-${x.res}">${x.res}</span><span>${what}<small>${esc((x.g.opening?.name || '').split(':')[0])} · ${Math.ceil((x.g.moves || '').split(' ').length / 2)} moves · ${day(x.g)}</small></span></a></li>`;
+  // The most played gets the whole story (the run of games, best runs, colours, both players' openings, three
+  // games); the nemesis, when someone else, a line of its own. One player can be both.
+  const story = (r) => {
+    const g = r.games, asW = g.filter((x) => x.side === 'white'), asB = g.filter((x) => x.side === 'black');
+    const sc = (xs) => xs.length ? pct(xs.reduce((t, x) => t + (x.res === 'W' ? 1 : x.res === 'D' ? 0.5 : 0), 0) / xs.length) : '–';
+    const len = (x) => (x.g.moves || '').split(' ').length;
+    const quick = g.filter((x) => x.res === 'W' && len(x) >= 20).sort((a, b) => len(a) - len(b))[0], long = g.filter((x) => x.res === 'L').sort((a, b) => len(b) - len(a))[0];
+    const lead = r.w > r.l ? `${you} lead` : r.w < r.l ? 'they lead' : 'level';
+    return `<span class="pf-rv-sub">${games(r.n)} since ${day(g.at(-1).g)} · ${lead} <b>${rec(r)}</b> · ${you} score ${pct(r.score)}${streakOf(r) >= 2 ? ` · ${streakOf(r)} losses in a row` : ''}</span>${sparkOf(g)}
+      <dl class="pf-rv-facts"><div><dt>${me ? 'Your' : 'Their'} best run</dt><dd>${runOf(g.slice().reverse(), 'W')} wins</dd></div><div><dt>${esc(nick(r.name))}'s best run</dt><dd>${runOf(g.slice().reverse(), 'L')} wins</dd></div>
+        <div><dt>${me ? 'You' : 'They'} with White</dt><dd>${sc(asW)} <small>in ${asW.length}</small></dd></div><div><dt>${me ? 'You' : 'They'} with Black</dt><dd>${sc(asB)} <small>in ${asB.length}</small></dd></div></dl>
+      ${duel(g, me, r)}
+      <ul class="pf-rv-games">${quick ? game(quick, 'Quickest win') : ''}${long ? game(long, 'Longest loss') : ''}${game(g[0], 'Latest')}</ul>`;
+  };
+  const streakOf = (r) => { let k = 0; while (r.games[k]?.res === 'L') k++; return k; };
+  const chip = (t) => `<span class="chip">${t}</span>`;
+  let html = '';
+  if (most) html += `<div class="pf-rv-lead${most === nemesis ? ' bad' : ''}"><span class="pf-rv-chips">${most === nemesis ? chip(`${me ? 'Your' : 'Their'} nemesis`) : ''}${chip('Most played')}</span><b class="pf-rv-name">${link(most)}</b>${story(most)}</div>`;
+  if (nemesis && nemesis !== most) html += `<div class="pf-rv-lead bad"><span class="pf-rv-chips">${chip(`${me ? 'Your' : 'Their'} nemesis`)}</span><b class="pf-rv-name">${link(nemesis)}</b>${story(nemesis)}</div>`;
+  const rest = rivals.slice(0, 10);
+  const victim = rivals.at(-1)?.score > 0.5 && rivals.at(-1).n >= NEMESIS_MIN ? rivals.at(-1) : null;
+  return `<section class="pf-card pf-rivals" id="rivals"><div class="pf-more-head"><h2>Rivals</h2><span>The players ${you} met ${RIVAL_MIN} times or more in the last ${games(rated.length)} rated${casual?.length ? ` and ${casual.length} casual` : ''}</span></div>
+    ${rivals.length ? `${html ? `<div class="pf-rv-top">${html}</div>` : ''}
+    <table class="pf-rv-table"><thead><tr><th>Opponent</th><th>Games</th><th>W–D–L</th><th class="wide-only">Last 10</th><th>${me ? 'You' : 'They'}</th></tr></thead><tbody>
+    ${rest.map((r) => `<tr><td>${link(r)}${r === nemesis ? ' <span class="chip hot">Nemesis</span>' : r === victim ? ` <span class="chip">${me ? 'Your' : 'Their'} victim</span>` : ''}</td><td>${r.n}</td><td>${rec(r)}</td><td class="wide-only">${sparkOf(r.games.slice(0, 10))}</td><td class="${r.score < 0.45 ? 'bad' : r.score > 0.55 ? 'good' : ''}">${pct(r.score)}</td></tr>`).join('')}</tbody></table>`
+    : `<p class="info">${casual ? `No rivals yet: nobody shows up ${RIVAL_MIN} times in ${your} last ${games(all.length)}.` : `Looking for ${your} rivals in ${your} casual games too…`}</p>`}</section>`;
+}
 // What others see: logged in, a player can hide parts of their profile from visitors. Kept in
 // opening-book-v2-hidden (synced to their account); the userdata function answers ?hidden=<name> to anyone.
 const PANELS = [['chart', 'Rating graph', '#pf-chart'], ['kpis', 'Key numbers', '.pf-kpis'], ['lead', 'Latest games', '.pf-lead'], ['skills', 'Skills', '#pf-skills'], ['trend', 'Trend', '#pf-trend'],
-  ['more', 'Results and openings', '.pf-more'], ['opps', 'Who you struggle against', '.pf-opps'], ['games', 'Recent games', '#pf-games']];
+  ['more', 'Results and openings', '.pf-more'], ['opps', 'Who you struggle against', '.pf-opps'], ['rivals', 'Rivals', '.pf-rivals'], ['games', 'Recent games', '#pf-games']];
 const HIDE = 'opening-book-v2-hidden';
 const myHidden = () => { try { return JSON.parse(localStorage.getItem(HIDE)) || []; } catch { return []; } };
 const HIDDEN = {};

@@ -3186,3 +3186,37 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
   .fy-stat span, .fy-moves, .fy-go { display: none; }
   .fy-stat b { font-size: 22px; }
 }
+
+/* Rivals on the profile: the nemesis and the most played over a table of everyone met 3 times or more. */
+.pf-rv-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; margin-bottom: 16px; }
+.pf-rv-lead { display: grid; gap: 6px; align-content: start; padding: 14px; border-top: 4px solid var(--rule); background: var(--raised); }
+.pf-rv-lead.bad { border-top-color: var(--bad); }
+.pf-rv-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.pf-rv-lead .chip { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+.pf-rv-lead.bad .chip:first-child, .pf-rivals .chip.hot { background: var(--data); color: var(--data-ink); }
+.pf-rv-name { font: 400 30px/1 var(--font-poster); text-transform: uppercase; overflow-wrap: anywhere; }
+.pf-rv-name a { color: inherit; text-decoration: none; }
+.pf-rv-sub { font-size: 13px; color: var(--muted); }
+.pf-rv-sub b { color: var(--ink); }
+.pf-rv-spark { display: flex; gap: 2px; height: 16px; max-width: 100%; }
+.pf-rv-spark i { flex: 1 1 0; min-width: 2px; max-width: 10px; border-radius: 1px; background: var(--muted); }
+.pf-rv-spark .r-W { background: var(--good); } .pf-rv-spark .r-L { background: var(--bad); }
+.pf-rv-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin: 6px 0 0; }
+.pf-rv-facts dt { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.pf-rv-facts dd { margin: 0; font: 400 20px/1.1 var(--font-poster); }
+.pf-rv-facts small { font: 12px var(--font-body); color: var(--muted); }
+.pf-rv-games { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; }
+.pf-rv-games a { display: flex; gap: 10px; align-items: center; padding: 6px 8px; border-radius: var(--radius); background: var(--surface); color: var(--ink); text-decoration: none; font-weight: 600; font-size: 14px; min-height: 44px; }
+.pf-rv-games a:hover { background: var(--bg); }
+.pf-rv-games small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
+.pf-rv-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.pf-rv-table th { text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.pf-rv-table td { padding: 8px; border-bottom: 1px solid var(--line); }
+.pf-rv-table td:first-child a { color: var(--ink); font-weight: 700; text-decoration: none; }
+.pf-rv-table .pf-rv-spark { width: 110px; }
+.pf-rv-table .bad { color: var(--bad); } .pf-rv-table .good { color: var(--good); }
+.pf-rv-duel { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; table-layout: fixed; }
+.pf-rv-duel th, .pf-rv-duel td { text-align: left; padding: 6px 6px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+.pf-rv-duel thead th { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.pf-rv-duel tbody th { font-weight: 600; color: var(--muted); font-size: 12px; width: 30%; }
+.pf-rv-duel td { font-weight: 600; } .pf-rv-duel small { font-weight: 400; color: var(--muted); }
