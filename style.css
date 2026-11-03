@@ -1252,10 +1252,9 @@ a { text-underline-offset: .18em; }
   .pf-hero .pf-taste-tile b { display: block; font-size: 19px; }
   .pf-hero .pf-taste-tile small:last-child { letter-spacing: 0; font-size: 11.5px; text-transform: none; }
   .pf-hero .pf-portrait { order: 2; margin: 0; } .pf-hero .pf-why-type { order: 3; }
-  .pf-hero .pf-star-strip { order: 4; } .pf-hero .pf-card-col > .pf-tools { grid-area: 4 / 1; justify-self: start; margin: 0; } .pf-hero .pf-dl-menu { right: auto; left: 0; }
-  /* The time controls on the download button's row, to its right; a player's follow and compare buttons go under them */
-  .pf-hero .pf-card-col > .pf-speeds { grid-area: 4 / 1 / 5 / -1; justify-self: stretch; width: auto; margin-left: 56px; }
-  #profile .pf-hero:has(.pf-card-col > .pf-speeds) .pf-type-row > .pf-acts { grid-area: 5 / 1 / 6 / -1; justify-self: start; } .pf-hero .pf-card-help { order: 6; max-width: none; }
+  .pf-hero .pf-star-strip { order: 4; } .pf-hero .pf-card-col > .pf-cardbar { grid-area: 4 / 1 / 5 / -1; justify-self: stretch; width: auto; } .pf-hero .pf-dl-menu { right: auto; left: 0; }
+  /* A player's follow and compare buttons go under the bar */
+  #profile .pf-hero:has(.pf-card-col > .pf-cardbar) .pf-type-row > .pf-acts { grid-area: 5 / 1 / 6 / -1; justify-self: start; } .pf-hero .pf-card-help { order: 6; max-width: none; }
 }
 /* Profile parts a player hides from others: gone for visitors, marked on their own profile */
 #profile [data-off] { display: none !important; }
@@ -3090,3 +3089,26 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .pl-ops li { display: grid; gap: 1px; }
 .pl-ops small { color: var(--muted); font-variant-numeric: tabular-nums; }
 .pl-you { margin: 36px 0 0; padding-top: 24px; border-top: 1px solid var(--line); }
+/* Under the card: the time controls with their game counts and the star on the one played most, and
+   under them, centred, share, download and how the stats work */
+.pf-cardbar { display: grid; justify-items: center; gap: 10px; width: min(320px, 100%); }
+.pf-cardbar .pf-speeds { width: 100%; justify-self: stretch; flex-wrap: nowrap; }
+.pf-cardbar .pf-speeds button { flex: 1 1 0; padding-inline: 2px; }
+.pf-cardbar .pf-tools { justify-self: center; margin: 0; gap: 8px; }
+.pf-tools .pf-card-help { max-width: none; }
+.pf-tools .pf-card-help > summary { width: 34px; height: 34px; padding: 0; justify-content: center; font: 700 15px var(--font-body); color: var(--muted); list-style: none; min-height: 0; }
+.pf-tools .pf-card-help .pf-card-note { position: absolute; left: 50%; transform: translateX(-50%); top: calc(100% + 6px); z-index: 20; width: 300px; margin: 0; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+.pf-cardbar .pf-share > summary { width: 34px; padding: 0; font-size: 0; gap: 0; }
+/* The three joined in one rounded group */
+.pf-cardbar .pf-tools { gap: 0; border: 1px solid var(--line); border-radius: 999px; padding: 2px; }
+.pf-cardbar .pf-tools > details > summary { border: 0; border-radius: 999px; }
+.pf-cardbar .pf-tools > details + details { border-left: 1px solid var(--line); }
+/* The stars and the older cards beside the style, at the end of its text */
+.pf-side-bits { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-top: 14px; }
+.pf-side-bits .pf-star-strip { width: auto; padding: 7px 12px; font-size: 14px; }
+.pf-side-bits .pf-ago { margin: 0; }
+.pf-tools .pf-card-help > summary { display: grid; place-items: center; }
+@media (max-width: 640px) {
+  .pf-tools .pf-card-help > summary { width: 44px; height: 44px; }
+  .pf-hero .pf-side-bits { order: 5; }
+}
