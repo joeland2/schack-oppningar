@@ -3236,3 +3236,20 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .rv-more { margin: 16px 0; }
 .rv-more .rv-small { font: 600 14px/1.4 var(--font-body); }
 .pf-two .pf-rv-table th:first-child { color: var(--ink); text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 600; }
+.rv-dare { margin: 0; font: 400 clamp(1.6rem, 5vw, 2.4rem)/1.05 var(--font-poster); text-transform: uppercase; color: var(--hot); }
+.rv-level { margin: 0; color: var(--muted); }
+.rv-level b { color: var(--ink); }
+.rv-ch { display: inline-grid; place-items: center; min-width: 1.4em; margin-right: 8px; padding: 0 4px; border-radius: 2px; background: var(--ink); color: var(--bg); font-size: .8em; }
+.rv-chart { display: block; width: 100%; height: 140px; margin: 8px 0 4px; }
+.rv-chart polyline { fill: none; stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.rv-chart .a, .rv-legend .a::before { stroke: var(--data); background: var(--data); }
+.rv-chart .b, .rv-legend .b::before { stroke: var(--ink); background: var(--ink); }
+.rv-legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+.rv-legend span::before { content: ""; display: inline-block; width: 14px; height: 3px; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
+.rv-fam { display: block; color: var(--muted); font-weight: 400; }
+.rv-turn { margin: 12px 0 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.rv-now { display: grid; gap: 4px; padding: 12px; margin: 8px 0 16px; border-left: 4px solid var(--data); background: var(--raised); border-radius: 4px; }
+.rv-now .kicker-k { font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--hot); }
+.rv-now b { font: 400 2.4rem/1 var(--font-poster); }
+.rv-now small { display: block; font: 600 13px var(--font-body); color: var(--muted); }
+.rv-mv, .rv-fam { text-transform: none; letter-spacing: 0; font-weight: 600; } .rv-fam { font-weight: 400; }

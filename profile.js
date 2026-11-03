@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103132611';
-import { openLogin } from './login.js?v=20261103132611';
-import { STYLE_OF } from './styles.js?v=20261103132611';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103132611';
-import { PEOPLE } from './pros.js?v=20261103132611';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103133915';
+import { openLogin } from './login.js?v=20261103133915';
+import { STYLE_OF } from './styles.js?v=20261103133915';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103133915';
+import { PEOPLE } from './pros.js?v=20261103133915';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -2247,21 +2247,66 @@ async function rivalryPage(name, vs, me) {
     const table = (title, rows) => rows.length ? `<section><h3>${title}</h3><table class="pf-rv-table"><thead><tr><th></th><th>Games</th><th>W–D–L</th><th class="wide-only"></th><th>${me ? 'You' : nick(name)}</th></tr></thead><tbody>${rows.join('')}</tbody></table></section>` : '';
     const speeds = group((x) => x.g.speed).sort((a, b) => b[1].length - a[1].length).map(([k, xs]) => wdlRow(k[0].toUpperCase() + k.slice(1), xs));
     const kinds = group((x) => (x.g.rated ? 'Rated' : 'Casual')).map(([k, xs]) => wdlRow(k, xs));
-    const months = group((x) => new Date(x.g.createdAt).toISOString().slice(0, 7)).sort((a, b) => (a[0] < b[0] ? 1 : -1)).slice(0, 12)
-      .map(([k, xs]) => wdlRow(new Date(`${k}-15`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }), xs));
     const ends = (res) => group((x) => (x.res === res ? ENDS[x.g.status] || 'Other' : null)).sort((a, b) => b[1].length - a[1].length).map(([k, xs]) => `${k} ${xs.length}`).join(' · ') || '–';
     const avg = (xs) => (xs.length ? Math.round(xs.reduce((t, x) => t + (x.g.moves || '').split(' ').length, 0) / xs.length / 2) : '–');
     const wins = g.filter((x) => x.res === 'W'), losses = g.filter((x) => x.res === 'L');
-    el.innerHTML = `<section class="rv-head"><span class="kicker-k">Rivalry · ${games(r.n)}</span>
-        <h1>${esc(nick(name))} <span>vs</span> <a href="rivals.html?u=${encodeURIComponent(vs)}&vs=${encodeURIComponent(name)}" title="The same rivalry from ${esc(nick(vs))}'s side">${esc(nick(r.name))}</a></h1>
-        <div class="rv-score"><b class="${r.w > r.l ? 'good' : r.w < r.l ? 'bad' : ''}">${r.w}</b><span>–</span><b class="${r.l > r.w ? 'good' : r.l < r.w ? 'bad' : ''}">${r.l}</b><small>${r.d ? `${r.d} drawn · ` : ''}${me ? 'you score' : `${esc(nick(name))} scores`} ${pct(r.score)}</small></div>
-        ${acts(r, true)}<p class="pf-share-note rv-note" aria-live="polite"></p></section>
-      <section class="pf-card"><div class="pf-rv-lead${r.score < 0.5 ? ' bad' : ''}">${story(r)}</div></section>
-      <section class="pf-card"><div class="pf-more-head"><h2>Head to head in numbers</h2><span>Every game between them on Lichess</span></div>
+    const A = esc(nick(name)), B = esc(nick(r.name)), old = g.slice().reverse();
+    // Ratings at the time of each game, in their most played time control, as two lines.
+    const rt = (x, mine) => x.g.players?.[(x.side === 'white') === mine ? 'white' : 'black']?.rating;
+    const main = group((x) => x.g.speed).sort((a, b) => b[1].length - a[1].length)[0]?.[0];
+    const rg = old.filter((x) => x.g.speed === main && rt(x, true) && rt(x, false));
+    let chart = '';
+    if (rg.length >= 3) {
+      const all = rg.flatMap((x) => [rt(x, true), rt(x, false)]), lo = Math.min(...all) - 20, hi = Math.max(...all) + 20;
+      const line = (mine) => rg.map((x, i) => `${((i / (rg.length - 1)) * 600).toFixed(1)},${(140 - ((rt(x, mine) - lo) / (hi - lo)) * 140).toFixed(1)}`).join(' ');
+      chart = `<svg class="rv-chart" viewBox="0 0 600 140" preserveAspectRatio="none" role="img" aria-label="Both ratings over their ${rg.length} ${main} games"><polyline class="a" points="${line(true)}"/><polyline class="b" points="${line(false)}"/></svg>
+        <p class="rv-legend"><span class="a">${A} ${rt(rg[0], true)} → ${rt(rg.at(-1), true)}</span><span class="b">${B} ${rt(rg[0], false)} → ${rt(rg.at(-1), false)}</span></p>`;
+    }
+    const gap = group((x) => { const d = (rt(x, true) || 0) - (rt(x, false) || 0); return !rt(x, true) || !rt(x, false) ? null : d >= 100 ? `${A} 100+ higher` : d <= -100 ? `${B} 100+ higher` : 'Within 100'; }).map(([k, xs]) => wdlRow(k, xs));
+    // The season: who won each month, and this month so far.
+    const mk = (t) => new Date(t).toISOString().slice(0, 7), now = mk(Date.now());
+    const season = group((x) => mk(x.g.createdAt)).sort((a, b) => (a[0] < b[0] ? 1 : -1));
+    const tally = (xs) => [xs.filter((x) => x.res === 'W').length, xs.filter((x) => x.res === 'L').length];
+    const won = season.map(([, xs]) => tally(xs)), mA = won.filter(([w, l]) => w > l).length, mB = won.filter(([w, l]) => l > w).length;
+    const [tw, tl] = tally(g.filter((x) => mk(x.g.createdAt) === now));
+    const thisMonth = tw + tl ? `${tw} – ${tl}<small>${tw > tl ? `${A} leads ${new Date().toLocaleDateString('en-GB', { month: 'long' })}` : tw < tl ? `${B} leads ${new Date().toLocaleDateString('en-GB', { month: 'long' })}` : 'Level so far'}</small>` : `0 – 0<small>No game yet this month. The first win leads it.</small>`;
+    const seasonRows = season.slice(0, 12).map(([k, xs], i) => `<tr><th>${new Date(`${k}-15`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</th><td>${won[i][0]}</td><td>${won[i][1]}</td><td>${won[i][0] > won[i][1] ? A : won[i][0] < won[i][1] ? B : 'Level'}</td></tr>`).join('');
+    const hour = (x) => new Date(x.g.createdAt).getHours();
+    const when = group((x) => (hour(x) < 6 ? 'Night (0–6)' : hour(x) < 12 ? 'Morning' : hour(x) < 18 ? 'Afternoon' : 'Evening')).sort((a, b) => b[1].length - a[1].length).map(([k, xs]) => wdlRow(k, xs));
+    const days = group((x) => new Date(x.g.createdAt).toLocaleDateString('en-GB', { weekday: 'long' })).sort((a, b) => b[1].length - a[1].length).slice(0, 3).map(([k, xs]) => wdlRow(k, xs));
+    // Where they meet: the first three moves each, and the line that goes worst.
+    const san = (x) => (x.g.moves || '').split(' ').slice(0, 6), fmt = (ms) => ms.map((m, i) => (i % 2 ? m : `${i / 2 + 1}.${m}`)).join(' ');
+    const lines = group((x) => (san(x).length === 6 ? fmt(san(x)) : null)).filter(([, xs]) => xs.length >= 2).sort((a, b) => b[1].length - a[1].length).slice(0, 8);
+    const famOf = (xs) => (xs[0].g.opening?.name || '').split(':')[0];
+    const worst = lines.filter(([, xs]) => xs.length >= 3).sort((a, b) => pts(a[1]) / a[1].length - pts(b[1]) / b[1].length)[0];
+    // Records, each a game to open, and how far the one behind has to come.
+    const len = (x) => (x.g.moves || '').split(' ').length, rated2 = g.filter((x) => rt(x, true) && rt(x, false));
+    const longest = g.slice().sort((a, b) => len(b) - len(a))[0], mate = g.filter((x) => x.g.status === 'mate').sort((a, b) => len(a) - len(b))[0];
+    const upset = rated2.filter((x) => x.res !== 'D' && (x.res === 'W') === (rt(x, true) < rt(x, false))).sort((a, b) => Math.abs(rt(b, true) - rt(b, false)) - Math.abs(rt(a, true) - rt(a, false)))[0];
+    const behind = r.w < r.l ? [A, runOf(old, 'W'), r.l - r.w] : r.l < r.w ? [B, runOf(old, 'L'), r.w - r.l] : null;
+    const dare = me ? '' : `<p class="rv-dare">${B}, ${r.l > r.w ? `you lead ${r.l}–${r.w}. Prove it again.` : r.l < r.w ? `you trail ${r.l}–${r.w}. Time to pay it back.` : `it is level at ${r.w}–${r.l}. Settle it.`}</p>`;
+    const challenge = `<a class="pf-rv-btn hot" href="https://lichess.org/?user=${encodeURIComponent(me ? r.name : name)}#friend" target="_blank" rel="noopener">Challenge ${me ? B : A} on Lichess →</a>`;
+    const { game } = rivalKit(name, me);
+    const head = (n, title, sub) => `<div class="pf-more-head"><h2><span class="rv-ch">${n}</span>${title}</h2>${sub ? `<span>${sub}</span>` : ''}</div>`;
+    el.innerHTML = `<section class="rv-head"><span class="kicker-k">Rivalry · ${games(r.n)} since ${new Date(old[0].g.createdAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</span>
+        <h1>${A} <span>vs</span> <a href="rivals.html?u=${encodeURIComponent(vs)}&vs=${encodeURIComponent(name)}" title="The same rivalry from ${esc(nick(vs))}'s side">${B}</a></h1>
+        <div class="rv-score"><b class="${r.w > r.l ? 'good' : r.w < r.l ? 'bad' : ''}">${r.w}</b><span>–</span><b class="${r.l > r.w ? 'good' : r.l < r.w ? 'bad' : ''}">${r.l}</b><small>${r.d ? `${r.d} drawn · ` : ''}${me ? 'you score' : `${A} scores`} ${pct(r.score)}</small></div>
+        ${dare}${behind ? `<p class="rv-level">To draw level, ${behind[0]} needs <b>${behind[2]} wins in a row</b>. ${behind[0]}'s best run so far: ${behind[1]}.</p>` : ''}
+        <div class="pf-rv-acts">${challenge}</div>${acts(r, true)}<p class="pf-share-note rv-note" aria-live="polite"></p></section>
+      <section class="pf-card">${head(1, 'The story')}<div class="pf-rv-lead${r.score < 0.5 ? ' bad' : ''}">${story(r)}</div></section>
+      ${chart || gap.length ? `<section class="pf-card">${head(2, 'Rating and upsets', chart ? `${main[0].toUpperCase() + main.slice(1)}, at the time of each game` : '')}${chart}${gap.length ? `<div class="pf-two">${table('By rating gap', gap)}</div>` : ''}</section>` : ''}
+      ${lines.length ? `<section class="pf-card">${head(3, 'Where they meet', 'The first three moves of each game')}
+        <table class="pf-rv-table"><thead><tr><th>Line</th><th>Games</th><th>W–D–L</th><th class="wide-only"></th><th>${me ? 'You' : A}</th></tr></thead><tbody>${lines.map(([k, xs]) => wdlRow(`<span class="rv-mv">${k}</span><small class="rv-fam">${esc(famOf(xs))}</small>`, xs)).join('')}</tbody></table>
+        ${worst ? `<p class="rv-turn"><b>Where it goes wrong:</b> after ${worst[0]}, ${me ? 'you score' : `${A} scores`} ${pct(pts(worst[1]) / worst[1].length)} in ${worst[1].length} games.${me && revengeLink(name, r) ? ` <a class="pf-rv-btn hot" href="${esc(revengeLink(name, r))}">Practise it →</a>` : ''}</p>` : ''}</section>` : ''}
+      <section class="pf-card">${head(4, 'The season', `Months won: ${A} ${mA} · ${B} ${mB}`)}
+        <div class="rv-now"><span class="kicker-k">${new Date().toLocaleDateString('en-GB', { month: 'long' })} · this month</span><b>${thisMonth}</b></div>
+        <div class="pf-two"><section><h3>Month by month</h3><table class="pf-rv-table"><thead><tr><th></th><th>${A}</th><th>${B}</th><th>Won by</th></tr></thead><tbody>${seasonRows}</tbody></table></section>
+        <section>${table('Time of day', when)}${table('Most played days', days)}</section></div></section>
+      <section class="pf-card">${head(5, 'In numbers', 'Every game between them on Lichess')}
         <div class="pf-two">${table('By time control', speeds)}${table('Rated and casual', kinds)}</div>
         <dl class="pf-rv-facts rv-more"><div><dt>${me ? 'Your' : 'Their'} wins end by</dt><dd class="rv-small">${ends('W')}</dd></div><div><dt>${me ? 'Your' : 'Their'} losses end by</dt><dd class="rv-small">${ends('L')}</dd></div>
-          <div><dt>Moves in a win</dt><dd>${avg(wins)}</dd></div><div><dt>Moves in a loss</dt><dd>${avg(losses)}</dd></div></dl>
-        ${table('Month by month', months)}</section>
+          <div><dt>Moves in a win</dt><dd>${avg(wins)}</dd></div><div><dt>Moves in a loss</dt><dd>${avg(losses)}</dd></div></dl></section>
+      <section class="pf-card">${head(6, 'Records')}<ul class="pf-rv-games">${game(longest, `Longest game · ${Math.ceil(len(longest) / 2)} moves`)}${mate ? game(mate, `Quickest mate · ${Math.ceil(len(mate) / 2)} moves`) : ''}${upset ? game(upset, `Biggest upset · ${Math.abs(rt(upset, true) - rt(upset, false))} points apart`) : ''}</ul></section>
       <p class="info"><a href="rivals.html?u=${encodeURIComponent(name)}">All of ${esc(nick(name))}'s rivals</a> · <a href="profile.html?u=${encodeURIComponent(vs)}">${esc(nick(vs))}'s profile</a> · <a href="profile.html?u=${encodeURIComponent(name)}&vs=${encodeURIComponent(vs)}">Compare their cards</a></p>`;
     el.querySelector('[data-rv-share]')?.addEventListener('click', async () => {
       const url = `https://chesslabs.gg/rivals.html?u=${encodeURIComponent(name)}&vs=${encodeURIComponent(vs)}`, text = `${nick(name)} vs ${nick(vs)}: ${r.w}–${r.l}${r.d ? ` (${r.d} drawn)` : ''} on Chess Labs`;
