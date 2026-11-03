@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103115757';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103115757';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103115757';
-import { NAMED_TRAPS } from './traps.js?v=20261103115757';
-import { GUIDE } from './guide.js?v=20261103115757';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103115757';
-import { banner, confetti } from './celebrate.js?v=20261103115757';
-import { maia3Move } from './maia3.js?v=20261103115757';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103115757';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261103115757';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103115757';
-import { openLogin } from './login.js?v=20261103115757';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103115757';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103120317';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103120317';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103120317';
+import { NAMED_TRAPS } from './traps.js?v=20261103120317';
+import { GUIDE } from './guide.js?v=20261103120317';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103120317';
+import { banner, confetti } from './celebrate.js?v=20261103120317';
+import { maia3Move } from './maia3.js?v=20261103120317';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103120317';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261103120317';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103120317';
+import { openLogin } from './login.js?v=20261103120317';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103120317';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -507,20 +507,23 @@ const fitsStyle = (o) => style === 'any' || stylesOf(o).includes(style);
 // Black: the White openings you meet most often, whatever your style.
 const yourScore = (o) => (o.side === 'w' ? o.score : 1 - o.score);
 const byChoice = (a, b) => (sort === 'played' ? b.share - a.share : sort === 'you' ? fitOf(b) - fitOf(a) : yourScore(b) - yourScore(a));
-// For you (supporters first): as White, the opening's score at your level, lifted when it fits the style you
-// play most and moved by how you do with it yourself; as Black, the White openings you meet most at your
-// level, pushed up where you score below what Black usually does. WHY says it in words on each card.
-let WHY = new Map(), MINE = null, FOR = new Set(); // FOR: the three that fit you best per side, tagged in any sort
+// For you (supporters first). As White, two kinds: the ones you already play, by your own score pulled
+// towards your level's by 10 games (so 11 games say less than 91), first; then the ones you have not played,
+// by their score at your level, lifted when they fit the style you play most. As Black, the White openings
+// you meet most at your level, pushed up where you score below what Black usually does. WHY says it in words.
+let WHY = new Map(), MINE = null, FOR = new Map(); // FOR: three per side tagged in any sort, each with its label
+const PRIOR = 10;
 function fitOf(o) {
   const m = MINE?.ops.get(o), own = m && m.n >= 5 ? m.pts / m.n : null, base = yourScore(o);
   if (o.side === 'w') {
+    const sure = own === null ? null : (m.pts + PRIOR * base) / (m.n + PRIOR);
     const fits = MINE?.taste && stylesOf(o).includes(MINE.taste);
     const why = [own !== null && `You play it: ${pct(own)} in ${m.n} games, where White scores ${pct(base)} at your level.`,
       fits && `Fits your style: you mostly play ${STYLES[MINE.taste].label.toLowerCase()} openings.`,
       `Scores ${pct(base)} for White at your level.`].filter(Boolean);
     WHY.set(o, { short: why.slice(0, 2).join(' '), long: [...why, own === null ? 'You have not played it yet: learn its main lines here and try it in a few games.'
       : own >= base ? 'It already works for you: learn more of its lines so it keeps working as you climb.' : 'You score below the rest at your level: the lines here show where the points go.'].join(' ') });
-    return base + (fits ? 0.03 : 0) + (own === null ? 0 : (own - base) / 2);
+    return own === null ? base + (fits ? 0.03 : 0) : 1 + sure; // the ones you play come first
   }
   const why = `${pct(o.share)} of games at your level start this way. ${own === null ? 'Not in your games yet.' : `You score ${pct(own)} in ${m.n} games against it, where Black scores ${pct(base)}.`}`;
   WHY.set(o, { short: why, long: `${why} ${own === null ? 'You will meet it often, so have an answer ready before you do.' : own < base ? 'You drop more points against it than Black usually does: learning the answer here is the quickest gain for your Black games.' : 'You already hold your own against it; the lines here keep it that way.'}` });
@@ -552,9 +555,9 @@ function card(o) {
   return `<article class="ocard side-${o.side}" data-id="${o.id}">
     <div class="board mini" data-mini="${o.id}" inert></div>
     <div class="ocard-body">
-      <div class="ocard-top"><h3><button type="button" class="ocard-open">${isVs(o) ? 'vs ' : ''}${o.name}</button></h3><span class="ocard-tags">${FOR.has(o) ? `<span class="tag foryou" title="${WHY.get(o)?.short || ''}">For you</span>` : ''}${tags}${progress}
+      <div class="ocard-top"><h3><button type="button" class="ocard-open">${isVs(o) ? 'vs ' : ''}${o.name}</button></h3><span class="ocard-tags">${FOR.has(o) ? `<span class="tag foryou" title="${WHY.get(o)?.short || ''}">${FOR.get(o)}</span>` : ''}${tags}${progress}
         <button type="button" class="star" data-star="${o.id}" aria-pressed="${repertoire.has(o.id)}" title="${repertoire.has(o.id) ? 'In your favorites' : 'Add to your favorites'}" aria-label="${repertoire.has(o.id) ? 'Remove from' : 'Add to'} my favorites">★</button></span></div>
-      ${about ? `<p class="odesc">${about}</p>` : ''}${FOR.has(o) && WHY.get(o) ? `<p class="ofit"><b>For you:</b> ${WHY.get(o).short}</p>` : ''}
+      ${about ? `<p class="odesc">${about}</p>` : ''}${FOR.has(o) && WHY.get(o) ? `<p class="ofit"><b>${FOR.get(o)}:</b> ${WHY.get(o).short}</p>` : ''}
       <div class="ostats">
         <span>${popularity(o)}</span>
         <span>${sideName(o.side)} wins <b>${pct(win)}</b></span>
@@ -601,9 +604,15 @@ gamesReady.then(() => { if (OPENINGS.length) renderList(); }); // the kept games
 function renderList() {
   if (!OPENINGS.length) return; // still loading: the outline stays, never a false "no openings"
   if (sort === 'you' && !window.earlyAccess?.()) sort = 'score';
-  MINE = window.earlyAccess?.() ? myOpenings(true) : null; WHY = new Map(); FOR = new Set();
-  if (MINE) for (const side of ['w', 'b']) shown().filter((o) => o.side === side).sort((a, b) => fitOf(b) - fitOf(a)).slice(0, 3).forEach((o) => FOR.add(o));
-  const lead = { played: 'Most played first', you: 'The best fit for you first: your results, your style and your level' }[sort] || 'Best results first';
+  MINE = window.earlyAccess?.() ? myOpenings(true) : null; WHY = new Map(); FOR = new Map();
+  if (MINE) {
+    // White: your best two you already play, then new ones that fit your style and beat even, three in all.
+    const w = shown().filter((o) => o.side === 'w').sort((a, b) => fitOf(b) - fitOf(a)), playedIt = (o) => fitOf(o) >= 1;
+    w.filter(playedIt).slice(0, 2).forEach((o) => FOR.set(o, 'Your best'));
+    w.filter((o) => !playedIt(o) && yourScore(o) > 0.5).slice(0, 3 - FOR.size).forEach((o) => FOR.set(o, 'Worth a try'));
+    shown().filter((o) => o.side === 'b').sort((a, b) => fitOf(b) - fitOf(a)).slice(0, 3).forEach((o) => FOR.set(o, 'Prepare'));
+  }
+  const lead = { played: 'Most played first', you: 'For you: the openings you already play, best for you first, then new ones that fit your style' }[sort] || 'Best results first';
   const about = {
     w: (n) => `${lead}. ${style === 'any'
       ? `The ${n} most played openings among players rated ${levelText()}.`
