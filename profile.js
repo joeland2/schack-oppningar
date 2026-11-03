@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103133915';
-import { openLogin } from './login.js?v=20261103133915';
-import { STYLE_OF } from './styles.js?v=20261103133915';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103133915';
-import { PEOPLE } from './pros.js?v=20261103133915';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103134624';
+import { openLogin } from './login.js?v=20261103134624';
+import { STYLE_OF } from './styles.js?v=20261103134624';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103134624';
+import { PEOPLE } from './pros.js?v=20261103134624';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -2157,11 +2157,14 @@ function rivalKit(name, me) {
 // Two lists: Friends, the casual games (challenges, mostly people you know), and Rated, the games the pairing
 // gave you. Each with its own most played and nemesis; the table goes by games played. On the profile and
 // on its own page (rivals.html?u=), where each name opens the rivalry.
-function rivalsBody(name, me, rated, casual) {
-  const { you, your, link, rec, story, chip, acts } = rivalKit(name, me);
+function rivalsBody(name, me, rated, casual, page) {
+  const { you, your, h2h, link, rec, story, chip, acts } = rivalKit(name, me);
+  // On its own page: one card per rival, side by side, each opening the rivalry.
+  const card = (r, tags) => `<a class="rv-card${r.score < 0.5 ? ' bad' : ''}" href="${h2h(r)}"><span class="pf-rv-chips">${tags.map(chip).join('')}</span><b class="rv-card-name">${esc(nick(r.name))}</b><span class="rv-card-score">${r.w}–${r.l}</span><small>${games(r.n)}${r.d ? ` · ${r.d} drawn` : ''} · ${me ? 'you score' : 'they score'} ${pct(r.score)}</small>${sparkOf(r.games.slice(0, 10))}<span class="rv-card-go">The rivalry →</span></a>`;
   const panel = (gs) => {
     const { rivals, nemesis, most } = rivalsOf(name, gs);
     let html = '';
+    if (page && rivals.length) return { rivals, html: `<div class="rv-cards">${rivals.slice().sort((x, y) => y.n - x.n).map((r) => card(r, [r === nemesis && `${me ? 'Your' : 'Their'} nemesis`, r === most && 'Most played'].filter(Boolean))).join('')}</div>` };
     if (most) html += `<div class="pf-rv-lead${most === nemesis ? ' bad' : ''}"><span class="pf-rv-chips">${most === nemesis ? chip(`${me ? 'Your' : 'Their'} nemesis`) : ''}${chip('Most played')}</span><b class="pf-rv-name">${link(most)}</b>${story(most)}${acts(most)}</div>`;
     if (nemesis && nemesis !== most) html += `<div class="pf-rv-lead bad"><span class="pf-rv-chips">${chip(`${me ? 'Your' : 'Their'} nemesis`)}</span><b class="pf-rv-name">${link(nemesis)}</b>${story(nemesis)}${acts(nemesis)}</div>`;
     const victim = rivals.filter((r) => r.n >= NEMESIS_MIN && r.score > 0.5).sort((x, y) => y.score - x.score)[0];
@@ -2186,7 +2189,7 @@ function rivalsCard(name, me) {
   const casual = casualOf(name);
   if (!casual) setTimeout(() => loadCasual(name, () => { const el = document.getElementById('rivals'); if (el) el.outerHTML = rivalsCard(name, me); }), 2000); // after the profile's own reading
   return `<section class="pf-card pf-rivals" id="rivals"><div class="pf-more-head"><h2>Rivals</h2><span>The players ${me ? 'you' : 'they'} met ${RIVAL_MIN} times or more · <a href="rivals.html?u=${encodeURIComponent(name)}">Open as a page →</a></span></div>
-    ${rivalsBody(name, me, rated, casual)}</section>`;
+    ${rivalsBody(name, me, rated, casual)}<div class="pf-rv-acts"><a class="pf-rv-btn hot" href="rivals.html?u=${encodeURIComponent(name)}">All ${me ? 'your' : 'their'} rivals on one page →</a></div></section>`;
 }
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-rv-tab]'); if (!b) return;
@@ -2207,7 +2210,7 @@ async function rivalsPage(name, vs) {
   try {
     await gamesReady;
     if (!storedGames(name)) await profileFor(name);
-    const draw = () => { $('#rivals').innerHTML = rivalsBody(name, me, storedGames(name) || [], casualOf(name)); };
+    const draw = () => { $('#rivals').innerHTML = rivalsBody(name, me, storedGames(name) || [], casualOf(name), true); };
     draw();
     if (!casualOf(name)) await loadCasual(name, draw);
     draw();
