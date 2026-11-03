@@ -3075,3 +3075,17 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .pf-share-b:hover { border-color: var(--hot); }
 .pf-share-dare { width: 100%; }
 .pf-share-note { margin: 0; font-size: 13px; color: var(--muted); }
+.pl-acct { margin: 28px 0 0; padding: 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.pl-acct h2 { margin: 0 0 4px; font: 400 clamp(26px, 4vw, 36px)/1.05 var(--font-poster); text-transform: uppercase; }
+.pl-acct h2 small { display: block; margin-top: 4px; font: 500 13px var(--font-body); text-transform: none; color: var(--muted); }
+.pl-acct h3 { margin: 0 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pl-style { font-size: 1.1rem; }
+.pl-skills { list-style: none; padding: 0; margin: 14px 0; display: grid; gap: 8px; max-width: 460px; }
+.pl-skills li { display: grid; grid-template-columns: 7em 1fr 2.4em; gap: 10px; align-items: center; font-size: 14px; }
+.pl-skills i { height: 10px; border-radius: 5px; background: linear-gradient(90deg, var(--hot) var(--v), var(--line) var(--v)); }
+.pl-skills b { text-align: right; font-variant-numeric: tabular-nums; }
+.pl-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin: 10px 0 16px; }
+.pl-ops { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.pl-ops li { display: grid; gap: 1px; }
+.pl-ops small { color: var(--muted); font-variant-numeric: tabular-nums; }
+.pl-you { margin: 36px 0 0; padding-top: 24px; border-top: 1px solid var(--line); }

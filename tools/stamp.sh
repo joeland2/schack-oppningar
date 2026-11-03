@@ -10,3 +10,4 @@ perl -pi -e "s/from '\.\/([a-z0-9-]+\.js)(\?v=\d+)?'/from '.\/\$1?v=$v'/g" ./*.j
 perl -pi -e "s/import\('\.\/([a-z0-9-]+\.js)(\?v=\d+)?'\)/import('.\/\$1?v=$v')/g" ./*.js
 echo "stamped $v"
 node tools/make_trap_pages.mjs
+node tools/make_player_pages.mjs
