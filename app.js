@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103124316';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103124316';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103124316';
-import { NAMED_TRAPS } from './traps.js?v=20261103124316';
-import { GUIDE } from './guide.js?v=20261103124316';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103124316';
-import { banner, confetti } from './celebrate.js?v=20261103124316';
-import { maia3Move } from './maia3.js?v=20261103124316';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103124316';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261103124316';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103124316';
-import { openLogin } from './login.js?v=20261103124316';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103124316';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103124805';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103124805';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103124805';
+import { NAMED_TRAPS } from './traps.js?v=20261103124805';
+import { GUIDE } from './guide.js?v=20261103124805';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103124805';
+import { banner, confetti } from './celebrate.js?v=20261103124805';
+import { maia3Move } from './maia3.js?v=20261103124805';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103124805';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261103124805';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103124805';
+import { openLogin } from './login.js?v=20261103124805';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103124805';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -677,7 +677,7 @@ function renderList(still) { // still: only the panel changed, so the cards do n
     const ops = [...pinned, ...list.filter((o) => o.side === listSide && !(pinFavs && repertoire.has(o.id)))];
     const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for White at your level. Try another style.</p>`;
     body = `${forYou(listSide)}<p class="og-about">${about[listSide](ops.length)}</p>${ops.length ? '' : empty}
-      <div class="olist">${ops.map((o) => (sort === 'you' && pickAt(o) < 9 ? card(o).replace('<button type="button" class="star"', `<span class="tag fy-tag">For you</span><button type="button" class="star"`) : card(o))).join('')}</div>`;
+      <div class="olist">${ops.map((o) => (pickAt(o) < 9 ? card(o).replace('<button type="button" class="star"', `<span class="tag fy-tag">For you</span><button type="button" class="star"`) : card(o))).join('')}</div>`;
   }
   // The side tabs sit beside the search box, outside the list, so typing a search keeps its focus.
   $('#side-tabs').innerHTML = `<div class="seg side-seg" role="group" aria-label="Your side">
