@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103090827';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103090827';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103090827';
-import { NAMED_TRAPS } from './traps.js?v=20261103090827';
-import { GUIDE } from './guide.js?v=20261103090827';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103090827';
-import { banner, confetti } from './celebrate.js?v=20261103090827';
-import { maia3Move } from './maia3.js?v=20261103090827';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103090827';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261103090827';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103090827';
-import { openLogin } from './login.js?v=20261103090827';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103090827';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103091841';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103091841';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103091841';
+import { NAMED_TRAPS } from './traps.js?v=20261103091841';
+import { GUIDE } from './guide.js?v=20261103091841';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103091841';
+import { banner, confetti } from './celebrate.js?v=20261103091841';
+import { maia3Move } from './maia3.js?v=20261103091841';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103091841';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261103091841';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103091841';
+import { openLogin } from './login.js?v=20261103091841';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103091841';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -2499,21 +2499,33 @@ const practiceSet = () => {
 // ---------- Lines overview and the "opening complete" approval ----------
 // Lines of the current list that are cleared (progress saved for other ratings may hold other lines).
 const cleared = () => lines.filter((l) => stats[statKey(cur.id)]?.done.includes(lineKey(l.moves))).length;
-// The main line is called that, as in a course; the other lines by their opening name.
-const lineName = (l) => (l.branch === 1 ? (l.theory ? 'Main line' : 'Most played at your level') : l.name ? l.name.split(' · ').at(-1).split(': ').at(-1) : 'Side line');
+// The main line is called that, as in a course; the other lines by their opening name. Lines that share a
+// name (every line against the London is "London System") add the move that sets them apart.
+const baseName = (l) => (l.branch === 1 ? (l.theory ? 'Main line' : 'Most played at your level') : l.name ? l.name.split(' · ').at(-1).split(': ').at(-1) : 'Side line');
+function lineName(l) {
+  const n = baseName(l), k = parting(l);
+  return k < 0 || l.trap || l.avoid || lines.filter((o) => baseName(o) === n).length < 2 ? n : `${n}, ${moveLabel(k, l.moves[k])}`;
+}
 const moveLabel = (i, san) => `${Math.floor(i / 2) + 1}${i % 2 ? '...' : '.'}${san}`;
-// What tells a line apart: the trap it punishes, or the move where it leaves the main line (the main
-// line itself: its last moves).
+const mine = (i) => (i % 2 === 0) === (cur.side === 'w'); // the move at ply i is the player's own
+// The ply where a line leaves the main line, or, when an earlier line leaves at the same move, where it
+// parts from that one; -1 for the main line itself.
+function parting(l) {
+  const main = lines[0]?.moves || [], i = l.moves.findIndex((m, k) => m !== main[k]);
+  if (l === lines[0] || i < 0) return -1;
+  const same = (o) => { let k = 0; while (k < l.moves.length && o.moves[k] === l.moves[k]) k++; return k; };
+  const j = Math.max(0, ...lines.slice(1, lines.indexOf(l)).map(same));
+  return j > i && j < l.moves.length ? j : i;
+}
+// What tells a line apart: the trap it punishes, or the move where it parts, said as whose it is (the
+// main line itself: its last moves).
 function lineTag(l) {
   if (l.trap) return `if they play ${trapMove(l.trap)}`;
   if (l.avoid) return `don't play ${badMove(l.avoid)}`;
-  const main = lines[0]?.moves || [];
-  const i = l.moves.findIndex((m, k) => m !== main[k]);
-  if (l === lines[0] || i < 0) return lineEnd(l);
-  // Two lines leaving the main line at the same move are told apart by where they part from each other.
-  const same = (o) => { let k = 0; while (k < l.moves.length && o.moves[k] === l.moves[k]) k++; return k; };
-  const j = Math.max(0, ...lines.slice(1, lines.indexOf(l)).map(same));
-  return `after ${moveLabel(i, l.moves[i])}${j > i && j < l.moves.length ? `, ${moveLabel(j, l.moves[j])}` : ''}`;
+  const k = parting(l);
+  if (k < 0) return lineEnd(l);
+  if (mine(k)) return `you play ${moveLabel(k, l.moves[k])}`;
+  return `if they play ${moveLabel(k, l.moves[k])}${k + 1 < l.moves.length ? `, you play ${moveLabel(k + 1, l.moves[k + 1])}` : ''}`;
 }
 // The line's last two moves with their real move numbers, e.g. "5.O-O d6", so same-named lines can be told apart.
 // A line's trap: the opponent's natural-looking slip, how well you do after it, and the move that
