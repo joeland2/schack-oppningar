@@ -920,8 +920,8 @@ h1, .picker h1 { font-family: var(--font-poster); font-weight: 400; text-transfo
 .ghost, .controls button { color: var(--ink); }
 /* Links never wear the browser's blue: plain text links are ink and bold, underlined on hover. */
 :where(a) { color: inherit; }
-main a:not(.cta):not(.pf-act):not(.lf-card):not(.lf-watch):not(.hero-p):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op):not(.lbd-name):not(.pf-star-strip):not(.gm-who), button.link { color: var(--ink); font-weight: 700; text-decoration: none; }
-main a:not(.cta):not(.pf-act):not(.lf-card):not(.lf-watch):not(.hero-p):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op):not(.lbd-name):not(.pf-star-strip):not(.gm-who):hover, button.link:hover { text-decoration: underline; }
+main a:not(.cta):not(.pf-act):not(.lf-card):not(.lf-watch):not(.hero-p):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op):not(.lbd-name):not(.pf-star-strip):not(.gm-who):not(.pf-rv-btn):not(.rv-card), button.link { color: var(--ink); font-weight: 700; text-decoration: none; }
+main a:not(.cta):not(.pf-act):not(.lf-card):not(.lf-watch):not(.hero-p):not(.ocard):not(.card):not(.pf-res):not(.pf-op-link):not(.lb-op):not(.lbd-name):not(.pf-star-strip):not(.gm-who):not(.pf-rv-btn):not(.rv-card):hover, button.link:hover { text-decoration: underline; }
 .cta { border-radius: var(--radius); }
 a.cta { color: var(--accent-ink); }
 @media (max-width: 560px) { /* five sections on a phone: one row that scrolls sideways if it must */
@@ -3261,3 +3261,24 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .rv-card-score { font: 400 2.6rem/1 var(--font-poster); }
 .rv-card small { color: var(--muted); }
 .rv-card-go { margin-top: 6px; font-weight: 700; font-size: 13px; color: var(--hot); }
+
+.pf-more-head h2 .rv-ch { color: var(--bg); font-size: 12px; }
+.rv-fam { font-size: 12px; }
+.pf-rv-table td:nth-child(3) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pf-rv-table .wdl { min-width: 80px; }
+.rv-details > summary { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; cursor: pointer; font: 400 22px/1.1 var(--font-poster); text-transform: uppercase; }
+.rv-details > summary span { font: 13.5px var(--font-body); text-transform: none; color: var(--muted); }
+.rv-details[open] > summary { margin-bottom: 14px; }
+.rv-details h3 small { font-weight: 400; color: var(--muted); text-transform: none; letter-spacing: 0; }
+.rv-end { margin: 24px 0 12px; }
+.rv-skel { min-height: 150px; border-top-color: var(--line); animation: rv-skel 1.2s ease-in-out infinite alternate; }
+@keyframes rv-skel { to { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .rv-skel { animation: none; } }
+/* A visitor (neither player): one colour per player, orange for the first, ink for the second */
+.rv-neutral .rv-score .p-a { color: var(--hot); } .rv-neutral .rv-score .p-b { color: var(--ink); }
+.rv-neutral .wdl .w, .rv-neutral .pf-rv-spark .r-W, .rv-neutral .pf-res.r-W { background: var(--data); opacity: 1; }
+.rv-neutral .wdl .l, .rv-neutral .pf-rv-spark .r-L, .rv-neutral .pf-res.r-L { background: var(--ink); opacity: 1; }
+.rv-neutral .pf-res.r-L { color: var(--bg); }
+.rv-neutral .pf-rv-table .good, .rv-neutral .pf-rv-table .bad { color: inherit; }
+.rv-neutral .pf-rv-lead.bad { border-color: var(--line); }
+#profile:has(> .rv-head) { align-content: start; } /* the rivals pages: no stretched rows while games load */
