@@ -3290,3 +3290,4 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .pf-jump button:hover { background: var(--raised); }
 .pf-jump:empty { display: none; }
 #profile .pf-card, #profile .pf-kpis { scroll-margin-top: 80px; }
+.rv-side { margin: 0; font-size: 14px; }

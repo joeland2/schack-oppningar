@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103143953';
-import { openLogin } from './login.js?v=20261103143953';
-import { STYLE_OF } from './styles.js?v=20261103143953';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103143953';
-import { PEOPLE } from './pros.js?v=20261103143953';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103144049';
+import { openLogin } from './login.js?v=20261103144049';
+import { STYLE_OF } from './styles.js?v=20261103144049';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103144049';
+import { PEOPLE } from './pros.js?v=20261103144049';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -2207,6 +2207,8 @@ document.addEventListener('click', (e) => {
 const SKELETON = `<div class="rv-cards" aria-hidden="true">${'<div class="rv-card rv-skel"></div>'.repeat(3)}</div>`;
 async function rivalsPage(name, vs) {
   const me = isMe(name), msg = $('#profile-msg'), el = $('#profile');
+  // The rival opening a link sent to them (logged in as vs) sees it from their own side, the sender as the opponent.
+  if (vs && isMe(vs) && !me) { history.replaceState(null, '', `rivals.html?u=${encodeURIComponent(vs)}&vs=${encodeURIComponent(name)}`); return rivalryPage(vs, name, true); }
   if (vs) return rivalryPage(name, vs, me);
   document.title = `${nick(name)}'s rivals · Chess Labs`;
   el.innerHTML = `<section class="rv-head"><span class="kicker-k">Rivals</span><h1>${me ? 'Your rivals' : esc(nick(name))}</h1><p class="info">The players ${me ? 'you' : 'they'} have met ${RIVAL_MIN} times or more. Open one for the whole rivalry.</p></section><section class="pf-card pf-rivals" id="rivals"><p class="info">Reading ${me ? 'your' : 'their'} games…</p>${SKELETON}</section>`;
@@ -2293,7 +2295,7 @@ async function rivalryPage(name, vs, me) {
     const longest = g.slice().sort((a, b) => len(b) - len(a))[0], mate = g.filter((x) => x.g.status === 'mate').sort((a, b) => len(a) - len(b))[0];
     const upset = rated2.filter((x) => x.res !== 'D' && (x.res === 'W') === (rt(x, true) < rt(x, false))).sort((a, b) => Math.abs(rt(b, true) - rt(b, false)) - Math.abs(rt(a, true) - rt(a, false)))[0];
     const behind = r.w < r.l ? [me ? 'you' : A, runOf(old, 'W'), r.l - r.w, me ? 'Your' : `${A}'s`] : r.l < r.w ? [B, runOf(old, 'L'), r.w - r.l, `${B}'s`] : null;
-    const dare = me ? '' : `<p class="rv-dare">${B}, ${r.l > r.w ? `you lead ${r.l}–${r.w}. Prove it again.` : r.l < r.w ? `you trail ${r.l}–${r.w}. Time to pay it back.` : `it is level at ${r.w}–${r.l}. Settle it.`}</p>`;
+    const dare = me ? '' : `<p class="rv-dare">${B}, ${r.l > r.w ? `you lead ${r.l}–${r.w}. Prove it again.` : r.l < r.w ? `you trail ${r.l}–${r.w}. Time to pay it back.` : `it is level at ${r.w}–${r.l}. Settle it.`}</p><p class="rv-side"><a href="rivals.html?u=${encodeURIComponent(vs)}&vs=${encodeURIComponent(name)}">Are you ${B}? See it from your side →</a></p>`;
     const challenge = `<a class="pf-rv-btn hot" href="https://lichess.org/?user=${encodeURIComponent(me ? r.name : name)}#friend" target="_blank" rel="noopener">Challenge ${me ? B : A} on Lichess →</a>`;
     const { game } = rivalKit(name, me);
     const head = (n, title, sub) => `<div class="pf-more-head"><h2><span class="rv-ch">${n}</span>${title}</h2>${sub ? `<span>${sub}</span>` : ''}</div>`;
