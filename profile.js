@@ -3,15 +3,15 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103150206';
-import { openLogin } from './login.js?v=20261103150206';
-import { STYLE_OF } from './styles.js?v=20261103150206';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103150206';
-import { PEOPLE } from './pros.js?v=20261103150206';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103152634';
+import { openLogin } from './login.js?v=20261103152634';
+import { STYLE_OF } from './styles.js?v=20261103152634';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103152634';
+import { PEOPLE } from './pros.js?v=20261103152634';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
-const PV = 38;
+const PV = 39;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -364,7 +364,8 @@ function traitsOf(p) {
     { name: 'Marathoner', w: p.moves > usualMoves(rating) ? (p.moves / usualMoves(rating)) / 1.2 : 0, why: `Your games last ${p.moves} moves on average, where about ${usualMoves(rating)} is usual at your level.` },
     // The counterpart of Striker: a player whose Defense (solid openings, holding against attacks, saving
     // bad positions, rarely letting opponents get ahead) is clearly above their own opponents'.
-    { name: 'Guardian', w: def.v !== null ? (def.v - 50) / 9 : 0, why: `You defend clearly better than your opponents at your level. ${def.why}` },
+    // Only for a Defense clearly above even: at 50 or just over it would lead whenever every other style is below par.
+    { name: 'Guardian', w: def.v !== null ? (def.v - 50) / 9 : 0, ...(!(def.v > 55) && { lean: -9 }), why: `You defend clearly better than your opponents at your level. ${def.why}` },
   ].map((x) => ({ ...x, lean: x.lean ?? (x.w - PAR[x.name][0]) / (PAR[x.name][1] - PAR[x.name][0]) })).sort((x, y) => y.lean - x.lean);
   // Giant killer needs a clear surplus: upsets are common in fast games. Speed counts winning on time half,
   // since much of it is the opponent's doing.
@@ -493,9 +494,11 @@ function rawSkills(p) {
 }
 console.assert(rawSkills({ peer: { analysed: 120, ups: 36, downs: 12, after12: 100, n12: 120, myBl: 1, oppBl: 1, meUp: 1, oppUp: 3, endgames: 0, n: 10 } }).map((x) => x.v).slice(0, 3).join() === '75,75,75', 'rawSkills');
 {
-  const g = (o) => ({ side: 'w', speed: 'blitz', status: 'resign', plies: 60, result: 1, family: 'Italian Game', rating: 1500, diff: 5, castled: 8, queensOff: null, endgame: false, analysed: false, acc: null, blunders: null, best: null, worst: null, after12: null, slips: { opening: 0, middlegame: 0, endgame: 0 }, lowTime: false, ...o });
+  const g = (o) => ({ side: 'w', speed: 'blitz', status: 'resign', plies: 60, result: 1, family: 'Italian Game', chosen: true, rating: 1500, diff: 5, castled: 8, queensOff: null, endgame: false, analysed: false, acc: null, blunders: null, best: null, worst: null, after12: null, slips: { opening: 0, middlegame: 0, endgame: 0 }, lowTime: false, ...o });
   const p = profileOf([g({}), g({ result: 0 }), g({ side: 'b', result: 0 }), g({ side: 'b', result: 0.5 })]);
   console.assert(p.score === 0.375 && p.white === 0.5 && p.type[0].name === 'Striker', 'profileOf');
+  // nothing known about defending (no opening chosen, no analysis): not Guardian, which says they defend clearly better
+  console.assert(profileOf([g({ chosen: false }), g({ chosen: false, result: 0 })]).type[0].name !== 'Guardian', 'profileOf: Guardian needs evidence');
 }
 
 // ---------- Fetching ----------
