@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103141015';
-import { openLogin } from './login.js?v=20261103141015';
-import { STYLE_OF } from './styles.js?v=20261103141015';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103141015';
-import { PEOPLE } from './pros.js?v=20261103141015';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103141320';
+import { openLogin } from './login.js?v=20261103141320';
+import { STYLE_OF } from './styles.js?v=20261103141320';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103141320';
+import { PEOPLE } from './pros.js?v=20261103141320';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -2280,10 +2280,11 @@ async function rivalryPage(name, vs, me) {
     const when = brief(group((x) => (hour(x) < 6 ? 'Night (0–6)' : hour(x) < 12 ? 'Morning (6–12)' : hour(x) < 18 ? 'Afternoon (12–18)' : 'Evening (18–24)')));
     const days = brief(group((x) => `${new Date(x.g.createdAt).toLocaleDateString('en-GB', { weekday: 'long' })}s`));
     // Where they meet: the first three moves each, and the line that goes worst.
-    const san = (x) => (x.g.moves || '').split(' ').slice(0, 6), fmt = (ms) => ms.map((m, i) => (i % 2 ? m : `${i / 2 + 1}.${m}`)).join(' ');
-    const lines = group((x) => (san(x).length === 6 ? `${x.side}|${fmt(san(x))}` : null)).filter(([, xs]) => xs.length >= 2).sort((a, b) => b[1].length - a[1].length).slice(0, 8);
-    const famOf = (xs) => (xs[0].g.opening?.name || '').split(':')[0];
-    const worst = lines.filter(([, xs]) => xs.length >= 3).sort((a, b) => pts(a[1]) / a[1].length - pts(b[1]) / b[1].length)[0];
+    // The openings they meet in, for each colour (Accepted and Declined together), and the one that goes worst.
+    const famOf = (x) => (x.g.opening?.name || '').split(':')[0].replace(/ (Accepted|Declined)$/, '');
+    const lines = group((x) => (famOf(x) ? `${x.side}|${famOf(x)}` : null)).filter(([, xs]) => xs.length >= 2).sort((a, b) => b[1].length - a[1].length).slice(0, 8);
+    const worst = lines.filter(([, xs]) => xs.length >= 3 && pts(xs) / xs.length < 0.5).sort((a, b) => pts(a[1]) / a[1].length - pts(b[1]) / b[1].length)[0];
+    const colour = (k) => (k.startsWith('white') ? 'White' : 'Black'), fam = (k) => k.split('|')[1];
     // Records, each a game to open, and how far the one behind has to come.
     const len = (x) => (x.g.moves || '').split(' ').length, rated2 = g.filter((x) => rt(x, true) && rt(x, false));
     const quickWin = g.filter((x) => x.res === 'W' && len(x) >= 20).sort((a, b) => len(a) - len(b))[0], longLoss = g.filter((x) => x.res === 'L').sort((a, b) => len(b) - len(a))[0];
@@ -2303,9 +2304,9 @@ async function rivalryPage(name, vs, me) {
         <div class="pf-rv-acts">${challenge}</div>${acts(r, true)}<p class="pf-share-note rv-note" aria-live="polite"></p></section>
       <section class="pf-card">${head(1, 'The story')}<div class="pf-rv-lead${r.score < 0.5 ? ' bad' : ''}">${story(r, true)}</div></section>
       ${chart || gap.length ? `<section class="pf-card">${head(2, 'Rating and upsets', chart ? `${main[0].toUpperCase() + main.slice(1)}, at the time of each game` : '')}${chart}${gap.length ? `<div class="pf-two">${table('By rating gap', gap)}</div>` : ''}</section>` : ''}
-      ${lines.length ? `<section class="pf-card">${head(3, 'Where they meet', 'The first three moves of each game')}
-        <table class="pf-rv-table"><thead><tr><th>Line</th><th>Games</th><th>W–D–L</th><th class="wide-only"></th><th>${me ? 'You' : A}</th></tr></thead><tbody>${lines.map(([k, xs]) => wdlRow(`<span class="rv-mv">${k.split('|')[1]}</span><small class="rv-fam">${me ? 'You' : A} with ${k.split('|')[0] === 'white' ? 'White' : 'Black'} · ${esc(famOf(xs))}</small>`, xs)).join('')}</tbody></table>
-        ${worst ? `<p class="rv-turn"><b>Where it goes wrong:</b> after ${worst[0].split('|')[1]}, ${me ? 'you score' : `${A} scores`} ${pct(pts(worst[1]) / worst[1].length)} in ${worst[1].length} games with ${worst[0].startsWith('white') ? 'White' : 'Black'}.${me && famOf(worst[1]) ? ` <a class="pf-rv-btn hot" href="index.html?${esc(new URLSearchParams({ practise: `${worst[0][0] === 'w' ? 'w' : 'b'}:${famOf(worst[1])}`, rv: nick(r.name), rn: worst[1].length, rs: Math.round((pts(worst[1]) / worst[1].length) * 100) }).toString())}">Practise ${esc(famOf(worst[1]))} →</a>` : ''}</p>` : ''}</section>` : ''}
+      ${lines.length ? `<section class="pf-card">${head(3, 'The openings', `How each opening goes for ${me ? 'you' : A} against ${B}, by colour`)}
+        <table class="pf-rv-table"><thead><tr><th>Opening</th><th>Games</th><th>W–D–L</th><th class="wide-only"></th><th>${me ? 'You' : A}</th></tr></thead><tbody>${lines.map(([k, xs]) => wdlRow(`<span class="rv-op">${esc(fam(k))}</span><small class="rv-fam">${me ? 'You' : A} as ${colour(k)}</small>`, xs)).join('')}</tbody></table>
+        ${worst ? `<p class="rv-turn"><span><b>Where it goes wrong:</b> as ${colour(worst[0])} in the ${esc(fam(worst[0]))}, ${me ? 'you have' : `${A} has`} won ${worst[1].filter((x) => x.res === 'W').length} of ${worst[1].length} games against ${B}.</span>${me ? ` <a class="pf-rv-btn hot" href="index.html?${esc(new URLSearchParams({ practise: `${worst[0][0] === 'w' ? 'w' : 'b'}:${fam(worst[0])}`, rv: nick(r.name), rn: worst[1].length, rs: Math.round((pts(worst[1]) / worst[1].length) * 100) }).toString())}">Practise the ${esc(fam(worst[0]))} as ${colour(worst[0])} →</a>` : ''}</p>` : ''}</section>` : ''}
       <section class="pf-card">${head(lines.length ? 4 : 3, 'Records')}<ul class="pf-rv-games">${game(longest, `Longest game · ${Math.ceil(len(longest) / 2)} moves`)}${mate ? game(mate, `Quickest mate · ${who(mate)}, in ${Math.ceil(len(mate) / 2)} moves`) : ''}${upset ? game(upset, `Biggest upset · ${who(upset)} won, ${Math.abs(rt(upset, true) - rt(upset, false))} points lower`) : ''}${quickWin ? game(quickWin, `${me ? 'Your' : `${A}'s`} quickest win`) : ''}${longLoss ? game(longLoss, `${me ? 'Your' : `${A}'s`} longest loss`) : ''}${game(g[0], 'Latest')}</ul></section>
       ${tw + tl ? `<div class="rv-now"><span class="kicker-k">${new Date().toLocaleDateString('en-GB', { month: 'long' })} · this month</span><b>${thisMonth}</b></div>` : ''}
       <details class="pf-card rv-details"><summary><b>More numbers</b><span>The season month by month, when you play, time controls, how games end</span></summary>

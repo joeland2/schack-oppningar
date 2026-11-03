@@ -3282,3 +3282,4 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .rv-neutral .pf-rv-table .good, .rv-neutral .pf-rv-table .bad { color: inherit; }
 .rv-neutral .pf-rv-lead.bad { border-color: var(--line); }
 #profile:has(> .rv-head) { align-content: start; } /* the rivals pages: no stretched rows while games load */
+.rv-op { font-weight: 700; text-transform: none; letter-spacing: 0; font-size: 14px; }
