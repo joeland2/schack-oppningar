@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103120441';
-import { openLogin } from './login.js?v=20261103120441';
-import { STYLE_OF } from './styles.js?v=20261103120441';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103120441';
-import { PEOPLE } from './pros.js?v=20261103120441';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103121157';
+import { openLogin } from './login.js?v=20261103121157';
+import { STYLE_OF } from './styles.js?v=20261103121157';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103121157';
+import { PEOPLE } from './pros.js?v=20261103121157';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -851,16 +851,20 @@ let analysing = null; // { stop } while a run is going
 // Early game needs only the position after move 12: Stockfish looks at that one position in every game
 // without a full analysis, in the background, the first time a profile is shown. Kept with the games.
 let quick = null; // the player whose games are being looked at
+// Each game is tried once a visit: one that cannot be read (or a render after the pass) would otherwise
+// start the pass again and again, reading all the games each time.
+const TRIED = new Set();
 async function quickLook(name) {
   const raw = storedGames(name);
   if (quick || analysing || !raw) return;
-  const todo = raw.filter((g) => !g.analysis && g.at12 == null && g.moves && g.moves.split(' ').length > 24);
+  const todo = raw.filter((g) => !g.analysis && g.at12 == null && g.moves && g.moves.split(' ').length > 24 && !TRIED.has(g.id));
   if (!todo.length) return;
   quick = name;
   const msg = () => $('#pf-early-msg');
   for (let k = 0; k < todo.length; k++) {
     if (analysing || shown?.[0] !== name) break; // a full analysis or another player takes over
     const c = new Chess();
+    TRIED.add(todo[k].id);
     try { for (const m of todo[k].moves.split(' ').slice(0, 24)) c.move(m); } catch { continue; }
     todo[k].at12 = (await engineEval(c.fen())).cp;
     if (msg()) msg().textContent = `Looking at the position after move 12 in each game… ${k + 1} of ${todo.length}`;
@@ -868,7 +872,7 @@ async function quickLook(name) {
   }
   saveGames(name, raw);
   quick = null;
-  if (shown?.[0] !== name || analysing) return;
+  if (shown?.[0] !== name || analysing || !todo.some((g) => g.at12 != null)) return;
   const p = await readAll(name, raw);
   render(name, Date.now(), p);
 }
