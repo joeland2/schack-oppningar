@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103130623';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103130623';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103130623';
-import { NAMED_TRAPS } from './traps.js?v=20261103130623';
-import { GUIDE } from './guide.js?v=20261103130623';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103130623';
-import { banner, confetti } from './celebrate.js?v=20261103130623';
-import { maia3Move } from './maia3.js?v=20261103130623';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103130623';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261103130623';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103130623';
-import { openLogin } from './login.js?v=20261103130623';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103130623';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103131056';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103131056';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103131056';
+import { NAMED_TRAPS } from './traps.js?v=20261103131056';
+import { GUIDE } from './guide.js?v=20261103131056';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103131056';
+import { banner, confetti } from './celebrate.js?v=20261103131056';
+import { maia3Move } from './maia3.js?v=20261103131056';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103131056';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261103131056';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103131056';
+import { openLogin } from './login.js?v=20261103131056';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103131056';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -513,6 +513,7 @@ const byChoice = (a, b) => (sort === 'played' ? b.share - a.share : sort === 'yo
 // by their score at your level, lifted when they fit the style you play most. As Black, the White openings
 // you meet most at your level, pushed up where you score below what Black usually does. WHY says it in words.
 let WHY = new Map(), MINE = null;
+let REVENGE = null; // from a profile's Rivals: the opening to practise against one player, and why
 const PRIOR = 10;
 function fitOf(o) {
   const m = MINE?.ops.get(o), own = m && m.n >= 5 ? m.pts / m.n : null, base = yourScore(o);
@@ -1768,6 +1769,7 @@ function start(op, keepTraps = false) {
       <ul class="op-lines">${gd.lines.map(([n, t]) => `<li><b>${n}:</b> ${t}</li>`).join('')}</ul><p><b>Watch out:</b> ${gd.watch}</p>` : ''}`; }
   // Why it fits you, at length (supporters first), above what the opening is about.
   if (window.earlyAccess?.() && (MINE ??= myOpenings(true))) { fitOf(op); $('#op-about').insertAdjacentHTML('afterbegin', `<p class="ofit ofit-long"><b>For you:</b> ${WHY.get(op).long}</p>`); }
+  if (REVENGE?.op === op) $('#op-about').insertAdjacentHTML('afterbegin', `<p class="ofit ofit-long"><b>Revenge on ${esc(REVENGE.who)}:</b> your games against them went into the ${esc(REVENGE.family)} ${REVENGE.n} times, and you scored ${REVENGE.s}%. Learn the lines here, then play them again.</p>`);
   $('#op-side').textContent = op.side === 'w' ? 'You play White' : 'You play Black';
   $('#restart').textContent = 'Restart';
   $('#picker').hidden = true;
@@ -3751,6 +3753,7 @@ async function deepLink() {
     const vs = BLACKS.test(family) !== (side === 'b');
     const op = OPENINGS.find((x) => x.family === family && x.side === side && isVs(x) === vs)
       ?? OPENINGS.find((x) => x.side === side && (family.startsWith(x.family) || x.family.startsWith(family)));
+    if (op && q.get('rv')) REVENGE = { op, who: q.get('rv'), n: Number(q.get('rn')), s: Number(q.get('rs')), family };
     if (op) return start(op);
     $('#search').value = query = family;
     return renderList();

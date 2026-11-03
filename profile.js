@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103130623';
-import { openLogin } from './login.js?v=20261103130623';
-import { STYLE_OF } from './styles.js?v=20261103130623';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103130623';
-import { PEOPLE } from './pros.js?v=20261103130623';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103131056';
+import { openLogin } from './login.js?v=20261103131056';
+import { STYLE_OF } from './styles.js?v=20261103131056';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103131056';
+import { PEOPLE } from './pros.js?v=20261103131056';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1332,6 +1332,7 @@ function shareHtml(name, t) {
       <a data-share="reddit" href="https://www.reddit.com/submit?url=${url}&title=${text}" target="_blank" rel="noopener">Share on Reddit</a>
       <button type="button" data-share="discord" title="Copies the link; pasted in Discord it shows your card">Copy link for Discord</button>
       ${navigator.share ? '<button type="button" data-share="more">More…</button>' : ''}
+      ${window.earlyAccess?.() ? '<button type="button" data-share="wanted">Wanted poster: your nemesis</button>' : ''}
       <p class="pf-share-note" aria-live="polite"></p>
     </div></details>`;
 }
@@ -1343,6 +1344,7 @@ function bindShare(name, t) {
     const b = e.target.closest('[data-share]'); if (!b) return;
     const k = b.dataset.share; window.track?.('card', `${nick(name)} · share ${k}`);
     if (['x', 'reddit', 'more'].includes(k)) box.open = false;
+    if (k === 'wanted') { const r = RIVALS.get(name)?.find((x) => x.n >= NEMESIS_MIN && x.score < 0.5); return r ? wantedPng(name, r, b) : (note.textContent = 'No nemesis yet: nobody you met 5 times or more does better than you.'); }
     if (k === 'discord') copy(cardUrl(name), 'Link copied. Paste it in Discord and it shows your card.');
     if (k === 'more') navigator.share({ title: 'Chess Labs', text: shareText(t), url: cardUrl(name) }).catch(() => {});
     if (k === 'friend') {
@@ -2087,6 +2089,53 @@ async function loadCasual(name, me) {
   const el = document.getElementById('rivals');
   if (el && games.length) el.outerHTML = rivalsCard(name, me);
 }
+// Revenge: the opening where you lose most points to a rival, opened in the trainer with a note on why.
+// Their own choice first (the games where they had White), else the one you played with White.
+function revengeLink(name, r) {
+  const t = {};
+  for (const x of r.games) {
+    const fam = (x.g.opening?.name || '').split(':')[0]; if (!fam) continue;
+    const k = `${x.side === 'white' ? 'w' : 'b'}:${fam}`;
+    t[k] ??= { n: 0, lost: 0, pts: 0 }; t[k].n++; t[k].pts += x.res === 'W' ? 1 : x.res === 'D' ? 0.5 : 0; t[k].lost += x.res === 'L' ? 1 : x.res === 'D' ? 0.5 : 0;
+  }
+  const [k, v] = Object.entries(t).filter(([, v]) => v.n >= 2).sort((a, b) => (b[0][0] === 'b') - (a[0][0] === 'b') || b[1].lost - a[1].lost)[0] || [];
+  if (!k || !v.lost) return '';
+  return `index.html?${new URLSearchParams({ practise: k, rv: nick(r.name), rn: v.n, rs: Math.round((v.pts / v.n) * 100) })}`;
+}
+// Wanted: a front page about a rival, as a story-sized PNG (1080×1920), saved or shared like the card.
+const RIVALS = new Map(); // name → the rivals last drawn, for the Wanted button
+async function wantedPng(name, r, btn) {
+  const label = btn?.textContent; if (btn) { btn.disabled = true; btn.textContent = 'Making the poster…'; }
+  window.track?.('card', `${nick(name)} · wanted ${nick(r.name)}`);
+  try {
+    await Promise.all(['400 100px Anton', '400 30px Geist', '700 30px Geist'].map((f) => document.fonts.load(f)));
+    const W = 1080, H = 1920, c = Object.assign(document.createElement('canvas'), { width: W, height: H }), x = c.getContext('2d');
+    x.fillStyle = '#efe8db'; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#141414'; x.textAlign = 'center';
+    x.font = '700 30px Geist'; x.letterSpacing = '10px'; x.fillText('THE CHESS LABS DAILY', W / 2, 190); x.letterSpacing = '0px';
+    x.fillRect(90, 225, W - 180, 6); x.fillRect(90, 241, W - 180, 2);
+    x.fillStyle = '#9c330a'; x.font = '700 44px Geist'; x.letterSpacing = '24px'; x.fillText('WANTED', W / 2 + 12, 420); x.letterSpacing = '0px';
+    const who = nick(r.name).toUpperCase(); let size = 200; x.font = `400 ${size}px Anton`;
+    while (x.measureText(who).width > W - 160 && size > 60) x.font = `400 ${size -= 8}px Anton`;
+    x.fillStyle = '#141414'; x.fillText(who, W / 2, 470 + size);
+    x.fillStyle = '#b42318'; x.font = '400 300px Anton'; x.fillText(`${r.l}–${r.w}`, W / 2, 1000 + size * 0.3);
+    x.fillStyle = '#141414'; x.font = '700 40px Geist'; x.fillText(`against ${nick(name)}`, W / 2, 1110 + size * 0.3);
+    let k = 0; while (r.games[k]?.res === 'L') k++;
+    x.font = '400 34px Geist'; x.fillStyle = '#3a342c';
+    [`${r.n} games${r.d ? `, ${r.d} drawn` : ''}.`, k >= 2 ? `${k} wins in a row and counting.` : `Last met ${new Date(r.games[0].g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}.`]
+      .forEach((t, i) => x.fillText(t, W / 2, 1230 + size * 0.3 + i * 52));
+    x.fillStyle = '#141414'; x.fillRect(90, H - 260, W - 180, 2);
+    x.font = '700 30px Geist'; x.letterSpacing = '8px'; x.fillText('REVENGE AT CHESSLABS.GG', W / 2 + 4, H - 190); x.letterSpacing = '0px';
+    const blob = await new Promise((ok) => c.toBlob(ok, 'image/png')), file = new File([blob], `wanted-${nick(r.name)}.png`, { type: 'image/png' });
+    await saveImage(blob, file, `Wanted: ${nick(r.name)}`);
+  } catch (err) { $('#profile-msg').textContent = `The poster could not be made: ${err.message}`; }
+  if (btn) { btn.disabled = false; btn.textContent = label; }
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-wanted]'); if (!b) return;
+  const [name, id] = b.dataset.wanted.split('|'), r = RIVALS.get(name)?.find((x) => x.id === id);
+  if (r) wantedPng(name, r, b);
+});
 function rivalsCard(name, me) {
   const rated = storedGames(name) || (RAW_NAME.toLowerCase() === name.toLowerCase() ? RAW : null);
   if (!rated?.length) return '';
@@ -2094,6 +2143,7 @@ function rivalsCard(name, me) {
   if (!casual) setTimeout(() => loadCasual(name, me), 2000); // after the profile's own reading
   const all = [...rated, ...(casual || [])].sort((a, b) => b.createdAt - a.createdAt);
   const { rivals, nemesis, most } = rivalsOf(name, all), you = me ? 'you' : 'they', your = me ? 'your' : 'their';
+  RIVALS.set(name, rivals);
   const link = (r) => `<a href="profile.html?u=${encodeURIComponent(r.name)}">${esc(nick(r.name))}</a>`;
   const rec = (r) => `${r.w}–${r.d}–${r.l}`;
   const day = (g) => new Date(g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
@@ -2114,9 +2164,10 @@ function rivalsCard(name, me) {
   };
   const streakOf = (r) => { let k = 0; while (r.games[k]?.res === 'L') k++; return k; };
   const chip = (t) => `<span class="chip">${t}</span>`;
+  const acts = (r) => { if (!me) return ''; const rv = revengeLink(name, r); return `<div class="pf-rv-acts">${rv ? `<a class="pf-rv-btn hot" href="${esc(rv)}">Revenge →</a>` : ''}${r.l > r.w ? `<button type="button" class="pf-rv-btn" data-wanted="${esc(name)}|${esc(r.id)}">Wanted poster ↓</button>` : ''}</div>`; };
   let html = '';
-  if (most) html += `<div class="pf-rv-lead${most === nemesis ? ' bad' : ''}"><span class="pf-rv-chips">${most === nemesis ? chip(`${me ? 'Your' : 'Their'} nemesis`) : ''}${chip('Most played')}</span><b class="pf-rv-name">${link(most)}</b>${story(most)}</div>`;
-  if (nemesis && nemesis !== most) html += `<div class="pf-rv-lead bad"><span class="pf-rv-chips">${chip(`${me ? 'Your' : 'Their'} nemesis`)}</span><b class="pf-rv-name">${link(nemesis)}</b>${story(nemesis)}</div>`;
+  if (most) html += `<div class="pf-rv-lead${most === nemesis ? ' bad' : ''}"><span class="pf-rv-chips">${most === nemesis ? chip(`${me ? 'Your' : 'Their'} nemesis`) : ''}${chip('Most played')}</span><b class="pf-rv-name">${link(most)}</b>${story(most)}${acts(most)}</div>`;
+  if (nemesis && nemesis !== most) html += `<div class="pf-rv-lead bad"><span class="pf-rv-chips">${chip(`${me ? 'Your' : 'Their'} nemesis`)}</span><b class="pf-rv-name">${link(nemesis)}</b>${story(nemesis)}${acts(nemesis)}</div>`;
   const rest = rivals.slice(0, 10);
   const victim = rivals.at(-1)?.score > 0.5 && rivals.at(-1).n >= NEMESIS_MIN ? rivals.at(-1) : null;
   return `<section class="pf-card pf-rivals" id="rivals"><div class="pf-more-head"><h2>Rivals</h2><span>The players ${you} met ${RIVAL_MIN} times or more in the last ${games(rated.length)} rated${casual?.length ? ` and ${casual.length} casual` : ''}</span></div>

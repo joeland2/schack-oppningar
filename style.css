@@ -3220,3 +3220,6 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .pf-rv-duel thead th { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .pf-rv-duel tbody th { font-weight: 600; color: var(--muted); font-size: 12px; width: 30%; }
 .pf-rv-duel td { font-weight: 600; } .pf-rv-duel small { font-weight: 400; color: var(--muted); }
+.pf-rv-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.pf-rv-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: 700 14px var(--font-body); text-decoration: none; cursor: pointer; }
+.pf-rv-btn.hot { background: var(--data); border-color: var(--data); color: var(--data-ink); }
