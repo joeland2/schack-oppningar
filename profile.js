@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103132118';
-import { openLogin } from './login.js?v=20261103132118';
-import { STYLE_OF } from './styles.js?v=20261103132118';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103132118';
-import { PEOPLE } from './pros.js?v=20261103132118';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103132611';
+import { openLogin } from './login.js?v=20261103132611';
+import { STYLE_OF } from './styles.js?v=20261103132611';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103132611';
+import { PEOPLE } from './pros.js?v=20261103132611';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -2021,7 +2021,7 @@ function opponentsCard(p, me, name) {
 // Rivals (supporters first): everyone met 3 times or more in the games read, worst for this player first.
 // The nemesis is the worst of those met 5 times or more, if under 50%; the most played gets its own story.
 const RIVAL_MIN = 3, NEMESIS_MIN = 5;
-function rivalsOf(name, games) {
+function rivalsOf(name, games, min = RIVAL_MIN) {
   const me = name.toLowerCase(), by = new Map();
   for (const g of games) { // newest first
     const side = g.players?.white?.user?.id === me ? 'white' : g.players?.black?.user?.id === me ? 'black' : null;
@@ -2031,7 +2031,7 @@ function rivalsOf(name, games) {
     if (!by.has(opp.id)) by.set(opp.id, { id: opp.id, name: opp.name || opp.id, games: [] });
     by.get(opp.id).games.push({ g, side, res });
   }
-  const rivals = [...by.values()].filter((r) => r.games.length >= RIVAL_MIN).map((r) => {
+  const rivals = [...by.values()].filter((r) => r.games.length >= min).map((r) => {
     const n = r.games.length, k = (x) => r.games.filter((y) => y.res === x).length;
     return { ...r, n, w: k('W'), d: k('D'), l: k('L'), score: (k('W') + k('D') / 2) / n };
   }).sort((a, b) => a.score - b.score || b.n - a.n);
@@ -2046,7 +2046,7 @@ const runOf = (games, res) => { let best = 0, k = 0; for (const x of games) { k 
 const sparkOf = (games) => `<span class="pf-rv-spark" aria-hidden="true">${games.slice().reverse().map((x) => `<i class="r-${x.res}"></i>`).join('')}</span>`;
 // Against one rival, for each of the two: the opening they play most as White and as Black, and the one
 // that works best for them (3 games or more), from the games between them. A draw is half a point.
-function duel(games, me, r) {
+function duel(games, me, r, name) {
   const fam = (x) => (x.g.opening?.name || '').split(':')[0];
   const pts = (x, mine) => (x.res === 'D' ? 0.5 : (x.res === 'W') === mine ? 1 : 0);
   const of = (mine) => {
@@ -2058,7 +2058,7 @@ function duel(games, me, r) {
   const a = of(true), b = of(false);
   const cell = (x, f) => (x ? `${esc(x[0])} <small>${f(x[1])}</small>` : '–');
   const row = (label, f, k) => `<tr><th>${label}</th><td>${cell(a[k], f)}</td><td>${cell(b[k], f)}</td></tr>`;
-  return `<table class="pf-rv-duel"><thead><tr><th></th><th>${me ? 'You' : 'They'}</th><th>${esc(nick(r.name))}</th></tr></thead><tbody>
+  return `<table class="pf-rv-duel"><thead><tr><th></th><th>${me ? 'You' : esc(nick(name))}</th><th>${esc(nick(r.name))}</th></tr></thead><tbody>
     ${row('Most as White', (n) => `${n}×`, 'w')}${row('Most as Black', (n) => `${n}×`, 'b')}${row('Works best', (v) => `${pct(v.p / v.n)} in ${v.n}`, 'best')}</tbody></table>`;
 }
 // Games with friends are mostly casual, and the profile reads only rated games: Rivals fetches the last 300
@@ -2069,18 +2069,17 @@ function casualOf(name) {
   try { const v = JSON.parse(sessionStorage.getItem(CASUAL_KEY(name))); if (v) { CASUAL.set(name.toLowerCase(), v); return v; } } catch {}
   return null;
 }
-async function loadCasual(name, me) {
+async function loadCasual(name, redraw) {
   if (isCC(name) || casualOf(name)) return;
   CASUAL.set(name.toLowerCase(), []); // tried: never twice a visit, whatever happens
   const res = await fetch(`https://lichess.org/api/games/user/${encodeURIComponent(name)}?` + new URLSearchParams({ max: 300, rated: 'false', moves: 'true', opening: 'true' }),
     { headers: { Accept: 'application/x-ndjson', ...lichessAuth() } }).catch(() => null);
   if (!res?.ok) return; // a 429 or an error: Rivals stays with the rated games
   const games = (await res.text()).split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l)).filter((g) => g.variant === 'standard')
-    .map((g) => ({ id: g.id, createdAt: g.createdAt, winner: g.winner, moves: g.moves, opening: g.opening && { name: g.opening.name }, players: g.players, casual: true }));
+    .map((g) => ({ id: g.id, createdAt: g.createdAt, winner: g.winner, status: g.status, speed: g.speed, moves: g.moves, opening: g.opening && { name: g.opening.name }, players: g.players, casual: true }));
   CASUAL.set(name.toLowerCase(), games);
   try { sessionStorage.setItem(CASUAL_KEY(name), JSON.stringify(games)); } catch {}
-  const el = document.getElementById('rivals');
-  if (el && games.length) el.outerHTML = rivalsCard(name, me);
+  if (games.length) redraw();
 }
 // Revenge: the opening where you lose most points to a rival, opened in the trainer with a note on why.
 // Their own choice first (the games where they had White), else the one you played with White.
@@ -2129,42 +2128,44 @@ document.addEventListener('click', (e) => {
   const [name, id] = b.dataset.wanted.split('|'), r = RIVALS.get(name)?.find((x) => x.id === id);
   if (r) wantedPng(name, r, b);
 });
-function rivalsCard(name, me) {
-  const rated = storedGames(name) || (RAW_NAME.toLowerCase() === name.toLowerCase() ? RAW : null);
-  if (!rated?.length) return '';
-  const casual = casualOf(name);
-  if (!casual) setTimeout(() => loadCasual(name, me), 2000); // after the profile's own reading
-  const you = me ? 'you' : 'they', your = me ? 'your' : 'their';
-  const link = (r) => `<a href="profile.html?u=${encodeURIComponent(r.name)}">${esc(nick(r.name))}</a>`;
+// What a rivalry is drawn with, for one player (name) and whether it is the viewer (me).
+function rivalKit(name, me) {
+  const you = me ? 'you' : 'they', your = me ? 'your' : 'their', who = me ? 'you' : esc(nick(name));
+  const h2h = (r) => `rivals.html?u=${encodeURIComponent(name)}&vs=${encodeURIComponent(r.name)}`;
+  const link = (r) => `<a href="${h2h(r)}">${esc(nick(r.name))}</a>`;
   const rec = (r) => `${r.w}–${r.d}–${r.l}`;
   const day = (g) => new Date(g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   const game = (x, what) => `<li><a href="${x.g.casual ? `https://lichess.org/${x.g.id}" target="_blank" rel="noopener` : `game.html?u=${encodeURIComponent(name)}&id=${x.g.id}`}"><span class="pf-res r-${x.res}">${x.res}</span><span>${what}<small>${esc((x.g.opening?.name || '').split(':')[0])} · ${Math.ceil((x.g.moves || '').split(' ').length / 2)} moves · ${day(x.g)}</small></span></a></li>`;
-  // The most played gets the whole story (the run of games, best runs, colours, both players' openings, three
-  // games); the nemesis, when someone else, a line of its own. One player can be both.
+  const streakOf = (r) => { let k = 0; while (r.games[k]?.res === 'L') k++; return k; };
+  // The whole story: the run of games, best runs, colours, both players' openings, three games.
   const story = (r) => {
     const g = r.games, asW = g.filter((x) => x.side === 'white'), asB = g.filter((x) => x.side === 'black');
     const sc = (xs) => xs.length ? pct(xs.reduce((t, x) => t + (x.res === 'W' ? 1 : x.res === 'D' ? 0.5 : 0), 0) / xs.length) : '–';
     const len = (x) => (x.g.moves || '').split(' ').length;
     const quick = g.filter((x) => x.res === 'W' && len(x) >= 20).sort((a, b) => len(a) - len(b))[0], long = g.filter((x) => x.res === 'L').sort((a, b) => len(b) - len(a))[0];
-    const lead = r.w > r.l ? `${you} lead` : r.w < r.l ? 'they lead' : 'level';
-    return `<span class="pf-rv-sub">${games(r.n)} since ${day(g.at(-1).g)} · ${lead} <b>${rec(r)}</b> · ${you} score ${pct(r.score)}${streakOf(r) >= 2 ? ` · ${streakOf(r)} losses in a row` : ''}</span>${sparkOf(g)}
-      <dl class="pf-rv-facts"><div><dt>${me ? 'Your' : 'Their'} best run</dt><dd>${runOf(g.slice().reverse(), 'W')} wins</dd></div><div><dt>${esc(nick(r.name))}'s best run</dt><dd>${runOf(g.slice().reverse(), 'L')} wins</dd></div>
-        <div><dt>${me ? 'You' : 'They'} with White</dt><dd>${sc(asW)} <small>in ${asW.length}</small></dd></div><div><dt>${me ? 'You' : 'They'} with Black</dt><dd>${sc(asB)} <small>in ${asB.length}</small></dd></div></dl>
-      ${duel(g, me, r)}
+    const lead = r.w > r.l ? (me ? 'you lead' : `${esc(nick(name))} leads`) : r.w < r.l ? `${esc(nick(r.name))} leads` : 'level';
+    return `<span class="pf-rv-sub">${games(r.n)} since ${day(g.at(-1).g)} · ${lead} <b>${rec(r)}</b> · ${who} ${me ? 'score' : 'scores'} ${pct(r.score)}${streakOf(r) >= 2 ? ` · ${streakOf(r)} losses in a row` : ''}</span>${sparkOf(g)}
+      <dl class="pf-rv-facts"><div><dt>${me ? 'Your' : `${esc(nick(name))}'s`} best run</dt><dd>${runOf(g.slice().reverse(), 'W')} wins</dd></div><div><dt>${esc(nick(r.name))}'s best run</dt><dd>${runOf(g.slice().reverse(), 'L')} wins</dd></div>
+        <div><dt>${me ? 'You' : esc(nick(name))} with White</dt><dd>${sc(asW)} <small>in ${asW.length}</small></dd></div><div><dt>${me ? 'You' : esc(nick(name))} with Black</dt><dd>${sc(asB)} <small>in ${asB.length}</small></dd></div></dl>
+      ${duel(g, me, r, name)}
       <ul class="pf-rv-games">${quick ? game(quick, 'Quickest win') : ''}${long ? game(long, 'Longest loss') : ''}${game(g[0], 'Latest')}</ul>`;
   };
-  const streakOf = (r) => { let k = 0; while (r.games[k]?.res === 'L') k++; return k; };
   const chip = (t) => `<span class="chip">${t}</span>`;
-  const acts = (r) => { if (!me) return ''; const rv = revengeLink(name, r); return `<div class="pf-rv-acts">${rv ? `<a class="pf-rv-btn hot" href="${esc(rv)}">Revenge →</a>` : ''}${r.l > r.w ? `<button type="button" class="pf-rv-btn" data-wanted="${esc(name)}|${esc(r.id)}">Wanted poster ↓</button>` : ''}</div>`; };
-  // Two lists: Friends, the casual games (challenges, mostly people you know), and Rated, the games the pairing
-  // gave you. Each with its own most played and nemesis; the table goes by games played.
+  const acts = (r, page) => `<div class="pf-rv-acts">${page ? '' : `<a class="pf-rv-btn" href="${h2h(r)}">The whole rivalry →</a>`}${me && revengeLink(name, r) ? `<a class="pf-rv-btn hot" href="${esc(revengeLink(name, r))}">Revenge →</a>` : ''}${me && r.l > r.w ? `<button type="button" class="pf-rv-btn" data-wanted="${esc(name)}|${esc(r.id)}">Wanted poster ↓</button>` : ''}${page ? '<button type="button" class="pf-rv-btn" data-rv-share>Share this rivalry</button>' : ''}</div>`;
+  return { you, your, h2h, link, rec, day, game, story, chip, acts };
+}
+// Two lists: Friends, the casual games (challenges, mostly people you know), and Rated, the games the pairing
+// gave you. Each with its own most played and nemesis; the table goes by games played. On the profile and
+// on its own page (rivals.html?u=), where each name opens the rivalry.
+function rivalsBody(name, me, rated, casual) {
+  const { you, your, link, rec, story, chip, acts } = rivalKit(name, me);
   const panel = (gs) => {
     const { rivals, nemesis, most } = rivalsOf(name, gs);
     let html = '';
     if (most) html += `<div class="pf-rv-lead${most === nemesis ? ' bad' : ''}"><span class="pf-rv-chips">${most === nemesis ? chip(`${me ? 'Your' : 'Their'} nemesis`) : ''}${chip('Most played')}</span><b class="pf-rv-name">${link(most)}</b>${story(most)}${acts(most)}</div>`;
     if (nemesis && nemesis !== most) html += `<div class="pf-rv-lead bad"><span class="pf-rv-chips">${chip(`${me ? 'Your' : 'Their'} nemesis`)}</span><b class="pf-rv-name">${link(nemesis)}</b>${story(nemesis)}${acts(nemesis)}</div>`;
     const victim = rivals.filter((r) => r.n >= NEMESIS_MIN && r.score > 0.5).sort((x, y) => y.score - x.score)[0];
-    const rows = rivals.slice().sort((x, y) => y.n - x.n || x.score - y.score).slice(0, 12);
+    const rows = rivals.slice().sort((x, y) => y.n - x.n || x.score - y.score).slice(0, 20);
     return { rivals, html: rivals.length ? `${html ? `<div class="pf-rv-top">${html}</div>` : ''}
       <table class="pf-rv-table"><thead><tr><th>Opponent</th><th>Games</th><th>W–D–L</th><th class="wide-only">Last 10</th><th>${me ? 'You' : 'They'}</th></tr></thead><tbody>
       ${rows.map((r) => `<tr><td>${link(r)}${r === nemesis ? ' <span class="chip hot">Nemesis</span>' : r === victim ? ` <span class="chip">${me ? 'Your' : 'Their'} victim</span>` : ''}</td><td>${r.n}</td><td>${rec(r)}</td><td class="wide-only">${sparkOf(r.games.slice(0, 10))}</td><td class="${r.score < 0.45 ? 'bad' : r.score > 0.55 ? 'good' : ''}">${pct(r.score)}</td></tr>`).join('')}</tbody></table>`
@@ -2174,11 +2175,18 @@ function rivalsCard(name, me) {
   RIVALS.set(name, [...friends.rivals, ...pool.rivals]);
   const first = friends.rivals.length || !casual ? 'f' : 'r';
   const tab = (k, label, n) => `<button type="button" data-rv-tab="${k}" aria-pressed="${k === first}">${label} <span class="og-n">${n}</span></button>`;
-  return `<section class="pf-card pf-rivals" id="rivals"><div class="pf-more-head"><h2>Rivals</h2><span>The players ${you} met ${RIVAL_MIN} times or more</span></div>
-    <div class="seg pf-rv-tabs" role="group" aria-label="Which games">${tab('f', 'Friends', friends.rivals.length)}${tab('r', 'Rated', pool.rivals.length)}</div>
-    <p class="pf-rv-about" data-rv="f"${first === 'f' ? '' : ' hidden'}>Casual games: the challenges, mostly with people ${you} know. From ${your} last ${games(casual?.length || 0)} casual games.</p>
-    <p class="pf-rv-about" data-rv="r"${first === 'r' ? '' : ' hidden'}>Rated games: the opponents the pairing gave ${me ? 'you' : 'them'}. From ${your} last ${games(rated.length)} rated games.</p>
-    <div data-rv="f"${first === 'f' ? '' : ' hidden'}>${friends.html}</div><div data-rv="r"${first === 'r' ? '' : ' hidden'}>${pool.html}</div></section>`;
+  return `<div class="seg pf-rv-tabs" role="group" aria-label="Which games">${tab('f', 'Friends', friends.rivals.length)}${tab('r', 'Rated', pool.rivals.length)}</div>
+    <p class="pf-rv-about" data-rv="f"${first === 'f' ? '' : ' hidden'}>Casual games: the challenges, mostly with people ${you} know. From ${your} last ${casual?.length || 0} casual games.</p>
+    <p class="pf-rv-about" data-rv="r"${first === 'r' ? '' : ' hidden'}>Rated games: the opponents the pairing gave ${me ? 'you' : 'them'}. From ${your} last ${rated.length} rated games.</p>
+    <div data-rv="f"${first === 'f' ? '' : ' hidden'}>${friends.html}</div><div data-rv="r"${first === 'r' ? '' : ' hidden'}>${pool.html}</div>`;
+}
+function rivalsCard(name, me) {
+  const rated = storedGames(name) || (RAW_NAME.toLowerCase() === name.toLowerCase() ? RAW : null);
+  if (!rated?.length) return '';
+  const casual = casualOf(name);
+  if (!casual) setTimeout(() => loadCasual(name, () => { const el = document.getElementById('rivals'); if (el) el.outerHTML = rivalsCard(name, me); }), 2000); // after the profile's own reading
+  return `<section class="pf-card pf-rivals" id="rivals"><div class="pf-more-head"><h2>Rivals</h2><span>The players ${me ? 'you' : 'they'} met ${RIVAL_MIN} times or more · <a href="rivals.html?u=${encodeURIComponent(name)}">Open as a page →</a></span></div>
+    ${rivalsBody(name, me, rated, casual)}</section>`;
 }
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-rv-tab]'); if (!b) return;
@@ -2186,6 +2194,83 @@ document.addEventListener('click', (e) => {
   box.querySelectorAll('[data-rv-tab]').forEach((x) => x.setAttribute('aria-pressed', x === b));
   box.querySelectorAll('[data-rv]').forEach((x) => { x.hidden = x.dataset.rv !== b.dataset.rvTab; });
 });
+
+// ---------- The rivals page (rivals.html) ----------
+// rivals.html?u=name: their rivals, Friends and Rated. rivals.html?u=name&vs=other: the two of them, from
+// every game between them (rated and casual, one call to Lichess, kept for the session), so the link works
+// for anyone it is sent to.
+async function rivalsPage(name, vs) {
+  const me = isMe(name), msg = $('#profile-msg'), el = $('#profile');
+  if (vs) return rivalryPage(name, vs, me);
+  document.title = `${nick(name)}'s rivals · Chess Labs`;
+  el.innerHTML = `<section class="rv-head"><span class="kicker-k">Rivals</span><h1>${esc(nick(name))}</h1><p class="info">The players ${me ? 'you' : 'they'} meet again and again. Open one for the whole rivalry.</p></section><section class="pf-card pf-rivals" id="rivals"><p class="info">Reading ${me ? 'your' : 'their'} games…</p></section>`;
+  try {
+    await gamesReady;
+    if (!storedGames(name)) await profileFor(name);
+    const draw = () => { $('#rivals').innerHTML = rivalsBody(name, me, storedGames(name) || [], casualOf(name)); };
+    draw();
+    if (!casualOf(name)) await loadCasual(name, draw);
+    draw();
+  } catch (err) { msg.textContent = err.message; }
+}
+const H2H_KEY = (a, b) => `chess-trainer-h2h:${a.toLowerCase()}:${b.toLowerCase()}`;
+async function h2hGames(a, b) {
+  try { const v = JSON.parse(sessionStorage.getItem(H2H_KEY(a, b))); if (v) return v; } catch {}
+  const res = await fetch(`https://lichess.org/api/games/user/${encodeURIComponent(a)}?` + new URLSearchParams({ vs: b, max: 500, moves: 'true', opening: 'true' }),
+    { headers: { Accept: 'application/x-ndjson', ...lichessAuth() } });
+  if (res.status === 404) throw new Error(`Lichess has no player called ${a}.`);
+  if (res.status === 429) throw new Error('Lichess is busy right now. Try again in a minute.');
+  if (!res.ok) throw new Error(`Lichess answered with an error (${res.status}).`);
+  const games = (await res.text()).split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l)).filter((g) => g.variant === 'standard')
+    .map((g) => ({ id: g.id, createdAt: g.createdAt, winner: g.winner, status: g.status, speed: g.speed, rated: g.rated, moves: g.moves, opening: g.opening && { name: g.opening.name }, players: g.players, casual: !g.rated }));
+  try { sessionStorage.setItem(H2H_KEY(a, b), JSON.stringify(games)); } catch {}
+  return games;
+}
+const ENDS = { mate: 'Mate', resign: 'Resigned', outoftime: 'On time', timeout: 'Left the game', draw: 'Agreed draw', stalemate: 'Stalemate' };
+async function rivalryPage(name, vs, me) {
+  const msg = $('#profile-msg'), el = $('#profile');
+  document.title = `${nick(name)} vs ${nick(vs)} · Chess Labs`;
+  el.innerHTML = `<section class="rv-head"><span class="kicker-k">Rivalry</span><h1>${esc(nick(name))} <span>vs</span> ${esc(nick(vs))}</h1></section>`;
+  msg.textContent = `Fetching every game between ${nick(name)} and ${nick(vs)} from Lichess…`;
+  try {
+    if (isCC(name)) throw new Error('Rivalries need two Lichess accounts for now.');
+    const all = await h2hGames(name, vs);
+    msg.textContent = '';
+    const r = rivalsOf(name, all, 1).rivals.find((x) => x.id === vs.toLowerCase());
+    if (!r) { el.insertAdjacentHTML('beforeend', `<p class="info">${esc(nick(name))} and ${esc(nick(vs))} have not played each other on Lichess.</p>`); return; }
+    RIVALS.set(name, [r]);
+    const { story, rec, acts, you } = rivalKit(name, me);
+    const g = r.games, pts = (xs) => xs.reduce((t, x) => t + (x.res === 'W' ? 1 : x.res === 'D' ? 0.5 : 0), 0);
+    const group = (key) => { const m = new Map(); for (const x of g) { const k = key(x); if (k == null) continue; if (!m.has(k)) m.set(k, []); m.get(k).push(x); } return [...m]; };
+    const wdlRow = (label, xs) => { const w = xs.filter((x) => x.res === 'W').length, d = xs.filter((x) => x.res === 'D').length, l = xs.length - w - d;
+      return `<tr><th>${label}</th><td>${xs.length}</td><td>${w}–${d}–${l}</td><td class="wide-only"><div class="wdl"><span class="w" style="width:${(w / xs.length) * 100}%"></span><span class="d" style="width:${(d / xs.length) * 100}%"></span><span class="l" style="width:${(l / xs.length) * 100}%"></span></div></td><td>${pct(pts(xs) / xs.length)}</td></tr>`; };
+    const table = (title, rows) => rows.length ? `<section><h3>${title}</h3><table class="pf-rv-table"><thead><tr><th></th><th>Games</th><th>W–D–L</th><th class="wide-only"></th><th>${me ? 'You' : nick(name)}</th></tr></thead><tbody>${rows.join('')}</tbody></table></section>` : '';
+    const speeds = group((x) => x.g.speed).sort((a, b) => b[1].length - a[1].length).map(([k, xs]) => wdlRow(k[0].toUpperCase() + k.slice(1), xs));
+    const kinds = group((x) => (x.g.rated ? 'Rated' : 'Casual')).map(([k, xs]) => wdlRow(k, xs));
+    const months = group((x) => new Date(x.g.createdAt).toISOString().slice(0, 7)).sort((a, b) => (a[0] < b[0] ? 1 : -1)).slice(0, 12)
+      .map(([k, xs]) => wdlRow(new Date(`${k}-15`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }), xs));
+    const ends = (res) => group((x) => (x.res === res ? ENDS[x.g.status] || 'Other' : null)).sort((a, b) => b[1].length - a[1].length).map(([k, xs]) => `${k} ${xs.length}`).join(' · ') || '–';
+    const avg = (xs) => (xs.length ? Math.round(xs.reduce((t, x) => t + (x.g.moves || '').split(' ').length, 0) / xs.length / 2) : '–');
+    const wins = g.filter((x) => x.res === 'W'), losses = g.filter((x) => x.res === 'L');
+    el.innerHTML = `<section class="rv-head"><span class="kicker-k">Rivalry · ${games(r.n)}</span>
+        <h1>${esc(nick(name))} <span>vs</span> <a href="rivals.html?u=${encodeURIComponent(vs)}&vs=${encodeURIComponent(name)}" title="The same rivalry from ${esc(nick(vs))}'s side">${esc(nick(r.name))}</a></h1>
+        <div class="rv-score"><b class="${r.w > r.l ? 'good' : r.w < r.l ? 'bad' : ''}">${r.w}</b><span>–</span><b class="${r.l > r.w ? 'good' : r.l < r.w ? 'bad' : ''}">${r.l}</b><small>${r.d ? `${r.d} drawn · ` : ''}${me ? 'you score' : `${esc(nick(name))} scores`} ${pct(r.score)}</small></div>
+        ${acts(r, true)}<p class="pf-share-note rv-note" aria-live="polite"></p></section>
+      <section class="pf-card"><div class="pf-rv-lead${r.score < 0.5 ? ' bad' : ''}">${story(r)}</div></section>
+      <section class="pf-card"><div class="pf-more-head"><h2>Head to head in numbers</h2><span>Every game between them on Lichess</span></div>
+        <div class="pf-two">${table('By time control', speeds)}${table('Rated and casual', kinds)}</div>
+        <dl class="pf-rv-facts rv-more"><div><dt>${me ? 'Your' : 'Their'} wins end by</dt><dd class="rv-small">${ends('W')}</dd></div><div><dt>${me ? 'Your' : 'Their'} losses end by</dt><dd class="rv-small">${ends('L')}</dd></div>
+          <div><dt>Moves in a win</dt><dd>${avg(wins)}</dd></div><div><dt>Moves in a loss</dt><dd>${avg(losses)}</dd></div></dl>
+        ${table('Month by month', months)}</section>
+      <p class="info"><a href="rivals.html?u=${encodeURIComponent(name)}">All of ${esc(nick(name))}'s rivals</a> · <a href="profile.html?u=${encodeURIComponent(vs)}">${esc(nick(vs))}'s profile</a> · <a href="profile.html?u=${encodeURIComponent(name)}&vs=${encodeURIComponent(vs)}">Compare their cards</a></p>`;
+    el.querySelector('[data-rv-share]')?.addEventListener('click', async () => {
+      const url = `https://chesslabs.gg/rivals.html?u=${encodeURIComponent(name)}&vs=${encodeURIComponent(vs)}`, text = `${nick(name)} vs ${nick(vs)}: ${r.w}–${r.l}${r.d ? ` (${r.d} drawn)` : ''} on Chess Labs`;
+      if (navigator.share) return navigator.share({ title: 'Chess Labs', text, url }).catch(() => {});
+      try { await navigator.clipboard.writeText(url); el.querySelector('.rv-note').textContent = 'Link copied. Send it to your rival.'; } catch { prompt('Copy the link', url); }
+    });
+    window.track?.('rivalry', `${name} vs ${vs}`);
+  } catch (err) { msg.textContent = err.message; }
+}
 // What others see: logged in, a player can hide parts of their profile from visitors. Kept in
 // opening-book-v2-hidden (synced to their account); the userdata function answers ?hidden=<name> to anyone.
 const PANELS = [['chart', 'Rating graph', '#pf-chart'], ['kpis', 'Key numbers', '.pf-kpis'], ['lead', 'Latest games', '.pf-lead'], ['skills', 'Skills', '#pf-skills'], ['trend', 'Trend', '#pf-trend'],
@@ -2892,6 +2977,7 @@ function show(name, push) {
 }
 function start() {
   const q = new URLSearchParams(location.search), name = q.get('u') || myName();
+  if (/\/rivals(\.html)?$/.test(location.pathname)) return name ? rivalsPage(name, q.get('vs')) : ask();
   if (name && q.get('ago')) return thenNow(name, +q.get('ago'));
   if (name && q.has('vs') && !q.get('vs')) return comparePick(name); // compare with someone still to pick
   if (name && q.get('vs') && q.get('vs').toLowerCase() !== name.toLowerCase()) return compare(name, q.get('vs')); // the same name twice: just the profile
@@ -2915,11 +3001,3 @@ if ($('#profile')) { // the practice page imports this module for the above; onl
   start();
   if (new URLSearchParams(location.search).has('login') && !account()) openLogin();
 }
-// profile.html#rivals (My rivals in the menu): Rivals is drawn after the games are read, so the page goes
-// there once it appears, and again when the link is followed on this page.
-if (location.hash === '#rivals') {
-  const seen = new MutationObserver(() => { const el = document.getElementById('rivals'); if (el) { seen.disconnect(); el.scrollIntoView({ block: 'start' }); } });
-  seen.observe(document.body, { childList: true, subtree: true });
-  setTimeout(() => seen.disconnect(), 30000);
-}
-addEventListener('hashchange', () => { if (location.hash === '#rivals') document.getElementById('rivals')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
