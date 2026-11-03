@@ -69,7 +69,7 @@
     nav?.querySelector('a[href="profile.html"]')?.remove();
     nav?.querySelector('a[href="practice.html"]')?.remove();
     if (!user() && !document.querySelector('#lichess-login')) at?.insertAdjacentHTML('beforebegin', '<a class="top-login" href="profile.html?login" title="Log in to see your profile">Log in</a>');
-    nav?.insertAdjacentHTML('beforeend', `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a><a href="stars.html"${page === 'stars.html' ? ' aria-current="page"' : ''}>PRO/VIP</a><a href="playstyles.html"${page === 'playstyles.html' ? ' aria-current="page"' : ''}>Styles</a>`);
+    nav?.insertAdjacentHTML('beforeend', `<a href="leaderboard.html"${page === 'leaderboard.html' ? ' aria-current="page"' : ''}>Leaderboard</a><a href="stars.html"${page === 'stars.html' ? ' aria-current="page"' : ''}>PRO/VIP</a>`);
     const who = user();
     if (who) {
       const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`), btn = document.querySelector('#lichess-login');
@@ -278,9 +278,9 @@ addEventListener('DOMContentLoaded', () => {
     const row = document.querySelector('.foot-row');
     if (row) row.insertAdjacentHTML('beforeend', b);
     else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
-    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261103132001')).openChat());
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261103132118')).openChat());
     // Supporters: the hearts and card frames on every page, and Support (header and bottom) opens its dialog.
-    const sup = import('./supporter.js?v=20261103132001');
+    const sup = import('./supporter.js?v=20261103132118');
     document.addEventListener('click', async (e) => { if (e.target.closest('[data-support]')) (await sup).openSupport(); });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
