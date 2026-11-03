@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103121517';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103121517';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103121517';
-import { NAMED_TRAPS } from './traps.js?v=20261103121517';
-import { GUIDE } from './guide.js?v=20261103121517';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103121517';
-import { banner, confetti } from './celebrate.js?v=20261103121517';
-import { maia3Move } from './maia3.js?v=20261103121517';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103121517';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261103121517';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103121517';
-import { openLogin } from './login.js?v=20261103121517';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103121517';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261103122249';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261103122249';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261103122249';
+import { NAMED_TRAPS } from './traps.js?v=20261103122249';
+import { GUIDE } from './guide.js?v=20261103122249';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261103122249';
+import { banner, confetti } from './celebrate.js?v=20261103122249';
+import { maia3Move } from './maia3.js?v=20261103122249';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261103122249';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261103122249';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261103122249';
+import { openLogin } from './login.js?v=20261103122249';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261103122249';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -511,7 +511,7 @@ const byChoice = (a, b) => (sort === 'played' ? b.share - a.share : sort === 'yo
 // towards your level's by 10 games (so 11 games say less than 91), first; then the ones you have not played,
 // by their score at your level, lifted when they fit the style you play most. As Black, the White openings
 // you meet most at your level, pushed up where you score below what Black usually does. WHY says it in words.
-let WHY = new Map(), MINE = null, FOR = new Map(); // FOR: three per side tagged in any sort, each with its label
+let WHY = new Map(), MINE = null;
 const PRIOR = 10;
 function fitOf(o) {
   const m = MINE?.ops.get(o), own = m && m.n >= 5 ? m.pts / m.n : null, base = yourScore(o);
@@ -528,6 +528,33 @@ function fitOf(o) {
   const why = `${pct(o.share)} of games at your level start this way. ${own === null ? 'Not in your games yet.' : `You score ${pct(own)} in ${m.n} games against it, where Black scores ${pct(base)}.`}`;
   WHY.set(o, { short: why, long: `${why} ${own === null ? 'You will meet it often, so have an answer ready before you do.' : own < base ? 'You drop more points against it than Black usually does: learning the answer here is the quickest gain for your Black games.' : 'You already hold your own against it; the lines here keep it that way.'}` });
   return o.share * (own === null ? 1 : 1 + Math.max(0, base - own) * 4);
+}
+// The For you panel over the list (supporters first), as Linus and we put it: as White the opening you play
+// most, one most like it, one in your style and the best at your level, each new to you; as Black the three
+// White openings to prepare for. Each row opens the opening; the opening itself says why at length.
+const gambit = (o) => /Gambit/.test(o.name) || /Gambit/.test(o.family);
+const alike = (a, b) => stylesOf(a).filter((t) => stylesOf(b).includes(t)).length + 2 * (gambit(a) && gambit(b)); // style in common, a gambit for a gambit most
+const shared = (a, b) => { const x = a.root.split(' '), y = b.root.split(' '); let k = 0; while (k < x.length && x[k] === y[k]) k++; return k; };
+function forYou(side) {
+  if (!MINE) return '';
+  const row = (label, o, why) => (o ? `<li><small>${label}</small><button type="button" class="link" data-open="${o.id}">${isVs(o) ? 'vs ' : ''}${o.name}</button><span>${why}</span></li>` : '');
+  let rows;
+  if (side === 'b') {
+    rows = OPENINGS.filter(isVs).sort((a, b) => fitOf(b) - fitOf(a)).slice(0, 3).map((o, i) => row(i ? '' : 'Prepare for', o, (fitOf(o), WHY.get(o).short))).join('');
+  } else {
+    const mineW = [...MINE.ops].filter(([o, x]) => o.side === 'w' && !isVs(o) && x.n >= 5).sort((a, b) => b[1].n - a[1].n); // tried once or twice is still new
+    const [main, m] = mineW[0] || [], played = new Set(mineW.map(([o]) => o)), taken = new Set();
+    const fresh = OPENINGS.filter((o) => o.side === 'w' && !isVs(o) && o.rank !== undefined && !played.has(o));
+    const pick = (list) => { const o = list.find((x) => !taken.has(x)); if (o) taken.add(o); return o; };
+    const like = main && pick(fresh.slice().sort((a, b) => shared(b, main) - shared(a, main) || alike(b, main) - alike(a, main) || yourScore(b) - yourScore(a)));
+    const styled = MINE.taste && pick(fresh.filter((o) => stylesOf(o).includes(MINE.taste)).sort((a, b) => yourScore(b) - yourScore(a)));
+    const best = pick(fresh.slice().sort((a, b) => yourScore(b) - yourScore(a)));
+    rows = [main && row('You play', main, `${pct(m.pts / m.n)} in ${m.n} games, where White scores ${pct(yourScore(main))} at your level`),
+      like && row('Most like it', like, `starts like the ${main.name} (${like.root.split(' ').slice(0, shared(like, main)).join(' ') || 'other first move'}) and scores ${pct(yourScore(like))} at your level`),
+      styled && row('Fits your style', styled, `${STYLES[MINE.taste].label.toLowerCase()}, like most of what you play, and scores ${pct(yourScore(styled))} at your level`),
+      best && row('Best at your level', best, `scores ${pct(yourScore(best))} for White among players rated ${levelText()}`)].filter(Boolean).join('');
+  }
+  return rows ? `<section class="foryou"><h3>For you</h3><ul>${rows}</ul></section>` : '';
 }
 function shown() {
   const white = OPENINGS.filter((o) => o.side === 'w' && o.rank !== undefined && fitsStyle(o))
@@ -555,9 +582,9 @@ function card(o) {
   return `<article class="ocard side-${o.side}" data-id="${o.id}">
     <div class="board mini" data-mini="${o.id}" inert></div>
     <div class="ocard-body">
-      <div class="ocard-top"><h3><button type="button" class="ocard-open">${isVs(o) ? 'vs ' : ''}${o.name}</button></h3><span class="ocard-tags">${FOR.has(o) ? `<span class="tag foryou" title="${WHY.get(o)?.short || ''}">${FOR.get(o)}</span>` : ''}${tags}${progress}
+      <div class="ocard-top"><h3><button type="button" class="ocard-open">${isVs(o) ? 'vs ' : ''}${o.name}</button></h3><span class="ocard-tags">${tags}${progress}
         <button type="button" class="star" data-star="${o.id}" aria-pressed="${repertoire.has(o.id)}" title="${repertoire.has(o.id) ? 'In your favorites' : 'Add to your favorites'}" aria-label="${repertoire.has(o.id) ? 'Remove from' : 'Add to'} my favorites">★</button></span></div>
-      ${about ? `<p class="odesc">${about}</p>` : ''}${FOR.has(o) && WHY.get(o) ? `<p class="ofit"><b>${FOR.get(o)}:</b> ${WHY.get(o).short}</p>` : ''}
+      ${about ? `<p class="odesc">${about}</p>` : ''}
       <div class="ostats">
         <span>${popularity(o)}</span>
         <span>${sideName(o.side)} wins <b>${pct(win)}</b></span>
@@ -604,14 +631,7 @@ gamesReady.then(() => { if (OPENINGS.length) renderList(); }); // the kept games
 function renderList() {
   if (!OPENINGS.length) return; // still loading: the outline stays, never a false "no openings"
   if (sort === 'you' && !window.earlyAccess?.()) sort = 'score';
-  MINE = window.earlyAccess?.() ? myOpenings(true) : null; WHY = new Map(); FOR = new Map();
-  if (MINE) {
-    // White: your best two you already play, then new ones that fit your style and beat even, three in all.
-    const w = shown().filter((o) => o.side === 'w').sort((a, b) => fitOf(b) - fitOf(a)), playedIt = (o) => fitOf(o) >= 1;
-    w.filter(playedIt).slice(0, 2).forEach((o) => FOR.set(o, 'Your best'));
-    w.filter((o) => !playedIt(o) && yourScore(o) > 0.5).slice(0, 3 - FOR.size).forEach((o) => FOR.set(o, 'Worth a try'));
-    shown().filter((o) => o.side === 'b').sort((a, b) => fitOf(b) - fitOf(a)).slice(0, 3).forEach((o) => FOR.set(o, 'Prepare'));
-  }
+  MINE = window.earlyAccess?.() ? myOpenings(true) : null; WHY = new Map();
   const lead = { played: 'Most played first', you: 'For you: the openings you already play, best for you first, then new ones that fit your style' }[sort] || 'Best results first';
   const about = {
     w: (n) => `${lead}. ${style === 'any'
@@ -640,7 +660,7 @@ function renderList() {
     const pinned = pinFavs ? mineList.filter((o) => o.side === listSide) : [];
     const ops = [...pinned, ...list.filter((o) => o.side === listSide && !(pinFavs && repertoire.has(o.id)))];
     const empty = `<p class="info">No common ${style === 'any' ? '' : STYLES[style].label.toLowerCase() + ' '}openings for White at your level. Try another style.</p>`;
-    body = `<p class="og-about">${about[listSide](ops.length)}</p>${ops.length ? '' : empty}
+    body = `${forYou(listSide)}<p class="og-about">${about[listSide](ops.length)}</p>${ops.length ? '' : empty}
       <div class="olist">${ops.map(card).join('')}</div>`;
   }
   // The side tabs sit beside the search box, outside the list, so typing a search keeps its focus.
@@ -671,6 +691,7 @@ function renderList() {
     }
     c.addEventListener('click', go);
   });
+  listEl.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => start(OPENINGS.find((o) => o.id === b.dataset.open))));
 }
 
 $('#side-tabs').addEventListener('click', (e) => {
