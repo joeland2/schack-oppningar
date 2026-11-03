@@ -16,10 +16,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261103122623">
-  <script src="move.js?v=20261103122623"></script>
-  <script src="header.js?v=20261103122623" defer></script>
-  <script src="theme.js?v=20261103122623"></script>
+  <link rel="stylesheet" href="style.css?v=20261103123841">
+  <script src="move.js?v=20261103123841"></script>
+  <script src="header.js?v=20261103123841" defer></script>
+  <script src="theme.js?v=20261103123841"></script>
 </head>
 <body>
   <header class="top">
@@ -87,7 +87,7 @@
           <button type="button" data-speed="classical">Classical</button>
         </div>
       </div>
-      <div class="choice">
+      <div class="choice" id="style-choice">
         <span class="choice-label">Your style as White</span>
         <div class="seg" role="group" aria-label="Play style">
           <button type="button" data-style="any">Any</button>
@@ -115,8 +115,8 @@
     <div class="og-bar">
       <div id="side-tabs"></div>
       <div class="seg sort-seg" role="group" aria-label="Sort openings">
-        <button type="button" data-sort="score">Best<span class="wide-only"> results</span></button>
-        <button type="button" data-sort="played"><span class="wide-only">Most played</span><span class="narrow-only">Popular</span></button>
+        <button type="button" data-sort="score">Best</button>
+        <button type="button" data-sort="played">Most played</button>
         <button type="button" data-sort="you" hidden>For you</button>
       </div>
       <div class="choice choice-search">
@@ -232,7 +232,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=20261103122623"></script>
+  <script type="module" src="app.js?v=20261103123841"></script>
   <dialog id="complete" class="complete" aria-labelledby="complete-title">
     <h2 id="complete-title"></h2>
     <p id="complete-text"></p>
