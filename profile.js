@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261104115350';
-import { openLogin } from './login.js?v=20261104115350';
-import { STYLE_OF } from './styles.js?v=20261104115350';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261104115350';
-import { PEOPLE } from './pros.js?v=20261104115350';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261104115727';
+import { openLogin } from './login.js?v=20261104115727';
+import { STYLE_OF } from './styles.js?v=20261104115727';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261104115727';
+import { PEOPLE } from './pros.js?v=20261104115727';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -940,7 +940,7 @@ function analysePanel(name, p, shown = p, sp = null) {
   const opts = tiers.map(([n]) => ({ n, ...costOf(p, n) })).filter((o) => o.games);
   // the steps not reached yet, nearest first; at Best, the newest games played since
   const ahead = opts.filter((o) => !next || o.n >= next[0]), main = ahead[0] || opts[0], rest = ahead.slice(1);
-  const btn = (o, cls) => `<button type="button" class="${cls}" data-analyse="${o.n}" title="The newest ${games(o.games)} without analysis, until ${o.n} are analysed: ${minutes(o.sec)}, with Stockfish in your browser">Analyse until ${o.n} <small>${o.games} games${next ? ` · ${tiers.find(([n]) => n === o.n)?.[1] || ''}` : ''} · ~${minutes(o.sec).replace('about ', '')}</small></button>`;
+  const btn = (o, cls) => `<button type="button" class="${cls}" data-analyse="${o.n}" data-sp="${sp || ''}" title="The newest ${games(o.games)} without analysis, until ${o.n} are analysed: ${minutes(o.sec)}, with Stockfish in your browser">Analyse until ${o.n} <small>${o.games} games${next ? ` · ${tiers.find(([n]) => n === o.n)?.[1] || ''}` : ''} · ${minutes(o.sec).replace('about ', '~')}</small></button>`;
   let prev = 0;
   const steps = tiers.map(([n, label]) => { const fill = Math.max(0, Math.min(1, (p.analysed - prev) / (n - prev))); prev = n;
     return `<li class="${p.analysed >= n ? 'done' : fill > 0 ? 'now' : ''}"><span class="pf-acc-bar"><i style="width:${fill * 100}%"></i></span><span class="pf-acc-label"><b>${label}</b> ${n}</span></li>`; }).join('');
@@ -967,12 +967,12 @@ function bindAnalyse(name) {
   const el = $('#pf-analyse');
   if (!el) return;
   el.querySelectorAll('[data-analyse]').forEach((b) => b.addEventListener('click', async () => {
-    const n = Number(b.dataset.analyse);
-    window.track?.('analyse', `${name}: until ${n}${pfSpeed && pfSpeed !== 'all' ? ` ${pfSpeed}` : ''}`);
+    const n = Number(b.dataset.analyse), sp = b.dataset.sp || null; // the time control the panel counts, also the main one nobody picked
+    window.track?.('analyse', `${name}: until ${n}${sp ? ` ${sp}` : ''}`);
     analysing = { stop: false };
     el.outerHTML = analysePanel(name, {});
     $('#pf-analyse').querySelector('[data-stop]').addEventListener('click', () => { if (analysing) analysing.stop = true; });
-    try { await analyse(name, n, pfSpeed && pfSpeed !== 'all' ? pfSpeed : null); } catch (err) { analysing = null; $('#profile-msg').textContent = err.message; }
+    try { await analyse(name, n, sp); } catch (err) { analysing = null; $('#profile-msg').textContent = err.message; }
   }));
 }
 
