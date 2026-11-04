@@ -3,15 +3,15 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261104115727';
-import { openLogin } from './login.js?v=20261104115727';
-import { STYLE_OF } from './styles.js?v=20261104115727';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261104115727';
-import { PEOPLE } from './pros.js?v=20261104115727';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261104120825';
+import { openLogin } from './login.js?v=20261104120825';
+import { STYLE_OF } from './styles.js?v=20261104120825';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261104120825';
+import { PEOPLE } from './pros.js?v=20261104120825';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
-const PV = 39;
+const PV = 40;
 const ENOUGH = 100; // analysed games before the skills that need analysis are shown
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
@@ -134,13 +134,16 @@ console.assert(statesOf({ analysis: [{ eval: 300 }, { eval: -100, judgment: { na
 // each counted once under its main style; any Gambit counts as a gambit.
 const KINDS = [['gambit', 'Gambits', 'gambits'], ['attacking', 'Attacking', 'attacking openings'], ['tricky', 'Tricky', 'offbeat, tricky openings'],
   ['positional', 'Positional', 'positional openings'], ['solid', 'Solid', 'solid set-ups'], ['other', 'Other', 'other openings']];
-const kindOf = (fam) => (/Gambit/.test(fam) ? 'gambit' : (STYLE_OF[fam] || ['other'])[0]);
+// The Queen's Gambit and its answers are gambits by name only: no pawn is really given up.
+const isGambit = (fam) => /Gambit/.test(fam) && !/^Queen's Gambit/.test(fam);
+const kindOf = (fam) => (isGambit(fam) ? 'gambit' : (STYLE_OF[fam] || ['other'])[0]);
 function styleMix(games, side) {
   const gs = games.filter((g) => g.side === side && blacksName(g.family) === (side === 'b'));
   return { n: gs.length, parts: KINDS.map(([k, label, words]) => ({ k, label, words, share: gs.length ? gs.filter((g) => kindOf(g.family) === k).length / gs.length : 0 })).filter((x) => x.share > 0).sort((a, b) => b.share - a.share) };
 }
 console.assert(styleMix([{ side: 'w', family: 'Danish Gambit' }, { side: 'w', family: 'London System' }, { side: 'b', family: 'Italian Game' }], 'w').parts[0].share === 0.5, 'styleMix');
-const styleOf = (fam) => [...(STYLE_OF[fam] || []), ...(/Gambit/.test(fam) ? ['attacking'] : [])];
+const styleOf = (fam) => [...(STYLE_OF[fam] || []), ...(isGambit(fam) ? ['attacking'] : [])];
+console.assert(!styleOf("Queen's Gambit Declined").includes('attacking') && kindOf("Queen's Gambit Accepted") === 'positional' && styleOf("King's Gambit").includes('attacking'), 'styleOf: real gambits only');
 export function profileOf(games) {
   const n = games.length, an = games.filter((g) => g.analysed);
   const wins = games.filter((g) => g.result === 1), losses = games.filter((g) => g.result === 0);
@@ -190,6 +193,7 @@ export function profileOf(games) {
     ...(() => { const sc = games.filter((g) => g.lowTime && g.oppLowTime); return { clutchN: sc.length, clutchScore: score(sc) }; })(),
     // The openings the player chose: a gambit played against them says nothing of their style.
     attacking: share(games.filter((g) => g.chosen), (g) => styleOf(g.family).includes('attacking')),
+    attackingBy: Object.fromEntries(['w', 'b'].map((c) => { const m = games.filter((g) => g.chosen && g.side === c); return [c, { n: m.length, v: share(m, (g) => styleOf(g.family).includes('attacking')) }]; })),
     // What players at your level choose: your opponents' own openings with the same colour as yours, in
     // the same games (your openings as White against theirs as White when you had Black), weighted by
     // how often you choose with each colour. Gambits are much more common at some levels than others.
@@ -332,6 +336,14 @@ const odds = (x) => (x == null ? 1 : Math.min(9, Math.max(1 / 9, x / (1 - x))));
 const usualDraws = (rating) => 0.02 + (rating || 1500) / 40000;
 // Games get longer with the level: about 36 moves at 1200 and 44 at 2800.
 const usualMoves = (rating) => Math.round(30 + (rating || 1500) / 200);
+// A Striker with one colour only says so, or the openings shown beside it seem to disagree.
+function strikerWhy(p) {
+  const by = p.attackingBy, usual = p.attackingUsual != null ? pct(p.attackingUsual) : null;
+  const [a, b] = !by || by.w.n < 10 || by.b.n < 10 ? [] : by.b.v >= 0.5 && by.w.v < 0.25 ? ['Black', 'White'] : by.w.v >= 0.5 && by.b.v < 0.25 ? ['White', 'Black'] : [];
+  if (a) return `Mostly with ${a}: ${pct(by[a[0].toLowerCase()].v)} of the openings you choose as ${a} are attacking openings or gambits, against ${pct(by[b[0].toLowerCase()].v)} as ${b}.${usual ? ` Players at your level choose ${usual}.` : ''}`;
+  return `${pct(p.attacking)} of the openings you choose are attacking openings or gambits${usual ? `, where players at your level choose ${usual}` : ''}.`;
+}
+console.assert(strikerWhy({ attacking: 0.6, attackingBy: { w: { n: 39, v: 0.08 }, b: { n: 157, v: 0.77 } } }).startsWith('Mostly with Black: 77%') && strikerWhy({ attacking: 0.6, attackingBy: { w: { n: 5, v: 0 }, b: { n: 157, v: 0.77 } } }).startsWith('60%'), 'strikerWhy');
 const STRENGTH = { Attack: 'Killer instinct', 'Early game': 'Well prepared', 'Late game': 'Grinder', Accuracy: 'Sure hand', Speed: 'Speed demon' };
 // A strength on the same theme as the style says the same thing twice; then the next best skill is named.
 const SAME = { 'Endgame artist': 'Late game', 'Time scrambler': 'Speed', Trickster: 'Attack', Guardian: 'Defense', Marathoner: 'Late game' };
@@ -349,7 +361,7 @@ function traitsOf(p) {
     // Against what players at your level choose when it is known: 22 points more is the top tenth, as the
     // spread between the median and the top tenth was among the players checked.
     { name: 'Striker', w: p.attacking / 0.4, ...(p.attackingUsual != null && { lean: (p.attacking - p.attackingUsual) / 0.22 }),
-      why: `${pct(p.attacking)} of the openings you choose are attacking openings or gambits${p.attackingUsual != null ? `, where players at your level choose ${pct(p.attackingUsual)}` : ''}.` },
+      why: strikerWhy(p) },
     { name: 'Solid builder', w: (p.solid / 0.55) * (p.attacking < 0.25 ? 1 : 0.6), why: `${pct(p.solid)} of the openings you choose are solid or positional.` },
     { name: 'Endgame artist', w: p.queensOff / 0.4, why: `The queens come off before move 25 in ${pct(p.queensOff)} of your games: you are happy to trade and play it out.` },
     // Ending short of time is common in fast games for everyone, so it counts only when the player does
@@ -1691,7 +1703,7 @@ function boardCard(name, full, sp) {
   if (!p || p.n < MIN_GAMES) return null;
   const skills = skillsOf(p), known = skills.filter((x) => x.v !== null), t = p.type;
   // Gambits you chose: your own openings with Gambit in the name (not the other side's answer to one).
-  const gambits = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))].filter((o) => !/^vs /.test(o.fam) && /Gambit/.test(o.fam) && !/Accepted|Declined/.test(o.fam));
+  const gambits = [...p.openings.w.map((o) => ({ ...o, side: 'w' })), ...p.openings.b.map((o) => ({ ...o, side: 'b' }))].filter((o) => !/^vs /.test(o.fam) && isGambit(o.fam) && !/Accepted|Declined/.test(o.fam));
   const gn = gambits.reduce((s, o) => s + o.n, 0);
   return { speed, rating: p.speeds[0].rating, games: p.n, analysed: p.analysed || 0, overall: known.length ? Math.round(sum(known, (x) => x.v) / known.length) : null,
     stars: (({ sum }) => ({ green: sum('green'), gold: sum('gold'), diamond: sum('diamond') }))(starCounts()),
