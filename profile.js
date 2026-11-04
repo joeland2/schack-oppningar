@@ -3,16 +3,16 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261104120825';
-import { openLogin } from './login.js?v=20261104120825';
-import { STYLE_OF } from './styles.js?v=20261104120825';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261104120825';
-import { PEOPLE } from './pros.js?v=20261104120825';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261104122350';
+import { openLogin } from './login.js?v=20261104122350';
+import { STYLE_OF } from './styles.js?v=20261104122350';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261104122350';
+import { PEOPLE } from './pros.js?v=20261104122350';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
-const PV = 40;
-const ENOUGH = 100; // analysed games before the skills that need analysis are shown
+const PV = 41;
+const ENOUGH = 60; // analysed games against opponents near your rating before the skills that need analysis are shown: about what 100 analysed games hold
 // How far the stats can be trusted, by analysed games: the analyse box shows the step reached and the next.
 const TIERS = [[100, 'Fair'], [250, 'Good'], [500, 'Best']];
 const MIN_GAMES = 50;
@@ -449,7 +449,7 @@ function unlockAt(p) {
   const need = have >= ENOUGH ? all : Math.ceil(ENOUGH * (all && have ? all / have : 1));
   return { have, at: (TIERS.find(([n]) => n >= need) || [need])[0] };
 }
-console.assert(unlockAt({ analysed: 100, peer: { analysed: 95 } }).at === 250 && unlockAt({ analysed: 40, peer: { analysed: 30 } }).at === 250, 'unlockAt');
+console.assert(unlockAt({ analysed: 100, peer: { analysed: 95 } }).at === 100 && unlockAt({ analysed: 40, peer: { analysed: 30 } }).at === 100 && unlockAt({ analysed: 100, peer: { analysed: 30 } }).at === 250, 'unlockAt');
 function skillsOf(p) {
   const base = levelOf(p.speeds?.[0]?.rating), raw = rawSkills(p).map((x) => (p.n < MIN_GAMES ? { ...x, v: null } : x)), known = raw.filter((x) => x.v !== null);
   const mean = known.length ? sum(known, (x) => x.v) / known.length : 50;
