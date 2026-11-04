@@ -1,23 +1,23 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261104131220';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261104131220';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261104131220';
-import { NAMED_TRAPS } from './traps.js?v=20261104131220';
-import { GUIDE } from './guide.js?v=20261104131220';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261104131220';
-import { banner, confetti } from './celebrate.js?v=20261104131220';
-import { maia3Move } from './maia3.js?v=20261104131220';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261104131220';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261104131220';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261104131220';
-import { openLogin } from './login.js?v=20261104131220';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261104131220';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261104131517';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261104131517';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261104131517';
+import { NAMED_TRAPS } from './traps.js?v=20261104131517';
+import { GUIDE } from './guide.js?v=20261104131517';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261104131517';
+import { banner, confetti } from './celebrate.js?v=20261104131517';
+import { maia3Move } from './maia3.js?v=20261104131517';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261104131517';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261104131517';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261104131517';
+import { openLogin } from './login.js?v=20261104131517';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261104131517';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
 const MAX_LINES = 20;
 // How deep to learn an opening, as a course does it: lines are in course order, so a depth is the first n.
-const DEPTHS = [['Essentials', 6, 'Known theory first: the lines strong players play'], ['Advanced', 12, 'Adds how players at your level most often answer, blunders included'], ['Everything', MAX_LINES, 'Every line players at your level meet']];
+const DEPTHS = [['Essentials', 6, 'The lines you meet most at your level'], ['Advanced', 12, 'Adds the next most common lines, blunders included'], ['Everything', MAX_LINES, 'Every line players at your level meet']];
 const depthName = (n) => (DEPTHS.find(([, d]) => d >= n) || DEPTHS.at(-1))[0];
 let allLines = []; // the opening's lines at every depth (lines is the first n of them)
 const MIN_LINE = 0.03;   // a side line needs 3% of the opening's games to become a line of its own
@@ -369,10 +369,9 @@ function buildLines(op) {
     return { ...l, moves: reply ? [...l.moves, reply.san] : l.trap && l.moves.length === l.trap.ply + 2 ? l.moves : l.moves.slice(0, -1) };
   }).filter((l) => l.moves.length && !seen.has(lineKey(l.moves)) && seen.add(lineKey(l.moves)))
     .map((l) => ({ ...l, theory: isTheory(l.moves, op.side) }))
-    // Known theory first (every reply one strong players make), then how players at your level most
-    // often answer; each group by how many games at your level reach the point where the line branches
-    // off (the end's share would put short lines before long common ones).
-    .sort((a, b) => b.theory - a.theory || b.branch - a.branch || b.share - a.share);
+    // The main line (always the most common reply), then the lines players at your level meet most:
+    // the same number the list shows beside each line.
+    .sort((a, b) => (b.branch === 1) - (a.branch === 1) || b.share - a.share);
   // The known, named traps of this opening go right after the theory, each with how often players at
   // your level fall for it when the games say; a slip found in the games that one of them covers goes.
   const named = namedTraps(op), same = (l) => named.some((n) => n.trap.ply === l.trap.ply && lineKey(n.moves.slice(0, n.trap.ply + 1)) === lineKey(l.moves.slice(0, l.trap.ply + 1)));
