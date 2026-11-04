@@ -1,20 +1,20 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, BOOK } from './board.js?v=20261104155452';
-import { engineEval, winPct } from './profile.js?v=20261104155452';
-import { banner, confetti } from './celebrate.js?v=20261104155452';
-import { PLAN, VS_PLAN } from './styles.js?v=20261104155452';
-import { GUIDE } from './guide.js?v=20261104155452';
-import { hanging } from './ideas.js?v=20261104155452';
-import { openingOf, loadBook, key } from './book.js?v=20261104155452';
+import { drawBoard, enableDrag, BOOK } from './board.js?v=20261104160741';
+import { engineEval, winPct } from './profile.js?v=20261104160741';
+import { banner, confetti } from './celebrate.js?v=20261104160741';
+import { PLAN, VS_PLAN } from './styles.js?v=20261104160741';
+import { GUIDE } from './guide.js?v=20261104160741';
+import { hanging } from './ideas.js?v=20261104160741';
+import { openingOf, loadBook, key } from './book.js?v=20261104160741';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const pct = (x) => `${Math.round(x * 100)}%`;
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(`opening-book-v2${k}`)) ?? d; } catch { return d; } };
 const within = (ms, p) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error(`no answer in ${ms / 1000} s`)), ms))]);
-const FEW_GAMES = 100, MINE = 12; // your first 12 moves count as the opening
+const MIN_GAMES = 20, FEW_GAMES = 100, MINE = 12; // your first 12 moves count as the opening
 const mv = (i, san) => `${Math.floor(i / 2) + 1}${i % 2 ? '…' : '.'}${san}`;
 
 const speed = load('-speed', 'blitz');
@@ -116,9 +116,12 @@ function buttons() {
   $('#test-resign').disabled = g.done || g.c.isGameOver() || !n;
   if ($('#test-resign').dataset.sure && $('#test-resign').disabled) { delete $('#test-resign').dataset.sure; $('#test-resign').textContent = 'Resign'; }
 }
-// Stockfish's move for the position on the board, for Hint and Best move.
+// For Hint and Best move: on the line its move, as following the button must not bring the off-the-line stamp; past it Stockfish's.
 async function bestNow() {
-  const t = g, fen = t.c.fen(), { best } = await deepOf(fen);
+  const t = g, fen = t.c.fen(), moves = t.c.history();
+  const pick = !t.off && !t.cleared && lineMove(soundMoves(kidsOf(nodeAt(await treeNow(), moves))), t.me);
+  if (pick) { const m = new Chess(fen).move(pick.san); return g === t && t.c.fen() === fen ? { from: m.from, to: m.to, line: mv(moves.length, pick.san) } : null; }
+  const { best } = await deepOf(fen);
   return g === t && t.c.fen() === fen && best ? { from: best.slice(0, 2), to: best.slice(2, 4) } : null;
 }
 function over() {
@@ -143,7 +146,7 @@ function humanPick(ranked) {
 async function maiaPlays() {
   const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true });
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261104155452'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104155452');
+  const { maia3Move } = await import('./maia3.js?v=20261104160741'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104160741');
   let r = null;
   try { r = humanPick((await within(20000, maia3Move(fen, legal, rating, rating))).ranked); } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }
@@ -271,10 +274,34 @@ async function playLine(t, before, plays) {
 function lineEnded(tree, next, moves) {
   return moves.length >= 20 || (!soundMoves(kidsOf(nodeAt(tree, moves))).length && !next.get(key(moves))?.size);
 }
+// The opponent's move that no line on the Openings page follows, as its index; null if there is none. The same limits as
+// buildLines in app.js: from where the opening gets its name, a reply is taught if it is the most common, a main reply
+// of 2000+ players, a trap, or at least 5% of games here and 3% of the opening's. Change them together.
+function leftLines(tree, names, sans, me) {
+  let root = 0, family = null;
+  sans.forEach((_, i) => { const f = names.get(key(sans.slice(0, i + 1)))?.split(': ')[0]; if (f && f !== family) { family = f; root = i + 1; } });
+  let share = 1;
+  for (let i = root; i < sans.length; i++) {
+    if ((i % 2 === 0) === (me === 'w')) continue;
+    const node = nodeAt(tree, sans.slice(0, i));
+    if (!node) break;
+    const groups = stat(node, level()).n >= MIN_GAMES ? level() : range(band()[0], 9), total = stat(node, groups).n;
+    if (total < MIN_GAMES) break; // the games have run out: the line ended before this move
+    const count = (c) => stat(c, groups).n, kids = Object.entries(node[3] || {}).sort((a, b) => count(b[1]) - count(a[1]));
+    const child = node[3]?.[clean(sans[i])], m = child && stat(child, groups);
+    if (!m) return i;
+    const top = stat(node, [6, 7, 8]).n, atTop = stat(child, [6, 7, 8]).n, next = share * m.n / total;
+    const theory = atTop >= MIN_GAMES && atTop / top >= 0.15 && m.n >= 3;
+    const trap = m.n >= 30 && m.n / total >= 0.05 && forMe(m, me === 'w' ? 'b' : 'w') <= 0.38;
+    if (kids[0][0] !== clean(sans[i]) && !theory && !trap && !(m.n >= MIN_GAMES && m.n / total >= 0.05 && next >= 0.03)) return i;
+    share = next;
+  }
+  return null;
+}
 async function checkCleared(t) {
   if (t.cleared && !t.done) return whatNow(t); // playing on: the questions follow the position
   if (t.off || t.cleared || t.done) return;
-  const moves = t.c.history(), { next } = await loadBook();
+  const moves = t.c.history(), { next, names } = await loadBook();
   if (!lineEnded(await treeNow(), next, moves)) return;
   await within(8000, FULL).catch(() => {}); // the small file ends early: ask the full one before saying the line is over
   const tree = await treeNow();
@@ -285,7 +312,9 @@ async function checkCleared(t) {
   t.family = f;
   whatNow(t);
   live(moves);
-  if (mine >= 4) { confetti(110); stamp(`${f} cleared`, `${mine} moves on the line. What to do next is under the board`, '', [on, again]); }
+  const rare = leftLines(tree, names, moves, t.me);
+  if (rare !== null) stamp('The line is over', `Maia played a rare move, ${mv(rare, moves[rare])}. What to do next is under the board`, 'draw', [on, again]);
+  else if (mine >= 4) { confetti(110); stamp(`${f} cleared`, `${mine} moves on the line. What to do next is under the board`, '', [on, again]); }
   else stamp('The line is over', 'Maia left the known lines. What to do next is under the board', 'draw', [on, again]);
 }
 // What to think about now the line is over: the opening's plan, then questions about this very position. Stockfish
@@ -474,7 +503,7 @@ $('#test-walk').addEventListener('click', (e) => {
   if (by === '0') { endWalk(); view = null; draw(); } else if (by) stepWalk(Number(by));
 });
 $('#test-hint').addEventListener('click', async () => { const b = await bestNow(); if (b) { g.hint = b.from; draw(); } });
-$('#test-best').addEventListener('click', async () => { const b = await bestNow(); if (b) { g.hint = null; g.best = b; draw(); } });
+$('#test-best').addEventListener('click', async () => { const b = await bestNow(); if (b) { g.hint = null; g.best = b; draw(); if (b.line) $('#test-status').textContent = `The line plays ${b.line}.`; } });
 // Back to the position on the board, or your last move when you are at the end, and on from there. A position with
 // Maia to move goes back one more, so it is your move again. A finished game stays in the list; this becomes a new one.
 function rewind(to, then) {
