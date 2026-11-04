@@ -1,9 +1,10 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261104135740';
-import { engineEval, winPct } from './profile.js?v=20261104135740';
-import { openingOf, leftBook, loadBook, key } from './book.js?v=20261104135740';
+import { drawBoard, enableDrag } from './board.js?v=20261104135940';
+import { engineEval, winPct } from './profile.js?v=20261104135940';
+import { banner } from './celebrate.js?v=20261104135940';
+import { openingOf, leftBook, loadBook, key } from './book.js?v=20261104135940';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -89,7 +90,7 @@ async function live(sans) {
   const [off, tree] = await Promise.all([leftBook(sans), TREE]), node = nodeAt(tree, sans.slice(0, 20)), s = node && sans.length <= 20 && stat(node, level());
   if (g.c.history().length !== sans.length) return;
   const name = g.me === 'w' ? 'White' : 'Black';
-  $('#test-live').textContent = [off ? `Out of theory since ${mv(off.ply, off.san)}.` : sans.length ? 'Still in known theory.' : '',
+  $('#test-live').textContent = [g.off?.note, g.off ? '' : off ? `Out of theory since ${mv(off.ply, off.san)}.` : sans.length ? 'Still in known theory.' : '',
     s?.n >= FEW_GAMES ? `${name} scores ${pct(forMe(s, g.me))} from here at your level, in ${s.n.toLocaleString('en')} games.` : ''].filter(Boolean).join(' ');
 }
 const myTurn = () => !g.done && !g.busy && g.c.turn() === g.me && !g.c.isGameOver();
@@ -109,7 +110,8 @@ function over() {
   if (!g.c.isGameOver()) return false;
   const lost = g.c.isCheckmate() && g.c.turn() === g.me;
   $('#test-status').innerHTML = `<b>${g.c.isCheckmate() ? (lost ? 'Maia won by checkmate.' : 'You won by checkmate.') : 'Draw.'}</b>`;
-  g.done = true; buttons();
+  if (g.c.isCheckmate()) banner(lost ? 'Checkmated' : 'Checkmate!', lost ? 'lost' : ''); else banner('Draw', 'draw');
+  g.done = true; buttons(); saveGame();
   report();
   return true;
 }
@@ -117,7 +119,7 @@ function over() {
 async function maiaPlays() {
   const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true }), began = Date.now();
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261104135740'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104135740');
+  const { maia3Move } = await import('./maia3.js?v=20261104135940'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104135940');
   let r = null;
   try { r = (await within(20000, maia3Move(fen, legal, rating, rating))).move; } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }
@@ -126,28 +128,84 @@ async function maiaPlays() {
   if (g !== t) return; // a new game began while Maia thought
   t.busy = false; $('#test-status').textContent = 'Your move.';
   t.c.move({ from: r.from, to: r.to, promotion: r.promotion || 'q' });
-  draw(); over();
+  draw(); if (!over()) saveGame();
 }
 function tryMove(from, to) {
   if (!g || !myTurn()) return false;
-  try { g.c.move({ from, to, promotion: 'q' }); } catch { return false; }
+  const before = g.c.history();
+  let played;
+  try { played = g.c.move({ from, to, promotion: 'q' }); } catch { return false; }
+  checkLine(g, before, played.san);
   g.sel = null; g.hint = g.best = null; draw();
-  if (!over()) maiaPlays();
+  if (!over()) { saveGame(); maiaPlays(); }
   return true;
 }
 function newGame() {
   run++; view = null; $('#test-walk').hidden = true;
-  g = { me: side, c: new Chess(), sel: null, busy: false, arrows: null };
+  g = { id: Date.now(), me: side, c: new Chess(), sel: null, busy: false, arrows: null };
   $('#test-out').hidden = true;
   document.querySelectorAll('[data-side]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.side === side));
   $('#test-status').textContent = 'Your move.';
-  draw();
+  draw(); pastList();
   if (side === 'b') maiaPlays();
+}
+
+// ---------- Your earlier games ----------
+// Saved after every move under opening-book-v2 (so they follow your login), newest first; a game you left can be picked up again.
+const PAST = '-test-games', MAX_PAST = 30;
+const past = () => load(PAST, []);
+const resultOf = (t) => (t.resigned ? 'L' : !t.c.isGameOver() ? 'U' : !t.c.isCheckmate() ? 'D' : t.c.turn() === t.me ? 'L' : 'W');
+async function saveGame() {
+  const t = g, sans = t.c.history();
+  if (sans.length < (t.me === 'w' ? 1 : 2)) { // nothing of yours left in it: not a game to keep
+    try { localStorage.setItem(`opening-book-v2${PAST}`, JSON.stringify(past().filter((x) => x.id !== t.id))); } catch {}
+    return pastList();
+  }
+  const [f, v] = await openingOf(sans.slice(0, 24));
+  const row = { id: t.id, me: t.me, moves: sans.join(' '), result: resultOf(t), name: v ? `${f}: ${v}` : f };
+  try { localStorage.setItem(`opening-book-v2${PAST}`, JSON.stringify([row, ...past().filter((x) => x.id !== t.id)].sort((a, b) => b.id - a.id).slice(0, MAX_PAST))); } catch {}
+  pastList();
+}
+function pastList() {
+  const rows = past();
+  $('#test-past-card').hidden = !rows.length;
+  $('#test-past').innerHTML = rows.map((x) => `<li><button type="button" data-past="${x.id}"${x.id === g?.id ? ' aria-current="true"' : ''}>
+    <span class="pf-res r-${x.result}">${x.result === 'U' ? '–' : x.result}</span>
+    <span>${esc(x.name)}<small>${x.me === 'w' ? 'White' : 'Black'} · ${new Date(x.id).toLocaleDateString('en', { day: 'numeric', month: 'short' })} · ${Math.ceil(x.moves.split(' ').length / 2)} move${x.moves.split(' ').length > 2 ? 's' : ''}${x.result === 'U' ? ' · not finished' : ''}</small></span></button></li>`).join('');
+}
+function openPast(id) {
+  const x = past().find((y) => y.id === id);
+  if (!x) return;
+  run++; view = null; $('#test-walk').hidden = true; $('#test-out').hidden = true;
+  const c = new Chess(); x.moves.split(' ').forEach((m) => c.move(m));
+  side = x.me;
+  g = { id: x.id, me: x.me, c, sel: null, busy: false, arrows: null, done: x.result !== 'U', resigned: x.result === 'L' && !c.isGameOver() };
+  document.querySelectorAll('[data-side]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.side === side));
+  $('#test-status').innerHTML = g.done ? `<b>${{ W: 'You won.', L: 'You lost.', D: 'Draw.' }[x.result]}</b>` : 'Your move.';
+  draw(); pastList();
+  if (g.done) report();
+  else if (c.turn() !== x.me) maiaPlays();
 }
 
 // ---------- The report ----------
 const evals = new Map();
 const evalOf = (fen) => { if (!evals.has(fen)) evals.set(fen, engineEval(fen)); return evals.get(fen); };
+// What makes a move part of the line: known theory, or played by strong players (the same rule live and in the report).
+const kidsOf = (node) => Object.entries(node?.[3] || {}).map(([san, c]) => ({ san, ...stat(c, level()), top: stat(c, strong()).n, all: stat(c, range(0, 9)).n }));
+const soundMoves = (kids) => { const all = kids.reduce((s, m) => s + m.top, 0); return kids.filter((m) => m.top >= 20 && m.top / all >= 0.1); };
+const onLine = (next, moves, san, sound) => next.get(key(moves))?.has(clean(san)) || sound.some((m) => m.san === clean(san));
+const lineMove = (sound, me) => { const score = (m) => (m.n >= FEW_GAMES ? forMe(m, me) : -1); return [...sound].sort((a, b) => score(b) - score(a) || b.top - a.top)[0]; };
+// The first time your move leaves the line, say so at once. Where the games run out there is nothing to say.
+async function checkLine(t, before, san) {
+  const [tree, { next }] = await Promise.all([TREE, loadBook()]);
+  if (g !== t || t.off) return;
+  const sound = soundMoves(kidsOf(nodeAt(tree, before))), pick = lineMove(sound, t.me);
+  if (!pick || onLine(next, before, san, sound)) return;
+  const i = before.length;
+  t.off = { ply: i, note: `You left the line with ${mv(i, san)}; it plays ${mv(i, pick.san)}.` };
+  banner(`Off the line · The line plays ${mv(i, pick.san)}`, 'lost');
+  live(t.c.history());
+}
 // The line you opened with: your own moves as long as they are known theory or something strong players play;
 // from the first that is not, what strong players play that scores best at your level, against the most common
 // answers. Where the games run out, Stockfish's move ends it.
@@ -157,7 +215,7 @@ async function theLine(tree, next, sans, me) {
   for (let i = 0; i < 24 && mine < MINE; i++) {
     const node = nodeAt(tree, line.sans), played = onGame ? sans[i] : null, label = (san) => mv(i, san);
     if (onGame && !played) onGame = false;
-    const kids = Object.entries(node?.[3] || {}).map(([san, c]) => ({ san, ...stat(c, level()), top: stat(c, strong()).n, all: stat(c, range(0, 9)).n }));
+    const kids = kidsOf(node);
     if ((i % 2 === 0) !== (me === 'w')) { // their move
       const common = [...kids].sort((a, b) => b.n - a.n || b.all - a.all)[0];
       const san = played || common?.san;
@@ -166,11 +224,10 @@ async function theLine(tree, next, sans, me) {
       continue;
     }
     mine++;
-    const topAll = kids.reduce((s, m) => s + m.top, 0), sound = kids.filter((m) => m.top >= 20 && m.top / topAll >= 0.1);
-    const fine = played && (next.get(key(line.sans))?.has(clean(played)) || sound.some((m) => m.san === clean(played)));
+    const sound = soundMoves(kids);
+    const fine = played && onLine(next, line.sans, played, sound);
     if (fine) { line.sans.push(played); line.notes.push(`${label(played)}: you played this too.`); continue; }
-    const score = (m) => (m.n >= FEW_GAMES ? forMe(m, me) : -1);
-    const pick = [...sound].sort((a, b) => score(b) - score(a) || b.top - a.top)[0] || (played ? null : kids.filter((m) => m.top >= 20).sort((a, b) => b.top - a.top)[0]);
+    const pick = lineMove(sound, me) || (played ? null : kids.filter((m) => m.top >= 20).sort((a, b) => b.top - a.top)[0]);
     let san = pick?.san, why = pick ? `${pick.n >= FEW_GAMES ? `scores ${pct(forMe(pick, me))} at your level` : 'strong players play it'}` : '';
     if (!san) { // the games run out here
       const b = new Chess(); line.sans.forEach((m) => b.move(m));
@@ -298,17 +355,19 @@ $('#test-best').addEventListener('click', async () => { const b = await bestNow(
 $('#test-back').addEventListener('click', () => {
   if (g.c.turn() === g.me) g.c.undo();
   g.c.undo();
+  if (g.off?.ply >= g.c.history().length) g.off = null; // the move that left the line was taken back
   run++; view = null; g.walk = null; $('#test-walk').hidden = true; g.done = false; g.rows = null; g.sel = g.hint = g.best = null;
   $('#test-out').hidden = true; $('#test-status').textContent = 'Your move.';
-  draw();
+  draw(); saveGame();
 });
 $('#test-resign').addEventListener('click', (e) => {
   const b = e.currentTarget;
   if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Press again to resign'; return; }
   g.done = g.resigned = true; g.sel = g.hint = g.best = null;
   $('#test-status').innerHTML = '<b>You resigned.</b>';
-  draw(); report();
+  draw(); saveGame(); report();
 });
+$('#test-past').addEventListener('click', (e) => { const x = e.target.closest('[data-past]'); if (x) openPast(Number(x.dataset.past)); });
 $('#test-report').addEventListener('click', report);
 $('#test-new').addEventListener('click', newGame);
 document.querySelectorAll('[data-side]').forEach((b) => b.addEventListener('click', () => { side = b.dataset.side; try { localStorage.setItem('opening-book-v2-test-side', JSON.stringify(side)); } catch {} newGame(); }));

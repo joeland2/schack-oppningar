@@ -2998,6 +2998,10 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .test-walk { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
 .test-walk[hidden] { display: none; } .test-walk p { margin: 0; font-size: 14px; }
 .test-line { font: 13px/1.6 var(--font-mono); } .test-line .off { color: var(--good); font-weight: 500; }
+.test-past { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; max-height: 320px; overflow: auto; }
+.test-past button { width: 100%; display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; gap: 10px; text-align: left; background: none; border: 0; border-radius: 4px; padding: 6px; color: inherit; font: inherit; font-size: 14px; cursor: pointer; }
+.test-past button:hover, .test-past button[aria-current="true"] { background: var(--raised); } .test-past small { display: block; color: var(--muted); font-size: 12px; }
+.test-past .pf-res.r-U { background: var(--raised); color: var(--muted); }
 .test-setup { display: grid; gap: 12px; } .test-setup h1, .test-setup p { margin: 0; }
 .test-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .test-rating { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); } .test-rating input { width: 5.5em; }

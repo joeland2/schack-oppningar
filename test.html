@@ -16,10 +16,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261104135740">
-  <script src="move.js?v=20261104135740"></script>
-  <script src="header.js?v=20261104135740" defer></script>
-  <script src="theme.js?v=20261104135740"></script>
+  <link rel="stylesheet" href="style.css?v=20261104135940">
+  <script src="move.js?v=20261104135940"></script>
+  <script src="header.js?v=20261104135940" defer></script>
+  <script src="theme.js?v=20261104135940"></script>
 </head>
 <body>
   <header class="top">
@@ -39,7 +39,7 @@
         <div class="play-pl" id="pl-top"><b>Maia 3 <span id="test-maia"></span></b></div>
         <div class="test-board">
           <div class="evalbar" id="test-eval" role="img" aria-label="Evaluation"><div class="evalbar-white"></div><span class="evalbar-num"></span></div>
-          <div id="board" class="board"></div>
+          <div class="board-frame"><div id="board" class="board"></div></div>
         </div>
         <div class="play-pl" id="pl-bot"><b>You</b></div>
         <p class="test-row test-acts"><button type="button" class="ghost" id="test-hint">Hint</button><button type="button" class="ghost" id="test-best">Best move</button><button type="button" class="ghost" id="test-back">Take back</button><button type="button" class="ghost" id="test-resign">Resign</button></p>
@@ -58,10 +58,11 @@
         <div class="play-card test-report" id="test-out" hidden></div>
         <ol class="play-moves" id="test-moves"></ol>
         <p class="play-status" id="test-status" aria-live="polite"></p>
+        <div class="play-card" id="test-past-card" hidden><p class="sups-k">Your games</p><ul class="test-past" id="test-past"></ul></div>
       </aside>
     </section>
   </main>
 
-  <script type="module" src="test.js?v=20261104135740"></script>
+  <script type="module" src="test.js?v=20261104135940"></script>
 </body>
 </html>
