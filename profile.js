@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261103210229';
-import { openLogin } from './login.js?v=20261103210229';
-import { STYLE_OF } from './styles.js?v=20261103210229';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261103210229';
-import { PEOPLE } from './pros.js?v=20261103210229';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261104114416';
+import { openLogin } from './login.js?v=20261104114416';
+import { STYLE_OF } from './styles.js?v=20261104114416';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261104114416';
+import { PEOPLE } from './pros.js?v=20261104114416';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1863,7 +1863,7 @@ function render(name, at, full) {
     </section>
     ${me && window.earlyAccess?.() ? fitCard(p, name) : ''}
     ${opponentsCard(p, me, name)}
-    ${window.earlyAccess?.() ? rivalsCard(name, me) : ''}
+    ${rivalsCard(name, me)}
     <section class="pf-card" id="pf-games"></section>
     ${me ? starsCard() : ''}
     ${nextActions(name, me, skills)}
@@ -2047,7 +2047,7 @@ function opponentsCard(p, me, name) {
         <small class="num">Scored ${pct(x.score)} · expected ${exp(x)} · ${games(x.n)}${few ? ' · few games so far' : ''}</small></li>`; }).join('')}</ul>
     <p class="pf-skill-scale">The bar is the score against what the rating gaps predict, in percentage points: +5 means 5 points more than expected. A game can count in more than one group; groups with fewer than 10 games are left out, and under 20 is too few to read much into.</p></section>`;
 }
-// Rivals (supporters first): everyone met 3 times or more in the games read, worst for this player first.
+// Rivals: everyone met 3 times or more in the games read, worst for this player first.
 // The nemesis is the worst of those met 5 times or more, if under 50%; the most played gets its own story.
 const RIVAL_MIN = 3, NEMESIS_MIN = 5;
 function rivalsOf(name, games, min = RIVAL_MIN) {
@@ -2180,7 +2180,7 @@ function rivalKit(name, me) {
       ${page ? '' : `<ul class="pf-rv-games">${quick ? game(quick, 'Quickest win') : ''}${long ? game(long, 'Longest loss') : ''}${game(g[0], 'Latest')}</ul>`}`;
   };
   const chip = (t) => `<span class="chip">${t}</span>`;
-  const acts = (r, page) => `<div class="pf-rv-acts">${page ? '' : `<a class="pf-rv-btn" href="${h2h(r)}">The whole rivalry →</a>`}${me && !page && revengeLink(name, r) ? `<a class="pf-rv-btn hot" href="${esc(revengeLink(name, r))}">Revenge →</a>` : ''}${me && r.l > r.w ? `<button type="button" class="pf-rv-btn" data-wanted="${esc(name)}|${esc(r.id)}">Wanted poster ↓</button>` : ''}${page ? '<button type="button" class="pf-rv-btn" data-rv-share>Share this rivalry</button>' : ''}</div>`;
+  const acts = (r, page) => `<div class="pf-rv-acts">${page ? '' : `<a class="pf-rv-btn" href="${h2h(r)}">The whole rivalry →</a>`}${me && !page && revengeLink(name, r) ? `<a class="pf-rv-btn hot" href="${esc(revengeLink(name, r))}">Revenge →</a>` : ''}${me && r.l > r.w ? `<button type="button" class="pf-rv-btn" data-wanted="${esc(name)}|${esc(r.id)}">Wanted poster ↓</button>` : ''}${page ? `<button type="button" class="pf-rv-btn" data-rv-share>${me ? `Send to ${esc(nick(r.name))}` : 'Share this rivalry'}</button>` : ''}</div>`;
   return { you, your, h2h, link, rec, day, game, story, chip, acts };
 }
 // Two lists: Friends, the casual games (challenges, mostly people you know), and Rated, the games the pairing
@@ -2205,18 +2205,22 @@ function rivalsBody(name, me, rated, casual, page) {
   };
   const friends = casual ? panel(casual) : { rivals: [], html: `<p class="info">Looking for ${your} rivals in ${your} casual games…</p>${page ? SKELETON : ''}` }, pool = panel(rated);
   RIVALS.set(name, [...friends.rivals, ...pool.rivals]);
-  const first = friends.rivals.length || !casual ? 'f' : 'r';
-  const tab = (k, label, n) => `<button type="button" data-rv-tab="${k}" aria-pressed="${k === first}">${label} <span class="og-n">${n}</span></button>`;
-  return `<div class="seg pf-rv-tabs" role="group" aria-label="Which games">${tab('f', 'Friends', friends.rivals.length)}${tab('r', 'Rated', pool.rivals.length)}</div>
+  // Not read yet and not on its way (a visitor's card): Rated first, and pressing Friends reads them.
+  const onTap = !casual && !page && !window.earlyAccess?.();
+  const first = friends.rivals.length || (!casual && !onTap) ? 'f' : 'r';
+  const tab = (k, label, n, more = '') => `<button type="button" data-rv-tab="${k}" aria-pressed="${k === first}"${more}>${label}${n === null ? '' : ` <span class="og-n">${n}</span>`}</button>`;
+  return `<div class="seg pf-rv-tabs" role="group" aria-label="Which games">${tab('f', 'Friends', onTap ? null : friends.rivals.length, onTap ? ` data-rv-load="${esc(name)}"` : '')}${tab('r', 'Rated', pool.rivals.length)}</div>
     <p class="pf-rv-about" data-rv="f"${first === 'f' ? '' : ' hidden'}>Casual games: the challenges, mostly with people ${you} know. From ${your} last ${casual?.length || 0} casual games.</p>
     <p class="pf-rv-about" data-rv="r"${first === 'r' ? '' : ' hidden'}>Rated games: the opponents the pairing gave ${me ? 'you' : 'them'}. From ${your} last ${rated.length} rated games.</p>
     <div data-rv="f"${first === 'f' ? '' : ' hidden'}>${friends.html}</div><div data-rv="r"${first === 'r' ? '' : ' hidden'}>${pool.html}</div>`;
 }
+const redrawRivals = (name, me) => { const el = document.getElementById('rivals'); if (el) { el.outerHTML = rivalsCard(name, me); applyHidden(name, me); } };
 function rivalsCard(name, me) {
   const rated = storedGames(name) || (RAW_NAME.toLowerCase() === name.toLowerCase() ? RAW : null);
   if (!rated?.length) return '';
   const casual = casualOf(name);
-  if (!casual) setTimeout(() => loadCasual(name, () => { const el = document.getElementById('rivals'); if (el) el.outerHTML = rivalsCard(name, me); }), 2000); // after the profile's own reading
+  // Friendly games read by themselves only for supporters: for everyone it would be a second Lichess call beside the profile's own reading. Others press Friends.
+  if (!casual && window.earlyAccess?.()) setTimeout(() => loadCasual(name, () => redrawRivals(name, me)), 2000);
   return `<section class="pf-card pf-rivals" id="rivals"><div class="pf-more-head"><h2>Rivals</h2><span>The players ${me ? 'you' : 'they'} met ${RIVAL_MIN} times or more · <a href="rivals.html?u=${encodeURIComponent(name)}">Open as a page →</a></span></div>
     ${rivalsBody(name, me, rated, casual)}<div class="pf-rv-acts"><a class="pf-rv-btn hot" href="rivals.html?u=${encodeURIComponent(name)}">All ${me ? 'your' : 'their'} rivals on one page →</a></div></section>`;
 }
@@ -2225,6 +2229,8 @@ document.addEventListener('click', (e) => {
   const box = b.closest('.pf-rivals');
   box.querySelectorAll('[data-rv-tab]').forEach((x) => x.setAttribute('aria-pressed', x === b));
   box.querySelectorAll('[data-rv]').forEach((x) => { x.hidden = x.dataset.rv !== b.dataset.rvTab; });
+  const load = b.dataset.rvLoad;
+  if (load) { b.removeAttribute('data-rv-load'); loadCasual(load, () => {}).then(() => redrawRivals(load, isMe(load))); }
 });
 
 // ---------- The rivals page (rivals.html) ----------
@@ -2238,6 +2244,8 @@ async function rivalsPage(name, vs) {
   if (vs && isMe(vs) && !me) { history.replaceState(null, '', `rivals.html?u=${encodeURIComponent(vs)}&vs=${encodeURIComponent(name)}`); return rivalryPage(vs, name, true); }
   if (vs) return rivalryPage(name, vs, me);
   document.title = `${nick(name)}'s rivals · Chess Labs`;
+  // Rivals set to Only you on the profile: not here either. A rivalry link (vs) is sent on purpose and still opens.
+  if (!me && (await hiddenOf(name)).includes?.('rivals')) { el.innerHTML = `<section class="rv-head"><span class="kicker-k">Rivals</span><h1>${esc(nick(name))}</h1><p class="info">${esc(nick(name))} keeps their rivals private.</p></section>`; return; }
   el.innerHTML = `<section class="rv-head"><span class="kicker-k">Rivals</span><h1>${me ? 'Your rivals' : esc(nick(name))}</h1><p class="info">The players ${me ? 'you' : 'they'} have met ${RIVAL_MIN} times or more. Open one for the whole rivalry.</p></section><section class="pf-card pf-rivals" id="rivals"><p class="info">Reading ${me ? 'your' : 'their'} games…</p>${SKELETON}</section>`;
   try {
     await gamesReady;
@@ -2274,7 +2282,7 @@ async function rivalryPage(name, vs, me) {
     const r = rivalsOf(name, all, 1).rivals.find((x) => x.id === vs.toLowerCase());
     if (!r) { el.insertAdjacentHTML('beforeend', `<p class="info">${esc(nick(name))} and ${esc(nick(vs))} have not played each other on Lichess.</p>`); return; }
     RIVALS.set(name, [r]);
-    const { story, rec, acts, you } = rivalKit(name, me);
+    const { story, rec, acts, you, day } = rivalKit(name, me);
     const g = r.games, pts = (xs) => xs.reduce((t, x) => t + (x.res === 'W' ? 1 : x.res === 'D' ? 0.5 : 0), 0);
     const group = (key) => { const m = new Map(); for (const x of g) { const k = key(x); if (k == null) continue; if (!m.has(k)) m.set(k, []); m.get(k).push(x); } return [...m]; };
     const wdlRow = (label, xs) => { const w = xs.filter((x) => x.res === 'W').length, d = xs.filter((x) => x.res === 'D').length, l = xs.length - w - d;
@@ -2292,10 +2300,14 @@ async function rivalryPage(name, vs, me) {
     const rg = old.filter((x) => x.g.speed === main && rt(x, true) && rt(x, false));
     let chart = '';
     if (rg.length >= 3) {
-      const all = rg.flatMap((x) => [rt(x, true), rt(x, false)]), lo = Math.min(...all) - 20, hi = Math.max(...all) + 20;
+      const all = rg.flatMap((x) => [rt(x, true), rt(x, false)]), lo = Math.floor((Math.min(...all) - 20) / 10) * 10, hi = Math.ceil((Math.max(...all) + 20) / 10) * 10;
       const line = (mine) => rg.map((x, i) => `${((i / (rg.length - 1)) * 600).toFixed(1)},${(140 - ((rt(x, mine) - lo) / (hi - lo)) * 140).toFixed(1)}`).join(' ');
-      chart = `<svg class="rv-chart" viewBox="0 0 600 140" preserveAspectRatio="none" role="img" aria-label="Both ratings over their ${rg.length} ${main} games"><polyline class="a" points="${line(true)}"/><polyline class="b" points="${line(false)}"/></svg>
-        <p class="rv-legend"><span class="a">${A} ${rt(rg[0], true)} → ${rt(rg.at(-1), true)}</span><span class="b">${B} ${rt(rg[0], false)} → ${rt(rg.at(-1), false)}</span></p>`;
+      const ticks = [hi, Math.round((lo + hi) / 20) * 10, lo], top = (v) => (1 - (v - lo) / (hi - lo)) * 100;
+      const low = rg.reduce((a, x) => (Math.min(rt(x, true), rt(x, false)) < Math.min(rt(a, true), rt(a, false)) ? x : a)), lowMine = rt(low, true) <= rt(low, false);
+      chart = `<div class="rv-chart-box"><div class="rv-y" aria-hidden="true">${ticks.map((v) => `<span style="top:${top(v)}%">${v}</span>`).join('')}</div>
+        <svg class="rv-chart" viewBox="0 0 600 140" preserveAspectRatio="none" role="img" aria-label="Both ratings over their ${rg.length} ${main} games">${ticks.map((v) => `<line x1="0" x2="600" y1="${(top(v) * 1.4).toFixed(1)}" y2="${(top(v) * 1.4).toFixed(1)}"/>`).join('')}<polyline class="a" points="${line(true)}"/><polyline class="b" points="${line(false)}"/></svg></div>
+        <p class="rv-x"><span>${day(rg[0].g)}</span><span>${day(rg.at(-1).g)}</span></p>
+        <p class="rv-legend"><span class="a">${A} ${rt(rg[0], true)} → ${rt(rg.at(-1), true)}</span><span class="b">${B} ${rt(rg[0], false)} → ${rt(rg.at(-1), false)}</span><span class="rv-low">Lowest: ${lowMine ? A : B} ${rt(low, lowMine)}, ${day(low.g)}</span></p>`;
     }
     const gap = group((x) => { const d = (rt(x, true) || 0) - (rt(x, false) || 0); return !rt(x, true) || !rt(x, false) ? null : d >= 100 ? `${A} 100+ higher` : d <= -100 ? `${B} 100+ higher` : 'Within 100'; }).map(([k, xs]) => wdlRow(k, xs));
     // The season: who won each month, and this month so far.
@@ -2396,7 +2408,7 @@ const JUMPS = [['Rating', '#pf-chart'], ['Numbers', '.pf-kpis'], ['Skills', '#pf
   ['For you', '.pf-fit'], ['Opponents', '.pf-opps'], ['Rivals', '#rivals'], ['Games', '#pf-games'], ['Stars', '#pf-stars']];
 function jumpNav() {
   const nav = $('#profile .pf-jump');
-  if (nav) nav.innerHTML = JUMPS.filter(([, sel]) => $(`#profile ${sel}`)).map(([label, sel]) => `<button type="button" data-jump="${sel}">${label}</button>`).join('');
+  if (nav) nav.innerHTML = JUMPS.filter(([, sel]) => $(`#profile ${sel}:not([data-off])`)).map(([label, sel]) => `<button type="button" data-jump="${sel}">${label}</button>`).join('');
 }
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-jump]'); if (!b) return;
@@ -2412,7 +2424,7 @@ const hiddenOf = (name) => (HIDDEN[name.toLowerCase()] ??= fetch(`https://duhlvh
 // leaves the hidden parts out.
 function applyHidden(name, me) {
   if (me) return labels();
-  hiddenOf(name).then((off) => { if (shown?.[0] !== name || !Array.isArray(off)) return; for (const [k, , sel] of PANELS) if (off.includes(k)) $(`#profile ${sel}`)?.setAttribute('data-off', ''); });
+  hiddenOf(name).then((off) => { if (shown?.[0] !== name || !Array.isArray(off)) return; for (const [k, , sel] of PANELS) if (off.includes(k)) $(`#profile ${sel}`)?.setAttribute('data-off', ''); jumpNav(); });
 }
 function labels() {
   const on = shown && isMe(shown[0]) && account(), off = myHidden();
