@@ -3018,6 +3018,9 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .test-stamp .ghost { background: var(--surface); }
 .board-frame:has(.looking-back) .test-stamp { display: none; } /* looking back: the board comes first, the stamp returns with the game */
 .test-next p, .test-next ul { margin: 0; } .test-next ul { margin-top: 6px; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+.test-idea { display: flow-root; margin-top: 4px; }
+.test-idea .board.mini { float: right; width: 136px; margin: 2px 0 8px 12px; border-radius: 4px; overflow: hidden; }
+.test-idea.reading span { color: var(--muted); } .test-idea.reading span.on { color: var(--ink); }
 .test-tip { background: none; border: 0; padding: 2px 0; color: inherit; font: inherit; text-align: left; cursor: help; text-decoration: underline dotted var(--muted); text-underline-offset: 3px; }
 .test-tip b { visibility: hidden; margin-left: 4px; color: var(--good); font-family: var(--font-mono); } .test-tip.on b { visibility: visible; }
 .test-tip:disabled { opacity: .6; cursor: default; text-decoration: none; }

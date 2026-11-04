@@ -1,13 +1,14 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, BOOK, GLYPH } from './board.js?v=20261104203122';
-import { engineEval, winPct } from './profile.js?v=20261104203122';
-import { banner, confetti } from './celebrate.js?v=20261104203122';
-import { PLAN, VS_PLAN } from './styles.js?v=20261104203122';
-import { GUIDE } from './guide.js?v=20261104203122';
-import { hanging } from './ideas.js?v=20261104203122';
-import { openingOf, loadBook, key } from './book.js?v=20261104203122';
+import { drawBoard, enableDrag, BOOK, GLYPH } from './board.js?v=20261104204304';
+import { engineEval, winPct } from './profile.js?v=20261104204304';
+import { banner, confetti } from './celebrate.js?v=20261104204304';
+import { PLAN, VS_PLAN } from './styles.js?v=20261104204304';
+import { GUIDE } from './guide.js?v=20261104204304';
+import { hanging } from './ideas.js?v=20261104204304';
+import { ideaSteps, sentencesOf, playIdea } from './ideaboard.js?v=20261104204304';
+import { openingOf, loadBook, key } from './book.js?v=20261104204304';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -153,6 +154,7 @@ async function live(sans) {
 }
 const myTurn = () => !g.done && !g.busy && g.c.turn() === g.me && !g.c.isGameOver();
 function buttons() {
+  $('#test-next ul')?.toggleAttribute('hidden', !!g?.c.isGameOver()); // no questions about a finished game
   const n = g.c.history().length, enough = g.me === 'w' ? 1 : 2;
   $('#test-hint').disabled = $('#test-best').disabled = !!g.walk || new Chess(shownFen()).isGameOver() || (view === null && (g.busy || (g.c.turn() !== g.me && !g.done)));
   $('#test-back').disabled = g.busy || (view === null && n < enough);
@@ -198,7 +200,7 @@ function humanPick(ranked) {
 async function maiaPlays() {
   const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true });
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261104203122'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104203122');
+  const { maia3Move } = await import('./maia3.js?v=20261104204304'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104204304');
   let r = null;
   try { r = humanPick((await within(20000, maia3Move(fen, legal, rating, rating))).ranked); } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }
@@ -381,9 +383,24 @@ const NAME = { n: 'knight', b: 'bishop', q: 'queen', r: 'rook', p: 'pawn', k: 'k
 async function whatNow(t) {
   const c = t.c, me = t.me, family = t.family, fen = c.fen(), legal = c.moves({ verbose: true });
   const find = (o) => o[family] || Object.entries(o).find(([k]) => family.startsWith(k))?.[1];
-  const plan = find(me === 'w' ? PLAN : VS_PLAN), idea = !plan && find(GUIDE)?.idea?.split('. ').slice(0, 2).join('. ');
-  const el = $('#test-next'), head = `<p class="sups-k">Now the line is over</p>${plan ? `<p><b>Your plan:</b> ${plan}</p>` : idea ? `<p><b>The idea:</b> ${idea.replace(/\.?$/, '.')}</p>` : ''}`;
-  if (el.hidden) { el.innerHTML = `${head}<p>Stockfish is looking at this position…</p>`; el.hidden = false; } // the stamp points here: never an empty place
+  const plan = find(me === 'w' ? PLAN : VS_PLAN), idea = !plan && find(GUIDE)?.idea;
+  const el = $('#test-next'), head = '<p class="sups-k">Now the line is over</p>';
+  // The idea and its board stay the same element while the questions under them change with each move.
+  if ((plan || idea) && t.ideaFor !== family) {
+    t.ideaFor = family;
+    const moves = c.history().slice(0, t.clearedAt);
+    t.ideaEl = document.createElement('div');
+    t.ideaEl.className = 'test-idea';
+    t.ideaEl.innerHTML = `<div class="board mini" inert></div><p><b>${plan ? 'Your plan' : 'The idea'}:</b> ${sentencesOf(plan || idea).map((x, i) => `<span data-s="${i}">${esc(x)}</span>`).join(' ')}</p>`;
+    let named = moves.length;
+    for (let n = 1; n <= moves.length; n++) if ((await openingOf(moves.slice(0, n)))[0] === family) { named = n; break; }
+    if (g !== t || t.ideaFor !== family) return;
+    t.ideaSteps = ideaSteps(moves.slice(0, named), plan || idea, me, !!plan);
+    t.ideaGo = true;
+  }
+  const place = () => { if (t.ideaEl) el.querySelector('.sups-k').after(t.ideaEl); };
+  if (el.hidden) { el.innerHTML = `${head}<p>Stockfish is looking at this position…</p>`; place(); el.hidden = false; } // the stamp points here: never an empty place
+  if (t.ideaGo) { t.ideaGo = false; playIdea(t.ideaEl, t.ideaSteps, me); }
   // The best of these moves, as a move on the board.
   const bestOf = async (moves) => {
     if (!moves.length) return null;
@@ -409,6 +426,7 @@ async function whatNow(t) {
   t.tips = tips.map(([, m]) => m); t.tipShown = null;
   el.innerHTML = `${head}
     <ul>${tips.map(([q, m], i) => (m ? `<li><button type="button" class="test-tip" data-tip="${i}">${esc(q)} <b>${esc(m.san)}</b></button></li>` : `<li>${esc(q)}</li>`)).join('')}</ul>`;
+  place();
   buttons();
 }
 function showTip(i) {
