@@ -1,13 +1,13 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, BOOK, GLYPH } from './board.js?v=20261104164731';
-import { engineEval, winPct } from './profile.js?v=20261104164731';
-import { banner, confetti } from './celebrate.js?v=20261104164731';
-import { PLAN, VS_PLAN } from './styles.js?v=20261104164731';
-import { GUIDE } from './guide.js?v=20261104164731';
-import { hanging } from './ideas.js?v=20261104164731';
-import { openingOf, loadBook, key } from './book.js?v=20261104164731';
+import { drawBoard, enableDrag, BOOK, GLYPH } from './board.js?v=20261104164907';
+import { engineEval, winPct } from './profile.js?v=20261104164907';
+import { banner, confetti } from './celebrate.js?v=20261104164907';
+import { PLAN, VS_PLAN } from './styles.js?v=20261104164907';
+import { GUIDE } from './guide.js?v=20261104164907';
+import { hanging } from './ideas.js?v=20261104164907';
+import { openingOf, loadBook, key } from './book.js?v=20261104164907';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -66,7 +66,8 @@ function draw() {
   moves?.forEach((m) => b.move(m));
   // Looked back to your turn: the move you played here shows, and the badge goes with it.
   const yours = !g.walk && view !== null && b.turn() === g.me ? all[view] : null, about = yours || (!g.walk && b.history({ verbose: true }).at(-1)) || null, note = about && notes.get(noteKey(about));
-  drawBoard(boardEl, b, { side: g.me, sel: g.sel, last: b.history({ verbose: true }).at(-1) || null, mark: note && { sq: about.to, kind: note.kind }, hint: view === null && g.hint ? [g.hint] : [], arrows: g.walk ? walkArrows(b) : view !== null ? g.arrows || (yours ? [[yours.from, yours.to, 'var(--muted)']] : []) : g.tips?.[g.tipShown] ? [[g.tips[g.tipShown].from, g.tips[g.tipShown].to, 'var(--good)']] : g.best ? [[g.best.from, g.best.to, 'var(--good)']] : [] });
+  const help = g.helpFen === b.fen(); // Hint and Best move belong to the position they were asked in
+  drawBoard(boardEl, b, { side: g.me, sel: g.sel, last: b.history({ verbose: true }).at(-1) || null, mark: note && { sq: about.to, kind: note.kind }, hint: help && g.hint ? [g.hint] : [], arrows: g.walk ? walkArrows(b) : help && g.best ? [[g.best.from, g.best.to, 'var(--good)']] : view !== null ? g.arrows || (yours ? [[yours.from, yours.to, 'var(--muted)']] : []) : g.tips?.[g.tipShown] ? [[g.tips[g.tipShown].from, g.tips[g.tipShown].to, 'var(--good)']] : g.best ? [[g.best.from, g.best.to, 'var(--good)']] : [] });
   evalBar(b.fen());
   boardEl.classList.toggle('looking-back', view !== null);
   const cell = (i) => { const k = all[i] && notes.get(noteKey(all[i]))?.kind; return `<span data-ply="${i}">${sans[i] || ''}${k && k !== 'book' ? `<sup class="nag k-${k}">${GLYPH[k]}</sup>` : ''}</span>`; };
@@ -153,7 +154,7 @@ async function live(sans) {
 const myTurn = () => !g.done && !g.busy && g.c.turn() === g.me && !g.c.isGameOver();
 function buttons() {
   const n = g.c.history().length, enough = g.me === 'w' ? 1 : 2;
-  $('#test-hint').disabled = $('#test-best').disabled = !myTurn() || view !== null;
+  $('#test-hint').disabled = $('#test-best').disabled = !!g.walk || new Chess(shownFen()).isGameOver() || (view === null && (g.busy || (g.c.turn() !== g.me && !g.done)));
   $('#test-back').disabled = g.busy || (view === null && n < enough);
   $('#test-back').textContent = view === null ? 'Take back' : 'Play from here';
   $('#test-prev').disabled = (view ?? n) <= 0; $('#test-fwd').disabled = view === null;
@@ -163,13 +164,17 @@ function buttons() {
   $('#test-resign').disabled = g.done || g.c.isGameOver() || !n;
   if ($('#test-resign').dataset.sure && $('#test-resign').disabled) { delete $('#test-resign').dataset.sure; $('#test-resign').textContent = 'Resign'; }
 }
-// For Hint and Best move: on the line its move, as following the button must not bring the off-the-line stamp; past it Stockfish's.
+// For Hint and Best move, in the position on the board: where that is still on the line its move, as following the
+// button must not bring the off-the-line stamp; past it Stockfish's.
 async function bestNow() {
-  const t = g, fen = t.c.fen(), moves = t.c.history();
-  const pick = !t.off && !t.cleared && lineMove(soundMoves(kidsOf(nodeAt(await treeNow(), moves))), t.me);
-  if (pick) { const m = new Chess(fen).move(pick.san); return g === t && t.c.fen() === fen ? { from: m.from, to: m.to, line: mv(moves.length, pick.san) } : null; }
-  const { best } = await deepOf(fen);
-  return g === t && t.c.fen() === fen && best ? { from: best.slice(0, 2), to: best.slice(2, 4) } : null;
+  const t = g, fen = shownFen(), moves = shownMoves() || t.c.history(), turn = new Chess(fen).turn();
+  const onIt = (!t.off || moves.length <= t.off.ply) && (!t.cleared || moves.length < t.clearedAt);
+  const pick = onIt && lineMove(soundMoves(kidsOf(nodeAt(await treeNow(), moves))), turn);
+  const best = pick ? null : (await deepOf(fen)).best;
+  if (g !== t || shownFen() !== fen || (!pick && !best)) return null;
+  const m = pick ? new Chess(fen).move(pick.san) : { from: best.slice(0, 2), to: best.slice(2, 4) };
+  t.helpFen = fen;
+  return { from: m.from, to: m.to, line: pick && mv(moves.length, pick.san) };
 }
 function over() {
   if (!g.c.isGameOver()) return false;
@@ -193,7 +198,7 @@ function humanPick(ranked) {
 async function maiaPlays() {
   const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true });
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261104164731'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104164731');
+  const { maia3Move } = await import('./maia3.js?v=20261104164907'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104164907');
   let r = null;
   try { r = humanPick((await within(20000, maia3Move(fen, legal, rating, rating))).ranked); } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }
@@ -313,7 +318,7 @@ async function checkLine(t, before, san) {
 async function playLine(t, before, plays) {
   rewind(before);
   const m = new Chess(t.c.fen()).move(plays), i = before.length;
-  t.busy = true; t.best = { from: m.from, to: m.to }; buttons();
+  t.busy = true; t.best = { from: m.from, to: m.to }; t.helpFen = t.c.fen(); buttons();
   $('#test-status').textContent = `The line plays ${mv(i, plays)}.`;
   draw();
   await sleep(1100);
@@ -530,7 +535,7 @@ function showRow(i) {
   g.arrows = r ? [[r.m.from, r.m.to, 'var(--bad)'], ...(r.best ? [[r.best.from, r.best.to, 'var(--good)']] : [])] : null;
   draw();
 }
-const browse = (to) => { endWalk(); const n = g.c.history().length; view = to >= n ? null : Math.max(0, to); g.sel = null; g.arrows = null; draw(); };
+const browse = (to) => { endWalk(); const n = g.c.history().length; view = to >= n ? null : Math.max(0, to); g.sel = null; g.arrows = null; if ($('#test-status').textContent.startsWith('The line plays') && !g.busy) $('#test-status').textContent = 'Your move.'; draw(); };
 enableDrag(boardEl, { canDrag: (sq) => g && (view === null ? myTurn() && g.c.get(sq)?.color === g.me : canPlayShown()?.get(sq)?.color === g.me), onDrop: (a, b) => { if (!tryMove(a, b)) draw(); } });
 boardEl.addEventListener('click', (e) => {
   const sq = e.target.closest('.sq')?.dataset.sq, shown = g && (view === null ? null : canPlayShown());
@@ -562,7 +567,7 @@ $('#test-walk').addEventListener('click', (e) => {
   const by = e.target.closest('[data-walk]')?.dataset.walk;
   if (by === '0') { endWalk(); view = null; draw(); } else if (by) stepWalk(Number(by));
 });
-$('#test-hint').addEventListener('click', async () => { const b = await bestNow(); if (b) { g.hint = b.from; draw(); } });
+$('#test-hint').addEventListener('click', async () => { const b = await bestNow(); if (b) { g.best = null; g.hint = b.from; draw(); } });
 $('#test-best').addEventListener('click', async () => { const b = await bestNow(); if (b) { g.hint = null; g.best = b; draw(); if (b.line) $('#test-status').textContent = `The line plays ${b.line}.`; } });
 // Back to the position on the board, or your last move when you are at the end, and on from there. A position with
 // Maia to move goes back one more, so it is your move again. A finished game stays in the list; this becomes a new one.
