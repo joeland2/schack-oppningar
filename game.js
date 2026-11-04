@@ -2,12 +2,12 @@
 // decided it (yours and your opponent's mistakes, with the better move), and a short read of what
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
-import { banner, confetti } from './celebrate.js?v=20261104114416';
+import { banner, confetti } from './celebrate.js?v=20261104114640';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261104114416';
-import { account, lichessAuth } from './lichess.js?v=20261104114416';
-import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261104114416';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261104114416';
+import { drawBoard, enableDrag } from './board.js?v=20261104114640';
+import { account, lichessAuth } from './lichess.js?v=20261104114640';
+import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261104114640';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261104114640';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -149,6 +149,19 @@ function evalBar(bottom) {
   el.classList.toggle('bw', bottom === 'b'); // black at the bottom: the dark part fills from below
   el.setAttribute('aria-label', `Evaluation: ${cp >= 0 ? 'White' : 'Black'} ${text}`);
 }
+// Lichess keeps a best move only at the slips: any other position asks Stockfish here, once.
+const asked = new Map();
+function bestHere(fen) {
+  if (asked.has(fen)) return asked.get(fen);
+  asked.set(fen, null);
+  engineEval(fen).then((r) => {
+    let m = null;
+    try { m = r.best && new Chess(fen).move({ from: r.best.slice(0, 2), to: r.best.slice(2, 4), promotion: r.best[4] || 'q' }); } catch {}
+    asked.set(fen, m);
+    if (showBest) drawPosition();
+  });
+  return null;
+}
 function drawPosition() {
   if (tryOut) return drawTry();
   $('#board').classList.remove('looking-back');
@@ -164,7 +177,9 @@ function drawPosition() {
     if (!b || b.san !== m.san) arrows.push([m.from, m.to, RED]);
     if (b) arrows.push([b.from, b.to, GREEN]);
     last = null;
-  } else if (showBest && idx < moves.length && bestMove(idx)) { const b = bestMove(idx); arrows.push([b.from, b.to, GREEN]); }
+  }
+  const best = showBest && focus === null && !(lesson && idx === lesson.at) ? (idx < moves.length && bestMove(idx)) || bestHere(fens[idx]) : null;
+  if (best) arrows.push([best.from, best.to, GREEN]);
   const bottom = (side === 'white') !== flip ? 'w' : 'b';
   drawBoard($('#board'), c, { side: bottom, last, arrows, mark: focus === null && idx && kindOf(idx - 1) ? { sq: moves[idx - 1].to, kind: kindOf(idx - 1) } : null });
   players(bottom);
@@ -173,7 +188,7 @@ function drawPosition() {
   const fb = focus !== null && idx === focus ? bestMove(focus) : null;
   $('#here').innerHTML = focus !== null && idx === focus
     ? (fb && fb.san === moves[focus].san ? `${moveNo(focus)} <b>${fb.san}</b> was played here (green), the best move.` : `${moveNo(focus)} <b>${moves[focus].san}</b> was played here (red)${fb ? `; <b>${fb.san}</b> (green) was better` : ''}.`)
-    : showBest && idx < moves.length ? (bestMove(idx) ? `Best move here: <b>${bestMove(idx).san}</b> (green). ${moveNo(idx)} <b>${moves[idx].san}</b> was played.` : 'No best move kept for this position.')
+    : showBest ? (best ? `Best move here: <b>${best.san}</b> (green).${idx < moves.length ? ` ${moveNo(idx)} <b>${moves[idx].san}</b> was played.` : ''}` : c.isGameOver() ? 'The game ended here.' : 'Stockfish is looking…')
     : idx ? `${moveNo(i)} <b>${moves[i].san}</b>${j ? ` <span class="gm-j j-${j}">${GLYPHS[j]} ${j.toLowerCase()}</span>` : ''}${g.analysis ? ` · ${P.your} chances ${Math.round(chanceAt(i))}%` : ''}` : 'The start position.';
   document.querySelectorAll('.gm-move').forEach((b) => b.classList.toggle('on', Number(b.dataset.i) === idx - 1));
   const cur = document.querySelector('.gm-move.on');
@@ -235,7 +250,7 @@ function render() {
     focus = idx = Number(b.dataset.moment); tryOut = null; drawPosition(); // yours or theirs: the move played in red, the better one in green
   }));
   const bb = $('#best');
-  bb.hidden = !g.analysis;
+  bb.hidden = false;
   $('#game').querySelector('[data-analyse]')?.addEventListener('click', analyse);
   const svg = $('#game').querySelector('.gm-graph svg');
   svg?.addEventListener('click', (e) => { const r = svg.getBoundingClientRect(); go(Math.round(((e.clientX - r.left) / r.width) * moves.length)); });
@@ -304,25 +319,28 @@ function startTry() {
   focus = null;
   drawPosition();
 }
-// view: how many of your moves on the board shows while you step back with the arrows; null is now.
+// view: how many of your moves on the board shows while you step back with the arrows; null is now,
+// below 0 is that many moves of the game before you took over.
 function tryBoard(t) {
   if (t.view === null) return { b: t.c, last: t.last };
+  if (t.view < 0) { const k = t.from + t.view; return { b: new Chess(fens[k]), last: k ? { from: moves[k - 1].from, to: moves[k - 1].to } : null }; }
   const b = new Chess(fens[t.from]), h = t.c.history({ verbose: true }).slice(0, t.view);
   h.forEach((m) => b.move(m.san));
   const l = h.at(-1);
   return { b, last: l ? { from: l.from, to: l.to } : t.view === 0 ? (t.from ? { from: moves[t.from - 1].from, to: moves[t.from - 1].to } : null) : null };
 }
 function stepTry(n) {
-  const t = tryOut, len = t.c.history().length, v = Math.max(0, Math.min(len, n));
+  const t = tryOut, len = t.c.history().length, v = Math.max(-t.from, Math.min(len, n));
   t.view = v === len ? null : v; t.sel = null; drawTry();
 }
 function drawTry() {
   const t = tryOut, c = t.c, bottom = t.bottom, { b, last } = tryBoard(t);
-  drawBoard($('#board'), b, { side: bottom, sel: t.sel, last });
+  const best = showBest && !t.busy && !b.isGameOver() ? bestHere(b.fen()) : null;
+  drawBoard($('#board'), b, { side: bottom, sel: t.sel, last, arrows: best ? [[best.from, best.to, GREEN]] : [] });
   $('#board').classList.toggle('looking-back', t.view !== null);
   players(bottom);
   const end = c.isCheckmate() ? (c.turn() === t.me ? 'Checkmate: Maia wins.' : 'Checkmate! You win.') : c.isDraw() ? 'A draw.' : '';
-  $('#here').innerHTML = `${end || (t.view !== null ? 'Looking back at your moves. A move here plays on from this position; → goes forward again.' : t.busy ? `Maia ${t.rating} is thinking…` : `Your move. You play on from ${t.from ? `after ${moveNo(t.from - 1)} ${moves[t.from - 1].san}` : 'the start'} against Maia at ${t.rating}.`)}
+  $('#here').innerHTML = `${end || (t.view < 0 ? 'Looking back at the game. A move here plays on from this position; → goes forward again.' : t.view !== null ? 'Looking back at your moves. A move here plays on from this position; → goes forward again.' : t.busy ? `Maia ${t.rating} is thinking…` : `Your move. You play on from ${t.from ? `after ${moveNo(t.from - 1)} ${moves[t.from - 1].san}` : 'the start'} against Maia at ${t.rating}.`)}${best ? ` Best move: <b>${best.san}</b> (green).` : ''}
     <span class="gm-try-btns"><button type="button" class="ghost" id="try-undo"${c.history().length ? '' : ' disabled'}>Take back</button><button type="button" class="ghost" id="try-back">Back to the game</button></span>`;
   $('#try-back').onclick = () => go(t.from);
   $('#try-undo').onclick = () => { if (t.busy) return; t.view = null; c.undo(); if (c.turn() !== t.me) c.undo(); t.sel = null; const h = c.history({ verbose: true }).at(-1); t.last = h ? { from: h.from, to: h.to } : null; drawTry(); };
@@ -342,7 +360,7 @@ async function tryMove(from, to) {
   if (t.c.isGameOver()) return drawTry(), ended(t), true;
   t.busy = true; drawTry();
   const legal = t.c.moves({ verbose: true });
-  const { maia3Move } = await import('./maia3.js?v=20261104114416'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104114416'); // loaded on the first move only: the nets are big
+  const { maia3Move } = await import('./maia3.js?v=20261104114640'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104114640'); // loaded on the first move only: the nets are big
   let r = null;
   try { r = (await within(20000, maia3Move(t.c.fen(), legal, t.rating, t.rating))).move; } catch (e) { console.warn(e); }
   if (!r && t.rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(t.rating, [t.c.fen()], legal))).move; } catch (e) { console.warn(e); }
@@ -355,16 +373,18 @@ async function tryMove(from, to) {
 }
 // A piece of the side to move, picked up in the game itself, starts playing on from that position.
 const shown = () => (tryOut ? tryBoard(tryOut).b : new Chess(fens[idx]));
-const mover = (sq) => { const b = shown(), p = b.get(sq); return !timer && (!tryOut || !tryOut.busy) && p?.color === b.turn() && (!tryOut || b.turn() === tryOut.me); };
+const mover = (sq) => { const b = shown(), p = b.get(sq); return !timer && (!tryOut || !tryOut.busy) && p?.color === b.turn() && (!tryOut || tryOut.view < 0 || b.turn() === tryOut.me); };
+// Looking back before the take-over: a move there starts over from that position.
+const restart = () => { idx = tryOut.from + tryOut.view; startTry(); };
 enableDrag($('#board'), {
   canDrag: mover,
-  onDrop: (from, to) => { if (!tryOut) startTry(); tryMove(from, to).then((ok) => { if (!ok && tryOut) drawTry(); }); },
+  onDrop: (from, to) => { if (tryOut?.view < 0) restart(); if (!tryOut) startTry(); tryMove(from, to).then((ok) => { if (!ok && tryOut) drawTry(); }); },
 });
 $('#board').addEventListener('click', (e) => {
   const b = e.target.closest('.sq');
   if (!b || timer) return;
   const sq = b.dataset.sq;
-  if (!tryOut) { if (!mover(sq)) return; startTry(); }
+  if (!tryOut || tryOut.view < 0) { if (!mover(sq)) return; if (tryOut) restart(); else startTry(); }
   const t = tryOut;
   if (t.busy) return;
   const here = tryBoard(t).b;
@@ -372,7 +392,7 @@ $('#board').addEventListener('click', (e) => {
   t.sel = here.get(sq)?.color === t.me && here.turn() === t.me && t.sel !== sq ? sq : null;
   drawTry();
 });
-$('#try').addEventListener('click', startTry);
+$('#try').addEventListener('click', () => (tryOut?.view < 0 ? restart() : startTry()));
 $('#first').addEventListener('click', () => go(0));
 $('#prev').addEventListener('click', () => (tryOut ? stepTry((tryOut.view ?? tryOut.c.history().length) - 1) : go(idx - 1)));
 $('#next').addEventListener('click', () => (tryOut ? stepTry((tryOut.view ?? tryOut.c.history().length) + 1) : go(idx + 1)));
