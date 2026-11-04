@@ -1,13 +1,13 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, BOOK } from './board.js?v=20261104160741';
-import { engineEval, winPct } from './profile.js?v=20261104160741';
-import { banner, confetti } from './celebrate.js?v=20261104160741';
-import { PLAN, VS_PLAN } from './styles.js?v=20261104160741';
-import { GUIDE } from './guide.js?v=20261104160741';
-import { hanging } from './ideas.js?v=20261104160741';
-import { openingOf, loadBook, key } from './book.js?v=20261104160741';
+import { drawBoard, enableDrag, BOOK, GLYPH } from './board.js?v=20261104161718';
+import { engineEval, winPct } from './profile.js?v=20261104161718';
+import { banner, confetti } from './celebrate.js?v=20261104161718';
+import { PLAN, VS_PLAN } from './styles.js?v=20261104161718';
+import { GUIDE } from './guide.js?v=20261104161718';
+import { hanging } from './ideas.js?v=20261104161718';
+import { openingOf, loadBook, key } from './book.js?v=20261104161718';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -64,10 +64,15 @@ function draw() {
   const all = g.c.history({ verbose: true }), sans = all.map((m) => m.san);
   const moves = shownMoves(), b = moves ? new Chess() : g.c;
   moves?.forEach((m) => b.move(m));
-  drawBoard(boardEl, b, { side: g.me, sel: view === null ? g.sel : null, last: b.history({ verbose: true }).at(-1) || null, hint: view === null && g.hint ? [g.hint] : [], arrows: g.walk ? walkArrows(b) : view !== null ? g.arrows || [] : g.tips?.[g.tipShown] ? [[g.tips[g.tipShown].from, g.tips[g.tipShown].to, 'var(--good)']] : g.best ? [[g.best.from, g.best.to, 'var(--good)']] : [] });
+  // Looked back to your turn: the move you played here shows, and the badge goes with it.
+  const yours = !g.walk && view !== null && b.turn() === g.me ? all[view] : null, about = yours || (!g.walk && b.history({ verbose: true }).at(-1)) || null, note = about && notes.get(noteKey(about));
+  drawBoard(boardEl, b, { side: g.me, sel: g.sel, last: b.history({ verbose: true }).at(-1) || null, mark: note && { sq: about.to, kind: note.kind }, hint: view === null && g.hint ? [g.hint] : [], arrows: g.walk ? walkArrows(b) : view !== null ? g.arrows || (yours ? [[yours.from, yours.to, 'var(--muted)']] : []) : g.tips?.[g.tipShown] ? [[g.tips[g.tipShown].from, g.tips[g.tipShown].to, 'var(--good)']] : g.best ? [[g.best.from, g.best.to, 'var(--good)']] : [] });
   evalBar(b.fen());
   boardEl.classList.toggle('looking-back', view !== null);
-  $('#test-moves').innerHTML = sans.reduce((a, s, i) => (i % 2 ? a : [...a, `<li><span data-ply="${i}">${s}</span><span data-ply="${i + 1}">${sans[i + 1] || ''}</span></li>`]), []).join('');
+  const cell = (i) => { const k = all[i] && notes.get(noteKey(all[i]))?.kind; return `<span data-ply="${i}">${sans[i] || ''}${k && k !== 'book' ? `<sup class="nag k-${k}">${GLYPH[k]}</sup>` : ''}</span>`; };
+  $('#test-moves').innerHTML = sans.reduce((a, s, i) => (i % 2 ? a : [...a, `<li>${cell(i)}${cell(i + 1)}</li>`]), []).join('');
+  const i = yours ? view : b.history().length - 1;
+  $('#test-verdict').innerHTML = note ? `<span class="mark k-${note.kind} legend-badge">${note.kind === 'book' ? BOOK : GLYPH[note.kind]}</span><span><b>${mv(i, about.san)}</b> ${WORD[note.kind]}${note.better ? ` Better was <b>${esc(note.better)}</b>.` : ''}</span>` : '';
   $('#test-moves').querySelector(`[data-ply="${(view ?? sans.length) - 1}"]`)?.classList.add('now');
   if (view === null) $('#test-moves').scrollTop = 1e6;
   $('#test-report').disabled = sans.length < (g.me === 'w' ? 1 : 2); // once you have played a move
@@ -75,6 +80,40 @@ function draw() {
   $('#test-maia').textContent = rating;
   live(sans);
   buttons();
+  gradeMoves();
+}
+// Every move gets a badge, by the Openings page's rules and the report's limits, one at a time as Stockfish gets to it.
+const notes = new Map(), noteKey = (m) => `${m.before}|${m.san}`;
+const WORD = { book: 'is on the line.', brilliant: 'is brilliant.', best: 'is the best move.', good: 'is good.', inaccuracy: 'is an inaccuracy.', mistake: 'is a mistake.', blunder: 'is a blunder.' };
+const WORTH = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+function leavesPieceHanging(c, m) { // as in app.js
+  if ('pk'.includes(m.piece)) return false;
+  const attackers = c.attackers(m.to, m.color === 'w' ? 'b' : 'w');
+  return attackers.length > 0 && (Math.min(...attackers.map((sq) => WORTH[c.get(sq).type])) < WORTH[m.piece] || !c.isAttacked(m.to, m.color));
+}
+async function gradeOne(m, moves) {
+  const c = new Chess(m.before); c.move(m.san);
+  if (c.isCheckmate()) return { kind: 'best' };
+  const [tree, { next }] = await Promise.all([treeNow(), loadBook()]);
+  const a = await deepOf(m.before), b = c.isGameOver() ? { cp: 0 } : await deepOf(c.fen()), sign = m.color === 'w' ? 1 : -1;
+  const drop = winPct(sign * a.cp) - winPct(sign * b.cp), on = onLine(next, moves, m.san, soundMoves(kidsOf(nodeAt(tree, moves)))), isBest = a.best?.startsWith(m.from + m.to);
+  const kind = drop >= 15 ? 'blunder' : drop >= 10 ? 'mistake' : on ? 'book' : drop >= 5 ? 'inaccuracy'
+    : isBest ? (leavesPieceHanging(c, m) && winPct(sign * b.cp) >= 45 ? 'brilliant' : 'best') : 'good';
+  const better = (drop >= 10 || (drop >= 5 && !on)) && a.best && !isBest ? new Chess(m.before).move({ from: a.best.slice(0, 2), to: a.best.slice(2, 4), promotion: a.best[4] || 'q' }).san : null;
+  return { kind, better };
+}
+let grading = false;
+async function gradeMoves() {
+  if (grading) return;
+  grading = true;
+  try {
+    for (;;) {
+      const all = g.c.history({ verbose: true }), i = all.findIndex((m) => !notes.has(noteKey(m)));
+      if (i < 0) return;
+      notes.set(noteKey(all[i]), await gradeOne(all[i], all.slice(0, i).map((m) => m.san)));
+      draw();
+    }
+  } catch (e) { console.warn(e); } finally { grading = false; }
 }
 // The bar beside the board: White's winning chances in the position shown, with Stockfish's number at White's end.
 function evalBar(fen) {
@@ -96,6 +135,12 @@ function shownFen() {
   if (!moves) return g.c.fen();
   const b = new Chess(); moves.forEach((m) => b.move(m));
   return b.fen();
+}
+// The position looked back at, if it is your turn in it and Maia is not thinking.
+function canPlayShown() {
+  if (view === null || g.walk || g.busy) return null;
+  const c = new Chess(shownFen());
+  return c.turn() === g.me ? c : null;
 }
 // Under the opening's name: whether the game is still in theory, and what players at your level score here.
 async function live(sans) {
@@ -146,7 +191,7 @@ function humanPick(ranked) {
 async function maiaPlays() {
   const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true });
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261104160741'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104160741');
+  const { maia3Move } = await import('./maia3.js?v=20261104161718'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104161718');
   let r = null;
   try { r = humanPick((await within(20000, maia3Move(fen, legal, rating, rating))).ranked); } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }
@@ -158,6 +203,12 @@ async function maiaPlays() {
   draw(); if (!over()) { saveGame(); checkCleared(t); }
 }
 function tryMove(from, to) {
+  if (g && view !== null) { // looking back: moving a piece plays on from here
+    const c = canPlayShown();
+    if (!c) return false;
+    try { c.move({ from, to, promotion: 'q' }); } catch { return false; }
+    rewind(g.c.history().slice(0, view));
+  }
   if (!g || !myTurn()) return false;
   const before = g.c.history();
   let played;
@@ -454,7 +505,7 @@ async function report() {
     const b = await deepOf(before.fen());
     if (me !== run) return;
     const sign = t.me === 'w' ? 1 : -1, drop = Math.max(0, winPct(sign * a.cp) - winPct(sign * b.cp));
-    r.kind = drop >= 15 ? 'Blunder' : drop >= 10 ? 'Mistake' : drop >= 5 && !r.book ? 'Inaccuracy' : null; // a quick look is no reason to fault a known theory move for a small loss
+    r.kind = drop >= 15 ? 'Blunder' : drop >= 10 ? 'Mistake' : drop >= 5 && !r.kept ? 'Inaccuracy' : null; // a small loss is no reason to fault a move of the line, as in the badges
     if (r.kind && a.best && a.best !== r.m.from + r.m.to + (r.m.promotion || '')) {
       const c = new Chess(); sans.slice(0, r.i).forEach((m) => c.move(m));
       r.best = c.move({ from: a.best.slice(0, 2), to: a.best.slice(2, 4), promotion: a.best[4] || 'q' });
@@ -475,21 +526,25 @@ function showRow(i) {
   draw();
 }
 const browse = (to) => { endWalk(); const n = g.c.history().length; view = to >= n ? null : Math.max(0, to); g.sel = null; g.arrows = null; draw(); };
-enableDrag(boardEl, { canDrag: (sq) => view === null && g && myTurn() && g.c.get(sq)?.color === g.me, onDrop: (a, b) => { if (!tryMove(a, b)) draw(); } });
+enableDrag(boardEl, { canDrag: (sq) => g && (view === null ? myTurn() && g.c.get(sq)?.color === g.me : canPlayShown()?.get(sq)?.color === g.me), onDrop: (a, b) => { if (!tryMove(a, b)) draw(); } });
 boardEl.addEventListener('click', (e) => {
-  if (view !== null) { endWalk(); view = null; return draw(); }
-  const sq = e.target.closest('.sq')?.dataset.sq;
-  if (!g || !sq || !myTurn()) return;
+  const sq = e.target.closest('.sq')?.dataset.sq, shown = g && (view === null ? null : canPlayShown());
+  if (view !== null && (!shown || !sq || (!g.sel && shown.get(sq)?.color !== g.me))) { endWalk(); view = null; return draw(); }
+  if (!g || !sq || (view === null && !myTurn())) return;
   if (g.sel && g.sel !== sq && tryMove(g.sel, sq)) return;
-  g.sel = g.c.get(sq)?.color === g.me && g.sel !== sq ? sq : null;
+  g.sel = (shown || g.c).get(sq)?.color === g.me && g.sel !== sq ? sq : null;
   draw();
 });
-$('#test-prev').addEventListener('click', () => browse((view ?? g.c.history().length) - 1));
-$('#test-fwd').addEventListener('click', () => browse((view ?? g.c.history().length) + 1));
+// A step back lands on your turn, with the move you played there on the board, ready to be played differently.
+const myPly = (i) => (i % 2 === 0) === (g.me === 'w');
+const stepBy = (by) => { const now = view ?? g.c.history().length, to = now + by; browse(myPly(to) ? to : Math.max(0, to + by)); };
+$('#test-prev').addEventListener('click', () => stepBy(-1));
+$('#test-fwd').addEventListener('click', () => stepBy(1));
 document.addEventListener('keydown', (e) => {
   if (!g || e.target.closest('input, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
   if (g.walk && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); return stepWalk(e.key === 'ArrowLeft' ? -1 : 1); }
-  const n = g.c.history().length, now = view ?? n, to = { ArrowLeft: now - 1, ArrowRight: now + 1, ArrowUp: 0, ArrowDown: n }[e.key];
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); return stepBy(e.key === 'ArrowLeft' ? -1 : 1); }
+  const to = { ArrowUp: 0, ArrowDown: g.c.history().length }[e.key];
   if (to !== undefined) { e.preventDefault(); browse(to); }
 });
 $('#test-moves').addEventListener('click', (e) => { const x = e.target.closest('[data-ply]'); if (x?.textContent) browse(Number(x.dataset.ply) + 1); });

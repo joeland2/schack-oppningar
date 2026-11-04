@@ -3018,6 +3018,7 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .test-rating { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); } .test-rating input { width: 5.5em; }
 .test-link { padding: 7px 14px; border-radius: 2px; color: var(--ink); font-weight: 500; text-decoration: none; white-space: nowrap; } /* looks like the buttons in .seg */
 .test-link:hover { background: var(--bg); }
+.test-verdict { display: flex; align-items: center; gap: 8px; margin: 0; } .test-verdict:empty { display: none; } .test-verdict .legend-badge { position: static; flex: none; width: 20px; height: 20px; font-size: 10px; animation: none; }
 .test-report { display: grid; gap: 10px; } .test-report p { margin: 0; } .test-report .play-open { margin-top: 4px; }
 .test-big { font: 400 44px/1 var(--font-poster); }
 .test-wrong { border-left: 3px solid var(--bad); padding-left: 10px; } .test-fine { border-left: 3px solid var(--good); padding-left: 10px; }
