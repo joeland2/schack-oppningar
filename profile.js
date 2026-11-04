@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261104164907';
-import { openLogin } from './login.js?v=20261104164907';
-import { STYLE_OF } from './styles.js?v=20261104164907';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261104164907';
-import { PEOPLE } from './pros.js?v=20261104164907';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261104202824';
+import { openLogin } from './login.js?v=20261104202824';
+import { STYLE_OF } from './styles.js?v=20261104202824';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261104202824';
+import { PEOPLE } from './pros.js?v=20261104202824';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -2902,11 +2902,11 @@ function bindPlayerBar(name) {
     bindPlayerBar(name);
   });
 }
-// On a phone the star, compare and Lichess buttons go beside the card, under the opening taste, so the
-// name and the card get the width.
+// On a phone the star, compare and Lichess buttons join the download and help buttons in one row under
+// the card, so the name gets the width.
 function placeActs() {
   const a = $('.pf-name-row .pf-acts');
-  if (a && matchMedia('(max-width: 640px)').matches) $('.pf-hero .pf-type-row')?.append(a);
+  if (a && matchMedia('(max-width: 640px)').matches) $('.pf-hero .pf-cardbar')?.append(a);
 }
 // A profile ready to show: kept here, else read from the player's games.
 // Compare: the player you came from on the left, and on the right the other to pick: you, one of your
