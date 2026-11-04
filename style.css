@@ -2993,7 +2993,7 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 /* Test my opening */
 .test-board { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; }
 .test-acts { margin: 0; } .test-acts button:disabled { opacity: .45; cursor: default; }
-.test-live { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.test-live { margin: 8px 0 0; font-size: 13px; color: var(--muted); } .test-live b { color: var(--bad); }
 @media (max-width: 820px) { .test-board { grid-template-columns: 14px minmax(0, 1fr); gap: 6px; } .test-board .evalbar-num { display: none; } }
 .test-walk { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
 .test-walk[hidden] { display: none; } .test-walk p { margin: 0; font-size: 14px; }

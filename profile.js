@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261104142604';
-import { openLogin } from './login.js?v=20261104142604';
-import { STYLE_OF } from './styles.js?v=20261104142604';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261104142604';
-import { PEOPLE } from './pros.js?v=20261104142604';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261104142929';
+import { openLogin } from './login.js?v=20261104142929';
+import { STYLE_OF } from './styles.js?v=20261104142929';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261104142929';
+import { PEOPLE } from './pros.js?v=20261104142929';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -834,12 +834,12 @@ console.assert(((g) => (applyEvals(g, [30, 25, -600]), g.players.white.analysis.
 let engine = null;
 // Stockfish's verdict on one position: centipawns from White (a mate counts as 1000) and its best move.
 let engineQueue = Promise.resolve();
-function engineEval(fen) {
-  const next = engineQueue.then(() => evalNow(fen));
+function engineEval(fen, go) {
+  const next = engineQueue.then(() => evalNow(fen, undefined, go));
   engineQueue = next.catch(() => {});
   return next;
 }
-function evalNow(fen, w = (engine ??= new Worker(ENGINE_SRC))) {
+function evalNow(fen, w = (engine ??= new Worker(ENGINE_SRC)), go = `movetime ${MS}`) {
   const white = fen.split(' ')[1] === 'w';
   return new Promise((resolve, reject) => {
     let cp = 0;
@@ -854,7 +854,7 @@ function evalNow(fen, w = (engine ??= new Worker(ENGINE_SRC))) {
       if (e.data.startsWith('bestmove')) { const b = e.data.split(' ')[1]; resolve({ cp: white ? cp : -cp, best: b && b !== '(none)' ? b : null }); }
     };
     w.postMessage(`position fen ${fen}`);
-    w.postMessage(`go movetime ${MS}`);
+    w.postMessage(`go ${go}`);
   });
 }
 const minutes = (sec) => (sec < 60 ? 'under a minute' : `about ${Math.round(sec / 60)} min`);

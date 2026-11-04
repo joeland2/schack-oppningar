@@ -1,10 +1,10 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, BOOK } from './board.js?v=20261104142604';
-import { engineEval, winPct } from './profile.js?v=20261104142604';
-import { banner } from './celebrate.js?v=20261104142604';
-import { openingOf, loadBook, key } from './book.js?v=20261104142604';
+import { drawBoard, enableDrag, BOOK } from './board.js?v=20261104142929';
+import { engineEval, winPct } from './profile.js?v=20261104142929';
+import { banner } from './celebrate.js?v=20261104142929';
+import { openingOf, loadBook, key } from './book.js?v=20261104142929';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -90,7 +90,7 @@ async function live(sans) {
   const tree = await TREE, node = nodeAt(tree, sans.slice(0, 20)), s = node && sans.length <= 20 && stat(node, level());
   if (g.c.history().length !== sans.length) return;
   const name = g.me === 'w' ? 'White' : 'Black';
-  $('#test-live').textContent = [g.off?.note, g.off || !sans.length ? '' : 'On the line so far.',
+  $('#test-live').innerHTML = [g.off && `<b>${esc(g.off.note)}</b>`, g.off || !sans.length ? '' : 'On the line so far.',
     s?.n >= FEW_GAMES ? `${name} scores ${pct(forMe(s, g.me))} from here at your level, in ${s.n.toLocaleString('en')} games.` : ''].filter(Boolean).join(' ');
 }
 const myTurn = () => !g.done && !g.busy && g.c.turn() === g.me && !g.c.isGameOver();
@@ -103,7 +103,7 @@ function buttons() {
 }
 // Stockfish's move for the position on the board, for Hint and Best move.
 async function bestNow() {
-  const t = g, fen = t.c.fen(), { best } = await evalOf(fen);
+  const t = g, fen = t.c.fen(), { best } = await deepOf(fen);
   return g === t && t.c.fen() === fen && best ? { from: best.slice(0, 2), to: best.slice(2, 4) } : null;
 }
 function over() {
@@ -117,14 +117,14 @@ function over() {
 }
 // Maia 3 at your rating; Maia 1 if it cannot load, then Stockfish. The nets are big, so they load on the first move only.
 async function maiaPlays() {
-  const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true }), began = Date.now();
+  const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true });
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261104142604'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104142604');
+  const { maia3Move } = await import('./maia3.js?v=20261104142929'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104142929');
   let r = null;
   try { r = (await within(20000, maia3Move(fen, legal, rating, rating))).move; } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }
   if (!r) { const e = await engineEval(fen); r = e.best && { from: e.best.slice(0, 2), to: e.best.slice(2, 4), promotion: e.best[4] }; }
-  await sleep(800 + Math.random() * 1400 - (Date.now() - began)); // Maia answers at once; a move you can follow takes a moment
+  await sleep(450); // as the opponent on the Openings page
   if (g !== t) return; // a new game began while Maia thought
   t.busy = false; $('#test-status').textContent = 'Your move.';
   t.c.move({ from: r.from, to: r.to, promotion: r.promotion || 'q' });
@@ -190,6 +190,9 @@ function openPast(id) {
 // ---------- The report ----------
 const evals = new Map();
 const evalOf = (fen) => { if (!evals.has(fen)) evals.set(fen, engineEval(fen)); return evals.get(fen); };
+// For a verdict: a fixed depth, so the same game gets the same answer; the bar stays on the quick look.
+const deep = new Map();
+const deepOf = (fen) => { if (!deep.has(fen)) deep.set(fen, engineEval(fen, 'depth 14')); return deep.get(fen); };
 // What makes a move part of the line: known theory, or played by strong players (the same rule live and in the report).
 const kidsOf = (node) => Object.entries(node?.[3] || {}).map(([san, c]) => ({ san, ...stat(c, level()), top: stat(c, strong()).n, all: stat(c, range(0, 9)).n }));
 const soundMoves = (kids) => { const all = kids.reduce((s, m) => s + m.top, 0); return kids.filter((m) => m.top >= 20 && m.top / all >= 0.1); };
@@ -200,11 +203,25 @@ async function checkLine(t, before, san) {
   const [tree, { next }] = await Promise.all([TREE, loadBook()]);
   if (g !== t || t.off) return;
   const sound = soundMoves(kidsOf(nodeAt(tree, before))), pick = lineMove(sound, t.me);
-  if (!pick || onLine(next, before, san, sound)) return;
+  if (onLine(next, before, san, sound)) return;
+  const plays = pick?.san || await engineOff(before, san, t.me);
+  if (!plays || g !== t || t.off) return;
   const i = before.length;
-  t.off = { ply: i, note: `You left the line with ${mv(i, san)}; it plays ${mv(i, pick.san)}.` };
-  banner(`Off the line · The line plays ${mv(i, pick.san)}`, 'lost');
+  t.off = { ply: i, note: `You left the line with ${mv(i, san)}; it plays ${mv(i, plays)}.` };
+  banner(`Off the line · The line plays ${mv(i, plays)}`, 'lost');
   live(t.c.history());
+}
+// Where the games run out, Stockfish keeps the line: a move leaves it when it gives away what counts as a slip (5
+// points of winning chances), not merely for being another good move. The better move, or null.
+async function engineOff(before, san, me) {
+  const b = new Chess(); before.forEach((m) => b.move(m));
+  const { best, cp } = await deepOf(b.fen());
+  if (!best) return null;
+  const better = new Chess(b.fen()).move({ from: best.slice(0, 2), to: best.slice(2, 4), promotion: best[4] || 'q' }).san;
+  if (clean(better) === clean(san)) return null;
+  b.move(san);
+  const sign = me === 'w' ? 1 : -1, after = await deepOf(b.fen());
+  return winPct(sign * cp) - winPct(sign * after.cp) >= 5 ? better : null;
 }
 // The line you opened with: your own moves as long as they are known theory or something strong players play;
 // from the first that is not, what strong players play that scores best at your level, against the most common
@@ -229,12 +246,17 @@ async function theLine(tree, next, sans, me) {
     if (fine) { line.sans.push(played); line.notes.push(`${label(played)}: you played this too.`); continue; }
     const pick = lineMove(sound, me) || (played ? null : kids.filter((m) => m.top >= 20).sort((a, b) => b.top - a.top)[0]);
     let san = pick?.san, why = pick ? `${pick.n >= FEW_GAMES ? `scores ${pct(forMe(pick, me))} at your level` : 'strong players play it'}` : '';
-    if (!san) { // the games run out here
-      const b = new Chess(); line.sans.forEach((m) => b.move(m));
-      const { best } = await evalOf(b.fen());
-      if (!best) break;
-      san = b.move({ from: best.slice(0, 2), to: best.slice(2, 4), promotion: best[4] || 'q' }).san; why = "Stockfish's move, as the games run out here";
-      if (played && clean(san) === clean(played)) { line.sans.push(played); line.notes.push(`${label(played)}: you played this too.`); break; }
+    if (!san) { // the games run out here: Stockfish keeps the line
+      if (played) {
+        san = await engineOff(line.sans, played, me);
+        if (!san) { line.sans.push(played); line.notes.push(`${label(played)}: you played this too.`); continue; }
+      } else {
+        const b = new Chess(); line.sans.forEach((m) => b.move(m));
+        const { best } = await deepOf(b.fen());
+        if (!best) break;
+        san = b.move({ from: best.slice(0, 2), to: best.slice(2, 4), promotion: best[4] || 'q' }).san;
+      }
+      why = "Stockfish's move, as the games run out here";
     }
     if (played) { line.off = i; line.played = played; onGame = false; }
     line.sans.push(san);
@@ -304,8 +326,8 @@ async function report() {
   // What each move gave away, with the site's own limits for a slip.
   for (const r of rows) {
     const before = new Chess(); sans.slice(0, r.i).forEach((m) => before.move(m));
-    const a = await evalOf(before.fen()); before.move(r.san);
-    const b = await evalOf(before.fen());
+    const a = await deepOf(before.fen()); before.move(r.san);
+    const b = await deepOf(before.fen());
     if (me !== run) return;
     const sign = t.me === 'w' ? 1 : -1, drop = Math.max(0, winPct(sign * a.cp) - winPct(sign * b.cp));
     r.kind = drop >= 15 ? 'Blunder' : drop >= 10 ? 'Mistake' : drop >= 5 && !r.book ? 'Inaccuracy' : null; // a quick look is no reason to fault a known theory move for a small loss
