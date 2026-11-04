@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261104114640';
-import { openLogin } from './login.js?v=20261104114640';
-import { STYLE_OF } from './styles.js?v=20261104114640';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261104114640';
-import { PEOPLE } from './pros.js?v=20261104114640';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261104115350';
+import { openLogin } from './login.js?v=20261104115350';
+import { STYLE_OF } from './styles.js?v=20261104115350';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261104115350';
+import { PEOPLE } from './pros.js?v=20261104115350';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -796,6 +796,8 @@ async function readAll(name, raw) {
 const MS = 40;                          // per position: plenty to see blunders
 const PER_POS = 0.035;                  // seconds per position, measured on a laptop (search plus overhead); phones are slower
 const ENGINE_SRC = 'engine/stockfish-18-lite-single.js';
+// Engines side by side when analysing: all cores but one, fewer on a phone (memory and heat).
+const ENGINES = Math.max(1, Math.min(matchMedia('(pointer: coarse)').matches ? 2 : 6, (navigator.hardwareConcurrency || 2) - 1));
 const winPct = (cp) => 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
 function applyEvals(g, cps, best = []) {
   g.analysis = cps.map((cp, i) => ({ eval: cp, ...(best[i] ? { best: best[i] } : {}) }));
@@ -825,12 +827,12 @@ function engineEval(fen) {
   engineQueue = next.catch(() => {});
   return next;
 }
-function evalNow(fen) {
-  engine ??= new Worker(ENGINE_SRC);
+function evalNow(fen, w = (engine ??= new Worker(ENGINE_SRC))) {
   const white = fen.split(' ')[1] === 'w';
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let cp = 0;
-    engine.onmessage = (e) => {
+    w.onerror = reject;
+    w.onmessage = (e) => {
       if (typeof e.data !== 'string') return;
       const m = e.data.match(/ score (cp|mate) (-?\d+)/);
       if (m && !/ (lower|upper)bound/.test(e.data)) {
@@ -839,16 +841,16 @@ function evalNow(fen) {
       }
       if (e.data.startsWith('bestmove')) { const b = e.data.split(' ')[1]; resolve({ cp: white ? cp : -cp, best: b && b !== '(none)' ? b : null }); }
     };
-    engine.postMessage(`position fen ${fen}`);
-    engine.postMessage(`go movetime ${MS}`);
+    w.postMessage(`position fen ${fen}`);
+    w.postMessage(`go movetime ${MS}`);
   });
 }
-const minutes = (sec) => (sec < 90 ? `about ${Math.max(1, Math.round(sec / 60))} min` : `about ${Math.round(sec / 60)} min`);
+const minutes = (sec) => (sec < 60 ? 'under a minute' : `about ${Math.round(sec / 60)} min`);
 // What reaching `target` analysed games would take: just enough of the newest games without analysis
 // (those analysed on Lichess already count), and the time.
 function costOf(p, target) {
   const todo = (p.todo || []).filter(Boolean).slice(0, Math.max(0, target - p.analysed));
-  return { games: todo.length, sec: sum(todo, (x) => x) * PER_POS };
+  return { games: todo.length, sec: (sum(todo, (x) => x) * PER_POS) / ENGINES };
 }
 let analysing = null; // { stop } while a run is going
 // Early game needs only the position after move 12: Stockfish looks at that one position in every game
@@ -889,30 +891,38 @@ async function analyse(name, target, sp = null) {
   const have = list.filter((g) => g.analysis).length;
   const todo = list.filter((g) => !g.analysis && g.moves).slice(0, Math.max(0, target - have)); // the newest first, up to the target
   const total = sum(todo, (g) => g.moves.split(' ').length), t0 = Date.now();
-  let done = 0;
-  analysing = { stop: false };
-  for (let k = 0; k < todo.length && !analysing.stop; k++) {
-    const g = todo[k], c = new Chess(), cps = [], best = [];
-    for (const mv of g.moves.split(' ')) {
-      if (analysing.stop) break;
-      try { c.move(mv); } catch { break; }
-      const r = await engineEval(c.fen());
-      cps.push(r.cp);
-      best[cps.length] = r.best; // the best move here is the best instead of the next move
-      done++;
-      if (done % 10 === 0 && el) {
-        const left = ((Date.now() - t0) / done) * (total - done) / 1000;
-        el.querySelector('.pf-an-progress').textContent = `Analysing game ${k + 1} of ${todo.length} · ${minutes(left)} left`;
-        el.querySelector('.pf-an-bar i').style.width = `${(done / total) * 100}%`;
-      }
+  const run = analysing = { stop: false }, queue = [...todo], pool = Array.from({ length: Math.min(ENGINES, todo.length) }, () => new Worker(ENGINE_SRC));
+  let done = 0, finished = 0, saved = Date.now();
+  const save = () => { saveGames(name, RAW); if (own) saveGames(speedKey(name, sp), own); saved = Date.now(); };
+  // One engine a core, each taking the next game. An engine that fails hands its game back to the others.
+  await Promise.all(pool.map(async (w) => {
+    for (let g; !run.stop && (g = queue.shift());) {
+      const c = new Chess(), cps = [], best = [];
+      try {
+        for (const mv of g.moves.split(' ')) {
+          if (run.stop) break;
+          try { c.move(mv); } catch { break; }
+          const r = await evalNow(c.fen(), w);
+          cps.push(r.cp);
+          best[cps.length] = r.best; // the best move here is the best instead of the next move
+          done++;
+          if (done % 10 === 0 && el) {
+            const left = ((Date.now() - t0) / done) * (total - done) / 1000;
+            el.querySelector('.pf-an-progress').textContent = `Analysing game ${Math.min(todo.length, finished + 1)} of ${todo.length} · ${minutes(left)} left`;
+            el.querySelector('.pf-an-bar i').style.width = `${(done / total) * 100}%`;
+          }
+        }
+      } catch (err) { console.warn(err); queue.unshift(g); return; }
+      if (run.stop) break;
+      applyEvals(g, cps, best);
+      const m = own && RAW.find((x) => x.id === g.id);
+      if (m) Object.assign(m, { analysis: g.analysis, ours: g.ours, players: g.players });
+      finished++;
+      if (Date.now() - saved > 5000) save(); // finished games are kept even if the run stops; saving after each would hold up the page
     }
-    if (analysing.stop) break;
-    applyEvals(g, cps, best);
-    const m = own && RAW.find((x) => x.id === g.id);
-    if (m) Object.assign(m, { analysis: g.analysis, ours: g.ours, players: g.players });
-    saveGames(name, RAW); // a finished game is kept even if the run stops
-    if (own) saveGames(speedKey(name, sp), own);
-  }
+  }));
+  pool.forEach((w) => w.terminate());
+  save();
   analysing = null;
   const mine = runs;
   const p = await readAll(name, RAW);
@@ -1654,13 +1664,15 @@ const more = (share, rest) => share ? `${share}<details class="pf-dl pf-etc"><su
 function lockNote(skills, p, me, panel) {
   const early = skills.find((x) => x.label === 'Early game' && x.v === null), an = skills.filter((x) => x.needs && x.v === null);
   if (p.n < MIN_GAMES || (!early && !an.length)) return '';
-  const your = me ? 'your' : 'their', parts = [];
-  const who = `<b>${an.map((x) => ABBR[x.label]).join(' and ')}</b> need${an.length > 1 ? '' : 's'}`;
-  if (an.length) parts.push(p.analysed < an[0].unlockAt
-    ? `${who} analysed games: ${an.length > 1 ? 'they unlock' : 'it unlocks'} at ${an[0].unlockAt} (${p.analysed} so far).${panel ? ' <a href="#pf-analyse">Analyse games</a>' : ''}`
-    : `${who} ${ENOUGH} analysed games against opponents within ${PEER} of ${your} rating (${an[0].have} so far).${panel ? ' <a href="#pf-analyse">Analyse more</a>' : ''}`);
-  if (early) parts.push(`<b>EARLY</b> needs ${EARLY_MIN} games against opponents near ${your} rating that reach move 12${quick ? '; Stockfish is looking at them now' : ` (${p.peer?.n12 ?? 0} so far)`}.`);
-  return `<p class="pf-lock-note">${LOCK}<span>${parts.map((x) => `<span>${x}</span>`).join('')}</span></p>`;
+  const near = `near ${me ? 'your' : 'their'} rating`;
+  const row = (label, have, need, what, link = '') => `<div class="pf-lock-row">${LOCK}<b>${label}</b><span>${Math.min(have, need)} of ${need} ${what}${link}</span><i class="pf-lock-bar"><i style="width:${(Math.min(have, need) / need) * 100}%"></i></i></div>`;
+  const rows = [], go = (say) => (panel ? ` <a href="#pf-analyse">${say} →</a>` : '');
+  if (an.length) {
+    const label = an.map((x) => ABBR[x.label]).join(' · ');
+    rows.push(p.analysed < an[0].unlockAt ? row(label, p.analysed, an[0].unlockAt, 'analysed games', go('Analyse')) : row(label, an[0].have, ENOUGH, `analysed games ${near}`, go('Analyse more')));
+  }
+  if (early) rows.push(row('EARLY', p.peer?.n12 ?? 0, EARLY_MIN, `games ${near} that reach move 12`, quick ? ' · Stockfish is reading them' : ''));
+  return `<div class="pf-lock-note">${rows.join('')}</div>`;
 }
 function cardNote(name, p, me) {
   const main = p.speeds[0];

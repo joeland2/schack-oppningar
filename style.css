@@ -1972,11 +1972,11 @@ p, li, dd, small { text-wrap: pretty; }
 .pf-pcard-bars .locked b { display: grid; justify-items: end; opacity: .55; }
 .pf-pcard-bars .locked span { opacity: .5; }
 .pf-lock { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.pf-lock-note { display: flex; gap: 8px; align-items: flex-start; max-width: 340px; margin: 10px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
-.pf-lock-note .pf-lock { flex: none; margin-top: 2px; }
-.pf-lock-note b { color: var(--ink); font-weight: 600; }
-.pf-lock-note > span > span { display: block; }
-.pf-lock-note > span > span + span { margin-top: 4px; }
+.pf-lock-note { display: grid; gap: 10px; max-width: 340px; margin: 12px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+.pf-lock-row { display: grid; grid-template-columns: 15px 46px minmax(0, 1fr); column-gap: 6px; row-gap: 5px; align-items: start; }
+.pf-lock-row b { color: var(--ink); font-size: 11px; font-weight: 700; letter-spacing: .08em; line-height: 17px; }
+.pf-lock-bar { grid-column: 3; display: block; height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.pf-lock-bar i { display: block; height: 100%; background: var(--data); }
 .pf-lock-note a { font-weight: 600; white-space: nowrap; }
 .pf-pcard-bars .on span, .pf-pcard-bars .on b { color: var(--band-ink); opacity: 1; }
 
