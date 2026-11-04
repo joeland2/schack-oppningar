@@ -1,13 +1,13 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, BOOK } from './board.js?v=20261104145746';
-import { engineEval, winPct } from './profile.js?v=20261104145746';
-import { banner, confetti } from './celebrate.js?v=20261104145746';
-import { PLAN, VS_PLAN } from './styles.js?v=20261104145746';
-import { GUIDE } from './guide.js?v=20261104145746';
-import { hanging } from './ideas.js?v=20261104145746';
-import { openingOf, loadBook, key } from './book.js?v=20261104145746';
+import { drawBoard, enableDrag, BOOK } from './board.js?v=20261104151257';
+import { engineEval, winPct } from './profile.js?v=20261104151257';
+import { banner, confetti } from './celebrate.js?v=20261104151257';
+import { PLAN, VS_PLAN } from './styles.js?v=20261104151257';
+import { GUIDE } from './guide.js?v=20261104151257';
+import { hanging } from './ideas.js?v=20261104151257';
+import { openingOf, loadBook, key } from './book.js?v=20261104151257';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -64,7 +64,7 @@ function draw() {
   const all = g.c.history({ verbose: true }), sans = all.map((m) => m.san);
   const moves = shownMoves(), b = moves ? new Chess() : g.c;
   moves?.forEach((m) => b.move(m));
-  drawBoard(boardEl, b, { side: g.me, sel: view === null ? g.sel : null, last: b.history({ verbose: true }).at(-1) || null, hint: view === null && g.hint ? [g.hint] : [], arrows: g.walk ? walkArrows(b) : view !== null ? g.arrows || [] : g.best ? [[g.best.from, g.best.to, 'var(--good)']] : [] });
+  drawBoard(boardEl, b, { side: g.me, sel: view === null ? g.sel : null, last: b.history({ verbose: true }).at(-1) || null, hint: view === null && g.hint ? [g.hint] : [], arrows: g.walk ? walkArrows(b) : view !== null ? g.arrows || [] : g.tips?.[g.tipShown] ? [[g.tips[g.tipShown].from, g.tips[g.tipShown].to, 'var(--good)']] : g.best ? [[g.best.from, g.best.to, 'var(--good)']] : [] });
   evalBar(b.fen());
   boardEl.classList.toggle('looking-back', view !== null);
   $('#test-moves').innerHTML = sans.reduce((a, s, i) => (i % 2 ? a : [...a, `<li><span data-ply="${i}">${s}</span><span data-ply="${i + 1}">${sans[i + 1] || ''}</span></li>`]), []).join('');
@@ -123,7 +123,10 @@ function over() {
   if (!g.c.isGameOver()) return false;
   const lost = g.c.isCheckmate() && g.c.turn() === g.me;
   $('#test-status').innerHTML = `<b>${g.c.isCheckmate() ? (lost ? 'Maia won by checkmate.' : 'You won by checkmate.') : 'Draw.'}</b>`;
-  if (g.c.isCheckmate()) banner(lost ? 'Checkmated' : 'Checkmate!', lost ? 'lost' : ''); else banner('Draw', 'draw');
+  if (lost) {
+    const before = g.c.history().slice(0, -2);
+    stamp('Checkmated', 'Go back and find something better', 'lost', [['Go back and play', () => rewind(before)], ['See my report', () => {}]]);
+  } else if (g.c.isCheckmate()) banner('Checkmate!'); else banner('Draw', 'draw');
   g.done = true; buttons(); saveGame();
   report();
   return true;
@@ -138,7 +141,7 @@ function humanPick(ranked) {
 async function maiaPlays() {
   const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true });
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261104145746'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104145746');
+  const { maia3Move } = await import('./maia3.js?v=20261104151257'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104151257');
   let r = null;
   try { r = humanPick((await within(20000, maia3Move(fen, legal, rating, rating))).ranked); } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }
@@ -154,7 +157,7 @@ function tryMove(from, to) {
   const before = g.c.history();
   let played;
   try { played = g.c.move({ from, to, promotion: 'q' }); } catch { return false; }
-  g.sel = null; g.hint = g.best = null; draw();
+  g.sel = null; g.hint = g.best = g.tips = null; $('#test-next').querySelectorAll('.test-tip').forEach((b) => { b.disabled = true; }); draw();
   if (!over()) {
     saveGame();
     const t = g; t.busy = true; buttons();
@@ -267,6 +270,7 @@ function lineEnded(tree, next, moves) {
   return moves.length >= 20 || (!soundMoves(kidsOf(nodeAt(tree, moves))).length && !next.get(key(moves))?.size);
 }
 async function checkCleared(t) {
+  if (t.cleared && !t.done) return whatNow(t); // playing on: the questions follow the position
   if (t.off || t.cleared || t.done) return;
   const moves = t.c.history(), { next } = await loadBook();
   if (!lineEnded(await treeNow(), next, moves)) return;
@@ -276,26 +280,52 @@ async function checkCleared(t) {
   t.cleared = true;
   const [f] = await openingOf(moves.slice(0, 24)), mine = moves.filter((_, i) => (i % 2 === 0) === (t.me === 'w')).length;
   const again = ['Try again', () => newGame()], on = ['Play on against Maia', () => {}];
-  whatNow(t, f);
+  t.family = f;
+  whatNow(t);
   live(moves);
   if (mine >= 4) { confetti(110); stamp(`${f} cleared`, `You played the line to its end, ${mine} moves`, '', [on, again]); }
   else stamp('The line is over', 'Maia left the known lines', 'draw', [on, again]);
 }
-// What to think about now the line is over: the opening's plan, then what the position itself asks for.
-function whatNow(t, family) {
-  const c = t.c, me = t.me, plans = me === 'w' ? PLAN : VS_PLAN, find = (o) => o[family] || Object.entries(o).find(([k]) => family.startsWith(k))?.[1];
-  const plan = find(plans) || find(GUIDE)?.idea?.split('. ').slice(0, 2).join('. ');
-  const NAME = { n: 'knight', b: 'bishop', q: 'queen', r: 'rook' }, tips = [];
-  for (const h of hanging(c, me).slice(0, 1)) tips.push(`Look out: your ${NAME[h.type] || h.type} on ${h.square} can be taken.`);
+// What to think about now the line is over: the opening's plan, then questions about this very position. Stockfish
+// has each answer ready, limited to that piece's moves; hovering or tapping shows it on the board.
+const NAME = { n: 'knight', b: 'bishop', q: 'queen', r: 'rook', p: 'pawn', k: 'king' };
+async function whatNow(t) {
+  const c = t.c, me = t.me, family = t.family, fen = c.fen(), legal = c.moves({ verbose: true });
+  const find = (o) => o[family] || Object.entries(o).find(([k]) => family.startsWith(k))?.[1];
+  const plan = find(me === 'w' ? PLAN : VS_PLAN), idea = !plan && find(GUIDE)?.idea?.split('. ').slice(0, 2).join('. ');
+  // The best of these moves, as a move on the board.
+  const bestOf = async (moves) => {
+    if (!moves.length) return null;
+    const { best } = await engineEval(fen, `depth 12 searchmoves ${moves.map((m) => m.from + m.to + (m.promotion || '')).join(' ')}`);
+    return best && new Chess(fen).move({ from: best.slice(0, 2), to: best.slice(2, 4), promotion: best[4] || 'q' });
+  };
   const home = me === 'w' ? { b1: 'n', g1: 'n', c1: 'b', f1: 'b' } : { b8: 'n', g8: 'n', c8: 'b', f8: 'b' };
   const idle = Object.entries(home).filter(([sq, type]) => { const p = c.get(sq); return p?.color === me && p.type === type; });
-  if (idle.length) tips.push(`Bring out the ${idle.map(([sq, type]) => `${NAME[type]} on ${sq}`).join(', ')}.`);
-  const king = c.board().flat().find((p) => p?.type === 'k' && p.color === me)?.square;
-  if (king === (me === 'w' ? 'e1' : 'e8')) tips.push('Castle soon: your king is still in the centre.');
-  else if (!idle.length) tips.push('Your pieces are out: find a pawn break and bring the rooks to open files.');
+  const king = c.board().flat().find((p) => p?.type === 'k' && p.color === me)?.square, central = king === (me === 'w' ? 'e1' : 'e8');
+  const castles = legal.filter((m) => m.san.startsWith('O-O'));
+  const tips = [];
+  for (const h of hanging(c, me).slice(0, 1)) tips.push([`Your ${NAME[h.type]} on ${h.square} can be taken. What now?`, await bestOf(legal)]);
+  let waiting = 0; // how many pieces at home still have somewhere to go
+  for (const [sq, type] of idle) {
+    const moves = legal.filter((m) => m.from === sq);
+    if (moves.length && ++waiting <= 2) tips.push([`Your ${NAME[type]} on ${sq}: where should it go?`, await bestOf(moves)]);
+  }
+  if (castles.length) tips.push(['Your king is still in the centre: which way should it castle?', await bestOf(castles)]);
+  else if (central) tips.push(['Castle soon: clear the squares next to your king first.', null]);
+  if (!waiting && !central) tips.push(['Your pieces are out: which pawn move opens the game for them?', await bestOf(legal.filter((m) => m.piece === 'p'))]);
+  tips.push(['The strongest move right now?', await bestOf(legal)]);
+  if (g !== t || t.c.fen() !== fen || !t.cleared) return; // the game moved on while Stockfish thought
+  t.tips = tips.map(([, m]) => m); t.tipShown = null;
   const el = $('#test-next');
-  el.innerHTML = `<p class="sups-k">Now the line is over</p>${plan ? `<p><b>Your plan:</b> ${plan}</p>` : ''}<ul>${tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+  el.innerHTML = `<p class="sups-k">Now the line is over</p>${plan ? `<p><b>Your plan:</b> ${plan}</p>` : idea ? `<p><b>The idea:</b> ${idea.replace(/\.?$/, '.')}</p>` : ''}
+    <ul>${tips.map(([q, m], i) => (m ? `<li><button type="button" class="test-tip" data-tip="${i}">${esc(q)} <b>${esc(m.san)}</b></button></li>` : `<li>${esc(q)}</li>`)).join('')}</ul>`;
   el.hidden = false;
+}
+function showTip(i) {
+  if (!g?.tips || g.tipShown === i) return;
+  g.tipShown = i;
+  document.querySelectorAll('.test-tip').forEach((b) => b.classList.toggle('on', Number(b.dataset.tip) === i));
+  draw();
 }
 // The line you opened with: your own moves as long as they are known theory or something strong players play;
 // from the first that is not, what strong players play that scores best at your level, against the most common
@@ -475,6 +505,12 @@ $('#test-resign').addEventListener('click', (e) => {
   draw(); saveGame(); report();
 });
 $('#test-past').addEventListener('click', (e) => { const x = e.target.closest('[data-past]'); if (x) openPast(Number(x.dataset.past)); });
+// A question's answer: on hover or focus, and held by a tap, as a phone has no hover.
+const tipOf = (e) => e.target.closest?.('[data-tip]');
+$('#test-next').addEventListener('mouseover', (e) => { const b = tipOf(e); if (b && !b.disabled) showTip(Number(b.dataset.tip)); });
+$('#test-next').addEventListener('mouseout', (e) => { if (tipOf(e)) showTip(null); });
+$('#test-next').addEventListener('focusin', (e) => { const b = tipOf(e); if (b && !b.disabled) showTip(Number(b.dataset.tip)); });
+$('#test-next').addEventListener('click', (e) => { const b = tipOf(e); if (b && !b.disabled) showTip(Number(b.dataset.tip)); });
 $('#test-report').addEventListener('click', report);
 $('#test-new').addEventListener('click', newGame);
 document.querySelectorAll('[data-side]').forEach((b) => b.addEventListener('click', () => { side = b.dataset.side; try { localStorage.setItem('opening-book-v2-test-side', JSON.stringify(side)); } catch {} newGame(); }));

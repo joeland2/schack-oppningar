@@ -3010,6 +3010,9 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .test-stamp .test-choices { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .test-stamp .ghost { background: var(--surface); }
 .test-next p, .test-next ul { margin: 0; } .test-next ul { margin-top: 6px; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+.test-tip { background: none; border: 0; padding: 2px 0; color: inherit; font: inherit; text-align: left; cursor: help; text-decoration: underline dotted var(--muted); text-underline-offset: 3px; }
+.test-tip b { visibility: hidden; margin-left: 4px; color: var(--good); font-family: var(--font-mono); } .test-tip.on b { visibility: visible; }
+.test-tip:disabled { opacity: .6; cursor: default; text-decoration: none; }
 .test-setup { display: grid; gap: 12px; } .test-setup h1, .test-setup p { margin: 0; }
 .test-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .test-rating { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); } .test-rating input { width: 5.5em; }
