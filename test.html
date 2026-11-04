@@ -16,10 +16,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261104133132">
-  <script src="move.js?v=20261104133132"></script>
-  <script src="header.js?v=20261104133132" defer></script>
-  <script src="theme.js?v=20261104133132"></script>
+  <link rel="stylesheet" href="style.css?v=20261104135740">
+  <script src="move.js?v=20261104135740"></script>
+  <script src="header.js?v=20261104135740" defer></script>
+  <script src="theme.js?v=20261104135740"></script>
 </head>
 <body>
   <header class="top">
@@ -37,8 +37,13 @@
     <section id="test-game" class="play-game" hidden>
       <div class="play-board-col">
         <div class="play-pl" id="pl-top"><b>Maia 3 <span id="test-maia"></span></b></div>
-        <div id="board" class="board"></div>
+        <div class="test-board">
+          <div class="evalbar" id="test-eval" role="img" aria-label="Evaluation"><div class="evalbar-white"></div><span class="evalbar-num"></span></div>
+          <div id="board" class="board"></div>
+        </div>
         <div class="play-pl" id="pl-bot"><b>You</b></div>
+        <p class="test-row test-acts"><button type="button" class="ghost" id="test-hint">Hint</button><button type="button" class="ghost" id="test-best">Best move</button><button type="button" class="ghost" id="test-back">Take back</button><button type="button" class="ghost" id="test-resign">Resign</button></p>
+        <div class="test-walk" id="test-walk" hidden><button type="button" class="ghost" data-walk="-1" aria-label="Previous move">‹</button><button type="button" class="ghost" data-walk="1" aria-label="Next move">›</button><p id="test-walk-text" aria-live="polite"></p><button type="button" class="ghost" data-walk="0">Close</button></div>
       </div>
       <aside class="play-side">
         <div class="play-card test-setup">
@@ -49,7 +54,7 @@
           </div>
           <p class="test-row"><button type="button" class="ghost" id="test-new">New game</button><button type="button" class="cta" id="test-report" disabled>See my report</button></p>
         </div>
-        <div class="play-card"><p class="sups-k">Opening</p><p class="play-open" id="test-open">Starting position</p></div>
+        <div class="play-card"><p class="sups-k">Opening</p><p class="play-open" id="test-open">Starting position</p><p class="test-live" id="test-live"></p></div>
         <div class="play-card test-report" id="test-out" hidden></div>
         <ol class="play-moves" id="test-moves"></ol>
         <p class="play-status" id="test-status" aria-live="polite"></p>
@@ -57,6 +62,6 @@
     </section>
   </main>
 
-  <script type="module" src="test.js?v=20261104133132"></script>
+  <script type="module" src="test.js?v=20261104135740"></script>
 </body>
 </html>
