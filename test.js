@@ -1,10 +1,13 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, BOOK } from './board.js?v=20261104144835';
-import { engineEval, winPct } from './profile.js?v=20261104144835';
-import { banner } from './celebrate.js?v=20261104144835';
-import { openingOf, loadBook, key } from './book.js?v=20261104144835';
+import { drawBoard, enableDrag, BOOK } from './board.js?v=20261104145746';
+import { engineEval, winPct } from './profile.js?v=20261104145746';
+import { banner, confetti } from './celebrate.js?v=20261104145746';
+import { PLAN, VS_PLAN } from './styles.js?v=20261104145746';
+import { GUIDE } from './guide.js?v=20261104145746';
+import { hanging } from './ideas.js?v=20261104145746';
+import { openingOf, loadBook, key } from './book.js?v=20261104145746';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -35,8 +38,17 @@ const levelText = () => { const [lo, hi] = band(); return hi === EDGES.length - 
 // Strong players as on the Openings page: 200 to 1000 points above you, the top group at the very top.
 function strong() { const s = range(0, 9).filter((i) => EDGES[i] >= rating + 200 && EDGES[i] <= rating + 1000); return s.length ? s : [8]; }
 
-// shortcut: only the -top file (lines of 200+ games), so rare lines count as no data; use the full file if that shows.
-const TREE = fetch(`data/explorer-${speed}-top.json?v=2026-10-31-k20`).then((r) => r.json()).then((d) => d.tree);
+// The small file (lines of 200+ games) first, then the full one, kept in the same browser cache as on the Openings page.
+const treeFile = async (part) => {
+  const url = `data/explorer-${speed}${part}.json?v=2026-10-31-k20`, box = await globalThis.caches?.open('explorer').catch(() => null);
+  let res = await box?.match(url).catch(() => null);
+  if (!res) { res = await fetch(url); if (res.ok) box?.put(url, res.clone()).catch(() => {}); }
+  return (await res.json()).tree;
+};
+const TOP = treeFile('-top');
+let fullTree = null;
+const FULL = TOP.then(() => treeFile('')).then((t) => { fullTree = t; return t; }).catch((e) => { console.warn(e); return null; });
+const treeNow = async () => fullTree || TOP;
 function stat(node, groups) { // node: [games, white wins, draws, children], per rating group
   const sum = (c) => groups.reduce((s, i) => s + (c[i] || 0), 0), n = sum(node[0]);
   return { n, win: n ? sum(node[1]) / n : 0, draw: n ? sum(node[2]) / n : 0, get score() { return this.win + this.draw / 2; } };
@@ -87,22 +99,14 @@ function shownFen() {
 }
 // Under the opening's name: whether the game is still in theory, and what players at your level score here.
 async function live(sans) {
-  const tree = await TREE, node = nodeAt(tree, sans.slice(0, 20)), s = node && sans.length <= 20 && stat(node, level());
+  const tree = await treeNow(), node = nodeAt(tree, sans.slice(0, 20)), s = node && sans.length <= 20 && stat(node, level());
   if (g.c.history().length !== sans.length) return;
   const name = g.me === 'w' ? 'White' : 'Black';
-  $('#test-live').innerHTML = [g.off || !sans.length ? '' : 'On the line so far.',
+  $('#test-live').innerHTML = [g.off ? `Off the line since ${mv(g.off.ply, g.off.san)}; it plays ${mv(g.off.ply, g.off.plays)}.` : g.cleared || !sans.length ? '' : 'On the line so far.',
     s?.n >= FEW_GAMES ? `${name} scores ${pct(forMe(s, g.me))} from here at your level, in ${s.n.toLocaleString('en')} games.` : ''].filter(Boolean).join(' ');
 }
 const myTurn = () => !g.done && !g.busy && g.c.turn() === g.me && !g.c.isGameOver();
 function buttons() {
-  // Off the line: the choice to play the line's move instead, or to try again yourself.
-  const off = view === null && g.off;
-  $('#test-offbar').hidden = !off;
-  if (off) {
-    $('#test-off-text').innerHTML = `You left the line with <b>${mv(off.ply, off.san)}</b>.`;
-    $('[data-off-choice="play"]').textContent = `Play ${mv(off.ply, off.plays)} and go on`;
-    document.querySelectorAll('[data-off-choice]').forEach((b) => { b.disabled = g.busy; });
-  }
   const n = g.c.history().length, enough = g.me === 'w' ? 1 : 2;
   $('#test-hint').disabled = $('#test-best').disabled = !myTurn() || view !== null;
   $('#test-back').disabled = g.busy || (view === null && n < enough);
@@ -134,7 +138,7 @@ function humanPick(ranked) {
 async function maiaPlays() {
   const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true });
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261104144835'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104144835');
+  const { maia3Move } = await import('./maia3.js?v=20261104145746'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104145746');
   let r = null;
   try { r = humanPick((await within(20000, maia3Move(fen, legal, rating, rating))).ranked); } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }
@@ -143,20 +147,23 @@ async function maiaPlays() {
   if (g !== t) return; // a new game began while Maia thought
   t.busy = false; $('#test-status').textContent = 'Your move.';
   t.c.move({ from: r.from, to: r.to, promotion: r.promotion || 'q' });
-  draw(); if (!over()) saveGame();
+  draw(); if (!over()) { saveGame(); checkCleared(t); }
 }
 function tryMove(from, to) {
   if (!g || !myTurn()) return false;
   const before = g.c.history();
   let played;
   try { played = g.c.move({ from, to, promotion: 'q' }); } catch { return false; }
-  checkLine(g, before, played.san);
   g.sel = null; g.hint = g.best = null; draw();
-  if (!over()) { saveGame(); maiaPlays(); }
+  if (!over()) {
+    saveGame();
+    const t = g; t.busy = true; buttons();
+    checkLine(t, before, played.san).then((off) => { if (!off && g === t) maiaPlays(); });
+  }
   return true;
 }
 function newGame() {
-  run++; view = null; $('#test-walk').hidden = true;
+  run++; view = null; $('#test-walk').hidden = true; removeStamp(); $('#test-next').hidden = true;
   g = { id: Date.now(), me: side, c: new Chess(), sel: null, busy: false, arrows: null };
   $('#test-out').hidden = true;
   document.querySelectorAll('[data-side]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.side === side));
@@ -192,7 +199,7 @@ function pastList() {
 function openPast(id) {
   const x = past().find((y) => y.id === id);
   if (!x) return;
-  run++; view = null; $('#test-walk').hidden = true; $('#test-out').hidden = true;
+  run++; view = null; $('#test-walk').hidden = true; $('#test-out').hidden = true; removeStamp(); $('#test-next').hidden = true;
   const c = new Chess(); x.moves.split(' ').forEach((m) => c.move(m));
   side = x.me;
   g = { id: x.id, me: x.me, c, sel: null, busy: false, arrows: null, done: x.result !== 'U', resigned: x.result === 'L' && !c.isGameOver() };
@@ -214,35 +221,85 @@ const kidsOf = (node) => Object.entries(node?.[3] || {}).map(([san, c]) => ({ sa
 const soundMoves = (kids) => { const all = kids.reduce((s, m) => s + m.top, 0); return kids.filter((m) => m.top >= 20 && m.top / all >= 0.1); };
 const onLine = (next, moves, san, sound) => next.get(key(moves))?.has(clean(san)) || sound.some((m) => m.san === clean(san));
 const lineMove = (sound, me) => { const score = (m) => (m.n >= FEW_GAMES ? forMe(m, me) : -1); return [...sound].sort((a, b) => score(b) - score(a) || b.top - a.top)[0]; };
-// The first time your move leaves the line, say so at once. Where the games run out there is nothing to say.
-async function checkLine(t, before, san) {
-  const [tree, { next }] = await Promise.all([TREE, loadBook()]);
-  if (g !== t || t.off) return;
-  const sound = soundMoves(kidsOf(nodeAt(tree, before))), pick = lineMove(sound, t.me);
-  if (onLine(next, before, san, sound)) return;
-  const plays = pick?.san || await engineOff(before, san, t.me);
-  if (!plays || g !== t || t.off) return;
-  const i = before.length;
-  t.off = { ply: i, san, plays };
-  banner(`Off the line · The line plays ${mv(i, plays)}`, 'lost');
-  live(t.c.history());
-  buttons();
+// The stamp with a choice on the board; nothing happens behind it until one is made.
+function stamp(word, small, kind, choices) {
+  removeStamp();
+  document.querySelector('.board-frame').insertAdjacentHTML('beforeend', `<div class="mate-banner test-stamp${kind ? ` ${kind}` : ''}" role="dialog" aria-label="${esc(word)}"><b class="stamp">${esc(word)}<small>${esc(small)}</small></b>
+    <div class="test-choices">${choices.map(([label], i) => `<button type="button" class="${i ? 'ghost' : 'cta'}" data-choice="${i}">${esc(label)}</button>`).join('')}</div></div>`);
+  stampChoices = choices;
 }
-// Where the games run out, Stockfish keeps the line: a move leaves it when it gives away what counts as a slip (5
-// points of winning chances), not merely for being another good move. The better move, or null.
-async function engineOff(before, san, me) {
-  const b = new Chess(); before.forEach((m) => b.move(m));
-  const { best, cp } = await deepOf(b.fen());
-  if (!best) return null;
-  const better = new Chess(b.fen()).move({ from: best.slice(0, 2), to: best.slice(2, 4), promotion: best[4] || 'q' }).san;
-  if (clean(better) === clean(san)) return null;
-  b.move(san);
-  const sign = me === 'w' ? 1 : -1, after = await deepOf(b.fen());
-  return winPct(sign * cp) - winPct(sign * after.cp) >= 5 ? better : null;
+let stampChoices = [];
+function removeStamp() { document.querySelector('.test-stamp')?.remove(); stampChoices = []; }
+// Your move leaves the line: say so before Maia answers. True if the stamp is up. Where the games run out there is no line to leave.
+async function checkLine(t, before, san) {
+  if (t.off || t.cleared) return false;
+  const [tree, { next }] = await Promise.all([treeNow(), loadBook()]);
+  if (g !== t) return false;
+  const sound = soundMoves(kidsOf(nodeAt(tree, before))), pick = lineMove(sound, t.me);
+  if (!pick || onLine(next, before, san, sound)) return false;
+  const i = before.length, plays = pick.san;
+  t.off = { ply: i, san, plays };
+  t.busy = false; buttons(); live(t.c.history());
+  stamp('Off the line', `You played ${mv(i, san)}. The line plays ${mv(i, plays)}`, 'lost', [
+    [`Play ${mv(i, plays)}`, () => playLine(t, before, plays)],
+    ['Try again', () => rewind(before)],
+    ['Keep playing', () => maiaPlays()],
+  ]);
+  return true;
+}
+// The line's move played for you, slowly enough to follow: your move goes back, the arrow shows, then the piece moves.
+async function playLine(t, before, plays) {
+  rewind(before);
+  const m = new Chess(t.c.fen()).move(plays), i = before.length;
+  t.busy = true; t.best = { from: m.from, to: m.to }; buttons();
+  $('#test-status').textContent = `The line plays ${mv(i, plays)}.`;
+  draw();
+  await sleep(1100);
+  if (g !== t) return;
+  t.best = null; t.c.move(plays); draw();
+  await sleep(900);
+  if (g !== t) return;
+  t.busy = false;
+  if (!over()) { saveGame(); maiaPlays(); }
+}
+// Your turn and no known line goes further: the end of the data (20 half-moves) or the games at your level running out.
+function lineEnded(tree, next, moves) {
+  return moves.length >= 20 || (!soundMoves(kidsOf(nodeAt(tree, moves))).length && !next.get(key(moves))?.size);
+}
+async function checkCleared(t) {
+  if (t.off || t.cleared || t.done) return;
+  const moves = t.c.history(), { next } = await loadBook();
+  if (!lineEnded(await treeNow(), next, moves)) return;
+  await within(8000, FULL).catch(() => {}); // the small file ends early: ask the full one before saying the line is over
+  const tree = await treeNow();
+  if (g !== t || t.c.history().length !== moves.length || t.off || !lineEnded(tree, next, moves)) return;
+  t.cleared = true;
+  const [f] = await openingOf(moves.slice(0, 24)), mine = moves.filter((_, i) => (i % 2 === 0) === (t.me === 'w')).length;
+  const again = ['Try again', () => newGame()], on = ['Play on against Maia', () => {}];
+  whatNow(t, f);
+  live(moves);
+  if (mine >= 4) { confetti(110); stamp(`${f} cleared`, `You played the line to its end, ${mine} moves`, '', [on, again]); }
+  else stamp('The line is over', 'Maia left the known lines', 'draw', [on, again]);
+}
+// What to think about now the line is over: the opening's plan, then what the position itself asks for.
+function whatNow(t, family) {
+  const c = t.c, me = t.me, plans = me === 'w' ? PLAN : VS_PLAN, find = (o) => o[family] || Object.entries(o).find(([k]) => family.startsWith(k))?.[1];
+  const plan = find(plans) || find(GUIDE)?.idea?.split('. ').slice(0, 2).join('. ');
+  const NAME = { n: 'knight', b: 'bishop', q: 'queen', r: 'rook' }, tips = [];
+  for (const h of hanging(c, me).slice(0, 1)) tips.push(`Look out: your ${NAME[h.type] || h.type} on ${h.square} can be taken.`);
+  const home = me === 'w' ? { b1: 'n', g1: 'n', c1: 'b', f1: 'b' } : { b8: 'n', g8: 'n', c8: 'b', f8: 'b' };
+  const idle = Object.entries(home).filter(([sq, type]) => { const p = c.get(sq); return p?.color === me && p.type === type; });
+  if (idle.length) tips.push(`Bring out the ${idle.map(([sq, type]) => `${NAME[type]} on ${sq}`).join(', ')}.`);
+  const king = c.board().flat().find((p) => p?.type === 'k' && p.color === me)?.square;
+  if (king === (me === 'w' ? 'e1' : 'e8')) tips.push('Castle soon: your king is still in the centre.');
+  else if (!idle.length) tips.push('Your pieces are out: find a pawn break and bring the rooks to open files.');
+  const el = $('#test-next');
+  el.innerHTML = `<p class="sups-k">Now the line is over</p>${plan ? `<p><b>Your plan:</b> ${plan}</p>` : ''}<ul>${tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+  el.hidden = false;
 }
 // The line you opened with: your own moves as long as they are known theory or something strong players play;
 // from the first that is not, what strong players play that scores best at your level, against the most common
-// answers. Where the games run out, Stockfish's move ends it.
+// answers. It ends where the games run out.
 async function theLine(tree, next, sans, me) {
   const line = { sans: [], notes: [], off: null, played: null };
   let onGame = true, mine = 0;
@@ -262,23 +319,11 @@ async function theLine(tree, next, sans, me) {
     const fine = played && onLine(next, line.sans, played, sound);
     if (fine) { line.sans.push(played); line.notes.push(`${label(played)}: you played this too.`); continue; }
     const pick = lineMove(sound, me) || (played ? null : kids.filter((m) => m.top >= 20).sort((a, b) => b.top - a.top)[0]);
-    let san = pick?.san, why = pick ? `${pick.n >= FEW_GAMES ? `scores ${pct(forMe(pick, me))} at your level` : 'strong players play it'}` : '';
-    if (!san) { // the games run out here: Stockfish keeps the line
-      if (played) {
-        san = await engineOff(line.sans, played, me);
-        if (!san) { line.sans.push(played); line.notes.push(`${label(played)}: you played this too.`); continue; }
-      } else {
-        const b = new Chess(); line.sans.forEach((m) => b.move(m));
-        const { best } = await deepOf(b.fen());
-        if (!best) break;
-        san = b.move({ from: best.slice(0, 2), to: best.slice(2, 4), promotion: best[4] || 'q' }).san;
-      }
-      why = "Stockfish's move, as the games run out here";
-    }
+    const san = pick?.san, why = pick ? `${pick.n >= FEW_GAMES ? `scores ${pct(forMe(pick, me))} at your level` : 'strong players play it'}` : '';
+    if (!san) break; // the games run out here: the line ends
     if (played) { line.off = i; line.played = played; onGame = false; }
     line.sans.push(san);
     line.notes.push(`${label(san)}: ${why}.${played ? ` You played ${label(played)}.` : ''}`);
-    if (!pick) break;
   }
   return line;
 }
@@ -294,7 +339,7 @@ function stepWalk(by) { g.walk.i = Math.max(0, Math.min(g.walk.line.sans.length,
 function endWalk() { g.walk = null; $('#test-walk').hidden = true; }
 async function report() {
   const me = ++run, t = g, colour = t.me === 'w' ? 'White' : 'Black', sans = t.c.history(), hist = t.c.history({ verbose: true });
-  const out = $('#test-out'), [tree, { next }] = await Promise.all([TREE, loadBook()]), [f, v] = await openingOf(sans.slice(0, 24));
+  const out = $('#test-out'), [tree, { next }] = await Promise.all([treeNow(), loadBook()]), [f, v] = await openingOf(sans.slice(0, 24));
   const line = await theLine(tree, next, sans, t.me);
   t.line = line;
   // The report has the last word on the line, also for a game opened from the list.
@@ -332,7 +377,7 @@ async function report() {
     out.innerHTML = `<p class="sups-k">Your opening</p><p class="play-open">${esc(f)}${v ? `<small>${esc(v)}</small>` : ''}</p>
       ${good}${verdict}
       <p class="sups-k">The line</p>
-      <p>${line.off !== null ? `You left it with <b>${mv(line.off, line.played)}</b>. The line plays <b>${mv(line.off, line.sans[line.off])}</b>.` : line.sans.length > sans.length ? 'You stayed on the line. This is how it goes on.' : 'You stayed on the line as far as the games go.'}</p>
+      <p>${line.off !== null ? `You left it with <b>${mv(line.off, line.played)}</b>. The line plays <b>${mv(line.off, line.sans[line.off])}</b>.` : line.sans.length > sans.length ? 'You stayed on the line. This is how it goes on.' : 'You played the line to its end.'}</p>
       <p class="test-line">${line.sans.map((m, i) => `<span${i === line.off ? ' class="off"' : ''}>${i % 2 ? '' : `${i / 2 + 1}.`}${esc(m)}</span>`).join(' ')}</p>
       <p><button type="button" class="link" data-line>Show the line on the board</button></p>
       <ul class="test-list">${list()}</ul>
@@ -398,6 +443,7 @@ $('#test-best').addEventListener('click', async () => { const b = await bestNow(
 // Back to the position on the board, or your last move when you are at the end, and on from there. A position with
 // Maia to move goes back one more, so it is your move again. A finished game stays in the list; this becomes a new one.
 function rewind(to, then) {
+  removeStamp(); g.cleared = false; $('#test-next').hidden = true;
   const c = new Chess(); to.forEach((m) => c.move(m));
   if (g.done) g.id = Date.now();
   if (g.off?.ply >= to.length) g.off = null;
@@ -413,15 +459,18 @@ $('#test-back').addEventListener('click', () => {
   if (shown && to.length && to.length % 2 === (g.me === 'w' ? 1 : 0)) to.pop();
   rewind(to);
 });
-$('#test-offbar').addEventListener('click', (e) => {
-  const what = e.target.closest('[data-off-choice]')?.dataset.offChoice, off = g.off;
-  if (!what || !off || g.busy) return;
-  rewind(g.c.history().slice(0, off.ply), what === 'play' ? (c) => c.move(off.plays) : null);
+document.querySelector('.board-frame').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-choice]');
+  if (!b) return;
+  e.stopPropagation();
+  const choose = stampChoices[Number(b.dataset.choice)];
+  removeStamp();
+  choose?.[1]();
 });
 $('#test-resign').addEventListener('click', (e) => {
   const b = e.currentTarget;
   if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Press again to resign'; return; }
-  g.done = g.resigned = true; g.sel = g.hint = g.best = null;
+  removeStamp(); g.done = g.resigned = true; g.sel = g.hint = g.best = null;
   $('#test-status').innerHTML = '<b>You resigned.</b>';
   draw(); saveGame(); report();
 });

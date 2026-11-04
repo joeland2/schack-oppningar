@@ -3005,8 +3005,11 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .test-past button { width: 100%; display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; gap: 10px; text-align: left; background: none; border: 0; border-radius: 4px; padding: 6px; color: inherit; font: inherit; font-size: 14px; cursor: pointer; }
 .test-past button:hover, .test-past button[aria-current="true"] { background: var(--raised); } .test-past small { display: block; color: var(--muted); font-size: 12px; }
 .test-past .pf-res.r-U { background: var(--raised); color: var(--muted); }
-.test-offbar { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--bad); border-radius: 12px; padding: 12px 14px; }
-.test-offbar[hidden] { display: none; } .test-offbar p { margin: 0; }
+.mate-banner.test-stamp { pointer-events: auto; align-content: center; gap: 16px; padding: 12px; }
+.test-stamp .stamp { white-space: normal; max-width: 92%; justify-self: center; font-size: clamp(22px, 8cqi, 48px); }
+.test-stamp .test-choices { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.test-stamp .ghost { background: var(--surface); }
+.test-next p, .test-next ul { margin: 0; } .test-next ul { margin-top: 6px; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
 .test-setup { display: grid; gap: 12px; } .test-setup h1, .test-setup p { margin: 0; }
 .test-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .test-rating { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); } .test-rating input { width: 5.5em; }
