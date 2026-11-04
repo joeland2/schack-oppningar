@@ -16,10 +16,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261104143056">
-  <script src="move.js?v=20261104143056"></script>
-  <script src="header.js?v=20261104143056" defer></script>
-  <script src="theme.js?v=20261104143056"></script>
+  <link rel="stylesheet" href="style.css?v=20261104144835">
+  <script src="move.js?v=20261104144835"></script>
+  <script src="header.js?v=20261104144835" defer></script>
+  <script src="theme.js?v=20261104144835"></script>
 </head>
 <body>
   <header class="top">
@@ -43,6 +43,7 @@
         </div>
         <div class="play-pl" id="pl-bot"><b>You</b></div>
         <p class="test-row test-acts"><button type="button" class="ghost" id="test-hint">Hint</button><button type="button" class="ghost" id="test-best">Best move</button><button type="button" class="ghost" id="test-back">Take back</button><button type="button" class="ghost" id="test-resign">Resign</button></p>
+        <div class="test-offbar" id="test-offbar" hidden><p id="test-off-text" role="status"></p><p class="test-row"><button type="button" class="cta" data-off-choice="play"></button><button type="button" class="ghost" data-off-choice="again">Try again</button></p></div>
         <div class="test-walk" id="test-walk" hidden><button type="button" class="ghost" data-walk="-1" aria-label="Previous move">‹</button><button type="button" class="ghost" data-walk="1" aria-label="Next move">›</button><p id="test-walk-text" aria-live="polite"></p><button type="button" class="ghost" data-walk="0">Close</button></div>
       </div>
       <aside class="play-side">
@@ -63,6 +64,6 @@
     </section>
   </main>
 
-  <script type="module" src="test.js?v=20261104143056"></script>
+  <script type="module" src="test.js?v=20261104144835"></script>
 </body>
 </html>
