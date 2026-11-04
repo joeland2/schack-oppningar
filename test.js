@@ -1,13 +1,13 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, BOOK, GLYPH } from './board.js?v=20261104161948';
-import { engineEval, winPct } from './profile.js?v=20261104161948';
-import { banner, confetti } from './celebrate.js?v=20261104161948';
-import { PLAN, VS_PLAN } from './styles.js?v=20261104161948';
-import { GUIDE } from './guide.js?v=20261104161948';
-import { hanging } from './ideas.js?v=20261104161948';
-import { openingOf, loadBook, key } from './book.js?v=20261104161948';
+import { drawBoard, enableDrag, BOOK, GLYPH } from './board.js?v=20261104162531';
+import { engineEval, winPct } from './profile.js?v=20261104162531';
+import { banner, confetti } from './celebrate.js?v=20261104162531';
+import { PLAN, VS_PLAN } from './styles.js?v=20261104162531';
+import { GUIDE } from './guide.js?v=20261104162531';
+import { hanging } from './ideas.js?v=20261104162531';
+import { openingOf, loadBook, key } from './book.js?v=20261104162531';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -147,7 +147,7 @@ async function live(sans) {
   const tree = await treeNow(), node = nodeAt(tree, sans.slice(0, 20)), s = node && sans.length <= 20 && stat(node, level());
   if (g.c.history().length !== sans.length) return;
   const name = g.me === 'w' ? 'White' : 'Black';
-  $('#test-live').innerHTML = [g.off ? `Off the line since ${mv(g.off.ply, g.off.san)}; it plays ${mv(g.off.ply, g.off.plays)}.` : g.cleared || !sans.length ? '' : 'On the line so far.',
+  $('#test-live').innerHTML = [g.off ? `Off the line since ${mv(g.off.ply, g.off.san)}; it plays ${mv(g.off.ply, g.off.plays)}.` : g.note || (g.cleared || !sans.length ? '' : 'On the line so far.'),
     s?.n >= FEW_GAMES ? `${name} scores ${pct(forMe(s, g.me))} from here at your level, in ${s.n.toLocaleString('en')} games.` : ''].filter(Boolean).join(' ');
 }
 const myTurn = () => !g.done && !g.busy && g.c.turn() === g.me && !g.c.isGameOver();
@@ -191,7 +191,7 @@ function humanPick(ranked) {
 async function maiaPlays() {
   const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true });
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261104161948'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104161948');
+  const { maia3Move } = await import('./maia3.js?v=20261104162531'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104162531');
   let r = null;
   try { r = humanPick((await within(20000, maia3Move(fen, legal, rating, rating))).ranked); } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }
@@ -353,20 +353,19 @@ async function checkCleared(t) {
   if (t.cleared && !t.done) return whatNow(t); // playing on: the questions follow the position
   if (t.off || t.cleared || t.done) return;
   const moves = t.c.history(), { next, names } = await loadBook();
-  if (!lineEnded(await treeNow(), next, moves)) return;
-  await within(8000, FULL).catch(() => {}); // the small file ends early: ask the full one before saying the line is over
+  await within(8000, FULL).catch(() => {}); // the small file ends early: ask the full one
   const tree = await treeNow();
-  if (g !== t || t.c.history().length !== moves.length || t.off || !lineEnded(tree, next, moves)) return;
-  t.cleared = true; t.clearedAt = moves.length;
+  if (g !== t || t.c.history().length !== moves.length || t.off) return;
+  const rare = fullTree ? leftLines(fullTree, names, moves, t.me) : null;
+  if (rare === null && !lineEnded(tree, next, moves)) return;
+  t.cleared = true; t.clearedAt = rare === null ? moves.length : rare + 1;
   const [f] = await openingOf(moves.slice(0, 24)), mine = moves.filter((_, i) => (i % 2 === 0) === (t.me === 'w')).length;
-  const again = ['Try again', () => newGame()], on = ['Play on against Maia', () => {}];
   t.family = f;
+  // Only a line played to its end is worth stopping the game for; otherwise a quiet line under the opening's name.
+  if (rare === null && mine >= 4) { confetti(110); stamp(`${f} cleared`, `${mine} moves on the line. What to do next is under the board`, '', [['Play on against Maia', () => {}], ['Try again', () => newGame()]]); }
+  else t.note = `${rare === null ? 'The known lines end here.' : `Maia left the lines on the Openings page with ${mv(rare, moves[rare])}.`} You are on your own from here.`;
   whatNow(t);
   live(moves);
-  const rare = leftLines(tree, names, moves, t.me);
-  if (rare !== null) stamp('The line is over', `Maia played a rare move, ${mv(rare, moves[rare])}. What to do next is under the board`, 'draw', [on, again]);
-  else if (mine >= 4) { confetti(110); stamp(`${f} cleared`, `${mine} moves on the line. What to do next is under the board`, '', [on, again]); }
-  else stamp('The line is over', 'Maia left the known lines. What to do next is under the board', 'draw', [on, again]);
 }
 // What to think about now the line is over: the opening's plan, then questions about this very position. Stockfish
 // has each answer ready, limited to that piece's moves; hovering or tapping shows it on the board.
@@ -564,7 +563,7 @@ $('#test-best').addEventListener('click', async () => { const b = await bestNow(
 function rewind(to, then) {
   removeStamp();
   g.cleared = g.cleared && to.length >= g.clearedAt; // still past the line's end: no second stamp, and the questions stay
-  if (!g.cleared) $('#test-next').hidden = true;
+  if (!g.cleared) { g.note = null; $('#test-next').hidden = true; }
   const c = new Chess(); to.forEach((m) => c.move(m));
   if (g.done) g.id = Date.now();
   if (g.off?.ply >= to.length) g.off = null;
