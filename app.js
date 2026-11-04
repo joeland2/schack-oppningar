@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261104122350';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261104122350';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261104122350';
-import { NAMED_TRAPS } from './traps.js?v=20261104122350';
-import { GUIDE } from './guide.js?v=20261104122350';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261104122350';
-import { banner, confetti } from './celebrate.js?v=20261104122350';
-import { maia3Move } from './maia3.js?v=20261104122350';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261104122350';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261104122350';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261104122350';
-import { openLogin } from './login.js?v=20261104122350';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261104122350';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261104130523';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261104130523';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261104130523';
+import { NAMED_TRAPS } from './traps.js?v=20261104130523';
+import { GUIDE } from './guide.js?v=20261104130523';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261104130523';
+import { banner, confetti } from './celebrate.js?v=20261104130523';
+import { maia3Move } from './maia3.js?v=20261104130523';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261104130523';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261104130523';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261104130523';
+import { openLogin } from './login.js?v=20261104130523';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261104130523';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -1599,20 +1599,23 @@ function learnedFacts() {
   return `<p class="done-learned">You know ${plural(mine, 'move')} of this line${t ? `, and how to punish ${trapMove(t)}` : ''}.</p>`;
 }
 
-// The line's end as a scoreboard: your score from here (a draw counts half) against the opening's own
-// average at your level, so a line that scores below it reads as a warning, not a win. Then the
-// win/draw/loss bar, Stockfish's verdict and the move to play next.
+// The line's end as a scoreboard: what players at your level score from here (a draw counts half) against
+// the opening's own average, so a line that scores below it reads as a warning, not a win. Then the
+// win/draw/loss bar, Stockfish's verdict and the move to play next. Under FEW_GAMES the score is mostly
+// chance, so it is one quiet sentence and no scoreboard.
+const FEW_GAMES = 100;
 function lineScore() {
   const r = endResults();
   if (!r) return '';
   const score = r.win + r.draw / 2, o = resultsAt(cur.root.split(' ')), avg = o && o.win + o.draw / 2;
-  const vs = avg == null ? '' : score < avg - 0.03 ? `Below the ${pct(avg)} this opening scores. Opponents do well here, so knowing the next moves matters most.`
-    : score > avg + 0.03 ? `Above the ${pct(avg)} this opening scores on average.` : `About what this opening scores on average (${pct(avg)}).`;
+  const vs = avg == null ? '' : score < avg - 0.03 ? `Below the ${pct(avg)} this opening scores at your level, so knowing the next moves matters here.`
+    : score > avg + 0.03 ? `Above the ${pct(avg)} this opening scores at your level.` : `About what this opening scores at your level (${pct(avg)}).`;
   const e = EVALS.get(evalKey(game.fen())), cp = e && game.turn() === cur.side ? toCp(e) : null;
   const sf = cp == null ? '' : cp >= 80 ? 'clearly better for you' : cp >= 30 ? 'a little better for you' : cp > -30 ? 'equal' : cp > -100 ? `a small edge for ${sideName(cur.side === 'w' ? 'b' : 'w')}` : `better for ${sideName(cur.side === 'w' ? 'b' : 'w')}`;
   const next = game.turn() === cur.side ? lineTips()[0] : null;
-  return `<div class="go-score"><b class="${avg != null && score < avg - 0.03 ? 'low' : ''}">${pct(score)}</b><span>your score from here, in ${plural(r.n, 'game')} at your level</span></div>
-    ${wdl({ win: r.win, draw: r.draw }, 'w')}${vs ? `<p class="go-vs">${vs}</p>` : ''}
+  return `${r.n < FEW_GAMES ? `<p class="go-vs">Only ${plural(r.n, 'game')} at your level reached this position (${sideName(cur.side)} scored ${pct(score)}): too few to say how good it is.</p>`
+    : `<div class="go-score"><b class="${avg != null && score < avg - 0.03 ? 'low' : ''}">${pct(score)}</b><span>what players at your level score from here, in ${plural(r.n, 'game')}</span></div>
+    ${wdl({ win: r.win, draw: r.draw }, 'w')}${vs ? `<p class="go-vs">${vs}</p>` : ''}`}
     ${sf || next ? `<p class="go-tags">${sf ? `<span class="go-sf">Stockfish: ${sf}</span>` : ''}${next ? `<span class="go-move">Next: <b>${next.move.san}</b></span>` : ''}</p>` : ''}`;
 }
 
