@@ -16,10 +16,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261104162531">
-  <script src="move.js?v=20261104162531"></script>
-  <script src="header.js?v=20261104162531" defer></script>
-  <script src="theme.js?v=20261104162531"></script>
+  <link rel="stylesheet" href="style.css?v=20261104163122">
+  <script src="move.js?v=20261104163122"></script>
+  <script src="header.js?v=20261104163122" defer></script>
+  <script src="theme.js?v=20261104163122"></script>
 </head>
 <body>
   <header class="top">
@@ -42,7 +42,7 @@
           <div class="board-frame"><div id="board" class="board"></div></div>
         </div>
         <div class="play-pl" id="pl-bot"><b>You</b></div>
-        <p class="test-row test-acts"><button type="button" class="ghost" id="test-hint">Hint</button><button type="button" class="ghost" id="test-best">Best move</button><button type="button" class="ghost" id="test-prev" aria-label="Back one move">‹</button><button type="button" class="ghost" id="test-fwd" aria-label="Forward one move">›</button><button type="button" class="ghost" id="test-back">Take back</button><button type="button" class="ghost" id="test-resign">Resign</button></p>
+        <p class="test-row test-acts"><button type="button" class="ghost" id="test-hint">Hint</button><button type="button" class="ghost" id="test-best">Best move</button><button type="button" class="ghost" id="test-prev" aria-label="Back one move">‹</button><button type="button" class="ghost" id="test-fwd" aria-label="Forward one move">›</button><button type="button" class="ghost" id="test-back">Take back</button><button type="button" class="ghost" id="test-new">Start over</button><button type="button" class="ghost" id="test-resign">Resign</button></p>
         <div class="play-card test-next" id="test-next" hidden></div>
         <div class="test-walk" id="test-walk" hidden><button type="button" class="ghost" data-walk="-1" aria-label="Previous move">‹</button><button type="button" class="ghost" data-walk="1" aria-label="Next move">›</button><p id="test-walk-text" aria-live="polite"></p><button type="button" class="ghost" data-walk="0">Close</button></div>
       </div>
@@ -53,7 +53,7 @@
             <div class="seg" role="group" aria-label="Your colour"><button type="button" data-side="w">White</button><button type="button" data-side="b">Black</button></div>
             <label class="test-rating">Your rating <input id="test-rating" type="number" min="600" max="2800" step="50"></label>
           </div>
-          <p class="test-row"><button type="button" class="ghost" id="test-new">New game</button><button type="button" class="cta" id="test-report" disabled>See my report</button></p>
+          <p class="test-row"><button type="button" class="cta" id="test-report" disabled>See my report</button></p>
         </div>
         <div class="play-card"><p class="sups-k">Opening</p><p class="play-open" id="test-open">Starting position</p><p class="test-live" id="test-live"></p></div>
         <div class="play-card test-report" id="test-out" hidden></div>
@@ -65,6 +65,6 @@
     </section>
   </main>
 
-  <script type="module" src="test.js?v=20261104162531"></script>
+  <script type="module" src="test.js?v=20261104163122"></script>
 </body>
 </html>

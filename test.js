@@ -1,13 +1,13 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, BOOK, GLYPH } from './board.js?v=20261104162531';
-import { engineEval, winPct } from './profile.js?v=20261104162531';
-import { banner, confetti } from './celebrate.js?v=20261104162531';
-import { PLAN, VS_PLAN } from './styles.js?v=20261104162531';
-import { GUIDE } from './guide.js?v=20261104162531';
-import { hanging } from './ideas.js?v=20261104162531';
-import { openingOf, loadBook, key } from './book.js?v=20261104162531';
+import { drawBoard, enableDrag, BOOK, GLYPH } from './board.js?v=20261104163122';
+import { engineEval, winPct } from './profile.js?v=20261104163122';
+import { banner, confetti } from './celebrate.js?v=20261104163122';
+import { PLAN, VS_PLAN } from './styles.js?v=20261104163122';
+import { GUIDE } from './guide.js?v=20261104163122';
+import { hanging } from './ideas.js?v=20261104163122';
+import { openingOf, loadBook, key } from './book.js?v=20261104163122';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -158,6 +158,8 @@ function buttons() {
   $('#test-back').textContent = view === null ? 'Take back' : 'Play from here';
   $('#test-prev').disabled = (view ?? n) <= 0; $('#test-fwd').disabled = view === null;
   document.querySelectorAll('.test-tip').forEach((b) => { b.disabled = view !== null || !g.tips; }); // they are about the game now, not a move looked back at
+  $('#test-new').disabled = !n;
+  $('#test-report').hidden = !$('#test-out').hidden; // the report is up: nothing more to see by pressing
   $('#test-resign').disabled = g.done || g.c.isGameOver() || !n;
   if ($('#test-resign').dataset.sure && $('#test-resign').disabled) { delete $('#test-resign').dataset.sure; $('#test-resign').textContent = 'Resign'; }
 }
@@ -175,7 +177,7 @@ function over() {
   $('#test-status').innerHTML = `<b>${g.c.isCheckmate() ? (lost ? 'Maia won by checkmate.' : 'You won by checkmate.') : 'Draw.'}</b>`;
   if (lost) {
     const before = g.c.history().slice(0, -2);
-    stamp('Checkmated', 'Go back and find something better', 'lost', [['Go back and play', () => rewind(before)], ['See my report', () => {}]]);
+    stamp('Checkmated', 'Go back and find something better', 'lost', [['Go back and play', () => rewind(before)], ['Start over', () => newGame()], ['See my report', showReport]]);
   } else if (g.c.isCheckmate()) banner('Checkmate!'); else banner('Draw', 'draw');
   g.done = true; buttons(); saveGame();
   report();
@@ -191,7 +193,7 @@ function humanPick(ranked) {
 async function maiaPlays() {
   const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true });
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261104162531'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104162531');
+  const { maia3Move } = await import('./maia3.js?v=20261104163122'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104163122');
   let r = null;
   try { r = humanPick((await within(20000, maia3Move(fen, legal, rating, rating))).ranked); } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }
@@ -213,6 +215,7 @@ function tryMove(from, to) {
   const before = g.c.history();
   let played;
   try { played = g.c.move({ from, to, promotion: 'q' }); } catch { return false; }
+  run++; $('#test-out').hidden = true; // the report was about the game before this move
   g.sel = null; g.hint = g.best = g.tips = null; draw();
   if (!over()) {
     saveGame();
@@ -449,9 +452,12 @@ function startWalk(line, i) { g.walk = { line, i }; view = 0; g.sel = null; $('#
 function showStep() { const { line, i } = g.walk; $('#test-walk-text').textContent = line.notes[i] || 'The end of the line.'; draw(); }
 function stepWalk(by) { g.walk.i = Math.max(0, Math.min(g.walk.line.sans.length, g.walk.i + by)); showStep(); }
 function endWalk() { g.walk = null; $('#test-walk').hidden = true; }
+const showReport = () => $('#test-out').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 async function report() {
   const me = ++run, t = g, colour = t.me === 'w' ? 'White' : 'Black', sans = t.c.history(), hist = t.c.history({ verbose: true });
-  const out = $('#test-out'), [tree, { next }] = await Promise.all([treeNow(), loadBook()]), [f, v] = await openingOf(sans.slice(0, 24));
+  const out = $('#test-out');
+  out.innerHTML = '<p class="info">Reading the games…</p>'; out.hidden = false; buttons();
+  const [tree, { next }] = await Promise.all([treeNow(), loadBook()]), [f, v] = await openingOf(sans.slice(0, 24));
   const line = await theLine(tree, next, sans, t.me);
   t.line = line;
   // The report has the last word on the line, also for a game opened from the list.
@@ -602,7 +608,7 @@ $('#test-next').addEventListener('mouseover', (e) => { const b = tipOf(e); if (b
 $('#test-next').addEventListener('mouseout', (e) => { if (tipOf(e)) showTip(null); });
 $('#test-next').addEventListener('focusin', (e) => { const b = tipOf(e); if (b && !b.disabled) showTip(Number(b.dataset.tip)); });
 $('#test-next').addEventListener('click', (e) => { const b = tipOf(e); if (b && !b.disabled) showTip(Number(b.dataset.tip)); });
-$('#test-report').addEventListener('click', report);
+$('#test-report').addEventListener('click', () => { report(); showReport(); });
 $('#test-new').addEventListener('click', newGame);
 document.querySelectorAll('[data-side]').forEach((b) => b.addEventListener('click', () => { side = b.dataset.side; try { localStorage.setItem('opening-book-v2-test-side', JSON.stringify(side)); } catch {} newGame(); }));
 $('#test-rating').value = rating;
