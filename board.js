@@ -6,7 +6,7 @@ const FILES = 'abcdefgh';
 // puts a move badge there instead (see GLYPH). dests overrides the selected piece's targets (premoves);
 // pre marks a queued premove's squares.
 export const GLYPH = { brilliant: '!!', best: '★', good: '✓', inaccuracy: '?!', mistake: '?', blunder: '??' };
-const BOOK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c3-1.5 5.5-1.5 8 0 2.5-1.5 5-1.5 8 0v12c-3-1.5-5.5-1.5-8 0-2.5-1.5-5-1.5-8 0zM12 6v12"/></svg>';
+export const BOOK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c3-1.5 5.5-1.5 8 0 2.5-1.5 5-1.5 8 0v12c-3-1.5-5.5-1.5-8 0-2.5-1.5-5-1.5-8 0zM12 6v12"/></svg>';
 // arrows: several [from, to, colour] at once (e.g. every move you are offered).
 export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint = [], wrong = null, arrow = null, arrows = [], mark = null, dests = null, pre = [] } = {}) {
   planAnim(el, game, side);

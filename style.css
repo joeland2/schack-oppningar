@@ -2998,6 +2998,9 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .test-walk { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
 .test-walk[hidden] { display: none; } .test-walk p { margin: 0; font-size: 14px; }
 .test-line { font: 13px/1.6 var(--font-mono); } .test-line .off { color: var(--good); font-weight: 500; }
+.test-list b { display: flex; align-items: center; gap: 6px; } .test-list b i { font-style: normal; font-weight: 400; color: var(--muted); } .test-list .legend-badge { position: static; flex: none; width: 18px; height: 18px; font-size: 10px; animation: none; }
+.test-list li.off button { box-shadow: inset 3px 0 0 var(--bad); background: var(--raised); padding-left: 10px; }
+.test-list em { font-style: normal; font-weight: 600; color: var(--bad); }
 .test-past { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; max-height: 320px; overflow: auto; }
 .test-past button { width: 100%; display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; gap: 10px; text-align: left; background: none; border: 0; border-radius: 4px; padding: 6px; color: inherit; font: inherit; font-size: 14px; cursor: pointer; }
 .test-past button:hover, .test-past button[aria-current="true"] { background: var(--raised); } .test-past small { display: block; color: var(--muted); font-size: 12px; }
@@ -3010,7 +3013,7 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .test-big { font: 400 44px/1 var(--font-poster); }
 .test-wrong { border-left: 3px solid var(--bad); padding-left: 10px; } .test-fine { border-left: 3px solid var(--good); padding-left: 10px; }
 .test-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.test-list button { width: 100%; display: grid; grid-template-columns: 5.5em 1fr; gap: 8px; text-align: left; background: none; border: 0; border-radius: 4px; padding: 6px; color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.test-list button { width: 100%; display: grid; gap: 2px; text-align: left; background: none; border: 0; border-radius: 4px; padding: 6px; color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
 .test-list button:hover { background: var(--raised); } .test-list b { font-family: var(--font-mono); font-weight: 500; }
 .test-list small { font-size: 13px; color: var(--muted); } .test-list .bad b { color: var(--bad); }
 /* A Lichess challenge, on any page */

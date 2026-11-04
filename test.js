@@ -1,10 +1,10 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261104135940';
-import { engineEval, winPct } from './profile.js?v=20261104135940';
-import { banner } from './celebrate.js?v=20261104135940';
-import { openingOf, leftBook, loadBook, key } from './book.js?v=20261104135940';
+import { drawBoard, enableDrag, BOOK } from './board.js?v=20261104142604';
+import { engineEval, winPct } from './profile.js?v=20261104142604';
+import { banner } from './celebrate.js?v=20261104142604';
+import { openingOf, loadBook, key } from './book.js?v=20261104142604';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -87,10 +87,10 @@ function shownFen() {
 }
 // Under the opening's name: whether the game is still in theory, and what players at your level score here.
 async function live(sans) {
-  const [off, tree] = await Promise.all([leftBook(sans), TREE]), node = nodeAt(tree, sans.slice(0, 20)), s = node && sans.length <= 20 && stat(node, level());
+  const tree = await TREE, node = nodeAt(tree, sans.slice(0, 20)), s = node && sans.length <= 20 && stat(node, level());
   if (g.c.history().length !== sans.length) return;
   const name = g.me === 'w' ? 'White' : 'Black';
-  $('#test-live').textContent = [g.off?.note, g.off ? '' : off ? `Out of theory since ${mv(off.ply, off.san)}.` : sans.length ? 'Still in known theory.' : '',
+  $('#test-live').textContent = [g.off?.note, g.off || !sans.length ? '' : 'On the line so far.',
     s?.n >= FEW_GAMES ? `${name} scores ${pct(forMe(s, g.me))} from here at your level, in ${s.n.toLocaleString('en')} games.` : ''].filter(Boolean).join(' ');
 }
 const myTurn = () => !g.done && !g.busy && g.c.turn() === g.me && !g.c.isGameOver();
@@ -119,7 +119,7 @@ function over() {
 async function maiaPlays() {
   const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true }), began = Date.now();
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261104135940'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104135940');
+  const { maia3Move } = await import('./maia3.js?v=20261104142604'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104142604');
   let r = null;
   try { r = (await within(20000, maia3Move(fen, legal, rating, rating))).move; } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }
@@ -256,17 +256,22 @@ function endWalk() { g.walk = null; $('#test-walk').hidden = true; }
 async function report() {
   const me = ++run, t = g, colour = t.me === 'w' ? 'White' : 'Black', sans = t.c.history(), hist = t.c.history({ verbose: true });
   const out = $('#test-out'), [tree, { next }] = await Promise.all([TREE, loadBook()]), [f, v] = await openingOf(sans.slice(0, 24));
-  const off = await leftBook(sans), line = await theLine(tree, next, sans, t.me);
+  const line = await theLine(tree, next, sans, t.me);
   t.line = line;
-  const mine = off && (off.ply % 2 === 0) === (t.me === 'w');
+  // The report has the last word on the line, also for a game opened from the list.
+  if (line.off !== null) t.off = { ply: line.off, note: `You left the line with ${mv(line.off, line.played)}; it plays ${mv(line.off, line.sans[line.off])}.` };
+  live(sans);
   // How good: the deepest position of your game that enough players at your level reached.
   let at = 0, here = null;
   for (let n = Math.min(sans.length, 20); n > 0 && !here; n--) { const node = nodeAt(tree, sans.slice(0, n)), s = node && stat(node, level()); if (s?.n >= FEW_GAMES) { here = s; at = n; } }
   const base = stat(tree, level()), [hf, hv] = here ? await openingOf(sans.slice(0, at)) : [];
   const gap = here ? Math.round((forMe(here, t.me) - forMe(base, t.me)) * 100) : 0;
+  const win = here && (t.me === 'w' ? here.win : 1 - here.win - here.draw), loss = here && 1 - win - here.draw;
   const good = !here ? `<p>Too few games at your level (${levelText()}) reach this position to say how good it is.</p>`
     : `<p class="sups-k">At your level, ${levelText()}</p><p class="test-big">${pct(forMe(here, t.me))}</p>
-       <p>What ${colour} scores after ${mv(at - 1, sans[at - 1])}${hv || hf !== f ? ` (${esc(hv || hf)})` : ''}, in ${here.n.toLocaleString('en')} games. ${Math.abs(gap) < 2 ? `About the average for ${colour} (${pct(forMe(base, t.me))}).` : `${Math.abs(gap)} points ${gap > 0 ? 'above' : 'below'} the ${pct(forMe(base, t.me))} ${colour} scores on average.`}</p>`;
+       <p>${colour}'s score after ${mv(at - 1, sans[at - 1])}${hv || hf !== f ? ` (${esc(hv || hf)})` : ''}, in ${here.n.toLocaleString('en')} games: a win counts as 1, a draw as ½. ${Math.abs(gap) < 2 ? `About the average for ${colour} (${pct(forMe(base, t.me))}).` : `${Math.abs(gap)} points ${gap > 0 ? 'above' : 'below'} the ${pct(forMe(base, t.me))} ${colour} scores on average.`}</p>
+       <div class="wdl" role="img" aria-label="Win ${pct(win)}, draw ${pct(here.draw)}, loss ${pct(loss)}"><span class="w" style="width:${win * 100}%"></span><span class="d" style="width:${here.draw * 100}%"></span><span class="l" style="width:${loss * 100}%"></span></div>
+       <p class="wdl-key"><span>Win <b>${pct(win)}</b></span><span>Draw ${pct(here.draw)}</span><span>Loss ${pct(loss)}</span></p>`;
   // Your moves, with what the games say; Stockfish's verdict fills in below.
   const rows = [];
   sans.forEach((san, i) => {
@@ -276,19 +281,19 @@ async function report() {
     const you = lv.find((m) => m.san === clean(san)), topAll = lv.reduce((s, m) => s + m.top, 0);
     const alt = you?.n >= FEW_GAMES ? lv.filter((m) => m.san !== clean(san) && m.n >= FEW_GAMES && m.top / topAll >= 0.1 && forMe(m, t.me) - forMe(you, t.me) >= 0.05).sort((a, b) => forMe(b, t.me) - forMe(a, t.me))[0] : null;
     const book = next.get(key(sans.slice(0, i)))?.has(clean(san));
-    const notes = [book ? 'Book' : null,
+    const notes = [i === line.off ? `The line plays ${mv(i, line.sans[i])}` : null,
       you?.n >= FEW_GAMES ? `scores ${pct(forMe(you, t.me))} in ${you.n.toLocaleString('en')} games` : 'too few games to say',
       alt ? `${mv(i, alt.san)} scores ${pct(forMe(alt, t.me))}` : null].filter(Boolean);
-    rows.push({ i, san, book, m: hist[i], note: notes.join(' · ') });
+    const kept = clean(line.sans[i] || '') === clean(san) && (line.off === null || i < line.off);
+    rows.push({ i, san, book, kept, m: hist[i], note: notes.join(' · ') });
   });
-  const list = () => rows.map((r) => `<li class="${r.kind ? 'bad' : ''}"><button type="button" data-row="${r.i}"><b>${mv(r.i, r.san)}${r.kind ? (r.kind === 'Blunder' ? '??' : r.kind === 'Mistake' ? '?' : '?!') : ''}</b><small>${r.kind ? `${r.kind} · ` : ''}${esc(r.note)}</small></button></li>`).join('');
+  const list = () => rows.map((r) => `<li class="${[r.kind ? 'bad' : '', r.i === line.off ? 'off' : ''].join(' ').trim()}"><button type="button" data-row="${r.i}"><b>${r.i % 2 ? `<i>${mv(r.i - 1, sans[r.i - 1])}</i> ${r.san}` : mv(r.i, r.san)}${r.kind ? (r.kind === 'Blunder' ? '??' : r.kind === 'Mistake' ? '?' : '?!') : ''}${r.i % 2 === 0 && sans[r.i + 1] ? ` <i>${sans[r.i + 1]}</i>` : ''}${r.kept ? `<span class="mark k-book legend-badge" title="${r.book ? 'On the line: known theory' : 'On the line: strong players play this'}">${BOOK}</span>` : ''}</b><small>${r.i === line.off ? '<em>Left the line here</em> · ' : ''}${r.kind ? `${r.kind} · ` : ''}${esc(r.note)}</small></button></li>`).join('');
   const paint = (verdict) => {
     if (me !== run) return;
     out.innerHTML = `<p class="sups-k">Your opening</p><p class="play-open">${esc(f)}${v ? `<small>${esc(v)}</small>` : ''}</p>
       ${good}${verdict}
-      ${!off ? '<p>The game stayed in known theory all the way.</p>' : mine ? `<p>You left known theory with <b>${mv(off.ply, off.san)}</b>. The book plays <b>${off.book.map((b) => mv(off.ply, b)).join(', ')}</b>.</p>` : `<p>Maia left known theory with <b>${mv(off.ply, off.san)}</b>; you were still in the book.</p>`}
       <p class="sups-k">The line</p>
-      <p>${line.off !== null ? `You left it with <b>${mv(line.off, line.played)}</b>. The line plays <b>${mv(line.off, line.sans[line.off])}</b>.` : 'You stayed on the line. This is how it goes on.'}</p>
+      <p>${line.off !== null ? `You left it with <b>${mv(line.off, line.played)}</b>. The line plays <b>${mv(line.off, line.sans[line.off])}</b>.` : line.sans.length > sans.length ? 'You stayed on the line. This is how it goes on.' : 'You stayed on the line as far as the games go.'}</p>
       <p class="test-line">${line.sans.map((m, i) => `<span${i === line.off ? ' class="off"' : ''}>${i % 2 ? '' : `${i / 2 + 1}.`}${esc(m)}</span>`).join(' ')}</p>
       <p><button type="button" class="link" data-line>Show the line on the board</button></p>
       <ul class="test-list">${list()}</ul>
@@ -342,7 +347,7 @@ document.addEventListener('keydown', (e) => {
 $('#test-moves').addEventListener('click', (e) => { const x = e.target.closest('[data-ply]'); if (x?.textContent) browse(Number(x.dataset.ply) + 1); });
 $('#test-out').addEventListener('click', (e) => {
   const x = e.target.closest('[data-row]');
-  if (x) return showRow(Number(x.dataset.row));
+  if (x) return Number(x.dataset.row) === g.line?.off && !x.closest('.test-wrong') ? startWalk(g.line, g.line.off) : showRow(Number(x.dataset.row));
   if (e.target.closest('[data-line]')) startWalk(g.line, g.line.off ?? 0);
 });
 $('#test-walk').addEventListener('click', (e) => {
