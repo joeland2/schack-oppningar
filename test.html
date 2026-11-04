@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Test my opening · Chess Labs</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta property="og:site_name" content="Chess Labs">
+  <meta property="og:title" content="Test my opening · Chess Labs">
+  <meta property="og:description" content="Play your opening against Maia 3 at your rating, then see what it is called, where you went wrong and how it scores at your level.">
+  <meta property="og:image" content="https://chesslabs.gg/og.png">
+  <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="description" content="Play your opening against Maia 3 at your rating, then see what it is called, where you went wrong and how it scores at your level.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="style.css?v=20261104133132">
+  <script src="move.js?v=20261104133132"></script>
+  <script src="header.js?v=20261104133132" defer></script>
+  <script src="theme.js?v=20261104133132"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-in">
+      <a class="brand" href="./">Chess<span>Labs</span></a>
+      <nav class="top-nav" aria-label="Sections"><a href="./#openings">Openings</a><a href="practice.html">My practice</a><a href="profile.html">Profile</a></nav>
+      <form class="top-search" action="profile.html" role="search"><input name="u" type="search" required maxlength="30" pattern="[A-Za-z0-9_\-]{2,30}" placeholder="Find a player" aria-label="Find a player on Lichess or Chess.com" title="A Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false"></form>
+      <details class="top-players"><summary title="Your starred players" aria-label="Your starred players"><svg class="ico ico-solid" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></summary><div class="top-players-menu"></div></details>
+      <button id="theme" class="ghost theme" type="button" aria-label="Switch theme"></button>
+    </div>
+  </header>
+
+  <main class="wrap play-page">
+    <div id="test-gate"></div>
+    <section id="test-game" class="play-game" hidden>
+      <div class="play-board-col">
+        <div class="play-pl" id="pl-top"><b>Maia 3 <span id="test-maia"></span></b></div>
+        <div id="board" class="board"></div>
+        <div class="play-pl" id="pl-bot"><b>You</b></div>
+      </div>
+      <aside class="play-side">
+        <div class="play-card test-setup">
+          <h1 class="play-open">Test my opening</h1>
+          <div class="test-row">
+            <div class="seg" role="group" aria-label="Your colour"><button type="button" data-side="w">White</button><button type="button" data-side="b">Black</button></div>
+            <label class="test-rating">Your rating <input id="test-rating" type="number" min="600" max="2800" step="50"></label>
+          </div>
+          <p class="test-row"><button type="button" class="ghost" id="test-new">New game</button><button type="button" class="cta" id="test-report" disabled>See my report</button></p>
+        </div>
+        <div class="play-card"><p class="sups-k">Opening</p><p class="play-open" id="test-open">Starting position</p></div>
+        <div class="play-card test-report" id="test-out" hidden></div>
+        <ol class="play-moves" id="test-moves"></ol>
+        <p class="play-status" id="test-status" aria-live="polite"></p>
+      </aside>
+    </section>
+  </main>
+
+  <script type="module" src="test.js?v=20261104133132"></script>
+</body>
+</html>

@@ -2990,6 +2990,18 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .board.looking-back { outline: 2px solid var(--muted); outline-offset: 3px; }
 .play-status { margin: 0; min-height: 1.4em; }
 @media (max-width: 820px) { .play-game { grid-template-columns: minmax(0, 1fr); } }
+/* Test my opening */
+.test-setup { display: grid; gap: 12px; } .test-setup h1, .test-setup p { margin: 0; }
+.test-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.test-rating { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); } .test-rating input { width: 5.5em; }
+.test-link { text-decoration: none; white-space: nowrap; }
+.test-report { display: grid; gap: 10px; } .test-report p { margin: 0; } .test-report .play-open { margin-top: 4px; }
+.test-big { font: 400 44px/1 var(--font-poster); }
+.test-wrong { border-left: 3px solid var(--bad); padding-left: 10px; } .test-fine { border-left: 3px solid var(--good); padding-left: 10px; }
+.test-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.test-list button { width: 100%; display: grid; grid-template-columns: 5.5em 1fr; gap: 8px; text-align: left; background: none; border: 0; border-radius: 4px; padding: 6px; color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.test-list button:hover { background: var(--raised); } .test-list b { font-family: var(--font-mono); font-weight: 500; }
+.test-list small { font-size: 13px; color: var(--muted); } .test-list .bad b { color: var(--bad); }
 /* A Lichess challenge, on any page */
 .ch-pop { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: grid; gap: 6px; width: min(340px, calc(100vw - 32px)); padding: 16px 18px; border-radius: 12px; background: var(--surface); border: 1px solid var(--data); box-shadow: 0 12px 40px rgba(0, 0, 0, .45); color: var(--ink); }
 .ch-pop p { margin: 0; font-size: 15px; } .ch-pop small { color: var(--muted); } .ch-pop div { display: flex; gap: 8px; margin-top: 6px; }

@@ -2,8 +2,9 @@
 // The login needs the board:play permission once; then a seek or a challenge starts a game, which Lichess
 // streams here move by move. When it ends, the game page reviews it.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261104131517';
-import { account, login, finishLogin } from './lichess.js?v=20261104131517';
+import { drawBoard, enableDrag } from './board.js?v=20261104133132';
+import { account, login, finishLogin } from './lichess.js?v=20261104133132';
+import { openingOf, leftBook } from './book.js?v=20261104133132';
 
 const $ = (s) => document.querySelector(s);
 const API = 'https://lichess.org';
@@ -39,35 +40,6 @@ async function stream(url, onLine, opts = {}) {
 }
 const post = (url, body) => fetch(API + url, { method: 'POST', headers: auth(), body: body && new URLSearchParams(body) })
   .then(async (r) => { if (!r.ok) throw new Error(await why(r)); });
-
-// Opening names (lichess-org/chess-openings, as on the Openings page): the longest named line the game follows.
-let BOOK = null; // { names: line → name, next: position (moves so far) → book moves from there }
-const key = (sans) => sans.join(' ').replace(/[+#]/g, '');
-const loadBook = () => (BOOK ??= Promise.all([...'abcde'].map((f) => fetch(`data/${f}.tsv`).then((r) => r.text()))).then((ts) => {
-  const names = new Map(), next = new Map();
-  for (const row of ts.flatMap((t) => t.trim().split('\n').slice(1))) {
-    const [, name, pgn] = row.split('\t'), ms = pgn.replace(/\d+\.\s*/g, '').trim().split(/\s+/);
-    names.set(key(ms), name);
-    ms.forEach((m, i) => { const k = key(ms.slice(0, i)); if (!next.has(k)) next.set(k, new Set()); next.get(k).add(m.replace(/[+#]/g, '')); });
-  }
-  return { names, next };
-}));
-// The opening as [family, variation], from the longest named line the game follows.
-async function openingOf(sans) {
-  const { names } = await loadBook();
-  for (let n = sans.length; n > 0; n--) { const hit = names.get(key(sans.slice(0, n))); if (hit) { const [f, v = ''] = hit.split(': '); return [f, v]; } }
-  return ['Starting position', ''];
-}
-// Where the game left known theory: the first move no named line has, with what the book plays there.
-async function leftBook(sans) {
-  const { next } = await loadBook();
-  for (let i = 0; i < Math.min(sans.length, 30); i++) {
-    const book = next.get(key(sans.slice(0, i)));
-    if (!book) return null;
-    if (!book.has(sans[i].replace(/[+#]/g, ''))) return { ply: i, san: sans[i], book: [...book].slice(0, 3) };
-  }
-  return null;
-}
 
 // ---------- The lobby ----------
 let tc = (() => { try { const x = JSON.parse(localStorage.getItem('opening-book-v2-play-tc')); return x && GROUPS.some(([, xs]) => xs.some(([m, i]) => m === x[0] && i === x[1])) ? x : [10, 0]; } catch { return [10, 0]; } })();
