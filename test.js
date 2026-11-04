@@ -1,13 +1,13 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, BOOK } from './board.js?v=20261104154131';
-import { engineEval, winPct } from './profile.js?v=20261104154131';
-import { banner, confetti } from './celebrate.js?v=20261104154131';
-import { PLAN, VS_PLAN } from './styles.js?v=20261104154131';
-import { GUIDE } from './guide.js?v=20261104154131';
-import { hanging } from './ideas.js?v=20261104154131';
-import { openingOf, loadBook, key } from './book.js?v=20261104154131';
+import { drawBoard, enableDrag, BOOK } from './board.js?v=20261104155452';
+import { engineEval, winPct } from './profile.js?v=20261104155452';
+import { banner, confetti } from './celebrate.js?v=20261104155452';
+import { PLAN, VS_PLAN } from './styles.js?v=20261104155452';
+import { GUIDE } from './guide.js?v=20261104155452';
+import { hanging } from './ideas.js?v=20261104155452';
+import { openingOf, loadBook, key } from './book.js?v=20261104155452';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -111,6 +111,8 @@ function buttons() {
   $('#test-hint').disabled = $('#test-best').disabled = !myTurn() || view !== null;
   $('#test-back').disabled = g.busy || (view === null && n < enough);
   $('#test-back').textContent = view === null ? 'Take back' : 'Play from here';
+  $('#test-prev').disabled = (view ?? n) <= 0; $('#test-fwd').disabled = view === null;
+  document.querySelectorAll('.test-tip').forEach((b) => { b.disabled = view !== null || !g.tips; }); // they are about the game now, not a move looked back at
   $('#test-resign').disabled = g.done || g.c.isGameOver() || !n;
   if ($('#test-resign').dataset.sure && $('#test-resign').disabled) { delete $('#test-resign').dataset.sure; $('#test-resign').textContent = 'Resign'; }
 }
@@ -141,7 +143,7 @@ function humanPick(ranked) {
 async function maiaPlays() {
   const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true });
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261104154131'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104154131');
+  const { maia3Move } = await import('./maia3.js?v=20261104155452'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104155452');
   let r = null;
   try { r = humanPick((await within(20000, maia3Move(fen, legal, rating, rating))).ranked); } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }
@@ -157,7 +159,7 @@ function tryMove(from, to) {
   const before = g.c.history();
   let played;
   try { played = g.c.move({ from, to, promotion: 'q' }); } catch { return false; }
-  g.sel = null; g.hint = g.best = g.tips = null; $('#test-next').querySelectorAll('.test-tip').forEach((b) => { b.disabled = true; }); draw();
+  g.sel = null; g.hint = g.best = g.tips = null; draw();
   if (!over()) {
     saveGame();
     const t = g; t.busy = true; buttons();
@@ -277,14 +279,14 @@ async function checkCleared(t) {
   await within(8000, FULL).catch(() => {}); // the small file ends early: ask the full one before saying the line is over
   const tree = await treeNow();
   if (g !== t || t.c.history().length !== moves.length || t.off || !lineEnded(tree, next, moves)) return;
-  t.cleared = true;
+  t.cleared = true; t.clearedAt = moves.length;
   const [f] = await openingOf(moves.slice(0, 24)), mine = moves.filter((_, i) => (i % 2 === 0) === (t.me === 'w')).length;
   const again = ['Try again', () => newGame()], on = ['Play on against Maia', () => {}];
   t.family = f;
   whatNow(t);
   live(moves);
-  if (mine >= 4) { confetti(110); stamp(`${f} cleared`, `You played the line to its end, ${mine} moves`, '', [on, again]); }
-  else stamp('The line is over', 'Maia left the known lines', 'draw', [on, again]);
+  if (mine >= 4) { confetti(110); stamp(`${f} cleared`, `${mine} moves on the line. What to do next is under the board`, '', [on, again]); }
+  else stamp('The line is over', 'Maia left the known lines. What to do next is under the board', 'draw', [on, again]);
 }
 // What to think about now the line is over: the opening's plan, then questions about this very position. Stockfish
 // has each answer ready, limited to that piece's moves; hovering or tapping shows it on the board.
@@ -293,6 +295,8 @@ async function whatNow(t) {
   const c = t.c, me = t.me, family = t.family, fen = c.fen(), legal = c.moves({ verbose: true });
   const find = (o) => o[family] || Object.entries(o).find(([k]) => family.startsWith(k))?.[1];
   const plan = find(me === 'w' ? PLAN : VS_PLAN), idea = !plan && find(GUIDE)?.idea?.split('. ').slice(0, 2).join('. ');
+  const el = $('#test-next'), head = `<p class="sups-k">Now the line is over</p>${plan ? `<p><b>Your plan:</b> ${plan}</p>` : idea ? `<p><b>The idea:</b> ${idea.replace(/\.?$/, '.')}</p>` : ''}`;
+  if (el.hidden) { el.innerHTML = `${head}<p>Stockfish is looking at this position…</p>`; el.hidden = false; } // the stamp points here: never an empty place
   // The best of these moves, as a move on the board.
   const bestOf = async (moves) => {
     if (!moves.length) return null;
@@ -316,10 +320,9 @@ async function whatNow(t) {
   tips.push(['The strongest move right now?', await bestOf(legal)]);
   if (g !== t || t.c.fen() !== fen || !t.cleared) return; // the game moved on while Stockfish thought
   t.tips = tips.map(([, m]) => m); t.tipShown = null;
-  const el = $('#test-next');
-  el.innerHTML = `<p class="sups-k">Now the line is over</p>${plan ? `<p><b>Your plan:</b> ${plan}</p>` : idea ? `<p><b>The idea:</b> ${idea.replace(/\.?$/, '.')}</p>` : ''}
+  el.innerHTML = `${head}
     <ul>${tips.map(([q, m], i) => (m ? `<li><button type="button" class="test-tip" data-tip="${i}">${esc(q)} <b>${esc(m.san)}</b></button></li>` : `<li>${esc(q)}</li>`)).join('')}</ul>`;
-  el.hidden = false;
+  buttons();
 }
 function showTip(i) {
   if (!g?.tips || g.tipShown === i) return;
@@ -452,6 +455,8 @@ boardEl.addEventListener('click', (e) => {
   g.sel = g.c.get(sq)?.color === g.me && g.sel !== sq ? sq : null;
   draw();
 });
+$('#test-prev').addEventListener('click', () => browse((view ?? g.c.history().length) - 1));
+$('#test-fwd').addEventListener('click', () => browse((view ?? g.c.history().length) + 1));
 document.addEventListener('keydown', (e) => {
   if (!g || e.target.closest('input, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
   if (g.walk && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); return stepWalk(e.key === 'ArrowLeft' ? -1 : 1); }
@@ -473,15 +478,18 @@ $('#test-best').addEventListener('click', async () => { const b = await bestNow(
 // Back to the position on the board, or your last move when you are at the end, and on from there. A position with
 // Maia to move goes back one more, so it is your move again. A finished game stays in the list; this becomes a new one.
 function rewind(to, then) {
-  removeStamp(); g.cleared = false; $('#test-next').hidden = true;
+  removeStamp();
+  g.cleared = g.cleared && to.length >= g.clearedAt; // still past the line's end: no second stamp, and the questions stay
+  if (!g.cleared) $('#test-next').hidden = true;
   const c = new Chess(); to.forEach((m) => c.move(m));
   if (g.done) g.id = Date.now();
   if (g.off?.ply >= to.length) g.off = null;
   endWalk();
-  run++; view = null; g.c = c; g.done = g.resigned = false; g.rows = g.line = null; g.sel = g.hint = g.best = null;
+  run++; view = null; g.c = c; g.done = g.resigned = false; g.rows = g.line = null; g.sel = g.hint = g.best = g.tips = null;
   then?.(c);
   $('#test-out').hidden = true; $('#test-status').textContent = 'Your move.';
   draw(); saveGame();
+  if (g.cleared) whatNow(g);
   if (c.turn() !== g.me && !c.isGameOver()) maiaPlays();
 }
 $('#test-back').addEventListener('click', () => {
