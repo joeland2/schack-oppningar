@@ -1690,6 +1690,7 @@ button.depth-btn:hover { border-color: var(--ink); }
 .adm-line { width: 100%; height: auto; overflow: visible; }
 .adm-line polyline, .adm-line .adm-curve { fill: none; stroke: var(--hot); stroke-width: 2; stroke-linejoin: round; }
 .adm-line .adm-area { fill: color-mix(in srgb, var(--hot) 14%, transparent); stroke: none; }
+.adm-line .adm-curve-unique { opacity: .5; }
 .adm-line .adm-axis { stroke: var(--line); }
 .adm-line circle { fill: var(--hot); }
 .adm-line text { font: 11px var(--font-body); fill: var(--muted); }

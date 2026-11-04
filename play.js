@@ -2,9 +2,9 @@
 // The login needs the board:play permission once; then a seek or a challenge starts a game, which Lichess
 // streams here move by move. When it ends, the game page reviews it.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261104204304';
-import { account, login, finishLogin } from './lichess.js?v=20261104204304';
-import { openingOf, leftBook } from './book.js?v=20261104204304';
+import { drawBoard, enableDrag } from './board.js?v=20261104215216';
+import { account, login, finishLogin } from './lichess.js?v=20261104215216';
+import { openingOf, leftBook } from './book.js?v=20261104215216';
 
 const $ = (s) => document.querySelector(s);
 const API = 'https://lichess.org';

@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261104204304';
-import { api as chatApi, openChat } from './chat.js?v=20261104204304';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261104204304';
+import { account, login, finishLogin } from './lichess.js?v=20261104215216';
+import { api as chatApi, openChat } from './chat.js?v=20261104215216';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261104215216';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -120,11 +120,48 @@ console.assert(curve([[0, 0], [1, 1]]).startsWith('M0.0,0.0C'), 'curve');
 // Each point as the mean of its neighbours (k on each side), so single hours do not make spikes.
 const ease = (vs, k) => vs.map((_, i) => { const w = vs.slice(Math.max(0, i - k), i + k + 1); return w.reduce((t, v) => t + v, 0) / w.length; });
 const SMOOTH = () => (span === 30 ? 3 : span === 7 ? 1 : 0); // hours on each side
+// The scale: a round step with about four lines up to just above the highest point.
+function scaleOf(high) {
+  const p = 10 ** Math.floor(Math.log10(high / 4 || 1)), f = high / 4 / p, step = Math.max(1, (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p);
+  return { step, top: Math.ceil(high / step) * step };
+}
+// The crosshair, dot and numbers that follow the mouse along a graph of n points; yAt gives point i's height in the graph.
+function bindHover(box, n, yAt, tipOf) {
+  const svg = box.querySelector('svg'), cross = svg.querySelector('.adm-cross'), dot = svg.querySelector('.adm-dot'), tip = box.querySelector('.adm-tip'), last = Math.max(1, n - 1);
+  svg.addEventListener('pointermove', (e) => {
+    const r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(n - 1, Math.round((((e.clientX - r.left) / r.width) * (W + 34) - 34) / W * last)));
+    const cx = (i / last) * W;
+    cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.setAttribute('visibility', 'visible');
+    dot.setAttribute('cx', cx); dot.setAttribute('cy', yAt(i)); dot.setAttribute('visibility', 'visible');
+    tip.hidden = false;
+    tip.innerHTML = tipOf(i);
+    const px = ((cx + 34) / (W + 34)) * r.width; // the numbers on the left take 34 units
+    tip.style.left = `${Math.min(Math.max(px, 60), r.width - 60)}px`;
+  });
+  svg.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.hidden = true; });
+}
+// Everyone so far, day by day since the launch, so both lines only go up. All visitors adds up each day's
+// visitors (someone who comes back on another day counts again); unique counts each browser once, ever.
+function bindGrowth(body) {
+  const box = $('#adm-growth');
+  let all = 0, uniq = 0;
+  const ds = body.perDay.map((d) => ({ key: d.day, all: all += d.visitors, uniq: uniq += d.fresh }));
+  const { step, top } = scaleOf(Math.max(1, all)), last = Math.max(1, ds.length - 1);
+  const x = (i) => (i / last) * W, y = (v) => H - (v / top) * (H - 10), line = (k) => curve(ds.map((d, i) => [x(i), y(d[k])]));
+  $('#adm-growth-sums').innerHTML = [['All visitors', all, 'each once a day'], ['Unique', uniq, 'each once, ever']]
+    .map(([t, n, s]) => `<div><dt>${t}</dt><dd>${n.toLocaleString('en')}</dd><small>${s}</small></div>`).join('');
+  box.innerHTML = `<svg class="adm-line" viewBox="-34 0 ${W + 34} ${H + 22}" role="img" aria-label="All visitors and unique visitors added up since ${day(ds[0].key)}: ${all} and ${uniq}">
+    ${Array.from({ length: top / step + 1 }, (_, k) => k * step).map((v) => `<line class="${v ? 'adm-grid' : 'adm-axis'}" x1="0" y1="${y(v)}" x2="${W}" y2="${y(v)}"></line><text class="adm-tick" x="-8" y="${y(v) + 4}" text-anchor="end">${v.toLocaleString('en')}</text>`).join('')}
+    <path class="adm-area" d="${line('uniq')}L${W},${H}L0,${H}Z"></path><path class="adm-curve adm-curve-unique" d="${line('uniq')}"></path><path class="adm-curve" d="${line('all')}"></path>
+    <line class="adm-cross" x1="0" y1="0" x2="0" y2="${H}" visibility="hidden"></line><circle class="adm-dot" r="4" visibility="hidden"></circle>
+    <text x="0" y="${H + 16}">${day(ds[0].key)}</text><text x="${W}" y="${H + 16}" text-anchor="end">Today</text></svg>
+    <div class="adm-tip" hidden></div>
+    <p class="adm-key"><span class="adm-k-line"></span>All visitors <span class="adm-k-area"></span>Unique visitors</p>`;
+  bindHover(box, ds.length, (i) => y(ds[i].all), (i) => `<b>${day(ds[i].key)}</b><br>${ds[i].all.toLocaleString('en')} visitors so far<br>${ds[i].uniq.toLocaleString('en')} unique`);
+}
 function visitorLine(ds) {
   const sv = { visitors: ease(ds.map((d) => d.visitors), SMOOTH()), fresh: ease(ds.map((d) => d.fresh), SMOOTH()), back: ease(ds.map((d) => Math.max(0, d.visitors - d.fresh)), SMOOTH()) };
-  // The scale: a round step with about four lines up to just above the highest point, each line numbered on the left.
-  const high = Math.max(1, ...sv.visitors), p = 10 ** Math.floor(Math.log10(high / 4 || 1)), f = high / 4 / p;
-  const step = Math.max(1, (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p), top = Math.ceil(high / step) * step;
+  const { step, top } = scaleOf(Math.max(1, ...sv.visitors)); // each line numbered on the left
   ds.top = top;
   const x = (i) => (i / (ds.length - 1)) * W, y = (v) => H - (v / top) * (H - 10);
   const pts = (k) => sv[k].map((v, i) => [x(i), y(v)]);
@@ -150,20 +187,8 @@ function bindLine(body) {
   sums.hidden = !sum;
   if (sum) sums.innerHTML = [['Visitors', sum.visitors, 'each counted once'], ['New', sum.fresh, 'first visit'], ['Came back', sum.back, 'been before'], ['Page views', sum.views, '']]
     .map(([t, n, s]) => `<div><dt>${t}</dt><dd>${n.toLocaleString('en')}</dd>${s ? `<small>${s}</small>` : ''}</div>`).join('');
-  const svg = box.querySelector('svg'), cross = svg.querySelector('.adm-cross'), dot = svg.querySelector('.adm-dot'), tip = box.querySelector('.adm-tip');
-  const top = ds.top;
-  svg.addEventListener('pointermove', (e) => {
-    const r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(ds.length - 1, Math.round((((e.clientX - r.left) / r.width) * (W + 34) - 34) / W * (ds.length - 1)))), d = ds[i];
-    const cx = (i / (ds.length - 1)) * W, cy = H - (d.drawn / top) * (H - 10);
-    cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.setAttribute('visibility', 'visible');
-    dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('visibility', 'visible');
-    const here = notes().filter((nt) => noteKey(nt.t) === d.key);
-    tip.hidden = false;
-    tip.innerHTML = `<b>${d.label}</b><br>${d.visitors} visitor${d.visitors === 1 ? '' : 's'} · ${d.fresh} new · ${Math.max(0, d.visitors - d.fresh)} came back<br><small>${d.views} page views</small>${here.map((nt) => `<br><span class="adm-tip-note">${esc(nt.text)}</span>`).join('')}`;
-    const px = ((cx + 34) / (W + 34)) * r.width; // the numbers on the left take 34 units
-    tip.style.left = `${Math.min(Math.max(px, 60), r.width - 60)}px`;
-  });
-  svg.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.hidden = true; });
+  bindHover(box, ds.length, (i) => H - (ds[i].drawn / ds.top) * (H - 10), (i) => { const d = ds[i], here = notes().filter((nt) => noteKey(nt.t) === d.key);
+    return `<b>${d.label}</b><br>${d.visitors} visitor${d.visitors === 1 ? '' : 's'} · ${d.fresh} new · ${Math.max(0, d.visitors - d.fresh)} came back<br><small>${d.views} page views</small>${here.map((nt) => `<br><span class="adm-tip-note">${esc(nt.text)}</span>`).join('')}`; });
   renderNotes(body);
 }
 // The notes under the graph: when and what, newest first; add one (now, or any time) or remove one.
@@ -513,6 +538,8 @@ function render(s) {
       <div><dt>Profiles created</dt><dd>${t.registered}</dd><small>logged in with Lichess</small></div>
     </dl>
     ${group('overview')}
+    <section class="pf-card"><div class="adm-head"><h2>${ic('analyse')}All visitors so far <small>since the launch</small></h2></div>
+      <div class="adm-vis"><dl id="adm-growth-sums" class="adm-span-sums"></dl><div id="adm-growth" class="adm-line-box"></div></div></section>
     ${liveHtml(s)}
     ${overviewHtml(s)}
     <section class="pf-card"><div class="adm-head"><h2>${ic('analyse')}Visitors</h2><div class="seg" role="group" aria-label="Time span" id="adm-span">${SPANS.map(([l, n]) => `<button type="button" data-span="${n}" aria-pressed="${n === span}">${l}</button>`).join('')}</div></div>
@@ -737,6 +764,7 @@ function show(body) {
   threads();
   supporters();
   bindCards(body);
+  bindGrowth(body);
   bindLine(body);
   $('#adm-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = b.dataset.span === 'today' ? 'today' : Number(b.dataset.span);
     $('#adm-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body); });
