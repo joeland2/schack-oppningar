@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261104130523';
-import { api as chatApi, openChat } from './chat.js?v=20261104130523';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261104130523';
+import { account, login, finishLogin } from './lichess.js?v=20261104131220';
+import { api as chatApi, openChat } from './chat.js?v=20261104131220';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261104131220';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -528,11 +528,12 @@ function render(s) {
     ${membersHtml(s)}
     ${topHtml(s.visitors)}
     <section class="pf-card"><div class="adm-head"><h2>${ic('people')}Unique visitors · ${s.visitors.length}</h2><small>Every visitor once, newest first. IP addresses without their last part. Click one to see what they did.</small></div>
-      ${s.visitors.length ? `<div class="adm-visitors"><div class="adm-v-head"><span>Location</span><span>IP</span><span>Lichess</span><span>Device</span><span>Visits</span><span>Last seen</span></div>${s.visitors.map((v) => `<details class="adm-visitor"><summary>
+      ${s.visitors.length ? `<div class="adm-visitors"><div class="adm-v-head"><span>Location</span><span>IP</span><span>Lichess</span><span>Device</span><span>Came from</span><span>Visits</span><span>Last seen</span></div>${s.visitors.map((v) => `<details class="adm-visitor"><summary>
           <span class="adm-v-where">${flag(v.country)}${esc(v.country ? land(v.country).replace(/ \(..\)$/, '') : 'Unknown')}${v.city ? ` · ${esc(v.city)}` : ''}</span>
           <span class="num">${v.ip ? `<button type="button" class="link pd-name" data-ip="${esc(v.ip)}">${showIp(v.ip)}</button>` : '–'}</span>
           <span>${v.name ? `<button type="button" class="link pd-name" data-person="${esc(v.name)}">${esc(v.name)}</button>` : `<button type="button" class="link pd-name" data-visitor="${esc(v.id)}">Data</button>`}</span>
           <span>${esc(v.device || '–')}</span>
+          <span class="adm-v-from" title="${esc(v.source || '')}">${esc(v.source || '–')}</span>
           <span class="num">${v.views} view${v.views === 1 ? '' : 's'} · since ${day(v.first)}</span>
           <span class="num">${when(v.last)}</span></summary>
           ${personHtml(v, s.visitors)}</details>`).join('')}</div>

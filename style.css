@@ -1700,9 +1700,10 @@ button.depth-btn:hover { border-color: var(--ink); }
 .adm-line g:hover .hit { fill: color-mix(in srgb, var(--ink) 6%, transparent); }
 .adm-visitors { display: grid; }
 .adm-visitor { border-top: 1px solid var(--line); }
-.adm-visitor summary { display: grid; grid-template-columns: minmax(10em, 1.4fr) 8em minmax(7em, 1fr) minmax(8em, 1fr) 11em 9em; gap: 10px; align-items: baseline; padding: 9px 0; cursor: pointer; font-size: 13px; list-style: none; }
+.adm-visitor summary { display: grid; grid-template-columns: minmax(10em, 1.4fr) 8em minmax(6em, .8fr) minmax(8em, 1fr) minmax(6em, .9fr) 11em 9em; gap: 10px; align-items: baseline; padding: 9px 0; cursor: pointer; font-size: 13px; list-style: none; }
 .adm-visitor summary::-webkit-details-marker { display: none; }
 .adm-visitor summary:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.adm-v-from { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .adm-visitor .num { font-variant-numeric: tabular-nums; color: var(--muted); }
 .adm-events { margin: 0 0 12px; padding: 0 0 0 12px; list-style: none; display: grid; gap: 3px; font-size: 13px; border-left: 2px solid var(--hot); }
 .adm-events li { display: grid; grid-template-columns: 9em 1fr; gap: 10px; }
@@ -1724,7 +1725,7 @@ button.depth-btn:hover { border-color: var(--ink); }
 .adm-key .adm-k-area { height: 10px; margin-left: 12px; background: color-mix(in srgb, var(--hot) 25%, transparent); }
 .adm-kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
 .adm-names { margin: 0; line-height: 1.8; }
-.adm-v-head { display: grid; grid-template-columns: minmax(10em, 1.4fr) 8em minmax(7em, 1fr) minmax(8em, 1fr) 11em 9em; gap: 10px; padding: 6px 0; font: 600 11px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.adm-v-head { display: grid; grid-template-columns: minmax(10em, 1.4fr) 8em minmax(6em, .8fr) minmax(8em, 1fr) minmax(6em, .9fr) 11em 9em; gap: 10px; padding: 6px 0; font: 600 11px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 @media (max-width: 760px) { .adm-v-head { display: none; } }
 
 /* The phone's bar above the board: back, the opening and line, and the mode; the panel's head moves here */
@@ -2502,10 +2503,10 @@ main.profile:has(#admin) { max-width: 1320px; }
 @media (max-width: 760px) {
   .adm-visitor summary { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
   .adm-visitor summary > :nth-child(1) { flex: 1 1 0; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .adm-visitor summary > :nth-child(6) { flex: none; order: 1; }
+  .adm-visitor summary > :nth-child(7) { flex: none; order: 1; }
   .adm-visitor summary > :nth-child(2) { display: none; }
   .adm-visitor summary::after { content: ''; order: 2; flex-basis: 100%; height: 0; } /* the break before the second line */
-  .adm-visitor summary > :nth-child(3), .adm-visitor summary > :nth-child(4), .adm-visitor summary > :nth-child(5) { order: 3; font-size: 12px; color: var(--muted); }
+  .adm-visitor summary > :nth-child(3), .adm-visitor summary > :nth-child(4), .adm-visitor summary > :nth-child(5), .adm-visitor summary > :nth-child(6) { order: 3; font-size: 12px; color: var(--muted); }
   .adm-visitor summary > :nth-child(3):not(:has(a)) { display: none; }
 }
 /* The line's end as a scoreboard: the score, its bar, how it compares, Stockfish and the next move */
@@ -2515,6 +2516,7 @@ main.profile:has(#admin) { max-width: 1320px; }
 .go-score span { color: var(--muted); font-size: 13px; line-height: 1.3; max-width: 22ch; }
 .go-sum .wdl { margin-top: 4px; }
 .go-vs { font-size: 14px; }
+.go-often { color: var(--muted); font-size: 13px; }
 .go-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px !important; }
 .go-sf { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; }
 .go-move { border-left: 3px solid var(--hot); padding: 2px 0 2px 10px; font-size: 14px; }

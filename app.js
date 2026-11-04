@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261104130523';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261104130523';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261104130523';
-import { NAMED_TRAPS } from './traps.js?v=20261104130523';
-import { GUIDE } from './guide.js?v=20261104130523';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261104130523';
-import { banner, confetti } from './celebrate.js?v=20261104130523';
-import { maia3Move } from './maia3.js?v=20261104130523';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261104130523';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261104130523';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261104130523';
-import { openLogin } from './login.js?v=20261104130523';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261104130523';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261104131220';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261104131220';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261104131220';
+import { NAMED_TRAPS } from './traps.js?v=20261104131220';
+import { GUIDE } from './guide.js?v=20261104131220';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261104131220';
+import { banner, confetti } from './celebrate.js?v=20261104131220';
+import { maia3Move } from './maia3.js?v=20261104131220';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261104131220';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261104131220';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261104131220';
+import { openLogin } from './login.js?v=20261104131220';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261104131220';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -616,7 +616,7 @@ let query = '';
 // checked here), as the list's openings; none when no games are known.
 function myOpenings(own) {
   const a = account(), name = (own && a && !a.site && a.name) || load(STORE + '-lichess-name', '') || a?.name; // For you reads your own account's games
-  const games = (lastGames?.name?.toLowerCase() === name?.toLowerCase() && lastGames.games) || (name && storedGames(name)) || [];
+  const games = (name && lastGames?.name?.toLowerCase() === name.toLowerCase() && lastGames.games) || (name && storedGames(name)) || []; // no name: a new visitor
   if (!name || !games.length || !OPENINGS.length) return null;
   const me = name.toLowerCase(), ops = new Map();
   for (const g of games) {
@@ -1604,18 +1604,35 @@ function learnedFacts() {
 // win/draw/loss bar, Stockfish's verdict and the move to play next. Under FEW_GAMES the score is mostly
 // chance, so it is one quiet sentence and no scoreboard.
 const FEW_GAMES = 100;
+// Your move in this line that scores clearly less at your level than another good one (one strong players
+// play too, FEW_GAMES or more): the biggest such gap, from your first move after the opening's own.
+function betterMove(l) {
+  let best = null;
+  for (let i = cur.root.split(' ').length; i < l.moves.length; i++) {
+    if ((i % 2 === 0) !== (cur.side === 'w')) continue;
+    const pre = l.moves.slice(0, i), here = gamesAt(pre).moves, played = here.find((m) => m.san === l.moves[i]), { x } = strongGroups(pre);
+    if (!played || played.n < FEW_GAMES) continue;
+    for (const m of here) {
+      const strong = x.moves.find((y) => y.san === m.san), gain = scoreFor(m, cur.side) - scoreFor(played, cur.side);
+      if (m !== played && m.n >= FEW_GAMES && strong && strong.n / x.total >= STRONG_SHARE && !BAD_MOVES.has(`${lineKey(pre)}|${m.san}`) && gain >= 0.05 && (!best || gain > best.gain)) best = { i, m, played, gain };
+    }
+  }
+  return best;
+}
 function lineScore() {
   const r = endResults();
   if (!r) return '';
   const score = r.win + r.draw / 2, o = resultsAt(cur.root.split(' ')), avg = o && o.win + o.draw / 2;
-  const vs = avg == null ? '' : score < avg - 0.03 ? `Below the ${pct(avg)} this opening scores at your level, so knowing the next moves matters here.`
+  const l = lines[lineIdx], low = avg != null && score < avg - 0.03, alt = low && r.n >= FEW_GAMES && l ? betterMove(l) : null;
+  const often = l?.share ? `<p class="go-often">${l.share < 0.01 ? 'Under 1%' : `About ${pct(l.share)}`} of ${cur.name} games at your level go this way.</p>` : '';
+  const vs = avg == null ? '' : low ? `Below the ${pct(avg)} this opening scores at your level: this is where players at your level go wrong, so knowing the next moves pays off.${alt ? ` Or steer clear: ${moveLabel(alt.i, alt.m.san)} scores ${pct(scoreFor(alt.m, cur.side))} against ${pct(scoreFor(alt.played, cur.side))} for ${moveLabel(alt.i, alt.played.san)}.` : ''}`
     : score > avg + 0.03 ? `Above the ${pct(avg)} this opening scores at your level.` : `About what this opening scores at your level (${pct(avg)}).`;
   const e = EVALS.get(evalKey(game.fen())), cp = e && game.turn() === cur.side ? toCp(e) : null;
   const sf = cp == null ? '' : cp >= 80 ? 'clearly better for you' : cp >= 30 ? 'a little better for you' : cp > -30 ? 'equal' : cp > -100 ? `a small edge for ${sideName(cur.side === 'w' ? 'b' : 'w')}` : `better for ${sideName(cur.side === 'w' ? 'b' : 'w')}`;
   const next = game.turn() === cur.side ? lineTips()[0] : null;
   return `${r.n < FEW_GAMES ? `<p class="go-vs">Only ${plural(r.n, 'game')} at your level reached this position (${sideName(cur.side)} scored ${pct(score)}): too few to say how good it is.</p>`
     : `<div class="go-score"><b class="${avg != null && score < avg - 0.03 ? 'low' : ''}">${pct(score)}</b><span>what players at your level score from here, in ${plural(r.n, 'game')}</span></div>
-    ${wdl({ win: r.win, draw: r.draw }, 'w')}${vs ? `<p class="go-vs">${vs}</p>` : ''}`}
+    ${wdl({ win: r.win, draw: r.draw }, 'w')}${vs ? `<p class="go-vs">${vs}</p>` : ''}`}${often}
     ${sf || next ? `<p class="go-tags">${sf ? `<span class="go-sf">Stockfish: ${sf}</span>` : ''}${next ? `<span class="go-move">Next: <b>${next.move.san}</b></span>` : ''}</p>` : ''}`;
 }
 
@@ -2782,7 +2799,7 @@ function renderLines() {
   const group = (i) => (all.length > DEPTHS[0][1] ? DEPTHS.find(([, d], k) => i === (k ? DEPTHS[k - 1][1] : 0)) : null);
   $('#lines-list').innerHTML = $('#m-lines-pop').innerHTML = all.map((l, i) => `${group(i) ? `<li class="line-group">${group(i)[0]}</li>` : ''}<li><button type="button" class="line-btn${i === lineIdx ? ' now' : ''}${state(l)}${i >= lines.length ? ' beyond' : ''}" data-i="${i}">
       <span class="line-n">${i + 1}.</span><span class="line-name">${l.trap ? `<span class="trap-tag${l.trap.kind === 'mistake' ? ' soft' : ''}">${trapWord(l.trap)}</span> ` : l.avoid ? '<span class="trap-tag">Trap</span> ' : l.theory ? '<span class="trap-tag theory">Theory</span> ' : ''}${lineName(l)}<small>${lineTag(l)}</small></span>
-      <span class="line-share">${bigShare(l.share)}</span><span class="line-ok">${star(l)}</span>
+      <span class="line-share"${l.share ? ` title="${l.share < 0.01 ? 'Under 1%' : pct(l.share)} of games at your level go this way"` : ''}>${!l.share ? '' : l.share < 0.01 ? '<1%' : pct(l.share)}</span><span class="line-ok">${star(l)}</span>
     </button></li>`).join('');
   // The phone picks the line from the same list, stars and all, opened by tapping the title over the board.
   if (linesView === 'tree') renderTree();
