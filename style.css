@@ -948,8 +948,8 @@ a.cta { color: var(--accent-ink); }
 /* Openings list: the side tabs and the search on one row; the Lichess box below the list */
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .og-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin: 6px 0 14px; }
-.og-bar .choice-search { flex: 1 1 240px; max-width: 420px; }
-.og-bar .search { width: 100%; }
+.og-bar .choice-search { flex: 1 1 560px; flex-wrap: wrap; }
+.og-bar .search { flex: 1 1 240px; width: auto; min-width: 0; max-width: none; }
 .mine-bottom { margin-top: 28px; }
 .tag.played { background: var(--data); color: var(--data-ink); }
 /* Profile: star a player, compare, your starred players */
@@ -3016,7 +3016,8 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .test-setup { display: grid; gap: 12px; } .test-setup h1, .test-setup p { margin: 0; }
 .test-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .test-rating { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); } .test-rating input { width: 5.5em; }
-.test-link { text-decoration: none; white-space: nowrap; }
+.test-link { padding: 7px 14px; border-radius: 2px; color: var(--ink); font-weight: 500; text-decoration: none; white-space: nowrap; } /* looks like the buttons in .seg */
+.test-link:hover { background: var(--bg); }
 .test-report { display: grid; gap: 10px; } .test-report p { margin: 0; } .test-report .play-open { margin-top: 4px; }
 .test-big { font: 400 44px/1 var(--font-poster); }
 .test-wrong { border-left: 3px solid var(--bad); padding-left: 10px; } .test-fine { border-left: 3px solid var(--good); padding-left: 10px; }
