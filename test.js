@@ -1,10 +1,10 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, BOOK } from './board.js?v=20261104142929';
-import { engineEval, winPct } from './profile.js?v=20261104142929';
-import { banner } from './celebrate.js?v=20261104142929';
-import { openingOf, loadBook, key } from './book.js?v=20261104142929';
+import { drawBoard, enableDrag, BOOK } from './board.js?v=20261104143056';
+import { engineEval, winPct } from './profile.js?v=20261104143056';
+import { banner } from './celebrate.js?v=20261104143056';
+import { openingOf, loadBook, key } from './book.js?v=20261104143056';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -97,7 +97,8 @@ const myTurn = () => !g.done && !g.busy && g.c.turn() === g.me && !g.c.isGameOve
 function buttons() {
   const n = g.c.history().length, enough = g.me === 'w' ? 1 : 2;
   $('#test-hint').disabled = $('#test-best').disabled = !myTurn() || view !== null;
-  $('#test-back').disabled = g.busy || n < enough || g.resigned;
+  $('#test-back').disabled = g.busy || (view === null && n < enough);
+  $('#test-back').textContent = view === null ? 'Take back' : 'Play from here';
   $('#test-resign').disabled = g.done || g.c.isGameOver() || !n;
   if ($('#test-resign').dataset.sure && $('#test-resign').disabled) { delete $('#test-resign').dataset.sure; $('#test-resign').textContent = 'Resign'; }
 }
@@ -119,7 +120,7 @@ function over() {
 async function maiaPlays() {
   const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true });
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261104142929'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104142929');
+  const { maia3Move } = await import('./maia3.js?v=20261104143056'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104143056');
   let r = null;
   try { r = (await within(20000, maia3Move(fen, legal, rating, rating))).move; } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }
@@ -378,14 +379,19 @@ $('#test-walk').addEventListener('click', (e) => {
 });
 $('#test-hint').addEventListener('click', async () => { const b = await bestNow(); if (b) { g.hint = b.from; draw(); } });
 $('#test-best').addEventListener('click', async () => { const b = await bestNow(); if (b) { g.hint = null; g.best = b; draw(); } });
-// Your last move goes, with Maia's answer to it; the report made before it no longer holds.
+// Back to the position on the board, or your last move when you are at the end, and on from there. A position with
+// Maia to move goes back one more, so it is your move again. A finished game stays in the list; this becomes a new one.
 $('#test-back').addEventListener('click', () => {
-  if (g.c.turn() === g.me) g.c.undo();
-  g.c.undo();
-  if (g.off?.ply >= g.c.history().length) g.off = null; // the move that left the line was taken back
-  run++; view = null; g.walk = null; $('#test-walk').hidden = true; g.done = false; g.rows = null; g.sel = g.hint = g.best = null;
+  const all = g.c.history(), to = shownMoves() || all.slice(0, g.c.turn() === g.me ? -2 : -1);
+  const c = new Chess(); to.forEach((m) => c.move(m));
+  if (c.turn() !== g.me && to.length && shownMoves()) { c.undo(); to.pop(); }
+  if (g.done) g.id = Date.now();
+  if (g.off?.ply >= to.length) g.off = null;
+  endWalk();
+  run++; view = null; g.c = c; g.done = g.resigned = false; g.rows = g.line = null; g.sel = g.hint = g.best = null;
   $('#test-out').hidden = true; $('#test-status').textContent = 'Your move.';
   draw(); saveGame();
+  if (c.turn() !== g.me) maiaPlays();
 });
 $('#test-resign').addEventListener('click', (e) => {
   const b = e.currentTarget;
