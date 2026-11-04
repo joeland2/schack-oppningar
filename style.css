@@ -100,6 +100,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .sq.sel::after { content: ""; position: absolute; inset: 0; background: rgb(20 85 30 / .5); }
 .sq.hint::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 0 4px var(--hint); }
 .sq.wrong::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--bad) 55%, transparent); }
+.sq.check::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle, rgb(255 30 30) 0, rgb(230 0 0 / .85) 30%, rgb(170 0 0 / 0) 78%); z-index: 2; } /* the king in check, as on Lichess */
 .sq.dot::before { content: ""; position: absolute; width: 26%; height: 26%; border-radius: 50%; background: rgb(20 85 30 / .5); z-index: 2; }
 .sq.cap::before { content: ""; position: absolute; inset: 0; background: radial-gradient(transparent 0 79%, rgb(20 85 30 / .3) 80%); z-index: 2; }
 .pc { position: relative; z-index: 3; width: 100%; height: 100%; pointer-events: none; }

@@ -1,13 +1,13 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, BOOK, GLYPH } from './board.js?v=20261104161718';
-import { engineEval, winPct } from './profile.js?v=20261104161718';
-import { banner, confetti } from './celebrate.js?v=20261104161718';
-import { PLAN, VS_PLAN } from './styles.js?v=20261104161718';
-import { GUIDE } from './guide.js?v=20261104161718';
-import { hanging } from './ideas.js?v=20261104161718';
-import { openingOf, loadBook, key } from './book.js?v=20261104161718';
+import { drawBoard, enableDrag, BOOK, GLYPH } from './board.js?v=20261104161948';
+import { engineEval, winPct } from './profile.js?v=20261104161948';
+import { banner, confetti } from './celebrate.js?v=20261104161948';
+import { PLAN, VS_PLAN } from './styles.js?v=20261104161948';
+import { GUIDE } from './guide.js?v=20261104161948';
+import { hanging } from './ideas.js?v=20261104161948';
+import { openingOf, loadBook, key } from './book.js?v=20261104161948';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -191,7 +191,7 @@ function humanPick(ranked) {
 async function maiaPlays() {
   const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true });
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261104161718'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104161718');
+  const { maia3Move } = await import('./maia3.js?v=20261104161948'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261104161948');
   let r = null;
   try { r = humanPick((await within(20000, maia3Move(fen, legal, rating, rating))).ranked); } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }

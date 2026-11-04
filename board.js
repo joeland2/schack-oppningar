@@ -14,6 +14,7 @@ export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint 
   if (el._fen && el._fen !== fen) el._shapes = []; // as on Lichess, drawn shapes go once a move is played
   el._fen = fen;
   const targets = sel ? dests || game.moves({ square: sel, verbose: true }).map((m) => m.to) : [];
+  const checked = game.inCheck?.() ? game.board().flat().find((p) => p?.type === 'k' && p.color === game.turn())?.square : null;
   let html = '';
   for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
     const sq = FILES[side === 'w' ? f : 7 - f] + (side === 'w' ? 8 - r : r + 1);
@@ -24,6 +25,7 @@ export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint 
     if (last && (sq === last.from || sq === last.to)) cls.push('last');
     if (hint.includes(sq)) cls.push('hint');
     if (sq === wrong) cls.push('wrong');
+    if (sq === checked) cls.push('check');
     if (pre.includes(sq)) cls.push('pre');
     if (targets.includes(sq)) cls.push(p ? 'cap' : 'dot');
     const fileLbl = r === 7 ? `<span class="lbl f">${sq[0]}</span>` : '';
@@ -37,7 +39,7 @@ export function drawBoard(el, game, { side = 'w', sel = null, last = null, hint 
       ? `<span class="mark ${mark.ok ? 'ok' : 'bad'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${mark.ok ? 'M5 12.5l4.5 4.5L19 7.5' : 'M7 7l10 10M17 7L7 17'}"/></svg></span>` : '';
     // Where the page has a field to type moves in (data-typed), the squares are for the mouse and touch
     // only, so tabbing reaches the field instead of 64 squares.
-    html += `<button class="${cls.join(' ')}" data-sq="${sq}"${el.dataset.typed ? ' tabindex="-1"' : ''} aria-label="${sq}${p ? `, ${p.color === 'w' ? 'white' : 'black'} ${NAMES[p.type]}` : ''}${sq === sel ? ', selected' : ''}">${piece}${badge}${fileLbl}${rankLbl}</button>`;
+    html += `<button class="${cls.join(' ')}" data-sq="${sq}"${el.dataset.typed ? ' tabindex="-1"' : ''} aria-label="${sq}${p ? `, ${p.color === 'w' ? 'white' : 'black'} ${NAMES[p.type]}` : ''}${sq === checked ? ', in check' : ''}${sq === sel ? ', selected' : ''}">${piece}${badge}${fileLbl}${rankLbl}</button>`;
   }
   el.innerHTML = html + (arrow ? arrowSvg(arrow, side) : arrows.map((a) => arrowSvg(a, side)).join('')) + (el.classList.contains('mini') ? '' : '<svg class="shapes" viewBox="0 0 8 8" aria-hidden="true"></svg>');
   el._game = game;
