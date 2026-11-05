@@ -546,8 +546,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .tag { background: var(--raised); color: var(--ink); }
 
 /* Each card in its side's colour: White's openings on white, Black's on black, in both themes */
-.ocard.side-w, .gm-moment.side-w { --accent: #141414; --surface: #efe8db; --ink: #141414; --muted: #62594c; --line: #d3c8b3; --raised: #ded5c3; --good: #226039; --bad: #b42318; }
-.ocard.side-b, .gm-moment.side-b { --accent: #f4efe6; --surface: #141414; --ink: #f4efe6; --muted: #a8a093; --line: #2e2a25; --raised: #26221e; --good: #5fc48a; --bad: #ff6b6b; }
+.ocard.side-w { --accent: #141414; --surface: #efe8db; --ink: #141414; --muted: #62594c; --line: #d3c8b3; --raised: #ded5c3; --good: #226039; --bad: #b42318; }
+.ocard.side-b { --accent: #f4efe6; --surface: #141414; --ink: #f4efe6; --muted: #a8a093; --line: #2e2a25; --raised: #26221e; --good: #5fc48a; --bad: #ff6b6b; }
 .ocard.side-w, .ocard.side-b { background: var(--surface); color: var(--ink); border-color: var(--line); }
 .ocard.side-w:hover, .ocard.side-w:focus-visible, .ocard.side-b:hover, .ocard.side-b:focus-visible { border-color: var(--ink); }
 
@@ -922,9 +922,9 @@ a.cta { color: var(--accent-ink); }
 /* Dark mode: White's cards are dimmed warm paper, not bright cream, so they do not glare beside the
    black ones; the two sides still read apart. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .ocard.side-w, :root:not([data-theme="light"]) .gm-moment.side-w { --accent: #f4efe6; --surface: #3a352e; --ink: #f4efe6; --muted: #c0b8aa; --line: #4b443b; --raised: #474037; --good: #5fc48a; --bad: #ff6b6b; }
+  :root:not([data-theme="light"]) .ocard.side-w { --accent: #f4efe6; --surface: #3a352e; --ink: #f4efe6; --muted: #c0b8aa; --line: #4b443b; --raised: #474037; --good: #5fc48a; --bad: #ff6b6b; }
 }
-:root[data-theme="dark"] .ocard.side-w, :root[data-theme="dark"] .gm-moment.side-w { --accent: #f4efe6; --surface: #3a352e; --ink: #f4efe6; --muted: #c0b8aa; --line: #4b443b; --raised: #474037; --good: #5fc48a; --bad: #ff6b6b; }
+:root[data-theme="dark"] .ocard.side-w { --accent: #f4efe6; --surface: #3a352e; --ink: #f4efe6; --muted: #c0b8aa; --line: #4b443b; --raised: #474037; --good: #5fc48a; --bad: #ff6b6b; }
 /* Profile: the slim analyse bar at the top */
 .pf-analyse { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 13.5px; color: var(--muted); }
 .pf-analyse b { color: var(--ink); }
@@ -1024,11 +1024,10 @@ a.cta { color: var(--accent-ink); }
 .gm-title { font-size: clamp(1.8rem, 3.5vw, 2.6rem); margin: 4px 0; overflow-wrap: anywhere; }
 .gm-title span { color: var(--muted); font-size: .6em; }
 .gm-story { display: grid; gap: 6px; }
-.gm-story h2, .gm-moments h2, .gm-moves h2 { margin: 10px 0 4px; font: 600 12px var(--font-body); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.gm-story h2, .gm-moves h2 { margin: 10px 0 4px; font: 600 12px var(--font-body); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
 .gm-story h2.pf-good { color: var(--good); }
 .gm-story h2.pf-bad { color: var(--hot); }
 .gm-story ul { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; }
-.gm-head { margin: 0; font-size: 17px; font-weight: 600; }
 .gm-acc { margin: 0; color: var(--muted); }
 .gm-acc b { color: var(--ink); }
 .gm-noan { margin: 6px 0 0; display: grid; gap: 8px; justify-items: start; }
@@ -1048,11 +1047,6 @@ a.cta { color: var(--accent-ink); }
 .gm-graph circle.theirs.Inaccuracy { stroke: var(--hint); }
 .gm-graph .hit { fill: transparent; }
 .gm-graph figcaption { margin-top: 6px; font-size: 12px; color: var(--muted); }
-.gm-moments ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
-.gm-moment { width: 100%; margin: 0; display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: center; text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); color: var(--ink); cursor: pointer; font: inherit; font-size: 14px; }
-.gm-moment:hover { border-color: var(--hot); }
-.gm-moment.side-w, .gm-moment.side-b { background: var(--surface); color: var(--ink); border-color: var(--line); }
-.gm-moment small { color: var(--muted); }
 .gm-j { font: 700 15px var(--font-mono); }
 .gm-j.j-Blunder, .gm-move.j-Blunder { color: var(--bad); }
 .gm-j.j-Mistake, .gm-move.j-Mistake { color: var(--hot); }
@@ -1089,12 +1083,6 @@ a.cta { color: var(--accent-ink); }
 .pf-pcard-rating { font: 400 20px/1 var(--font-poster); letter-spacing: .02em; }
 .pf-pcard-rating small { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
 /* Game review: who is White and who is Black */
-.gm-player { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 15px; }
-.gm-player img, .gm-sides img { width: 22px; height: 22px; }
-.gm-player span { color: var(--muted); }
-.gm-player small { color: var(--muted); margin-left: auto; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
-.gm-sides { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 2px 0 4px; }
-.gm-sides span { display: inline-flex; align-items: center; gap: 6px; }
 
 /* Compare: thicker bars, each value right where its bar ends */
 .cmp-bars { gap: 6px; }
@@ -1868,13 +1856,6 @@ p, li, dd, small { text-wrap: pretty; }
 .pf-star-strip:hover { border-color: var(--ink); }
 /* A game's effect on the card */
 .gm-impact h2 { margin: 0 0 8px; font: 600 12px var(--font-body); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
-.gm-moves-card { margin: 0 0 8px; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; }
-.gm-moves-card li { font-size: 15px; }
-.gm-moves-card b { font: 400 22px var(--font-poster); margin-right: 4px; }
-.gm-moves-card .up b { color: var(--good); }
-.gm-moves-card .down b { color: var(--bad); }
-.gm-moves-card .same b { color: var(--muted); }
-.gm-moves-card small { color: var(--muted); margin-left: 4px; }
 .gm-impact:empty { display: none; }
 
 .path-step { padding: 10px; gap: 8px; }
@@ -3414,3 +3395,35 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 .rv-bw-n { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 @media (max-width: 560px) { .rv-bw { grid-template-columns: minmax(0, 1fr) auto auto; row-gap: 4px; } .rv-bw-bar { grid-column: 1 / -1; order: 3; } .rv-bw-head .rv-bw-bar { order: 0; } }
 .adm-who-list { max-height: 520px; overflow-y: auto; }
+
+/* Game review: moves left (the slips explained under them), the board with who and what over it, the report right */
+.gm-strip { display: grid; gap: 2px; }
+.gm-strip .gm-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 0; font-size: clamp(1.3rem, 2.2vw, 1.9rem); line-height: 1.1; }
+.gm-strip .gm-title img { width: 22px; height: 22px; align-self: center; }
+.gm-strip .gm-title small { font: 500 13px var(--font-body); color: var(--muted); }
+.gm-line { margin: 0; font-size: 13.5px; color: var(--muted); } .gm-line b { color: var(--ink); }
+.gm-left { grid-area: moves; min-width: 0; padding: 12px 14px; background: var(--surface); border-top: 3px solid var(--ink); }
+.gm-left .gm-moves h2 { margin-top: 0; }
+.gm-left ol { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; overflow-y: auto; }
+.gm-left .gm-note { display: block; margin: 0 0 4px 2.4em; padding: 2px 0 4px 8px; border-left: 2px solid var(--hot); font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+.gm-left .gm-note.j-Blunder { border-left-color: var(--bad); }
+.gm-mlink { display: inline; margin: 0; padding: 0; min-height: 0; border: 0; border-bottom: 1px dotted var(--hot); border-radius: 0; background: none; color: var(--ink); font: 600 .95em var(--font-mono); cursor: pointer; white-space: nowrap; box-shadow: none; }
+.gm-mlink:hover { color: var(--hot); }
+#board { scroll-margin-top: 80px; }
+.gm-graph figcaption { margin-top: 4px; }
+.gm-impact h2 { margin-top: 10px; }
+.gm-dv { display: grid; grid-template-columns: 74px minmax(0, 1fr) 38px 44px; gap: 5px 8px; align-items: center; font-size: 13px; }
+.gm-dv .tr { position: relative; height: 10px; border-radius: 2px; background: var(--raised); }
+.gm-dv .tr::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); }
+.gm-dv .tr i { position: absolute; top: 0; bottom: 0; border-radius: 2px; }
+.gm-dv .tr i.up { left: 50%; background: var(--good); } .gm-dv .tr i.down { right: 50%; background: var(--bad); }
+.gm-dv b { font: 400 18px/1 var(--font-poster); text-align: right; } .gm-dv b.up { color: var(--good); } .gm-dv b.down { color: var(--bad); } .gm-dv b.same { color: var(--muted); }
+.gm-dv small { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.layout.game-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "play" "moves" "panel"; }
+.game-layout .gm-left ol { max-height: 320px; }
+@media (min-width: 821px) { .layout.game-layout { grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "play panel" "moves panel"; align-items: start; } }
+@media (min-width: 1181px) {
+  .layout.game-layout { grid-template-columns: 300px minmax(0, min(calc(100vh - 230px), 720px)) minmax(330px, 1fr); grid-template-areas: "moves play panel"; gap: 24px; }
+  .game-layout .gm-left ol { max-height: calc(100vh - 170px); }
+  .game-layout .panel { max-height: calc(100vh - 110px); overflow-y: auto; }
+}

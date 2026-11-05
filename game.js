@@ -2,12 +2,12 @@
 // decided it (yours and your opponent's mistakes, with the better move), and a short read of what
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
-import { banner, confetti } from './celebrate.js?v=20261105115909';
+import { banner, confetti } from './celebrate.js?v=20261105120133';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261105115909';
-import { account, lichessAuth } from './lichess.js?v=20261105115909';
-import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261105115909';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261105115909';
+import { drawBoard, enableDrag } from './board.js?v=20261105120133';
+import { account, lichessAuth } from './lichess.js?v=20261105120133';
+import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261105120133';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261105120133';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -61,6 +61,8 @@ function bestMove(i) {
   if (castle && before.get(uci.slice(0, 2))?.type === 'k') uci = castle;
   try { return before.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || 'q' }); } catch { return null; }
 }
+// A move named in the words: a click shows it on the board, the move played in red, the better one in green.
+const mv = (i, label = `${moveNo(i)}${moves[i].san}`) => `<button type="button" class="gm-mlink" data-moment="${i}">${label}</button>`;
 // The moves that decided the game: every mistake and blunder, by either side.
 function moments() {
   if (!g.analysis) return [];
@@ -77,9 +79,11 @@ function answer(x) {
   if (x.mine || k >= moves.length) return '';
   const best = bestMove(k);
   return g.analysis[k]?.judgment
-    ? `<span class="pf-bad">${P.You} missed it: ${best ? `<b>${best.san}</b> punished it, ` : ''}${P.they} played <b>${moves[k].san}</b></span>`
-    : `<span class="pf-good">${P.You} punished it with <b>${moves[k].san}</b></span>`;
+    ? `<span class="pf-bad">${P.You} missed ${best ? mv(k, best.san) : 'it'}.</span>`
+    : `<span class="pf-good">${P.You} punished it with <button type="button" class="gm-mlink" data-i="${k}">${moves[k].san}</button>.</span>`; // a good move: shown as played, not in red
 }
+// The line under a slip in the move list: what was better and what it cost.
+const noteOf = (x) => `${mv(x.i)}: ${x.best ? `${mv(x.i, x.best.san)} was better, ` : ''}${x.mine ? `cost ${P.you}` : `gave ${P.you}`} ${x.swing}%. ${answer(x)}`;
 
 // What went well and what went badly, read from the result and the analysis.
 function story() {
@@ -87,7 +91,7 @@ function story() {
   const won = g.winner === me, lost = g.winner && g.winner !== me;
   const how = HOW[g.status] || g.status;
   const n = Math.ceil(moves.length / 2);
-  const head = `${won ? `${P.You} won` : lost ? `${P.You} lost` : 'A draw'} ${how} in ${n} moves${g.opening?.name ? `, in the ${esc(g.opening.name.split(':')[0])}` : ''}.`;
+  const head = `${won ? `${P.You} won` : lost ? `${P.You} lost` : 'A draw'} ${how} in ${n} moves`;
   const good = [], bad = [];
   if (!g.analysis) return { head, good, bad, acc: null };
   const myA = g.players[me].analysis || {}, theirA = g.players[them].analysis || {};
@@ -103,16 +107,16 @@ function story() {
   if (best >= 85 && won) good.push(`${P.You} got a winning position and converted it.`);
   if (worst <= 15 && !lost) good.push(`${P.You} ${P.were} lost (${Math.round(worst)}%) and still ${won ? 'won' : 'saved a draw'}: good fighting.`);
   if (!myA.blunder) good.push(`No blunders from ${P.you}.`);
-  else bad.push(`${myA.blunder} blunder${myA.blunder > 1 ? 's' : ''} from ${P.you}${myA.mistake ? ` and ${myA.mistake} mistake${myA.mistake > 1 ? 's' : ''}` : ''}. They are in the list below.`);
+  else bad.push(`${myA.blunder} blunder${myA.blunder > 1 ? 's' : ''} from ${P.you}${myA.mistake ? ` and ${myA.mistake} mistake${myA.mistake > 1 ? 's' : ''}` : ''}: ${moments().filter((x) => x.mine).map((x) => mv(x.i)).join(' ')}.`);
   const theirBlunders = moments().filter((x) => !x.mine && x.j === 'Blunder');
   if (theirBlunders.length) {
     const punished = theirBlunders.filter((x) => !moments().some((y) => y.mine && y.i === x.i + 1));
-    if (punished.length === theirBlunders.length) good.push(`${oppName(true)} blundered ${theirBlunders.length === 1 ? 'once' : `${theirBlunders.length} times`} and ${P.you} made them pay.`);
-    else bad.push(`${oppName(true)} blundered and ${P.you} missed the chance on the next move.`);
+    if (punished.length === theirBlunders.length) good.push(`${oppName(true)} blundered ${theirBlunders.length === 1 ? 'once' : `${theirBlunders.length} times`} (${theirBlunders.map((x) => mv(x.i)).join(' ')}) and ${P.you} made them pay.`);
+    else bad.push(`${oppName(true)} blundered with ${theirBlunders.filter((x) => !punished.includes(x)).map((x) => mv(x.i)).join(' ')} and ${P.you} missed the chance on the next move.`);
   }
   if (lost && /outoftime|timeout/.test(g.status)) bad.push(isMe ? 'You lost on time: play the opening faster to keep time for the hard moments.' : `${P.You} lost on time.`);
   const swing = moments().filter((x) => x.mine).sort((a, b) => b.swing - a.swing)[0];
-  if (swing && swing.swing >= 20) bad.push(`The turning point: ${moveNo(swing.i)} ${swing.m.san} cost ${swing.swing}% of ${P.your} winning chances${swing.best ? `; ${swing.best.san} was better` : ''}.`);
+  if (swing && swing.swing >= 20) bad.push(`The turning point: ${mv(swing.i)} cost ${swing.swing}% of ${P.your} winning chances${swing.best ? `; ${mv(swing.i, swing.best.san)} was better` : ''}.`);
   return { head, good, bad, acc: myA.accuracy != null ? [myA.accuracy, theirA.accuracy] : null };
 }
 
@@ -127,14 +131,6 @@ function kindOf(i) {
   return b && b.slice(0, 4) === m.from + m.to ? 'best' : 'good';
 }
 // Who is who: the player of each colour beside the board, the one at the bottom below it.
-function players(bottom) {
-  const strip = (c) => {
-    const pl = g.players[c === 'w' ? 'white' : 'black'], you = (c === 'w') === (side === 'white');
-    return `<img src="pieces/${c}K.svg" alt=""><b>${esc(nick(pl.user?.id || 'anonymous'))}</b> <span>${pl.rating || ''}</span> <small>${c === 'w' ? 'White' : 'Black'}${you && name && !q.get('play') ? (isMe ? ' · you' : '') : ''}</small>`;
-  };
-  $('#top-player').innerHTML = strip(bottom === 'w' ? 'b' : 'w');
-  $('#bottom-player').innerHTML = strip(bottom);
-}
 // The eval bar beside the board: White's winning chances after the move shown, filled from the side at the
 // bottom, with Stockfish's number (pawns, or M and the moves to mate) at the end of the side ahead.
 function evalBar(bottom) {
@@ -182,7 +178,6 @@ function drawPosition() {
   if (best) arrows.push([best.from, best.to, GREEN]);
   const bottom = (side === 'white') !== flip ? 'w' : 'b';
   drawBoard($('#board'), c, { side: bottom, last, arrows, mark: focus === null && idx && kindOf(idx - 1) ? { sq: moves[idx - 1].to, kind: kindOf(idx - 1) } : null });
-  players(bottom);
   evalBar(bottom);
   const i = idx - 1, j = g.analysis?.[i]?.judgment?.name;
   const fb = focus !== null && idx === focus ? bestMove(focus) : null;
@@ -213,7 +208,7 @@ function graph() {
   return `<figure class="gm-graph"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${P.Your} winning chances move by move">
       <path class="area" d="${area}"/><line class="mid" x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}"/><path class="ln" d="${line}"/>${dots}
       <line class="now" x1="0" x2="0" y1="0" y2="${H}"/><rect class="hit" width="${W}" height="${H}"/></svg>
-    <figcaption>${P.Your} winning chances, move by move. Above the middle line ${P.you} ${P.were} better. The dots are the slips: red blunders, orange mistakes, yellow inaccuracies. Filled are ${isMe ? 'yours' : `${P.your}`}, rings ${oppName()}'s.</figcaption></figure>`;
+    <figcaption>Above the middle line ${P.you} ${P.were} better. Red blunders, orange mistakes, yellow inaccuracies; ${isMe ? 'rings are your opponent' : 'rings are the other player'}.</figcaption></figure>`;
 }
 // A player's name as a link to their profile here (anonymous players have none).
 function who(colour, fallback = 'anonymous') {
@@ -221,33 +216,28 @@ function who(colour, fallback = 'anonymous') {
   return id ? `<a class="gm-who" href="profile.html?u=${encodeURIComponent(id)}" title="${esc(nick(id))}'s profile">${esc(nick(id))}</a>` : esc(fallback);
 }
 function render() {
-  const s = story(), me = g.players[side], opp = g.players[side === 'white' ? 'black' : 'white'];
-  const list = moments();
-  const pairs = [];
+  const s = story(), list = moments(), pairs = [], king = (c) => `<img src="pieces/${c}K.svg" alt="">`;
   for (let i = 0; i < moves.length; i += 2) pairs.push(i);
-  $('#game').innerHTML = `
-    <h1 class="gm-title">${who('white', 'White')} <span>vs</span> ${who('black', 'Black')}</h1>
-    <p class="gm-sides"><span><img src="pieces/wK.svg" alt="">White: <b>${who('white')}</b> ${g.players.white.rating || ''}</span>
-      <span><img src="pieces/bK.svg" alt="">Black: <b>${who('black')}</b> ${g.players.black.rating || ''}</span></p>
-    <p class="info">${P.You} played ${esc(side)} · ${g.speed} · ${new Date(g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · <a href="${isCC(name) ? ccGameUrl(g.id) : `https://lichess.org/${g.id}${side === 'black' ? '/black' : ''}`}" target="_blank" rel="noopener">On ${isCC(name) ? 'Chess.com' : 'Lichess'}</a></p>
-    <section class="gm-impact" id="gm-impact"></section>
-    <section class="gm-story">
-      <p class="gm-head">${s.head}</p>
-      ${s.acc ? `<p class="gm-acc">Accuracy: <b>${s.acc[0]}%</b> ${P.you}, <b>${s.acc[1] ?? '–'}%</b> ${oppName()}</p>` : ''}
-      ${g.analysis ? `${s.good.length ? `<h2 class="pf-good">What went well</h2><ul>${s.good.map((x) => `<li>${x}</li>`).join('')}</ul>` : ''}
-        ${s.bad.length ? `<h2 class="pf-bad">What went badly</h2><ul>${s.bad.map((x) => `<li>${x}</li>`).join('')}</ul>` : ''}`
-      : `<p class="gm-noan">This game has no computer analysis yet, so there is no read on what went well or badly. <button type="button" class="cta" data-analyse>Analyse it now</button> <small>About ${Math.max(2, Math.round(moves.length * 0.035))} seconds, with Stockfish in your browser.</small></p>`}
-    </section>
-    ${graph()}
-    ${list.length ? `<section class="gm-moments"><h2>The moves that decided it</h2><ul>${list.map((x) => `<li><button type="button" class="gm-moment ${x.mine ? 'mine' : 'theirs'} side-${x.i % 2 ? 'b' : 'w'}" title="Played by ${x.i % 2 ? 'Black' : 'White'}" data-moment="${x.i}">
-      <span class="gm-j j-${x.j}">${GLYPHS[x.j]}</span><span><b>${moveNo(x.i)} ${x.m.san}</b> ${x.mine ? `by ${P.you}` : `by ${oppName()}`}${x.best ? `: <b>${x.best.san}</b> was better` : ''}<br><small>${x.mine ? `cost ${P.you} ${x.swing}% of ${P.their} winning chances` : `gave ${P.you} ${x.swing}%`}</small>${answer(x) ? `<br><small>${answer(x)}</small>` : ''}</span></button></li>`).join('')}</ul></section>` : ''}
-    <section class="gm-moves"><h2>Moves</h2><ol>${pairs.map((i) => `<li><span class="n">${i / 2 + 1}.</span>${[i, i + 1].filter((k) => k < moves.length).map((k) => {
+  const notes = (i) => list.filter((x) => x.i === i || x.i === i + 1).map((x) => `<li class="gm-note j-${x.j}">${noteOf(x)}</li>`).join('');
+  $('#gm-strip').innerHTML = `<h1 class="gm-title">${king('w')}${who('white', 'White')} <small>${g.players.white.rating || ''}</small> <span>vs</span> ${king('b')}${who('black', 'Black')} <small>${g.players.black.rating || ''}</small></h1>
+    <p class="gm-line">${g.opening?.name ? `<b>${esc(g.opening.name)}</b> · ` : ''}${g.speed} · ${new Date(g.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · <span class="${g.winner === side ? 'pf-good' : g.winner ? 'pf-bad' : ''}">${s.head}</span> · <a href="${isCC(name) ? ccGameUrl(g.id) : `https://lichess.org/${g.id}${side === 'black' ? '/black' : ''}`}" target="_blank" rel="noopener">On ${isCC(name) ? 'Chess.com' : 'Lichess'}</a></p>`;
+  $('#gm-left').innerHTML = `<section class="gm-moves"><h2>Moves</h2><ol>${pairs.map((i) => `<li><span class="n">${i / 2 + 1}.</span>${[i, i + 1].filter((k) => k < moves.length).map((k) => {
       const j = g.analysis?.[k]?.judgment?.name;
       return `<button type="button" class="gm-move${j ? ` j-${j}` : ''}" data-i="${k}">${moves[k].san}${j ? GLYPHS[j] : ''}</button>`;
-    }).join('')}</li>`).join('')}</ol></section>`;
-  $('#game').querySelectorAll('.gm-move').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.i) + 1)));
-  $('#game').querySelectorAll('[data-moment]').forEach((b) => b.addEventListener('click', () => {
+    }).join('')}</li>${notes(i)}`).join('')}</ol></section>`;
+  $('#game').innerHTML = `
+    <section class="gm-story">
+      ${s.acc ? `<p class="gm-acc">Accuracy: <b>${s.acc[0]}%</b> ${P.you}, <b>${s.acc[1] ?? '–'}%</b> ${oppName()}</p>` : ''}
+      ${g.analysis ? '' : `<p class="gm-noan">This game has no computer analysis yet, so there is no read on what went well or badly. <button type="button" class="cta" data-analyse>Analyse it now</button> <small>About ${Math.max(2, Math.round(moves.length * 0.035))} seconds, with Stockfish in your browser.</small></p>`}
+    </section>
+    ${graph()}
+    ${g.analysis ? `<section class="gm-story">${s.good.length ? `<h2 class="pf-good">What went well</h2><ul>${s.good.map((x) => `<li>${x}</li>`).join('')}</ul>` : ''}
+      ${s.bad.length ? `<h2 class="pf-bad">What went badly</h2><ul>${s.bad.map((x) => `<li>${x}</li>`).join('')}</ul>` : ''}</section>` : ''}
+    <section class="gm-impact" id="gm-impact"></section>`;
+  $('#gm-left').querySelectorAll('[data-i]').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.i) + 1)));
+  document.querySelectorAll('[data-moment]').forEach((b) => b.addEventListener('click', () => {
     focus = idx = Number(b.dataset.moment); tryOut = null; drawPosition(); // yours or theirs: the move played in red, the better one in green
+    $('#board').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); // on a phone the board is further up
   }));
   const bb = $('#best');
   bb.hidden = false;
@@ -283,9 +273,10 @@ async function impact() {
   const dOvr = both.length ? tenth(both.reduce((t, i) => t + a[i].v - b[i].v, 0) / both.length) : 0, style = withIt.type?.[0]?.name, was = without.type?.[0]?.name;
   const sign = (d) => (d > 0 ? `+${d}` : d < 0 ? `${d}`.replace('-', '−') : '±0');
   const way = (d) => (d > 0 ? 'up' : d < 0 ? 'down' : 'same');
-  el.innerHTML = `<h2>How this game affected ${P.your} ${g.speed} stats</h2>
-    ${moved.length ? `<ul class="gm-moves-card">${ovr(a) !== null ? `<li class="${way(dOvr)}"><b>${sign(dOvr)}</b> overall <small>now ${Math.round(ovr(card))}</small></li>` : ''}
-      ${moved.map((x) => `<li class="${way(x.d)}"><b>${sign(x.d)}</b> ${x.label} <small>now ${x.now}</small></li>`).join('')}</ul>`
+  // What it gave and what it took: green to the right of the middle, red to the left, the biggest gain first.
+  const rows = [...(ovr(a) !== null ? [{ label: 'Overall', d: dOvr, now: Math.round(ovr(card)) }] : []), ...moved].sort((x, y) => y.d - x.d), most = Math.max(0.5, ...rows.map((x) => Math.abs(x.d)));
+  el.innerHTML = `<h2>What this game did to ${P.your} ${g.speed} stats</h2>
+    ${rows.length ? `<div class="gm-dv">${rows.map((x) => `<span>${x.label}</span><div class="tr"><i class="${way(x.d)}" style="width:${Math.abs(x.d) / most * 50}%"></i></div><b class="${way(x.d)}">${sign(x.d)}</b><small>now ${x.now}</small>`).join('')}</div>`
       : `<p class="info">This game hardly moved ${P.your} stats: under a tenth of a point each.</p>`}
     ${style && was && style !== was ? `<p>It changed ${P.your} style: <b>${esc(was)}</b> → <b>${esc(style)}</b>.</p>` : ''}`;
 }
@@ -338,7 +329,6 @@ function drawTry() {
   const best = showBest && !t.busy && !b.isGameOver() ? bestHere(b.fen()) : null;
   drawBoard($('#board'), b, { side: bottom, sel: t.sel, last, arrows: best ? [[best.from, best.to, GREEN]] : [] });
   $('#board').classList.toggle('looking-back', t.view !== null);
-  players(bottom);
   const end = c.isCheckmate() ? (c.turn() === t.me ? 'Checkmate: Maia wins.' : 'Checkmate! You win.') : c.isDraw() ? 'A draw.' : '';
   $('#here').innerHTML = `${end || (t.view < 0 ? 'Looking back at the game. A move here plays on from this position; → goes forward again.' : t.view !== null ? 'Looking back at your moves. A move here plays on from this position; → goes forward again.' : t.busy ? `Maia ${t.rating} is thinking…` : `Your move. You play on from ${t.from ? `after ${moveNo(t.from - 1)} ${moves[t.from - 1].san}` : 'the start'} against Maia at ${t.rating}.`)}${best ? ` Best move: <b>${best.san}</b> (green).` : ''}
     <span class="gm-try-btns"><button type="button" class="ghost" id="try-undo"${c.history().length ? '' : ' disabled'}>Take back</button><button type="button" class="ghost" id="try-back">Back to the game</button></span>`;
@@ -360,7 +350,7 @@ async function tryMove(from, to) {
   if (t.c.isGameOver()) return drawTry(), ended(t), true;
   t.busy = true; drawTry();
   const legal = t.c.moves({ verbose: true });
-  const { maia3Move } = await import('./maia3.js?v=20261105115909'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261105115909'); // loaded on the first move only: the nets are big
+  const { maia3Move } = await import('./maia3.js?v=20261105120133'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261105120133'); // loaded on the first move only: the nets are big
   let r = null;
   try { r = (await within(20000, maia3Move(t.c.fen(), legal, t.rating, t.rating))).move; } catch (e) { console.warn(e); }
   if (!r && t.rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(t.rating, [t.c.fen()], legal))).move; } catch (e) { console.warn(e); }

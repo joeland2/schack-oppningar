@@ -16,10 +16,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261105115909">
-  <script src="move.js?v=20261105115909"></script>
-  <script src="header.js?v=20261105115909" defer></script>
-  <script src="theme.js?v=20261105115909"></script>
+  <link rel="stylesheet" href="style.css?v=20261105120133">
+  <script src="move.js?v=20261105120133"></script>
+  <script src="header.js?v=20261105120133" defer></script>
+  <script src="theme.js?v=20261105120133"></script>
 </head>
 <body>
   <header class="top">
@@ -33,13 +33,13 @@
   </header>
 
     <main class="wrap layout game-layout">
+    <aside class="gm-left" id="gm-left" aria-label="Moves"></aside>
     <section class="play">
-      <p id="top-player" class="gm-player"></p>
+      <div class="gm-strip" id="gm-strip"></div>
       <div class="board-frame">
         <div id="gm-eval" class="gm-eval" role="img" hidden><i></i><span></span></div>
         <div id="board" class="board" role="group" aria-label="Chessboard"></div>
       </div>
-      <p id="bottom-player" class="gm-player"></p>
       <div class="controls">
         <button id="first" type="button" aria-label="First move"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M18 6l-8 6 8 6z"/></svg></button>
         <button id="prev" type="button" aria-label="Previous move"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
@@ -58,6 +58,6 @@
     </aside>
   </main>
 
-  <script type="module" src="game.js?v=20261105115909"></script>
+  <script type="module" src="game.js?v=20261105120133"></script>
 </body>
 </html>
