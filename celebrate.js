@@ -3,13 +3,12 @@
 const REDUCE_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const frameOf = (el) => el?.closest?.('.board-frame') || document.querySelector('.board-frame');
 
-// The stamp over the board when a game ends (a win also gets confetti, see celebrate): the word slams down
-// and the board jolts. "Draw · by repetition" puts what follows the dot under the word.
+// The stamp over the board when a game ends (a win also gets confetti, see celebrate): the word slams down.
+// "Draw · by repetition" puts what follows the dot under the word.
 export function banner(text, kind = '', el) {
   const frame = frameOf(el), [word, more] = text.split(' · ');
   frame.querySelector('.mate-banner')?.remove();
   frame.insertAdjacentHTML('beforeend', `<div class="mate-banner${kind ? ` ${kind}` : ''}" role="status"><b class="stamp">${word}${more ? `<small>${more}</small>` : ''}</b></div>`);
-  frame.classList.remove('thud'); void frame.offsetWidth; frame.classList.add('thud');
   setTimeout(() => frame.querySelector('.mate-banner')?.remove(), 3500);
 }
 

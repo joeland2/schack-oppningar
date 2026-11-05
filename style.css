@@ -646,10 +646,8 @@ button.ml-row:hover, button.ml-row:focus-visible { background: var(--raised); }
 .mate-banner .stamp small { display: block; margin-top: .3em; font: 600 clamp(10px, 2.6cqi, 14px) var(--font-body); letter-spacing: .14em; color: #f4efe6; }
 @keyframes stamp { from { transform: rotate(-14deg) scale(2.6); opacity: 0; } 70% { opacity: 1; } }
 @keyframes mate-dim { from { opacity: 0; } }
-.board-frame.thud { animation: thud .35s .3s; }
-@keyframes thud { 30% { transform: translate(3px, 2px); } 60% { transform: translate(-2px, -1px); } }
 .confetti { position: fixed; inset: 0; z-index: 60; width: 100vw; height: 100vh; pointer-events: none; }
-@media (prefers-reduced-motion: reduce) { .mate-banner, .mate-banner .stamp, .board-frame.thud { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .mate-banner, .mate-banner .stamp { animation: none; } }
 
 /* The start of a line: what the opening is about and which line this is */
 .coach .why .intro { color: var(--ink); font-size: 15px; }
