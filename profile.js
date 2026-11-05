@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261105113058';
-import { openLogin } from './login.js?v=20261105113058';
-import { STYLE_OF } from './styles.js?v=20261105113058';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261105113058';
-import { PEOPLE } from './pros.js?v=20261105113058';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261105113229';
+import { openLogin } from './login.js?v=20261105113229';
+import { STYLE_OF } from './styles.js?v=20261105113229';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261105113229';
+import { PEOPLE } from './pros.js?v=20261105113229';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1738,11 +1738,20 @@ let pfSpeed = null, shown = null; // the picked time control ('all' or a speed);
 // time control's own last 500 games once fetched (fetchSpeed), else its share of the last 500 of all.
 // Only when the games themselves are kept here (the last few players looked up).
 const PERFS = new Map(); // lower-case name → promise of { bullet: games, … } from Lichess
+const LIVE = new Map(); // lower-case name → { blitz: rating, … } as Lichess has it now, ahead of the games read so far
+function noteLive(name, perfs) {
+  LIVE.set(name.toLowerCase(), Object.fromEntries(SPEEDS.filter((sp) => perfs?.[sp]?.rating).map((sp) => [sp, perfs[sp].rating])));
+  if (!isMe(name)) return;
+  for (const sp of ['blitz', 'classical']) if (perfs?.[sp]?.rating) { // the header's rating, which Openings alone kept current
+    keep(`opening-book-v2-${sp}-rating`, perfs[sp].rating);
+    const el = document.querySelector(`.top-me strong[title="${sp} rating"]`); if (el) el.textContent = perfs[sp].rating;
+  }
+}
 function perfsOf(name) {
   const k = name.toLowerCase();
   if (!PERFS.has(k) && isCC(name)) PERFS.set(k, ccUser(name).then((u) => { if (u) FLAGS.set(k, flagCode(u.flag)); PERFS.set(k, u?.games || null); return u?.games || null; }));
   if (!PERFS.has(k)) PERFS.set(k, fetch(`https://lichess.org/api/user/${encodeURIComponent(name)}`).then((r) => (r.ok ? r.json() : null))
-    .then((u) => { if (u) FLAGS.set(k, flagCode(u.profile?.flag)); return u && Object.fromEntries(SPEEDS.map((sp) => [sp, u.perfs?.[sp]?.games || 0])); }).catch(() => null)
+    .then((u) => { if (u) { FLAGS.set(k, flagCode(u.profile?.flag)); noteLive(name, u.perfs); } return u && Object.fromEntries(SPEEDS.map((sp) => [sp, u.perfs?.[sp]?.games || 0])); }).catch(() => null)
     .then((x) => { PERFS.set(k, x); return x; }));
   return PERFS.get(k);
 }
@@ -1846,6 +1855,7 @@ function render(name, at, full) {
   // A time control with no games read yet has no card of its own: the main one shows until its games come.
   const sp = pfSpeed && (pfSpeed === 'all' || avail.some(([k, n]) => k === pfSpeed && n > 0)) ? pfSpeed : avail.some(([k]) => k === main) ? main : 'all';
   const p = combo ? full : forSpeed(name, full, sp);
+  if (!combo) for (const x of p.speeds) { const now = LIVE.get(name.toLowerCase())?.[x.speed]; if (now) { x.change += now - x.rating; x.rating = now; } } // games read can be a game or two behind
   trendGames = combo ? comboGames : shownGames;
   if (sp !== 'all') chartState.speed = sp;
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
@@ -2889,7 +2899,7 @@ function bindPlayerBar(name) {
   fetchBtn?.setAttribute('data-bound', '1');
   fetchBtn?.addEventListener('click', async (e) => {
     const b = e.currentTarget, top = (storedGames(name) || [])[0]?.id, mine = runs;
-    b.disabled = true; b.lastChild.textContent = ' Fetching…';
+    b.disabled = true; b.lastChild.textContent = ' Fetching…'; PERFS.delete(name.toLowerCase()); // the rating has moved on with the games
     try {
       const count = () => { const after = storedGames(name) || [], i = after.findIndex((g) => g.id === top); return top ? (i < 0 ? after.length : i) : after.length; };
       let p = await build(name), added = count();
