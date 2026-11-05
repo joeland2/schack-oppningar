@@ -2,7 +2,7 @@
 // gets its name, then sentence by sentence, the moves the words name are played and the squares they name are marked.
 // shortcut: reads moves from the text with rules, so an odd sentence only marks squares or shows one option; hand-written animations per opening if that is not enough.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261105105158';
+import { drawBoard } from './board.js?v=20261105110955';
 
 const TOKEN = /(?<![A-Za-z0-9])(\d+\.(?:\.\.)?|\.\.\.|…)?(O-O(?:-O)?|[NBRQK]?[a-h]?x?[a-h][1-8]|[Cc]astl\w*)(?![a-z0-9])/g;
 export const sentencesOf = (text) => text.trim().split(/(?<=\.)\s+(?=[A-Z])/);

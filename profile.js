@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261105105158';
-import { openLogin } from './login.js?v=20261105105158';
-import { STYLE_OF } from './styles.js?v=20261105105158';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261105105158';
-import { PEOPLE } from './pros.js?v=20261105105158';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261105110955';
+import { openLogin } from './login.js?v=20261105110955';
+import { STYLE_OF } from './styles.js?v=20261105110955';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261105110955';
+import { PEOPLE } from './pros.js?v=20261105110955';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1037,12 +1037,32 @@ const ago = (t) => { const h = (Date.now() - t) / 3.6e6; return h < 1 ? 'less th
 // Each opening links to its lines in the trainer (?practise=, as on My practice).
 const practiseLink = (side, fam) => `./?practise=${side}~${encodeURIComponent(fam.replace(/^vs /, ''))}`;
 const opLink = (side, fam) => `<a class="pf-op-link" href="${practiseLink(side, fam)}" title="Practise the ${esc(fam.replace(/^vs /, ''))} lines">${esc(fam)}</a>`;
-function openingRows(list, side) {
-  return list.length ? `<ul class="pf-rows">${list.slice(0, 6).map((o) => `<li><a class="pf-op-link" href="${practiseLink(side, o.fam)}" title="Practise the ${esc(o.fam.replace(/^vs /, ''))} lines">${esc(o.fam)}</a><small>${games(o.n)} · ${pct(o.win ?? o.score)} wins</small>${bar(o)}</li>`).join('')}</ul>` : '<p class="info">Fewer than 5 games with any one opening.</p>';
+const usualAt = (p, name) => { const m = p.speeds[0], r = m && (isCC(name) ? asLichess(m.rating, m.speed) : m.rating); return (fam, side) => (m ? expectOf(fam, side, r, m.speed) : null); };
+const CATCH_ALL = /Pawn (Game|Opening)$|^(Open|Closed) Game$|Unknown/; // names for a first move, not an opening
+// One row per opening: King's Gambit, its Accepted and its Declined add up, with the parts a click away.
+// `usualOf` is what players at this rating score with a family. Catch-all rows are never merged, and they are
+// the only ones holding a Black game twice (by byOpening), so the sums below count each game once.
+// shortcut: a part under 5 games is not in p.openings, so a merged total can miss a few; count in byOpening if it shows.
+function openingRows(list, side, usualOf) {
+  if (!list.length) return '<p class="info">Fewer than 5 games with any one opening.</p>';
+  const plain = (fam) => fam.replace(/^vs /, ''), groups = new Map();
+  for (const o of list) {
+    const k = CATCH_ALL.test(plain(o.fam)) ? o.fam : plain(o.fam).replace(/,.*$/, '').replace(/ (Accepted|Declined)$/, '');
+    groups.set(k, [...(groups.get(k) || []), o]);
+  }
+  const rows = [...groups].map(([k, parts]) => {
+    const n = sum(parts, (x) => x.n), known = parts.filter((x) => usualOf(plain(x.fam)) != null), kn = sum(known, (x) => x.n);
+    return { k, parts, n, fam: parts.length === 1 ? parts[0].fam : blacksName(k) === (side === 'w') ? `vs ${k}` : k,
+      win: sum(parts, (x) => x.win * x.n) / n, score: sum(parts, (x) => x.score * x.n) / n,
+      usual: kn ? sum(known, (x) => usualOf(plain(x.fam)) * x.n) / kn : null, dim: CATCH_ALL.test(plain(parts[0].fam)) };
+  }).sort((a, b) => b.n - a.n);
+  if (rows.every((o) => o.dim)) rows.forEach((o) => { o.dim = false; }); // nothing to step back from
+  const partName = (o, k) => (o.fam.startsWith('vs ') ? 'vs ' : '') + (plain(o.fam).slice(k.length).replace(/^[ ,:]+/, '') || 'Other replies');
+  const row = (o) => `<li${o.dim ? ' class="dim"' : ''}><a class="pf-op-link" href="${practiseLink(side, o.fam)}" title="Practise the ${esc(plain(o.fam))} lines">${esc(o.fam)}</a><small>${games(o.n)} · ${pct(o.win)} wins</small>
+    <div class="pf-op-bar">${bar(o)}${o.usual == null ? '' : `<em style="left:${o.usual * 100}%" title="Players at this rating usually score ${pct(o.usual)}"></em>`}</div>
+    ${o.parts.length > 1 ? `<details class="pf-op-parts"><summary>By reply</summary><ul>${[...o.parts].sort((a, b) => b.n - a.n).map((x) => `<li><span>${esc(partName(x, o.k))}</span><small>${games(x.n)} · ${pct(x.win)} wins</small></li>`).join('')}</ul></details>` : ''}</li>`;
+  return `<ul class="pf-rows">${[...rows.filter((o) => !o.dim).slice(0, 6), ...rows.filter((o) => o.dim).slice(0, 2)].map(row).join('')}</ul>`;
 }
-// Openings for you (supporters first), three a colour: your best against what players at your rating score
-// with it, one to try that fits your taste, and as White the best scorer at your rating, as Black the White
-// opening to prepare for. Rates and counts from data/opening-scores.json.
 function fitCard(p, name) {
   const main = p.speeds[0], b = SCORES?.buckets, tab = SCORES?.[main?.speed === 'classical' ? 'classical' : 'blitz'];
   if (!main || !b || !tab) return '';
@@ -1098,11 +1118,11 @@ function tasteLine(mix, me) {
   return `<div class="pf-taste-tiles" aria-label="Opening taste">${tile(w, 'w', 'White')}${tile(b, 'b', 'Black')}</div>`;
 }
 // How games end: wins and losses split by mate, resignation and time, as numbers with a small bar each.
-function endsGrid(ends) {
-  const kinds = [['mate', 'By mate'], ['resign', 'Resigned'], ['time', 'On time']];
-  const row = (label, cls, x) => `<div class="pf-ends-row ${cls}"><span class="pf-ends-label">${label}</span>${kinds.map(([k, name]) => `
-    <div class="pf-ends-cell"><b>${pct(x[k])}</b><small>${nick(name)}</small><span class="pf-ends-bar"><i style="width:${x[k] * 100}%"></i></span></div>`).join('')}</div>`;
-  return `<div class="pf-ends">${row('Wins', 'won', ends.won)}${row('Losses', 'lost', ends.lost)}</div>`;
+function endBars(ends) {
+  const kinds = [['mate', 'Mate'], ['resign', 'Resigned'], ['time', 'On time']];
+  const row = (label, cls, x) => `<div class="pf-end-row"><span>${label}</span><div class="pf-end-stack ${cls}" role="img" aria-label="${label}: ${kinds.map(([k, name]) => `${name} ${pct(x[k])}`).join(', ')}">${kinds.filter(([k]) => x[k] > 0).map(([k, name]) => `<i class="${k}" style="width:${x[k] * 100}%" title="${name} ${pct(x[k])}">${x[k] >= 0.08 ? pct(x[k]) : ''}</i>`).join('')}</div></div>`;
+  return `<div class="pf-end-bars">${row('Wins', 'won', ends.won)}${row('Losses', 'lost', ends.lost)}</div>
+    <p class="pf-end-key">${kinds.map(([k, name]) => `<span><i class="${k}"></i>${name}</span>`).join('')}</p>`;
 }
 // The leak: the worst skill clearly below the player's opponents (45 or less); 46–55 is noise.
 const leakOf = (skills) => skills.filter((x) => x.raw !== null && x.raw <= 45).sort((a, b) => a.raw - b.raw)[0] || null;
@@ -1873,20 +1893,20 @@ function render(name, at, full) {
     <section class="pf-card pf-trend" id="pf-trend"></section>
     ${combo ? '' : sp === 'all' ? analysePanel(name, full, p) : analysePanel(name, p, p, sp)}
     <section class="pf-card pf-more"><div class="pf-more-head"><h2>Results and openings</h2><span>From ${sp === 'all' ? `all ${p.n} games` : `${p.n} ${sp} games`}</span></div>
-      <div class="pf-two pf-more-body">
-        <section><h3>By colour and time control</h3>
-          <dl class="pf-stats">
-            <div><dt>Wins as White</dt><dd>${p.winW == null ? '–' : pct(p.winW)}</dd></div>
-            <div><dt>Wins as Black</dt><dd>${p.winB == null ? '–' : pct(p.winB)}</dd></div>
-            <div><dt>Moves a game</dt><dd>${p.moves}</dd></div>
-          </dl>
-          <ul class="pf-rows">${p.speeds.map((x) => `<li><span>${x.speed[0].toUpperCase() + x.speed.slice(1)}</span><small>${games(x.n)} · ${pct(x.win ?? x.score)} wins · now ${x.rating} (${x.change >= 0 ? '+' : ''}${x.change} over these games)</small>${bar(x)}</li>`).join('')}</ul>
-          <h3>How ${me ? 'your' : 'their'} games end</h3>
-          ${endsGrid(p.ends)}
-        </section>
-        <section><h3>Openings as White</h3>${openingRows(p.openings.w, 'w')}
-          <h3>Openings as Black</h3>${openingRows(p.openings.b, 'b')}</section>
+      <div class="pf-res-band">
+        <dl class="pf-stats">
+          <div><dt>Wins as White</dt><dd>${p.winW == null ? '–' : pct(p.winW)}</dd></div>
+          <div><dt>Wins as Black</dt><dd>${p.winB == null ? '–' : pct(p.winB)}</dd></div>
+          <div><dt>Moves a game</dt><dd>${p.moves}</dd></div>
+          ${p.speeds.map((x) => `<div><dt>${x.speed}</dt><dd>${x.rating} <span class="${x.change >= 0 ? 'up' : 'down'}">${x.change >= 0 ? '+' : '−'}${Math.abs(x.change)}</span></dd><small>${games(x.n)} · ${pct(x.win ?? x.score)} wins</small></div>`).join('')}
+        </dl>
+        <div><h3>How ${me ? 'your' : 'their'} games end</h3>${endBars(p.ends)}</div>
       </div>
+      <div class="pf-two pf-more-body">
+        <section><h3>Openings as White</h3>${openingRows(p.openings.w, 'w', (f) => usualAt(p, name)(f, 'w'))}</section>
+        <section><h3>Openings as Black</h3>${openingRows(p.openings.b, 'b', (f) => usualAt(p, name)(f, 'b'))}</section>
+      </div>
+      ${SCORES?.buckets && p.speeds[0] ? '<p class="pf-res-note">The mark on a bar: what players at this rating usually score, counting a draw as half a win.</p>' : ''}
     </section>
     ${me && window.earlyAccess?.() ? fitCard(p, name) : ''}
     ${opponentsCard(p, me, name)}
@@ -1969,16 +1989,12 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelec
 // Under the ten games: a won/drawn/lost bar per colour, then this week's rating, the accuracy and how the decided games ended.
 function recentFacts(rs, p, week) {
   const wins = (xs) => xs.filter((r) => r.result === 1).length;
-  const how = { mate: 'Mated', resign: 'Resigned', outoftime: 'On time', timeout: 'On time' };
-  const decided = rs.filter((r) => r.result !== 0.5);
-  const end = Object.entries(decided.reduce((m, r) => ({ ...m, [how[r.status] || 'Other']: (m[how[r.status] || 'Other'] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1])[0];
   const acc = rs.filter((r) => r.acc !== null);
   const side = (k, label) => { const xs = rs.filter((r) => r.side === k); return xs.length ? `<span>${label}</span>${bar({ win: wins(xs) / xs.length, score: sum(xs, (r) => r.result) / xs.length })}<span class="num">${wins(xs)} of ${xs.length}</span>` : ''; };
   const stat = (dt, dd, sub = '', cls = '') => `<div><dt>${dt}</dt><dd${cls ? ` class="${cls}"` : ''}>${dd}</dd>${sub ? `<small>${sub}</small>` : ''}</div>`;
   const stats = [
     week && stat('This week', `${week.change >= 0 ? '+' : '−'}${Math.abs(week.change)}`, `in ${week.n} game${week.n === 1 ? '' : 's'}`, week.change >= 0 ? 'up' : 'down'),
     acc.length >= 3 && p.acc !== null && stat('Accuracy', `${Math.round(sum(acc, (r) => r.acc) / acc.length)}%`, `usually ${p.acc}%`),
-    end && stat(end[0], `${end[1]}/${decided.length}`, 'of decided games'),
   ].filter(Boolean).join('');
   return `<div class="pf-facts"><div class="pf-split">${side('w', 'White')}${side('b', 'Black')}</div>
     <p class="pf-split-key"><span><i class="pf-side w"></i>As White</span><span><i class="pf-side b"></i>As Black</span></p></div>
