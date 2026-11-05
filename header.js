@@ -56,6 +56,11 @@
     // The scorebug: your rating on every page (Openings has its own, editable one), to your profile.
     let speed = 'blitz', rating = null;
     try { speed = JSON.parse(localStorage.getItem('opening-book-v2-speed')) || speed; rating = JSON.parse(localStorage.getItem(`opening-book-v2-${speed}-rating`)); } catch {}
+    // Logged in, the rating shown is the one on your card (profile.js saves it), kept current from Lichess below.
+    let card = null;
+    try { card = JSON.parse(localStorage.getItem('opening-book-v2-card-rating')); } catch {}
+    if (!card?.rating || card.me !== user()) card = null;
+    if (card) { speed = card.speed; rating = card.rating; }
     const at = document.querySelector('.top-players');
     if (rating && at && !document.querySelector('.account') && !user()) { // logged in, it heads your menu (below)
       const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`), who = user();
@@ -81,6 +86,15 @@
       if (btn) { btn.insertAdjacentHTML('beforebegin', menu); btn.style.display = 'none'; } // Openings: in place of its name button
       else at?.insertAdjacentHTML('beforebegin', menu);
       const me = document.querySelector('.top-me');
+      // At most every 5 minutes, and after the page's own calls: Lichess blocks bursts.
+      if (card?.live && page !== 'profile.html' && Date.now() - card.at > 3e5) setTimeout(() => {
+        const save = (x) => { try { localStorage.setItem('opening-book-v2-card-rating', JSON.stringify({ ...card, ...x, at: Date.now() })); } catch {} };
+        save({});
+        fetch(`https://lichess.org/api/user/${encodeURIComponent(card.live)}`).then((r) => (r.ok ? r.json() : null)).then((u) => {
+          const r = u?.perfs?.[card.speed]?.rating, el = me.querySelector('summary strong');
+          if (r) { save({ rating: r }); if (el) el.textContent = r; }
+        }).catch(() => {});
+      }, 2000);
       // Hover opens it where there is a mouse; a tap or click opens it anywhere.
       if (matchMedia('(hover: hover)').matches) {
         me.addEventListener('mouseenter', () => { me.open = true; }); me.addEventListener('mouseleave', () => { me.open = false; });
@@ -278,9 +292,9 @@ addEventListener('DOMContentLoaded', () => {
     const row = document.querySelector('.foot-row');
     if (row) row.insertAdjacentHTML('beforeend', b);
     else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
-    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261105113229')).openChat());
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261105113546')).openChat());
     // Supporters: the hearts and card frames on every page, and Support (header and bottom) opens its dialog.
-    const sup = import('./supporter.js?v=20261105113229');
+    const sup = import('./supporter.js?v=20261105113546');
     document.addEventListener('click', async (e) => { if (e.target.closest('[data-support]')) (await sup).openSupport(); });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();

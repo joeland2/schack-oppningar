@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261105113229';
-import { openLogin } from './login.js?v=20261105113229';
-import { STYLE_OF } from './styles.js?v=20261105113229';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261105113229';
-import { PEOPLE } from './pros.js?v=20261105113229';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261105113546';
+import { openLogin } from './login.js?v=20261105113546';
+import { STYLE_OF } from './styles.js?v=20261105113546';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261105113546';
+import { PEOPLE } from './pros.js?v=20261105113546';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1742,10 +1742,7 @@ const LIVE = new Map(); // lower-case name → { blitz: rating, … } as Lichess
 function noteLive(name, perfs) {
   LIVE.set(name.toLowerCase(), Object.fromEntries(SPEEDS.filter((sp) => perfs?.[sp]?.rating).map((sp) => [sp, perfs[sp].rating])));
   if (!isMe(name)) return;
-  for (const sp of ['blitz', 'classical']) if (perfs?.[sp]?.rating) { // the header's rating, which Openings alone kept current
-    keep(`opening-book-v2-${sp}-rating`, perfs[sp].rating);
-    const el = document.querySelector(`.top-me strong[title="${sp} rating"]`); if (el) el.textContent = perfs[sp].rating;
-  }
+  for (const sp of ['blitz', 'classical']) if (perfs?.[sp]?.rating) keep(`opening-book-v2-${sp}-rating`, perfs[sp].rating); // the level Openings plays at
 }
 function perfsOf(name) {
   const k = name.toLowerCase();
@@ -1859,6 +1856,11 @@ function render(name, at, full) {
   trendGames = combo ? comboGames : shownGames;
   if (sp !== 'all') chartState.speed = sp;
   const t = p.type, me = isMe(name), say = me ? (x) => x : they, skills = skillsOf(p);
+  if (me && p.speeds[0]) { // the rating at the top right is the one on your card, on every page (header.js reads this)
+    const { speed, rating } = p.speeds[0], el = document.querySelector('.top-me summary strong');
+    keep('opening-book-v2-card-rating', { me: myName(), speed, rating, at: Date.now(), live: combo || isCC(name) ? null : name });
+    if (el) { el.textContent = rating; el.title = `${speed} rating`; }
+  }
   shownCode = cardCode(p, t, skills); // the card as drawn, for the lookup's event
   shownP = p; // the card's profile, for the piece menu
   document.title = `${me ? 'Your Profile' : nick(name)} · Chess Labs`;
