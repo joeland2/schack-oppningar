@@ -1246,9 +1246,12 @@ a { text-underline-offset: .18em; }
   .pf-hero .pf-taste-tile small:last-child { letter-spacing: 0; font-size: 11.5px; text-transform: none; }
   .pf-hero .pf-portrait { order: 2; margin: 0; } .pf-hero .pf-why-type { order: 3; }
   .pf-hero .pf-star-strip { order: 4; } .pf-hero .pf-card-col > .pf-cardbar { grid-area: 4 / 1 / 5 / -1; justify-self: stretch; width: auto; } .pf-hero .pf-dl-menu { right: auto; left: 0; }
-  /* One row of buttons under the time controls: download and help, then a player's star, compare and link (placeActs) */
-  .pf-hero .pf-cardbar:has(> .pf-acts) { grid-template-columns: auto auto; justify-content: center; align-items: center; }
-  .pf-hero .pf-cardbar:has(> .pf-acts) > .pf-speeds { grid-column: 1 / -1; }
+  /* The time controls right under the card, as wide as it; beside them download and help, then a player's star, compare and link (placeActs) */
+  .pf-hero .pf-cardbar:has(> .pf-speeds) { grid-template-columns: subgrid; justify-items: start; align-items: start; gap: 6px 14px; }
+  .pf-hero .pf-cardbar > .pf-speeds { grid-column: 1; grid-row: 1 / span 2; width: 0; min-width: 100%; flex-wrap: wrap; }
+  .pf-hero .pf-cardbar > .pf-speeds button { flex: 1 1 30%; min-height: 44px; }
+  .pf-hero .pf-cardbar > .pf-speeds button:nth-child(n+4) .pf-speed-star { top: 2px; right: 2px; } /* the second row: not over the counts above */
+  .pf-hero .pf-cardbar:has(> .pf-speeds) > .pf-tools, .pf-hero .pf-cardbar:has(> .pf-speeds) > .pf-acts { grid-column: 2; justify-self: start; }
   #profile .pf-hero .pf-cardbar > .pf-acts { position: static; flex-direction: row; gap: 6px; }
   #profile .pf-hero .pf-cardbar > .pf-acts .pf-act { width: 44px; height: 44px; }
   .pf-hero .pf-card-help { order: 6; max-width: none; }
@@ -2447,9 +2450,16 @@ main.profile:has(#admin) { max-width: 1320px; }
 
 /* Admin: parts under a heading with an icon, a menu to jump between them, and shorter cards in fours */
 .adm-jump { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; }
-.adm-jump a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); text-decoration: none; font-size: 13px; font-weight: 600; }
-.adm-jump a:hover { border-color: var(--hot); }
+.adm-jump button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--ink); cursor: pointer; font: 600 13px var(--font-body); }
+.adm-jump button:hover { border-color: var(--hot); }
+.adm-jump button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 .adm-jump .ico { width: 15px; height: 15px; color: var(--hot); }
+.adm-badge { min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--hot); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+.adm-panel { display: grid; gap: 24px; min-width: 0; }
+.adm-panel[hidden] { display: none; }
+.adm-panel > * { min-width: 0; margin-block: 0; }
+.adm-people-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 10px 0; }
+.adm-people-bar .adm-members-q { flex: 1 1 220px; margin: 0; }
 .adm-group { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 26px 0 -4px; padding-top: 14px; border-top: 1px solid var(--line); font: 400 clamp(26px, 3vw, 34px)/1 var(--font-poster); text-transform: uppercase; scroll-margin-top: 80px; }
 .adm-group .ico { width: 24px; height: 24px; align-self: center; color: var(--hot); }
 .adm-group small { font: 400 13px var(--font-body); text-transform: none; color: var(--muted); }
@@ -3411,3 +3421,4 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
 
 .rv-bw-n { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 @media (max-width: 560px) { .rv-bw { grid-template-columns: minmax(0, 1fr) auto auto; row-gap: 4px; } .rv-bw-bar { grid-column: 1 / -1; order: 3; } .rv-bw-head .rv-bw-bar { order: 0; } }
+.adm-who-list { max-height: 520px; overflow-y: auto; }

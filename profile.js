@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261104215216';
-import { openLogin } from './login.js?v=20261104215216';
-import { STYLE_OF } from './styles.js?v=20261104215216';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261104215216';
-import { PEOPLE } from './pros.js?v=20261104215216';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261105090245';
+import { openLogin } from './login.js?v=20261105090245';
+import { STYLE_OF } from './styles.js?v=20261105090245';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261105090245';
+import { PEOPLE } from './pros.js?v=20261105090245';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -136,7 +136,8 @@ const KINDS = [['gambit', 'Gambits', 'gambits'], ['attacking', 'Attacking', 'att
   ['positional', 'Positional', 'positional openings'], ['solid', 'Solid', 'solid set-ups'], ['other', 'Other', 'other openings']];
 // The Queen's Gambit and its answers are gambits by name only: no pawn is really given up.
 const isGambit = (fam) => /Gambit/.test(fam) && !/^Queen's Gambit/.test(fam);
-const kindOf = (fam) => (isGambit(fam) ? 'gambit' : (STYLE_OF[fam] || ['other'])[0]);
+// 1.d4 with no named system is a quiet set-up, and for many players it is what they mostly play as White.
+const kindOf = (fam) => (isGambit(fam) ? 'gambit' : fam === "Queen's Pawn Game" ? 'solid' : (STYLE_OF[fam] || ['other'])[0]);
 function styleMix(games, side) {
   const gs = games.filter((g) => g.side === side && blacksName(g.family) === (side === 'b'));
   return { n: gs.length, parts: KINDS.map(([k, label, words]) => ({ k, label, words, share: gs.length ? gs.filter((g) => kindOf(g.family) === k).length / gs.length : 0 })).filter((x) => x.share > 0).sort((a, b) => b.share - a.share) };
@@ -1088,10 +1089,12 @@ function skillBars(skills, say, me) {
 }
 // Which kind of opening each side mostly picks: the top style when it is a quarter or more of them.
 const taste = (m) => (m && m.n >= 10 ? m.parts.find((x) => x.k !== 'other' && x.share >= 0.25) || null : null);
+// Enough games on that side but no kind stands out: say so, rather than leave the side out.
+const tasteOrMixed = (m) => taste(m) || (m?.n >= 10 ? { label: 'Mixed', share: null } : null);
 function tasteLine(mix, me) {
-  const w = taste(mix?.w), b = taste(mix?.b);
+  const w = tasteOrMixed(mix?.w), b = tasteOrMixed(mix?.b);
   if (!w && !b) return '';
-  const tile = (x, c, side) => x ? `<div class="pf-taste-tile"><img src="pieces/${c}K.svg" alt=""><span><small>Openings as ${side}</small><b>${x.label}</b><small>${pct(x.share)} of ${me ? 'your' : 'their'} choices</small></span></div>` : '';
+  const tile = (x, c, side) => x ? `<div class="pf-taste-tile"><img src="pieces/${c}K.svg" alt=""><span><small>Openings as ${side}</small><b>${x.label}</b><small>${x.share === null ? 'no one kind stands out' : `${pct(x.share)} of ${me ? 'your' : 'their'} choices`}</small></span></div>` : '';
   return `<div class="pf-taste-tiles" aria-label="Opening taste">${tile(w, 'w', 'White')}${tile(b, 'b', 'Black')}</div>`;
 }
 // How games end: wins and losses split by mate, resignation and time, as numbers with a small bar each.
@@ -1652,11 +1655,11 @@ async function cardImage(look, name, p, t, skills, detail, lead) {
       if (t[1]) { ctx.fillStyle = CARD.paperMuted; fit(ctx, `+ ${t[1].name}`, '400 #px Anton', 48, max); ctx.fillText(`+ ${t[1].name}`, x, y += 70); }
       y += 40;
       for (const [m, side] of [[p.styleMix?.w, 'White'], [p.styleMix?.b, 'Black']]) {
-        const tt = taste(m); if (!tt) continue;
+        const tt = tasteOrMixed(m); if (!tt) continue;
         ctx.fillStyle = CARD.hot; ctx.fillRect(x, y, max, 4);
         ctx.fillStyle = CARD.paperMuted; ctx.font = '700 15px Geist'; ctx.letterSpacing = '2px'; ctx.fillText(`OPENINGS AS ${side.toUpperCase()}`, x, y += 34); ctx.letterSpacing = '0px';
         ctx.fillStyle = CARD.paperInk; ctx.font = '400 40px Anton'; ctx.fillText(tt.label.toUpperCase(), x, y += 46);
-        ctx.fillStyle = CARD.paperMuted; ctx.font = '400 18px Geist'; ctx.fillText(`${pct(tt.share)} of their choices`, x, y += 28); y += 30;
+        ctx.fillStyle = CARD.paperMuted; ctx.font = '400 18px Geist'; ctx.fillText(tt.share === null ? 'no one kind stands out' : `${pct(tt.share)} of their choices`, x, y += 28); y += 30;
       }
         let ty = 760;
       ctx.fillStyle = CARD.paperInk; ctx.font = '400 32px Geist';

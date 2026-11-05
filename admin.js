@@ -1,8 +1,8 @@
 // Admin: how the site is used, the last 30 days. The numbers come from the admin-stats Edge Function
 // (supabase/functions/admin-stats), which checks your Lichess login and answers only for the admin.
-import { account, login, finishLogin } from './lichess.js?v=20261104215216';
-import { api as chatApi, openChat } from './chat.js?v=20261104215216';
-import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261104215216';
+import { account, login, finishLogin } from './lichess.js?v=20261105090245';
+import { api as chatApi, openChat } from './chat.js?v=20261105090245';
+import { cardImage, flagHtml, loadFlags, bandColor, proClass } from './profile.js?v=20261105090245';
 
 const FN = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/admin-stats';
 const $ = (s) => document.querySelector(s);
@@ -72,7 +72,6 @@ function targetHtml(kind, target) {
 } // the leaderboard, for cards downloaded before their events carried the card
 // Today: the time only; otherwise the day too.
 const short = (iso) => (new Date(iso).toDateString() === new Date().toDateString() ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : when(iso));
-const isOn = (u) => Date.now() - Date.parse(u.last) < 36e5; // active in the last hour
 const when = (iso) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 // A country code as a name: SE is Sweden; – for an unknown country.
 const NAMES = new Intl.DisplayNames(['en'], { type: 'region' });
@@ -232,21 +231,20 @@ function change(now, before, points = false) {
 }
 function overviewHtml(s) {
   const o = s.overview;
-  if (!o) return '';
+  if (!o) return { tiles: '', more: '' };
   const tiles = [['Visitors, 7 days', o.now.visitors, o.before.visitors], ['Profiles looked up', o.now.profiles, o.before.profiles], ['Lines finished', o.now.finished, o.before.finished]]
     .map(([dt, a, b]) => `<div><dt>${dt}</dt><dd>${a}</dd>${change(a, b)}</div>`).join('')
     + `<div><dt>Came back within 7 days</dt><dd>${pctOf(o.now.back)}</dd>${change(o.now.back, o.before.back, true)}</div>`;
   const top = Math.max(1, s.funnel[0]?.n || 0), cell = (x) => (x === null ? '<td class="adm-ret-none">–</td>' : `<td style="--v:${x}">${pctOf(x)}</td>`);
   const sites = s.sites && s.sites.lichess + s.sites.chesscom;
-  return `<dl class="pf-kpis adm-kpis adm-week">${tiles}</dl>
-    <div class="pf-two">
+  return { tiles: `<dl class="pf-kpis adm-kpis adm-week">${tiles}</dl>`, more: `<div class="pf-two">
       <section class="pf-card"><h2>How far visitors get <small>last 7 days</small></h2><ul class="adm-funnel">${s.funnel.map((f) => `<li><span>${esc(f.name)}</span><i style="width:${(f.n / top) * 100}%"></i><b>${f.n}${f === s.funnel[0] ? '' : ` <small>${pctOf(f.n / top)}</small>`}</b></li>`).join('')}</ul>
         <p class="adm-foot">Each step as a share of everyone who visited.</p></section>
       <section class="pf-card"><h2>Come back <small>by the week they first came</small></h2>
         <table class="adm-ret"><thead><tr><th>Week of</th><th>New</th><th>1 day</th><th>7 days</th><th>30 days</th></tr></thead>
         <tbody>${s.retention.map((c) => `<tr><td>${day(c.week)}</td><td class="num">${c.n}</td>${cell(c.d1)}${cell(c.d7)}${cell(c.d30)}</tr>`).join('')}</tbody></table>
         <p class="adm-foot">Seen again on a later day. – while a week is too new to tell.${sites ? ` Names looked up, 30 days: Lichess ${pctOf(s.sites.lichess / sites)} · Chess.com ${pctOf(s.sites.chesscom / sites)}.` : ''}</p></section>
-    </div>`;
+    </div>` };
 }
 
 // One person: who they are on the left, and on the right what they did, visit by visit, newest first
@@ -270,22 +268,19 @@ const IC = { ...EV_ICON, people: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6
   plus: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 5 2.7M19 14v6M16 17h6', target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01',
   home: 'M3 11l9-7 9 7M5 9.5V20h14V9.5' };
 const ic = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[k]}"/></svg>`;
-const GROUPS = [['overview', 'Overview', 'home', 'the week at a glance'], ['openings', 'Openings', 'practise', 'what is practised, and by whom'], ['people', 'People', 'people', 'who comes and what they do'],
-  ['traffic', 'Traffic', 'globe', 'where they come from'], ['errors', 'Errors', 'error', 'what broke'], ['messages', 'Messages', 'people', 'players writing to the admins']];
-const group = (id) => { const [, t, i, sub] = GROUPS.find((g) => g[0] === id); return `<h2 class="adm-group" id="ad-${id}">${ic(i)}${t}<small>${sub}</small></h2>`; };
+const GROUPS = [['overview', 'Overview', 'home'], ['openings', 'Openings', 'practise'], ['people', 'People', 'people'], ['traffic', 'Traffic', 'globe'], ['manage', 'Manage', 'bolt']];
+// One part at a time; the part is kept in the address, so a reload or a link stays on it.
+let tab = GROUPS.find((g) => location.hash === `#ad-${g[0]}`)?.[0] || 'overview';
+function openTab(id) {
+  tab = id;
+  document.querySelectorAll('[data-tab]').forEach((x) => { x.hidden = x.dataset.tab !== id; });
+  document.querySelectorAll('[data-go]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.go === id));
+  history.replaceState(null, '', `#ad-${id}`);
+}
 
 // Who practises what: every run of a line in the visitor list, by person, and the newest runs.
 function runsOf(s) {
   return s.visitors.flatMap((v) => v.events.filter((e) => e.kind === 'line').map((e) => ({ v, at: e.at, x: runOf(e.target) }))).filter((r) => r.x?.o).sort((a, b) => b.at.localeCompare(a.at));
-}
-// Openings opened: a bar for how often, and the lines done in each step as its star (green Learn, gold Practice, diamond Time).
-const STAR_P = 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z';
-function openedHtml(ops) {
-  const top = Math.max(...ops.map((o) => o.opened), 1);
-  const star = (c, n, t) => `<span class="adm-op-star${n ? '' : ' none'}" title="${n} lines done in ${t}"><svg class="line-star ${c}" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_P}"/></svg>${n}</span>`;
-  return `<ul class="adm-opened">${ops.map((o) => `<li><span class="adm-opened-name">${esc(o.name)}<small>${o.people} ${o.people === 1 ? 'person' : 'people'}</small></span>
-    <span class="adm-opened-bar"><i style="width:${(o.opened / top) * 100}%"></i><b>${o.opened}</b></span>
-    <span class="adm-opened-stars">${star('green', o.learn, 'Learn')}${star('gold', o.try, 'Practice')}${star('diamond', o.time, 'Time')}</span></li>`).join('')}</ul>`;
 }
 function practiceHtml(s) {
   const runs = runsOf(s), people = new Map(), none = '<p class="info">Nobody yet. Runs are counted from 31 Oct 2026.</p>';
@@ -343,24 +338,6 @@ function eventRow(e) {
   if (e.kind === 'view') return `<li>${t}${evIcon('view')}<span class="adm-muted">Opened ${esc(pageName(e.page))}</span></li>`;
   return `<li>${t}${evIcon(e.kind)}<span>${esc(KIND[e.kind] || e.kind)}${e.target ? `: <b>${targetHtml(e.kind, e.target)}</b>` : ''}</span></li>`;
 }
-function personHtml(v, all) {
-  const same = v.name ? all.filter((w) => w.name === v.name) : [v];
-  const events = same.flatMap((w) => w.events).sort((a, b) => a.at.localeCompare(b.at));
-  const visits = [];
-  for (const e of events) { const last = visits.at(-1); if (last && Date.parse(e.at) - Date.parse(last.at(-1).at) < 30 * 6e4) last.push(e); else visits.push([e]); }
-  const mins = (vs) => Math.round((Date.parse(vs.at(-1).at) - Date.parse(vs[0].at)) / 6e4);
-  const total = visits.reduce((t, vs) => t + mins(vs), 0), runs = events.filter((e) => e.kind === 'line').map((e) => runOf(e.target)).filter(Boolean);
-  const devices = [...new Set(same.map((w) => w.device).filter(Boolean))], dayCount = new Set(events.map((e) => e.at.slice(0, 10))).size;
-  const chips = [[runs.filter((x) => x.k === 'done').length, 'line', 'finished'], [events.filter((e) => e.kind === 'profile').length, 'profile', 'looked up'], [events.filter((e) => e.kind === 'card').length, 'card', 'downloaded']]
-    .filter(([n]) => n).map(([n, w, d]) => `<span class="adm-chip">${n} ${w}${n === 1 ? '' : 's'} ${d}</span>`).join('');
-  return `<div class="adm-person"><div class="adm-who">${v.name ? `<b>${esc(v.name)}</b><small>Logged in with Lichess${same.length > 1 ? ` · ${same.length} browsers` : ''}</small>` : `<b>Visitor</b><small>Not logged in</small>`}
-      <dl><dt>First seen</dt><dd>${when(events[0].at)}</dd><dt>Last seen</dt><dd>${when(events.at(-1).at)}</dd><dt>Visits</dt><dd>${visits.length} on ${dayCount} day${dayCount === 1 ? '' : 's'}</dd>
-        <dt>Time here</dt><dd>${total < 1 ? 'under a minute' : `${total >= 60 ? `${Math.floor(total / 60)} h ` : ''}${total % 60} min`}</dd><dt>From</dt><dd>${flag(v.country)}${esc(v.city || land(v.country))}</dd>
-        <dt>Device</dt><dd>${esc(devices.join(', ') || '–')}</dd><dt>Came via</dt><dd>${esc(v.source || '–')}</dd></dl>${chips ? `<p class="adm-chips">${chips}</p>` : ''}</div>
-    <ol class="adm-visits">${visits.reverse().map((vs) => `<li><h3>${new Date(vs[0].at).toDateString() === new Date().toDateString() ? 'Today' : day(vs[0].at)}<small>${new Date(vs[0].at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}${mins(vs) ? `–${new Date(vs.at(-1).at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · ${mins(vs)} min` : ''}</small></h3>
-      <ul>${vs.slice().reverse().map(eventRow).join('')}</ul></li>`).join('')}</ol></div>`;
-}
-
 // A player's data, opened from their name (Data in its menu): everything the events say about them, all
 // browsers they used together. Time on a page comes from 'leave' events (seconds in view, sent as the page
 // is left); visits from before those were sent count the time to the next event, up to 10 minutes.
@@ -524,80 +501,81 @@ function openingsHtml(s) {
 const errorsHtml = (s) => `<section class="pf-card"><div class="adm-head"><h2>${ic('error')}Errors <small>last 30 days</small></h2><small>What broke for visitors: profiles that could not be read, and errors in the pages.</small></div>
   ${(s.errors || []).length ? `<ul class="pf-rows adm-recent">${s.errors.map((e) => `<li><span>${esc(e.text)}</span><small>${e.n}× · ${e.people} ${e.people === 1 ? 'person' : 'people'} · last ${short(e.last)}</small></li>`).join('')}</ul>` : '<p class="info">None. Errors are counted from 31 Oct 2026.</p>'}</section>`;
 
+// Everyone in one table, last seen first: the logged-in players (all their browsers as one row) and the newest visitors
+// who never logged in. A click on a name opens their profile or data.
+function peopleHtml(s) {
+  const browsers = (name) => s.visitors.filter((v) => v.name?.toLowerCase() === name.toLowerCase());
+  const row = (x) => `<tr data-q="${esc(x.q.toLowerCase())}" data-in="${x.in}"><td>${x.who}</td><td>${x.from}</td><td class="num">${x.ip}</td><td>${esc(x.device || '–')}</td><td class="adm-v-from" title="${esc(x.source || '')}">${esc(x.source || '–')}</td><td class="num">${day(x.first)}</td><td class="num">${when(x.last)}</td><td class="num">${x.views}</td><td class="num">${x.actions}</td></tr>`;
+  const place = (x) => (x.country ? `${flag(x.country)}${esc(x.city || land(x.country).replace(/ \(..\)$/, ''))}` : '–');
+  const ipOf = (x) => (x?.ip ? `<button type="button" class="link pd-name" data-ip="${esc(x.ip)}">${showIp(x.ip)}</button>` : '–');
+  const members = (s.members || []).map((m) => { const vs = browsers(m.name);
+    return { last: m.last, first: m.joined, in: 1, q: `${m.name} ${m.city || ''} ${m.country || ''} ${vs[0]?.source || ''}`, from: place(m), device: m.device, source: vs[0]?.source, ip: ipOf(vs[0]), views: vs.reduce((t, v) => t + v.views, 0), actions: m.actions,
+      who: `<button type="button" class="link pd-name" data-person="${esc(m.name)}">${esc(m.name.replace(/^cc:/, ''))}</button>${m.admin ? ' <small class="adm-tag">admin</small>' : ''}${m.name.startsWith('cc:') ? ' <small class="adm-muted">Chess.com</small>' : ''}` }; });
+  const others = s.visitors.filter((v) => !v.name).map((v) => ({ last: v.last, first: v.first, in: 0, q: `${v.city || ''} ${v.country || ''} ${v.source || ''} ${v.device || ''}`, from: place(v), device: v.device, source: v.source, ip: ipOf(v), views: v.views,
+    actions: v.events.filter((e) => !['view', 'leave'].includes(e.kind)).length, who: `<button type="button" class="link pd-name adm-muted" data-visitor="${esc(v.id)}">Visitor</button>` }));
+  const all = [...members, ...others].sort((a, b) => b.last.localeCompare(a.last));
+  return `<section class="pf-card"><div class="adm-head"><h2>${ic('people')}Everyone · ${all.length}</h2><small>${members.length} logged in, ${others.length} newest not logged in. IP addresses without their last part.</small></div>
+    ${all.length ? `<div class="adm-people-bar"><input type="search" class="adm-members-q" placeholder="Search name, place or source" aria-label="Search people" autocomplete="off"><span class="seg" role="group" aria-label="Who to show" id="adm-who"><button type="button" data-who="" aria-pressed="true">Everyone</button><button type="button" data-who="1" aria-pressed="false">Logged in</button><button type="button" data-who="0" aria-pressed="false">Not logged in</button></span></div>
+    <div class="adm-members"><table><thead><tr><th>Who</th><th>From</th><th>IP</th><th>Device</th><th>Came from</th><th>First seen</th><th>Last seen</th><th class="num">Views</th><th class="num">Actions</th></tr></thead><tbody>${all.map(row).join('')}</tbody></table></div>` : '<p class="info">Nobody yet.</p>'}</section>`;
+}
+function filterPeople() {
+  const q = $('.adm-members-q')?.value.trim().toLowerCase() || '', who = $('#adm-who [aria-pressed="true"]')?.dataset.who;
+  document.querySelectorAll('.adm-members tbody tr').forEach((tr) => { tr.hidden = (!!q && !tr.dataset.q.includes(q)) || (!!who && tr.dataset.in !== who); });
+}
+
 function render(s) {
-  const link = (x) => `<a href="profile.html?u=${encodeURIComponent(x.name)}">${esc(x.name)}</a>`, t = s.totals;
+  const link = (x) => `<a href="profile.html?u=${encodeURIComponent(x.name)}">${esc(x.name)}</a>`, week = overviewHtml(s);
   $('#admin').innerHTML = `
-    <header class="pr-head"><h1 class="pf-h1">Admin</h1><p class="info">How Chess Labs is used. A visitor is a browser, counted once in each period; a new visitor came for the first time in it. The admins' own visits and automated browsers are not counted.</p>
+    <header class="pr-head"><h1 class="pf-h1">Admin</h1><p class="info">A visitor is a browser. The admins' own visits and automated browsers are not counted.</p>
       <p class="adm-demo-row"><span class="seg" role="group" aria-label="Which numbers"><button type="button" data-real aria-pressed="${!s.demo}">Real</button><button type="button" data-demo aria-pressed="${!!s.demo}">Demo</button></span>
         ${s.demo ? '<b class="adm-demo-tag">Demo data</b> Made up test visitors, to see how the page looks with many.' : ''}</p>
-      <nav class="adm-jump" aria-label="Parts">${GROUPS.map(([id, t, i]) => `<a href="#ad-${id}">${ic(i)}${t}</a>`).join('')}</nav></header>
-    <dl class="pf-kpis adm-kpis">
-      ${[['Today', t.today, t.newToday], ['7 days', t.week, t.new7], [`${s.days} days`, t.month, t.new30, `${Math.round(t.mobile * 100)}% on a phone`],
-        ['All time', t.all, t.all, `${t.all ? (t.views / t.all).toFixed(1) : 0} pages a visitor`]].map(([dt, all, fresh, more]) => `<div class="adm-pair"><dt>${dt}</dt>
-        <dd><span>${all}<small>visitors</small></span><span>${fresh}<small>new visitors</small></span></dd>${more ? `<small>${more}</small>` : ''}</div>`).join('')}
-      <div><dt>Profiles created</dt><dd>${t.registered}</dd><small>logged in with Lichess</small></div>
-    </dl>
-    ${group('overview')}
-    <section class="pf-card"><div class="adm-head"><h2>${ic('analyse')}All visitors so far <small>since the launch</small></h2></div>
-      <div class="adm-vis"><dl id="adm-growth-sums" class="adm-span-sums"></dl><div id="adm-growth" class="adm-line-box"></div></div></section>
-    ${liveHtml(s)}
-    ${overviewHtml(s)}
-    <section class="pf-card"><div class="adm-head"><h2>${ic('analyse')}Visitors</h2><div class="seg" role="group" aria-label="Time span" id="adm-span">${SPANS.map(([l, n]) => `<button type="button" data-span="${n}" aria-pressed="${n === span}">${l}</button>`).join('')}</div></div>
-      <div class="adm-vis"><dl id="adm-span-sums" class="adm-span-sums"></dl><div id="adm-line" class="adm-line-box"></div></div><div id="adm-notes" class="adm-notes"></div></section>
-    ${group('openings')}
-    ${openingsHtml(s)}
-    ${practiceHtml(s)}
-    <div class="pf-two">${cardsHtml(s)}
-      <section class="pf-card"><h2>${ic('practise')}Openings opened <small>before lines were counted one by one</small></h2>
-        ${(s.openings || []).length ? openedHtml(s.openings) : rows(s.practised)}</section>
+      <nav class="adm-jump" aria-label="Parts">${GROUPS.map(([id, t, i]) => `<button type="button" data-go="${id}">${ic(i)}${t}</button>`).join('')}</nav></header>
+    <div class="adm-panel" data-tab="overview">
+      <section class="pf-card"><div class="adm-head"><h2>${ic('analyse')}All visitors so far <small>since the launch</small></h2></div>
+        <div class="adm-vis"><dl id="adm-growth-sums" class="adm-span-sums"></dl><div id="adm-growth" class="adm-line-box"></div></div></section>
+      ${liveHtml(s)}
+      ${week.tiles}
+      <section class="pf-card"><div class="adm-head"><h2>${ic('analyse')}Visitors</h2><div class="seg" role="group" aria-label="Time span" id="adm-span">${SPANS.map(([l, n]) => `<button type="button" data-span="${n}" aria-pressed="${n === span}">${l}</button>`).join('')}</div></div>
+        <div class="adm-vis"><dl id="adm-span-sums" class="adm-span-sums"></dl><div id="adm-line" class="adm-line-box"></div></div><div id="adm-notes" class="adm-notes"></div></section>
+      ${week.more}
     </div>
-    ${group('people')}
-    ${membersHtml(s)}
-    ${topHtml(s.visitors)}
-    <section class="pf-card"><div class="adm-head"><h2>${ic('people')}Unique visitors · ${s.visitors.length}</h2><small>Every visitor once, newest first. IP addresses without their last part. Click one to see what they did.</small></div>
-      ${s.visitors.length ? `<div class="adm-visitors"><div class="adm-v-head"><span>Location</span><span>IP</span><span>Lichess</span><span>Device</span><span>Came from</span><span>Visits</span><span>Last seen</span></div>${s.visitors.map((v) => `<details class="adm-visitor"><summary>
-          <span class="adm-v-where">${flag(v.country)}${esc(v.country ? land(v.country).replace(/ \(..\)$/, '') : 'Unknown')}${v.city ? ` · ${esc(v.city)}` : ''}</span>
-          <span class="num">${v.ip ? `<button type="button" class="link pd-name" data-ip="${esc(v.ip)}">${showIp(v.ip)}</button>` : '–'}</span>
-          <span>${v.name ? `<button type="button" class="link pd-name" data-person="${esc(v.name)}">${esc(v.name)}</button>` : `<button type="button" class="link pd-name" data-visitor="${esc(v.id)}">Data</button>`}</span>
-          <span>${esc(v.device || '–')}</span>
-          <span class="adm-v-from" title="${esc(v.source || '')}">${esc(v.source || '–')}</span>
-          <span class="num">${v.views} view${v.views === 1 ? '' : 's'} · since ${day(v.first)}</span>
-          <span class="num">${when(v.last)}</span></summary>
-          ${personHtml(v, s.visitors)}</details>`).join('')}</div>
-      ${s.visitors.length > 10 ? `<button type="button" class="ghost adm-more" data-more aria-expanded="false">Show all ${s.visitors.length}</button>` : ''}`
-      : '<p class="info">Nobody yet.</p>'}</section>
-    <div class="adm-three">
-      <section class="pf-card"><h2>${ic('login')}Logged-in players · ${s.days} days</h2>${s.users.length
-        ? `<p class="adm-online-k">${s.users.filter(isOn).length} active in the last hour</p><ul class="adm-online">${[...s.users].sort((a, b) => b.last.localeCompare(a.last)).map((u) => `<li>
-          <span class="adm-dot${isOn(u) ? ' on' : ''}"></span><button type="button" class="adm-online-who" data-person="${esc(u.name)}"><b>${esc(u.name)}</b><small>${isOn(u) ? 'active now' : `last ${when(u.last)}`}</small></button><span class="adm-online-n"><b>${u.n}</b> actions</span></li>`).join('')}</ul>` : '<p class="info">Nobody yet.</p>'}</section>
-      ${joinedHtml(s, link)}
-      <section class="pf-card"><h2>${ic('profile')}Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>
+    <div class="adm-panel" data-tab="openings">
+      ${openingsHtml(s)}
+      ${practiceHtml(s)}
     </div>
-    <div class="adm-three">
-      <section class="pf-card"><div class="adm-head"><h2>${ic('profile')}Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
-      ${(s.recentProfiles || []).length ? `<ul class="pf-rows adm-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: (r.target || '').split(' #')[0] })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
-      <section class="pf-card"><div class="adm-head"><h2>${ic('card')}Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
-      ${(s.recentActions || []).length ? `<ul class="pf-rows adm-recent">${actionRows(s.recentActions).slice(0, 15).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
-      <section class="pf-card"><h2>${ic('compare')}Comparisons</h2>${rows(s.compares, (x) => targetHtml('compare', x.name))}</section>
+    <div class="adm-panel" data-tab="people">
+      ${topHtml(s.visitors)}
+      ${peopleHtml(s)}
+      <div class="adm-three">
+        <section class="pf-card"><div class="adm-head"><h2>${ic('profile')}Latest profiles looked up</h2><small>Newest first, with where the visitor was.</small></div>
+        ${(s.recentProfiles || []).length ? `<ul class="pf-rows adm-recent">${s.recentProfiles.slice(0, 15).map((r) => `<li><span>${link({ name: (r.target || '').split(' #')[0] })}${r.name ? ` <small>by ${esc(r.name)}</small>` : ''}</span><small>${flag(r.country)}${esc(r.city || '')} · ${short(r.at)}</small></li>`).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
+        <section class="pf-card"><div class="adm-head"><h2>${ic('card')}Latest cards downloaded and analyses</h2><small>Newest first.</small></div>
+        ${(s.recentActions || []).length ? `<ul class="pf-rows adm-recent">${actionRows(s.recentActions).slice(0, 15).join('')}</ul>` : '<p class="info">None yet.</p>'}</section>
+        <section class="pf-card"><h2>${ic('profile')}Names looked up <small>found, all time</small></h2>${rows(s.profiles, link)}</section>
+      </div>
+      <div class="pf-two">${cardsHtml(s)}
+        <section class="pf-card"><h2>${ic('compare')}Comparisons</h2>${rows(s.compares, (x) => targetHtml('compare', x.name))}</section>
+      </div>
     </div>
-    <section class="pf-card" id="adm-supporters"><p class="info">Loading…</p></section>
-    ${group('traffic')}
-    <div class="adm-four">
-      <section class="pf-card"><h2>${ic('globe')}Countries <small>unique visitors</small></h2>${bars(s.countries || [], (x) => flag(x.name) + esc(land(x.name)))}</section>
-      <section class="pf-card"><h2>${ic('pin')}Cities <small>unique visitors</small></h2>${bars(s.cities || [], (x) => flag(x.name.split(', ')[1]) + esc(x.name))}</section>
-      <section class="pf-card"><h2>${ic('link')}Where visitors come from</h2>${bars(s.sources || [])}</section>
-      <section class="pf-card"><h2>${ic('phone')}Devices <small>unique visitors</small></h2>${bars(s.devices || [])}</section>
+    <div class="adm-panel" data-tab="traffic">
+      <div class="adm-four">
+        <section class="pf-card"><h2>${ic('globe')}Countries <small>unique visitors</small></h2>${bars(s.countries || [], (x) => flag(x.name) + esc(land(x.name)))}</section>
+        <section class="pf-card"><h2>${ic('pin')}Cities <small>unique visitors</small></h2>${bars(s.cities || [], (x) => flag(x.name.split(', ')[1]) + esc(x.name))}</section>
+        <section class="pf-card"><h2>${ic('link')}Where visitors come from</h2>${bars(s.sources || [])}</section>
+        <section class="pf-card"><h2>${ic('phone')}Devices <small>unique visitors</small></h2>${bars(s.devices || [])}</section>
+      </div>
+      <div class="adm-four">
+        <section class="pf-card"><h2>${ic('view')}Most visited pages</h2>${bars(s.pages, (x) => esc(pageName(x.name)), (x) => ` <small>${x.unique} unique</small>`)}</section>
+        <section class="pf-card"><h2>${ic('bolt')}What people do</h2>${rows(s.usage, (x) => KIND[x.name] || esc(x.name))}</section>
+        <section class="pf-card"><h2>${ic('clock')}Time of day <small>Swedish time</small></h2>${cols(s.hours, s.hours.map((_, i) => String(i).padStart(2, '0')), 3)}</section>
+        <section class="pf-card"><h2>${ic('calendar')}Weekday</h2>${cols(s.weekdays, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])}</section>
+      </div>
     </div>
-    <div class="adm-four">
-      <section class="pf-card"><h2>${ic('view')}Most visited pages</h2>${bars(s.pages, (x) => esc(pageName(x.name)), (x) => ` <small>${x.unique} unique</small>`)}</section>
-      <section class="pf-card"><h2>${ic('bolt')}What people do</h2>${rows(s.usage, (x) => KIND[x.name] || esc(x.name))}</section>
-      <section class="pf-card"><h2>${ic('clock')}Time of day <small>Swedish time</small></h2>${cols(s.hours, s.hours.map((_, i) => String(i).padStart(2, '0')), 3)}</section>
-      <section class="pf-card"><h2>${ic('calendar')}Weekday</h2>${cols(s.weekdays, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])}</section>
+    <div class="adm-panel" data-tab="manage">
+      <section class="pf-card" id="adm-threads"><p class="info">Loading…</p></section>
+      ${errorsHtml(s)}
+      <section class="pf-card" id="adm-supporters"><p class="info">Loading…</p></section>
     </div>
-    ${group('errors')}
-    ${errorsHtml(s)}
-    ${group('messages')}
-    <section class="pf-card" id="adm-threads"><p class="info">Loading…</p></section>
 `;
 }
 
@@ -681,7 +659,9 @@ async function threads() {
   const el = $('#adm-threads');
   let ts;
   try { ts = await chatApi('?threads'); } catch (e) { el.innerHTML = `<p class="info">${esc(e.message)}</p>`; return; }
-  const waiting = ts.filter((t) => t.author === t.player).length;
+  const waiting = ts.filter((t) => t.author === t.player).length, goManage = $('[data-go="manage"]');
+  goManage.querySelector('.adm-badge')?.remove();
+  if (waiting) goManage.insertAdjacentHTML('beforeend', `<span class="adm-badge" aria-label="${waiting} waiting for an answer">${waiting}</span>`);
   // Players' messages newer than the last time this browser looked at the threads: a note at the top that jumps here.
   const seen = (() => { try { return localStorage.getItem(SEEN_KEY) || ''; } catch { return ''; } })();
   const fresh = ts.filter((t) => t.author === t.player && t.at > seen).length, newest = ts[0]?.at || seen;
@@ -689,35 +669,11 @@ async function threads() {
   $('#adm-new')?.remove();
   if (fresh) {
     $('#admin').insertAdjacentHTML('afterbegin', `<p class="adm-new" id="adm-new" role="status">${ic('people')}<span>${fresh === 1 ? 'A new message' : `${fresh} new messages`} from players</span><button type="button" class="cta">Read</button></p>`);
-    $('#adm-new button').addEventListener('click', () => { markSeen(); $('#ad-messages').scrollIntoView({ behavior: 'smooth' }); });
+    $('#adm-new button').addEventListener('click', () => { markSeen(); openTab('manage'); $('#adm-threads').scrollIntoView({ behavior: 'smooth' }); });
   }
   el.innerHTML = `<div class="adm-head"><h2>${ic('people')}Threads · ${ts.length}</h2><small>${waiting ? `${waiting} waiting for an answer` : 'All answered'}</small></div>
     ${ts.length ? `<ul class="pf-rows adm-recent">${ts.map((t) => `<li><button type="button" class="link adm-thread" data-thread="${esc(t.player)}"><b>${esc(t.player)}</b> ${t.author === t.player ? '<span class="chip pagar">Waiting</span>' : ''}<small>${esc(t.body.slice(0, 90))}${t.body.length > 90 ? '…' : ''}</small></button><small>${t.n} · ${when(t.at)}</small></li>`).join('')}</ul>` : '<p class="info">No messages yet.</p>'}`;
   el.querySelectorAll('[data-thread]').forEach((b) => b.addEventListener('click', () => { markSeen(); openChat(b.dataset.thread); document.querySelector('dialog.chat')?.addEventListener('close', threads); }));
-}
-// Every registered player in one table: newest activity first, each a click from their profile or data.
-function membersHtml(s) {
-  const ms = s.members || [];
-  return `<section class="pf-card"><div class="adm-head"><h2>${ic('people')}All registered players · ${ms.length}</h2><small>Everyone who has logged in, last active first. Click a name for their profile or data.</small></div>
-    ${ms.length ? `<input type="search" class="adm-members-q" placeholder="Search players" aria-label="Search registered players" autocomplete="off"><div class="adm-members"><table><thead><tr><th>Player</th><th>Account</th><th>From</th><th>Joined</th><th>Last seen</th><th class="num">Days</th><th class="num">Actions</th></tr></thead><tbody>${ms.map((m) => `<tr data-q="${esc(m.name.toLowerCase())}">
-      <td><button type="button" class="link pd-name" data-person="${esc(m.name)}">${esc(m.name.replace(/^cc:/, ''))}</button>${m.admin ? ' <small class="adm-tag">admin</small>' : ''}</td>
-      <td>${m.name.startsWith('cc:') ? 'Chess.com' : 'Lichess'}</td>
-      <td>${m.country ? `${flag(m.country)}${esc(m.city || land(m.country).replace(/ \(..\)$/, ''))}` : '–'}</td>
-      <td class="num">${day(m.joined)}</td><td class="num">${when(m.last)}</td><td class="num">${m.days}</td><td class="num">${m.actions}</td></tr>`).join('')}</tbody></table></div>` : '<p class="info">Nobody yet.</p>'}</section>`;
-}
-// Profiles created: a bar for each of the last 30 days, and the newest profiles with their day.
-// Without dates (an older admin-stats), the names as before.
-function joinedHtml(s, link) {
-  const js = s.joined || [], head = (sub) => `<div class="adm-head"><h2>${ic('plus')}Profiles created · ${s.registered.length}</h2>${sub ? `<small>${sub}</small>` : ''}</div>`;
-  if (!js.length) return `<section class="pf-card">${head()}${s.registered.length ? `<p class="adm-names">${s.registered.map((n) => link({ name: n })).join(' · ')}</p>` : '<p class="info">Nobody yet.</p>'}</section>`;
-  const D = 30, today = new Date().setHours(0, 0, 0, 0), per = Array(D).fill(0);
-  for (const j of js) { const d = Math.floor((today - new Date(j.at).setHours(0, 0, 0, 0)) / 864e5); if (d >= 0 && d < D) per[D - 1 - d]++; }
-  const m = Math.max(1, ...per), week = per.slice(-7).reduce((a, b) => a + b, 0);
-  const dayOf = (i) => day(new Date(today - (D - 1 - i) * 864e5).toISOString());
-  return `<section class="pf-card">${head(`+${week} this week`)}
-    <div class="adm-grow" role="img" aria-label="Profiles created each day, the last ${D} days">${per.map((v, i) => `<i style="height:${Math.max(4, (v / m) * 100)}%" title="${dayOf(i)}: ${v}"></i>`).join('')}</div>
-    <p class="adm-grow-ax"><span>${dayOf(0)}</span><span>Today</span></p>
-    <p class="adm-chips">${js.slice(0, 8).map((j) => `<span class="adm-chip">${link({ name: j.n })}<small>${day(j.at)}</small></span>`).join('')}</p></section>`;
 }
 // Supporters: who has the heart and frame. Paying ones come from Stripe; here an admin ticks anyone in or out by hand.
 const SUP = 'https://duhlvhjtxoofgnjegspa.supabase.co/functions/v1/supporter';
@@ -750,8 +706,10 @@ function show(body) {
   render(body);
   // Every pro's and VIP's games fetched again and their profiles snapshotted, now (admin-stats starts the GitHub workflow),
   // with a bar for how far it is: the run's step and its time against the last such run's, read from GitHub's public API.
-  $('#admin').insertAdjacentHTML('afterbegin', `<div class="adm-pros"><p><button type="button" class="ghost" id="adm-pros">Update all pros &amp; VIPs now</button> <span role="status"></span></p>
-    <div id="pf-load" class="pf-load" hidden><div class="pf-load-head"><p class="pf-load-k" aria-live="polite"></p><b class="pf-load-n">0%</b></div><div class="pf-load-track" role="progressbar" aria-label="Updating pros and VIPs" aria-valuemin="0" aria-valuemax="100"><i></i></div></div></div>`);
+  $('[data-tab="manage"]').insertAdjacentHTML('beforeend', `<section class="pf-card adm-pros"><h2>${ic('bolt')}Pros and VIPs</h2><p><button type="button" class="ghost" id="adm-pros">Update all pros &amp; VIPs now</button> <span role="status"></span></p>
+    <div id="pf-load" class="pf-load" hidden><div class="pf-load-head"><p class="pf-load-k" aria-live="polite"></p><b class="pf-load-n">0%</b></div><div class="pf-load-track" role="progressbar" aria-label="Updating pros and VIPs" aria-valuemin="0" aria-valuemax="100"><i></i></div></div></section>`);
+  openTab(tab);
+  $('.adm-jump').addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (b) openTab(b.dataset.go); });
   $('#adm-pros').addEventListener('click', async (e) => {
     const say = e.target.nextElementSibling;
     e.target.disabled = true; say.textContent = 'Starting…';
@@ -769,15 +727,10 @@ function show(body) {
   $('#adm-span').addEventListener('click', (e) => { const b = e.target.closest('[data-span]'); if (!b) return; span = b.dataset.span === 'today' ? 'today' : Number(b.dataset.span);
     $('#adm-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); bindLine(body); });
   // A player's name (or a visitor's Data) opens a menu: their profile, or all their data.
-  $('#admin').oninput = (e) => {
-    if (!e.target.matches('.adm-members-q')) return;
-    const q = e.target.value.trim().toLowerCase();
-    for (const tr of e.target.nextElementSibling.querySelectorAll('tbody tr')) tr.hidden = !!q && !tr.dataset.q.includes(q);
-  };
+  $('#admin').oninput = (e) => { if (e.target.matches('.adm-members-q')) filterPeople(); };
+  $('#adm-who')?.addEventListener('click', (e) => { const b = e.target.closest('[data-who]'); if (!b) return;
+    $('#adm-who').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); filterPeople(); });
   $('#admin').onclick = (e) => { const b = e.target.closest('[data-person], [data-visitor], [data-ip]'); if (!b) return; e.preventDefault(); e.stopPropagation(); personMenu(b, body); };
-  // The visitor list shows the newest 10 until opened.
-  $('[data-more]')?.addEventListener('click', (e) => { const b = e.currentTarget, open = $('.adm-visitors').classList.toggle('open');
-    b.setAttribute('aria-expanded', open); b.textContent = open ? 'Show the newest 10' : `Show all ${body.visitors.length}`; });
   // An opening's lines open under it, by click or Enter.
   for (const r of document.querySelectorAll('.adm-op-row')) r.onclick = r.onkeydown = (e) => {
     if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
