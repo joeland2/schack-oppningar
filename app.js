@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261105113708';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261105113708';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261105113708';
-import { NAMED_TRAPS } from './traps.js?v=20261105113708';
-import { GUIDE } from './guide.js?v=20261105113708';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261105113708';
-import { banner, confetti } from './celebrate.js?v=20261105113708';
-import { maia3Move } from './maia3.js?v=20261105113708';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261105113708';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261105113708';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261105113708';
-import { openLogin } from './login.js?v=20261105113708';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261105113708';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261105115909';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261105115909';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261105115909';
+import { NAMED_TRAPS } from './traps.js?v=20261105115909';
+import { GUIDE } from './guide.js?v=20261105115909';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261105115909';
+import { banner, confetti } from './celebrate.js?v=20261105115909';
+import { maia3Move } from './maia3.js?v=20261105115909';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261105115909';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261105115909';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261105115909';
+import { openLogin } from './login.js?v=20261105115909';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261105115909';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -512,6 +512,26 @@ const byChoice = (a, b) => (sort === 'played' ? b.share - a.share : sort === 'yo
 // by their score at your level, lifted when they fit the style you play most. As Black, the White openings
 // you meet most at your level, pushed up where you score below what Black usually does. WHY says it in words.
 let WHY = new Map(), MINE = null;
+// The lines you drop the most points in: each game counts for the line it follows longest, past the opening's
+// own moves, and a line needs 3 games and a score under what your side usually gets. Worst first.
+// shortcut: a game that fits several lines equally counts for the most common one; split it if the picks look off.
+function worstLines(gs, all, rootLen, base, side) {
+  const shared = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return i; }, rows = new Map();
+  for (const g of gs) {
+    let i = -1, far = 0;
+    all.forEach((l, k) => { const n = shared(g.moves, l); if (n > far) { far = n; i = k; } });
+    if (far <= rootLen) continue; // your opponent left the book at once: says nothing about any one line
+    const r = rows.get(i) || { i, n: 0, pts: 0, off: 0 };
+    r.n++; r.pts += g.pts;
+    if (far < all[i].length && far < g.moves.length && (far % 2 === 0) === (side === 'w')) r.off++; // you left it, not your opponent
+    rows.set(i, r);
+  }
+  return [...rows.values()].filter((r) => r.n >= 3 && r.pts / r.n < base).sort((a, b) => (b.n * base - b.pts) - (a.n * base - a.pts));
+}
+{ const a = ['e4', 'e5', 'f4', 'exf4', 'Nf3'], b = ['e4', 'e5', 'f4', 'd5', 'exd5'], g = (moves, pts) => ({ moves, pts });
+  const r = worstLines([g(a, 1), g(a, 1), g(a, 1), g(b, 0), g(b, 0), g(['e4', 'e5', 'f4', 'd5', 'Nf3'], 0), g(['e4', 'c5'], 0)], [a, b], 3, 0.5, 'w');
+  console.assert(r.length === 1 && r[0].i === 1 && r[0].n === 3 && r[0].off === 1, 'worstLines'); }
+let LOSE = null; // the opening whose "Practise the lines you lose" was clicked: opens on the worst line
 let REVENGE = null; // from a profile's Rivals: the opening to practise against one player, and why
 const PRIOR = 10;
 function fitOf(o) {
@@ -566,7 +586,7 @@ function forYou(side) {
       : main ? (k ? `starts like the ${main.name}` : `the same style as the ${main.name}`)
       : `for White, players rated ${levelText()}`;
     const go = side === 'b' ? 'Prepare →' : own === null ? 'Learn it →' : low ? 'Practise the lines you lose →' : 'Practise →';
-    return `<li><button type="button" class="fy-pick" data-open="${o.id}"><small>${label}</small><b class="fy-name">${isVs(o) ? 'vs ' : ''}${o.name}</b><span class="fy-moves">${numbered(o.root)}</span><span class="fy-stat"><b${low ? ' class="lo"' : ''}>${pct(big)}</b> <span>${note}</span></span><span class="fy-go">${go}</span></button></li>`;
+    return `<li><button type="button" class="fy-pick" data-open="${o.id}"${side !== 'b' && low ? ' data-lose="1"' : ''}><small>${label}</small><b class="fy-name">${isVs(o) ? 'vs ' : ''}${o.name}</b><span class="fy-moves">${numbered(o.root)}</span><span class="fy-stat"><b${low ? ' class="lo"' : ''}>${pct(big)}</b> <span>${note}</span></span><span class="fy-go">${go}</span></button></li>`;
   };
   const how = side === 'b' ? 'The White openings you meet most at your level, moved up where you score less than Black usually does against them.'
     : 'The opening you play most as White, then three you have not played: the one most like it (the same first moves, the same style), one in the style you play most, and the one that scores best for White at your level.';
@@ -623,8 +643,8 @@ function myOpenings(own) {
     const o = side && g.moves && openingOf(g.moves.split(' ').map(clean).slice(0, MAX_PLY), side);
     const op = o && OPENINGS.find((x) => x.family === o.family && x.side === side && isVs(x) === o.vs);
     if (!op) continue;
-    const m = ops.get(op) || { n: 0, pts: 0 };
-    m.n++; m.pts += !g.winner ? 0.5 : g.winner === (side === 'w' ? 'white' : 'black') ? 1 : 0;
+    const m = ops.get(op) || { n: 0, pts: 0, gs: [] }, pts = !g.winner ? 0.5 : g.winner === (side === 'w' ? 'white' : 'black') ? 1 : 0;
+    m.n++; m.pts += pts; m.gs.push({ moves: g.moves.split(' ').map(clean).slice(0, MAX_PLY), pts });
     ops.set(op, m);
   }
   // Your style: the tag most of your own White openings carry.
@@ -707,7 +727,7 @@ function renderList(still) { // still: only the panel changed, so the cards do n
     }
     c.addEventListener('click', go);
   });
-  listEl.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => start(OPENINGS.find((o) => o.id === b.dataset.open))));
+  listEl.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => { const o = OPENINGS.find((x) => x.id === b.dataset.open); LOSE = b.dataset.lose ? o : null; start(o); }));
 }
 
 $('#side-tabs').addEventListener('click', (e) => {
@@ -1804,6 +1824,16 @@ function start(op, keepTraps = false) {
   // Trap training needs every line; otherwise the depth picked for the opening, Essentials until one is
   // picked (the Essentials button above the board changes it).
   lines = trapRun ? all : all.slice(0, depths[op.id] || DEPTHS[0][1]);
+  let worst = null;
+  if (LOSE === op && !trapRun) {
+    const base = yourScore(op), m = MINE?.ops.get(op), rows = m ? worstLines(m.gs, all.map((l) => l.moves), op.root.split(' ').length, base, op.side) : [], top = rows.slice(0, 3).map((r) => all[r.i]);
+    allLines = [...top, ...all.filter((l) => !top.includes(l))]; // the worst first, even from past the depth picked; the line list reads lines as the start of allLines
+    lines = allLines.slice(0, lines.length);
+    worst = rows[0] || null;
+    $('#op-about').insertAdjacentHTML('afterbegin', `<p class="ofit ofit-long"><b>The lines you lose:</b> ${worst ? `this line comes first: you scored ${pct(worst.pts / worst.n)} in ${worst.n} games through it, where ${op.side === 'w' ? 'White' : 'Black'} scores ${pct(base)} at your level${worst.off ? `, and you left it yourself in ${worst.off}` : ''}.${rows.length > 1 ? ` The next ${Math.min(rows.length, 3) - 1 === 1 ? 'line is' : `${Math.min(rows.length, 3) - 1} lines are`} your next worst.` : ''}` : 'your games here are spread too thin to single out one line (a line needs 3 games), so these are the usual ones, most common first.'}</p>`);
+    $('#op-more').open = true;
+  }
+  LOSE = null;
   setTimeout(classifyTraps, 1500); // after the board's first evaluation
   if (!lines.length) return say('Not enough games at your rating for this opening.', 'bad');
   const s = stats[statKey(op.id)] = { done: [], played: [], ...stats[statKey(op.id)], total: lines.length };
@@ -1811,6 +1841,13 @@ function start(op, keepTraps = false) {
   store(STORE, stats);
   // Where to open: the first line not yet played through in Learn; with all learned, the first not cleared
   // in Practice; with all cleared, the first not yet perfect in Time; with everything done, Time from line 1.
+  if (worst) { // straight to it: read it through if you never have, otherwise play it
+    const k0 = lineKey(lines[0].moves);
+    const want = s.played.includes(k0) || s.done.includes(k0) ? 'try' : 'learn';
+    if (want !== mode) setMode(want, false, false);
+    play(0); $('#op-more').open = true;
+    return;
+  }
   if (!trapRun && mode !== 'explore') {
     const k = (i) => lineKey(lines[i].moves), idx = [...lines.keys()];
     const learn = idx.find((i) => !s.played.includes(k(i)) && !s.done.includes(k(i))), tryIt = idx.find((i) => !s.done.includes(k(i)));
