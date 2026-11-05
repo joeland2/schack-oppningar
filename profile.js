@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261105110955';
-import { openLogin } from './login.js?v=20261105110955';
-import { STYLE_OF } from './styles.js?v=20261105110955';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261105110955';
-import { PEOPLE } from './pros.js?v=20261105110955';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261105113058';
+import { openLogin } from './login.js?v=20261105113058';
+import { STYLE_OF } from './styles.js?v=20261105113058';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261105113058';
+import { PEOPLE } from './pros.js?v=20261105113058';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -170,10 +170,6 @@ export function profileOf(games) {
     speeds: Object.entries(games.reduce((m, g) => ({ ...m, [g.speed]: [...(m[g.speed] || []), g] }), {}))
       .map(([speed, gs]) => ({ speed, n: gs.length, score: score(gs), win: gs.filter((g) => g.result === 1).length / gs.length, rating: gs[0].rating + gs[0].diff, change: gs[0].rating + gs[0].diff - gs[gs.length - 1].rating })) // newest game first
       .sort((a, b) => b.n - a.n),
-    ends: {
-      won: { mate: share(wins, (g) => g.status === 'mate'), resign: share(wins, (g) => g.status === 'resign'), time: share(wins, (g) => g.status === 'outoftime' || g.status === 'timeout') },
-      lost: { mate: share(losses, (g) => g.status === 'mate'), resign: share(losses, (g) => g.status === 'resign'), time: share(losses, (g) => g.status === 'outoftime' || g.status === 'timeout') },
-    },
     draws: share(games, (g) => g.result === 0.5),
     moves: Math.round(sum(games, (g) => g.plies) / Math.max(1, n) / 2),
     quickLosses: share(losses, (g) => g.plies <= 50),
@@ -1118,12 +1114,6 @@ function tasteLine(mix, me) {
   return `<div class="pf-taste-tiles" aria-label="Opening taste">${tile(w, 'w', 'White')}${tile(b, 'b', 'Black')}</div>`;
 }
 // How games end: wins and losses split by mate, resignation and time, as numbers with a small bar each.
-function endBars(ends) {
-  const kinds = [['mate', 'Mate'], ['resign', 'Resigned'], ['time', 'On time']];
-  const row = (label, cls, x) => `<div class="pf-end-row"><span>${label}</span><div class="pf-end-stack ${cls}" role="img" aria-label="${label}: ${kinds.map(([k, name]) => `${name} ${pct(x[k])}`).join(', ')}">${kinds.filter(([k]) => x[k] > 0).map(([k, name]) => `<i class="${k}" style="width:${x[k] * 100}%" title="${name} ${pct(x[k])}">${x[k] >= 0.08 ? pct(x[k]) : ''}</i>`).join('')}</div></div>`;
-  return `<div class="pf-end-bars">${row('Wins', 'won', ends.won)}${row('Losses', 'lost', ends.lost)}</div>
-    <p class="pf-end-key">${kinds.map(([k, name]) => `<span><i class="${k}"></i>${name}</span>`).join('')}</p>`;
-}
 // The leak: the worst skill clearly below the player's opponents (45 or less); 46–55 is noise.
 const leakOf = (skills) => skills.filter((x) => x.raw !== null && x.raw <= 45).sort((a, b) => a.raw - b.raw)[0] || null;
 
@@ -1900,7 +1890,6 @@ function render(name, at, full) {
           <div><dt>Moves a game</dt><dd>${p.moves}</dd></div>
           ${p.speeds.map((x) => `<div><dt>${x.speed}</dt><dd>${x.rating} <span class="${x.change >= 0 ? 'up' : 'down'}">${x.change >= 0 ? '+' : '−'}${Math.abs(x.change)}</span></dd><small>${games(x.n)} · ${pct(x.win ?? x.score)} wins</small></div>`).join('')}
         </dl>
-        <div><h3>How ${me ? 'your' : 'their'} games end</h3>${endBars(p.ends)}</div>
       </div>
       <div class="pf-two pf-more-body">
         <section><h3>Openings as White</h3>${openingRows(p.openings.w, 'w', (f) => usualAt(p, name)(f, 'w'))}</section>

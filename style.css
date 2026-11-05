@@ -1352,23 +1352,10 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 /* Results and openings: headings spaced inside each column; the endings grid fits a half column,
    three cells a row with the label above, on phones too */
 .pf-more-body h3:not(:first-child) { margin-top: 26px; }
-.pf-res-band { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; align-items: start; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
-.pf-res-band .pf-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 12px; }
+.pf-res-band { padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+.pf-res-band .pf-stats { gap: 14px 12px; }
 .pf-res-band .pf-stats dd span { font-size: 18px; } .pf-res-band .up { color: var(--good); } .pf-res-band .down { color: var(--bad); }
 .pf-res-band .pf-stats small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; line-height: 1.3; }
-.pf-res-band h3 { margin-top: 0; }
-.pf-end-bars { display: grid; gap: 8px; }
-.pf-end-row { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
-.pf-end-stack { display: flex; gap: 2px; height: 28px; border-radius: 3px; overflow: hidden; background: var(--track); }
-.pf-end-stack i { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; font: 600 12px var(--font-body); font-variant-numeric: tabular-nums; color: #141414; }
-.pf-end-stack.won i { --c: var(--good); } .pf-end-stack.lost i { --c: var(--bad); }
-.pf-end-stack .mate { background: var(--c); }
-.pf-end-stack .resign { background: color-mix(in srgb, var(--c) 72%, white); }
-.pf-end-stack .time { background: color-mix(in srgb, var(--c) 48%, white); }
-.pf-end-key { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 0 62px; font-size: 12px; color: var(--muted); }
-.pf-end-key span { display: inline-flex; align-items: center; gap: 5px; }
-.pf-end-key i { width: 10px; height: 10px; border-radius: 2px; }
-.pf-end-key .mate { background: var(--muted); } .pf-end-key .resign { background: color-mix(in srgb, var(--muted) 72%, white); } .pf-end-key .time { background: color-mix(in srgb, var(--muted) 48%, white); }
 .pf-op-bar { grid-column: 1 / -1; position: relative; }
 .pf-op-bar em { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--ink); }
 .pf-rows li.dim .pf-op-link { color: var(--muted); font-weight: 400; } .pf-rows li.dim .pf-op-bar { opacity: .65; }
@@ -1377,7 +1364,6 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .pf-op-parts ul { margin: 2px 0 4px; padding: 0 0 0 12px; list-style: none; display: grid; gap: 2px; border-left: 2px solid var(--line); }
 .pf-op-parts li { display: flex; justify-content: space-between; gap: 12px; }
 .pf-res-note { margin: 14px 0 0; font-size: 12.5px; color: var(--muted); }
-@media (max-width: 760px) { .pf-res-band { grid-template-columns: minmax(0, 1fr); gap: 20px; } }
 @media (max-width: 560px) {
   /* Game rows on phones: name on one line (cut with …), the details on one line under it */
   .pf-game { grid-template-columns: 34px minmax(0, 1fr); row-gap: 2px; }
