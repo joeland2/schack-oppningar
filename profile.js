@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261105113546';
-import { openLogin } from './login.js?v=20261105113546';
-import { STYLE_OF } from './styles.js?v=20261105113546';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261105113546';
-import { PEOPLE } from './pros.js?v=20261105113546';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261105113708';
+import { openLogin } from './login.js?v=20261105113708';
+import { STYLE_OF } from './styles.js?v=20261105113708';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261105113708';
+import { PEOPLE } from './pros.js?v=20261105113708';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1108,9 +1108,10 @@ const taste = (m) => (m && m.n >= 10 ? m.parts.find((x) => x.k !== 'other' && x.
 // Enough games on that side but no kind stands out: say so, rather than leave the side out.
 const tasteOrMixed = (m) => taste(m) || (m?.n >= 10 ? { label: 'Mixed', share: null } : null);
 function tasteLine(mix, me) {
-  const w = tasteOrMixed(mix?.w), b = tasteOrMixed(mix?.b);
-  if (!w && !b) return '';
-  const tile = (x, c, side) => x ? `<div class="pf-taste-tile"><img src="pieces/${c}K.svg" alt=""><span><small>Openings as ${side}</small><b>${x.label}</b><small>${x.share === null ? 'no one kind stands out' : `${pct(x.share)} of ${me ? 'your' : 'their'} choices`}</small></span></div>` : '';
+  // Both sides always: under 10 games the side chose itself (1.e4 players' games are mostly named after Black's reply), say that.
+  const of = (m) => tasteOrMixed(m) || { label: 'Too few', few: m?.n || 0 };
+  const w = of(mix?.w), b = of(mix?.b);
+  const tile = (x, c, side) => `<div class="pf-taste-tile"><img src="pieces/${c}K.svg" alt=""><span><small>Openings as ${side}</small><b>${x.label}</b><small>${x.few !== undefined ? `${x.few} of 10 games needed` : x.share === null ? 'no one kind stands out' : `${pct(x.share)} of ${me ? 'your' : 'their'} choices`}</small></span></div>`;
   return `<div class="pf-taste-tiles" aria-label="Opening taste">${tile(w, 'w', 'White')}${tile(b, 'b', 'Black')}</div>`;
 }
 // How games end: wins and losses split by mate, resignation and time, as numbers with a small bar each.
