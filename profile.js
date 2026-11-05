@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261105090245';
-import { openLogin } from './login.js?v=20261105090245';
-import { STYLE_OF } from './styles.js?v=20261105090245';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261105090245';
-import { PEOPLE } from './pros.js?v=20261105090245';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261105095352';
+import { openLogin } from './login.js?v=20261105095352';
+import { STYLE_OF } from './styles.js?v=20261105095352';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261105095352';
+import { PEOPLE } from './pros.js?v=20261105095352';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1966,25 +1966,23 @@ function render(name, at, full) {
 
 addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('details.pf-help[open]').forEach((d) => { d.open = false; d.querySelector('summary').focus(); }); });
 // The lead story under the card: recent form (the last ten results) and the one thing to train now.
-// The same last 10 games as the form row above: a won/drawn/lost bar per colour, then the openings,
-// how the decided games ended and the accuracy as chips.
-function recentFacts(rs, p) {
+// Under the ten games: a won/drawn/lost bar per colour, then this week's rating, the accuracy and how the decided games ended.
+function recentFacts(rs, p, week) {
   const wins = (xs) => xs.filter((r) => r.result === 1).length;
-  // Every opening played, per colour (most played first), each game's result as a square.
-  const fams = Object.values(rs.reduce((m, r) => { const k = `${r.side}|${r.family}`; (m[k] ??= []).push(r); return m; }, {})).sort((a, b) => b.length - a.length);
   const how = { mate: 'Mated', resign: 'Resigned', outoftime: 'On time', timeout: 'On time' };
   const decided = rs.filter((r) => r.result !== 0.5);
   const end = Object.entries(decided.reduce((m, r) => ({ ...m, [how[r.status] || 'Other']: (m[how[r.status] || 'Other'] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1])[0];
   const acc = rs.filter((r) => r.acc !== null);
   const side = (k, label) => { const xs = rs.filter((r) => r.side === k); return xs.length ? `<span>${label}</span>${bar({ win: wins(xs) / xs.length, score: sum(xs, (r) => r.result) / xs.length })}<span class="num">${wins(xs)} of ${xs.length}</span>` : ''; };
-  const ops = fams.map((xs) => `<li><i class="pf-side ${xs[0].side}" title="As ${xs[0].side === 'w' ? 'White' : 'Black'}"></i>${opLink(xs[0].side, xs[0].family)}<span class="pf-res-dots" role="img" aria-label="${xs.map((r) => (r.result === 1 ? 'won' : r.result === 0 ? 'lost' : 'drawn')).join(', ')}">${xs.map((r) => `<i class="${r.result === 1 ? 'w' : r.result === 0 ? 'l' : 'd'}"></i>`).join('')}</span></li>`);
-  const notes = [
-    end && `${end[0]} in ${end[1]} of ${decided.length} decided`,
-    acc.length >= 3 && p.acc !== null && `Accuracy ${Math.round(sum(acc, (r) => r.acc) / acc.length)}% (usually ${p.acc}%)`,
-  ].filter(Boolean);
+  const stat = (dt, dd, sub = '', cls = '') => `<div><dt>${dt}</dt><dd${cls ? ` class="${cls}"` : ''}>${dd}</dd>${sub ? `<small>${sub}</small>` : ''}</div>`;
+  const stats = [
+    week && stat('This week', `${week.change >= 0 ? '+' : '−'}${Math.abs(week.change)}`, `in ${week.n} game${week.n === 1 ? '' : 's'}`, week.change >= 0 ? 'up' : 'down'),
+    acc.length >= 3 && p.acc !== null && stat('Accuracy', `${Math.round(sum(acc, (r) => r.acc) / acc.length)}%`, `usually ${p.acc}%`),
+    end && stat(end[0], `${end[1]}/${decided.length}`, 'of decided games'),
+  ].filter(Boolean).join('');
   return `<div class="pf-facts"><div class="pf-split">${side('w', 'White')}${side('b', 'Black')}</div>
-    <p class="pf-split-key"><span><i class="w"></i>Won</span><span><i class="d"></i>Drawn</span><span><i class="l"></i>Lost</span><span><i class="pf-side w"></i>As White</span><span><i class="pf-side b"></i>As Black</span></p>
-    <ul class="pf-op-list">${ops.join('')}</ul>${notes.length ? `<p class="pf-op-notes">${notes.join(' · ')}</p>` : ''}</div>`;
+    <p class="pf-split-key"><span><i class="pf-side w"></i>As White</span><span><i class="pf-side b"></i>As Black</span></p></div>
+    ${stats ? `<dl class="pf-lead-stats">${stats}</dl>` : ''}`;
 }
 function leadStory(name, p, skills, me) {
   const games = storedGames(name) || [], low = name.toLowerCase(), say = me ? (x) => x : they;
@@ -1996,15 +1994,15 @@ function leadStory(name, p, skills, me) {
   const week = Date.now() - 7 * 864e5, recent = mine.filter((g) => g.createdAt >= week);
   const before = mine.find((g) => g.createdAt < week);
   const change = recent.length ? after(recent[0]) - (before ? after(before) : recent.at(-1).players[sideOf(recent.at(-1))].rating) : null;
-  const last = (mine.length ? mine : games).slice(0, 10), form = last.map(res), wins = form.filter((x) => x === 'W').length, latest = last[0];
+  const last = (mine.length ? mine : games).slice(0, 10), form = last.map(res), wins = form.filter((x) => x === 'W').length, rs = last.map((g) => readGame(g, low));
   return `<section class="pf-lead solo">
-    <div class="pf-news"><h2>Latest</h2>
-      ${form.length ? `<p class="pf-form-row" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${last.map((g, i) => `<span class="pf-form-day${i && day(last[i - 1].createdAt) === day(g.createdAt) ? ' same' : ''}"><a class="pf-res r-${form[i]}" href="game.html?u=${encodeURIComponent(name)}&id=${g.id}" data-peek="${PEEK.set(g.id, { g, me: name.toLowerCase(), res: form[i] }) && g.id}" aria-label="${{ W: 'Won', L: 'Lost', D: 'Drew' }[form[i]]} against ${esc(nick(g.players[sideOf(g) === 'white' ? 'black' : 'white'].user?.id || 'anonymous'))}, ${day(g.createdAt)}: open the game">${form[i]}</a><small aria-hidden="true">${day(g.createdAt).replace(' ', '<br>')}</small></span>`).join('')}</p>
-        <p class="info">${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}${main ? ` ${main}` : ''} games, newest first · last played ${day(latest.createdAt)}${change !== null ? ` · <b class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : '−'}${Math.abs(change)}</b> this week in ${recent.length} game${recent.length === 1 ? '' : 's'}` : ''}</p>` : ''}
+    <div class="pf-news"><div class="pf-lead-head"><h2>Latest</h2>${form.length ? `<small>${wins} win${wins === 1 ? '' : 's'} in the last ${form.length}${main ? ` ${main}` : ''} games, newest first</small>` : ''}</div>
+      ${form.length ? `<div class="pf-form-row" role="group" aria-label="Last ${form.length} games, newest first: ${form.join(' ')}">${last.map((g, i) => `<div class="pf-form-game"><a class="pf-res r-${form[i]}" href="game.html?u=${encodeURIComponent(name)}&id=${g.id}" data-peek="${PEEK.set(g.id, { g, me: name.toLowerCase(), res: form[i] }) && g.id}" aria-label="${{ W: 'Won', L: 'Lost', D: 'Drew' }[form[i]]} against ${esc(nick(g.players[sideOf(g) === 'white' ? 'black' : 'white'].user?.id || 'anonymous'))}, ${day(g.createdAt)}: open the game">${form[i]}</a>
+        <small><i class="pf-side ${rs[i].side}" title="As ${rs[i].side === 'w' ? 'White' : 'Black'}"></i>${day(g.createdAt)}</small><span class="pf-form-op">${opLink(rs[i].side, rs[i].family)}</span></div>`).join('')}</div>` : ''}
+      <div class="pf-lead-under">${last.length ? recentFacts(rs, p, change !== null ? { change, n: recent.length } : null) : ''}
       <div class="pf-fetch-row">
       <button type="button" class="ghost pf-fetch" data-fetch title="Fetch the games played on Lichess since this profile was read"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg> New games</button>
-      ${shown?.[1] ? `<small class="pf-fetched" id="pf-fetched">Updated ${ago(shown[1])}</small>` : ''}</div>
-      ${last.length ? recentFacts(last.map((g) => readGame(g, name.toLowerCase())), p) : ''}
+      ${shown?.[1] ? `<small class="pf-fetched" id="pf-fetched">Updated ${ago(shown[1])}</small>` : ''}</div></div>
     </div>
   </section>`;
 }
