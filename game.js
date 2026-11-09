@@ -2,12 +2,12 @@
 // decided it (yours and your opponent's mistakes, with the better move), and a short read of what
 // went well and what went badly. The game comes from the games kept for the profile, or straight
 // from Lichess. A game without analysis can be analysed here with Stockfish in a few seconds.
-import { banner, confetti } from './celebrate.js?v=20261109095539';
+import { banner, confetti } from './celebrate.js?v=20261109232300';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag } from './board.js?v=20261109095539';
-import { account, lichessAuth } from './lichess.js?v=20261109095539';
-import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261109095539';
-import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261109095539';
+import { drawBoard, enableDrag } from './board.js?v=20261109232300';
+import { account, lichessAuth } from './lichess.js?v=20261109232300';
+import { isCC, nick, ccGameUrl } from './chesscom.js?v=20261109232300';
+import { gamesReady, storedGames, keepGame, engineEval, applyEvals, winPct, profileFromRaw, skillsOf, fineSkillsOf } from './profile.js?v=20261109232300';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -299,16 +299,18 @@ async function analyse() {
   render();
 }
 
-// Play from here, as on Lichess: from the position on the board you play on against Maia at your
-// rating (the side to move is yours), say from just before a blunder, to try the other move.
+// Play from here, as on Lichess: from the position on the board you play on with your own colour
+// against Maia at your opponent's rating, say from just before a blunder, to try the other move.
+// Moving a piece without the button tries a line: you move both sides and nobody answers.
 let tryOut = null;
 const within = (ms, p) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('slow')), ms))]);
-function startTry() {
-  const c = new Chess(fens[idx]), me = c.turn(), pl = g.players[me === 'w' ? 'white' : 'black'];
+function startTry(maia) {
+  const c = new Chess(fens[idx]), me = side === 'white' ? 'w' : 'b', pl = g.players[side === 'white' ? 'black' : 'white'];
   const bottom = (side === 'white') !== flip ? 'w' : 'b'; // the board stays turned as it was
-  tryOut = { c, me, bottom, rating: Math.round(pl.rating || 1500), from: idx, sel: null, last: idx ? { from: moves[idx - 1].from, to: moves[idx - 1].to } : null, busy: false, view: null };
+  tryOut = { c, me, maia, bottom, rating: Math.round(pl.rating || 1500), from: idx, sel: null, last: idx ? { from: moves[idx - 1].from, to: moves[idx - 1].to } : null, busy: false, view: null };
   focus = null;
   drawPosition();
+  if (maia && c.turn() !== me && !c.isGameOver()) maiaReply(tryOut);
 }
 // view: how many of your moves on the board shows while you step back with the arrows; null is now,
 // below 0 is that many moves of the game before you took over.
@@ -329,13 +331,14 @@ function drawTry() {
   const best = showBest && !t.busy && !b.isGameOver() ? bestHere(b.fen()) : null;
   drawBoard($('#board'), b, { side: bottom, sel: t.sel, last, arrows: best ? [[best.from, best.to, GREEN]] : [] });
   $('#board').classList.toggle('looking-back', t.view !== null);
-  const end = c.isCheckmate() ? (c.turn() === t.me ? 'Checkmate: Maia wins.' : 'Checkmate! You win.') : c.isDraw() ? 'A draw.' : '';
-  $('#here').innerHTML = `${end || (t.view < 0 ? 'Looking back at the game. A move here plays on from this position; → goes forward again.' : t.view !== null ? 'Looking back at your moves. A move here plays on from this position; → goes forward again.' : t.busy ? `Maia ${t.rating} is thinking…` : `Your move. You play on from ${t.from ? `after ${moveNo(t.from - 1)} ${moves[t.from - 1].san}` : 'the start'} against Maia at ${t.rating}.`)}${best ? ` Best move: <b>${best.san}</b> (green).` : ''}
+  const end = c.isCheckmate() ? (!t.maia ? 'Checkmate.' : c.turn() === t.me ? 'Checkmate: Maia wins.' : 'Checkmate! You win.') : c.isDraw() ? 'A draw.' : '';
+  $('#here').innerHTML = `${end || (t.view < 0 ? 'Looking back at the game. A move here plays on from this position; → goes forward again.' : t.view !== null ? 'Looking back at your moves. A move here plays on from this position; → goes forward again.' : t.busy ? `Maia ${t.rating} is thinking…` : !t.maia ? `Trying a line: you move both sides. <b>Play from here</b> plays it on against Maia.` : `Your move. You play on from ${t.from ? `after ${moveNo(t.from - 1)} ${moves[t.from - 1].san}` : 'the start'} against Maia at ${t.rating}.`)}${best ? ` Best move: <b>${best.san}</b> (green).` : ''}
     <span class="gm-try-btns"><button type="button" class="ghost" id="try-undo"${c.history().length ? '' : ' disabled'}>Take back</button><button type="button" class="ghost" id="try-back">Back to the game</button></span>`;
   $('#try-back').onclick = () => go(t.from);
-  $('#try-undo').onclick = () => { if (t.busy) return; t.view = null; c.undo(); if (c.turn() !== t.me) c.undo(); t.sel = null; const h = c.history({ verbose: true }).at(-1); t.last = h ? { from: h.from, to: h.to } : null; drawTry(); };
+  $('#try-undo').onclick = () => { if (t.busy) return; t.view = null; c.undo(); if (t.maia && c.turn() !== t.me) c.undo(); t.sel = null; const h = c.history({ verbose: true }).at(-1); t.last = h ? { from: h.from, to: h.to } : null; drawTry(); if (t.maia && c.turn() !== t.me) maiaReply(t); };
 }
 function ended(t) {
+  if (!t.maia) return;
   if (t.c.isCheckmate()) t.c.turn() === t.me ? banner('Checkmated', 'lost') : (banner('Checkmate!'), confetti(110));
   else if (t.c.isDraw()) banner('Draw', 'draw');
 }
@@ -343,46 +346,56 @@ async function tryMove(from, to) {
   const t = tryOut;
   if (!t || t.busy) return false;
   if (t.view !== null) { const len = t.c.history().length; for (let k = t.view; k < len; k++) t.c.undo(); t.view = null; } // play on from where you stepped back to
-  if (t.c.turn() !== t.me) return false;
+  if (t.maia && t.c.turn() !== t.me) return false;
   let m;
   try { m = t.c.move({ from, to, promotion: 'q' }); } catch { return false; }
   t.sel = null; t.last = { from: m.from, to: m.to };
-  if (t.c.isGameOver()) return drawTry(), ended(t), true;
+  if (t.c.isGameOver() || !t.maia) return drawTry(), ended(t), true;
+  await maiaReply(t);
+  return true;
+}
+async function maiaReply(t) {
   t.busy = true; drawTry();
   const legal = t.c.moves({ verbose: true });
-  const { maia3Move } = await import('./maia3.js?v=20261109095539'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261109095539'); // loaded on the first move only: the nets are big
+  const { maia3Move } = await import('./maia3.js?v=20261109232300'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261109232300'); // loaded on the first move only: the nets are big
   let r = null;
   try { r = (await within(20000, maia3Move(t.c.fen(), legal, t.rating, t.rating))).move; } catch (e) { console.warn(e); }
   if (!r && t.rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(t.rating, [t.c.fen()], legal))).move; } catch (e) { console.warn(e); }
-  if (tryOut !== t) return true; // left while Maia thought
+  if (tryOut !== t) return; // left while Maia thought
   if (!r) { const e = await engineEval(t.c.fen()); r = e.best && { from: e.best.slice(0, 2), to: e.best.slice(2, 4), promotion: e.best[4] }; }
   t.busy = false;
   if (r) { const a = t.c.move({ from: r.from, to: r.to, promotion: r.promotion || 'q' }); t.last = { from: a.from, to: a.to }; }
   drawTry(); ended(t);
-  return true;
 }
 // A piece of the side to move, picked up in the game itself, starts playing on from that position.
 const shown = () => (tryOut ? tryBoard(tryOut).b : new Chess(fens[idx]));
-const mover = (sq) => { const b = shown(), p = b.get(sq); return !timer && (!tryOut || !tryOut.busy) && p?.color === b.turn() && (!tryOut || tryOut.view < 0 || b.turn() === tryOut.me); };
+const mover = (sq) => { const b = shown(), p = b.get(sq); return !timer && (!tryOut || !tryOut.busy) && p?.color === b.turn() && (!tryOut || tryOut.view < 0 || !tryOut.maia || b.turn() === tryOut.me); };
 // Looking back before the take-over: a move there starts over from that position.
-const restart = () => { idx = tryOut.from + tryOut.view; startTry(); };
+const restart = (maia = tryOut.maia) => { idx = tryOut.from + tryOut.view; startTry(maia); };
 enableDrag($('#board'), {
   canDrag: mover,
-  onDrop: (from, to) => { if (tryOut?.view < 0) restart(); if (!tryOut) startTry(); tryMove(from, to).then((ok) => { if (!ok && tryOut) drawTry(); }); },
+  onDrop: (from, to) => { if (tryOut?.view < 0) restart(); if (!tryOut) startTry(false); tryMove(from, to).then((ok) => { if (!ok && tryOut) drawTry(); }); },
 });
 $('#board').addEventListener('click', (e) => {
   const b = e.target.closest('.sq');
   if (!b || timer) return;
   const sq = b.dataset.sq;
-  if (!tryOut || tryOut.view < 0) { if (!mover(sq)) return; if (tryOut) restart(); else startTry(); }
+  if (!tryOut || tryOut.view < 0) { if (!mover(sq)) return; if (tryOut) restart(); else startTry(false); }
   const t = tryOut;
   if (t.busy) return;
   const here = tryBoard(t).b;
   if (t.sel && t.sel !== sq && here.moves({ square: t.sel, verbose: true }).some((m) => m.to === sq)) return void tryMove(t.sel, sq);
-  t.sel = here.get(sq)?.color === t.me && here.turn() === t.me && t.sel !== sq ? sq : null;
+  t.sel = here.get(sq)?.color === here.turn() && (!t.maia || here.turn() === t.me) && t.sel !== sq ? sq : null;
   drawTry();
 });
-$('#try').addEventListener('click', () => (tryOut?.view < 0 ? restart() : startTry()));
+$('#try').addEventListener('click', () => {
+  const t = tryOut;
+  if (t?.view < 0) return restart(true);
+  if (!t || t.maia) return startTry(true);
+  if (t.view !== null) { for (let k = t.view, len = t.c.history().length; k < len; k++) t.c.undo(); t.view = null; } // the line you tried, up to where you stand, is played on
+  t.maia = true; drawTry();
+  if (t.c.turn() !== t.me && !t.c.isGameOver()) maiaReply(t);
+});
 $('#first').addEventListener('click', () => go(0));
 $('#prev').addEventListener('click', () => (tryOut ? stepTry((tryOut.view ?? tryOut.c.history().length) - 1) : go(idx - 1)));
 $('#next').addEventListener('click', () => (tryOut ? stepTry((tryOut.view ?? tryOut.c.history().length) + 1) : go(idx + 1)));

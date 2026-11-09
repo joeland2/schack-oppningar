@@ -3,9 +3,9 @@
 // and Time (mate as fast as you can). There are no fixed lines: every position is new, and the
 // Lichess tablebase (tablebase.lichess.ovh, exact for up to 7 pieces) says what every move is worth
 // and plays the defence. A slip is a move that lets the win go: a draw, stalemate or a piece given away.
-import { banner, confetti } from './celebrate.js?v=20261109095539';
+import { banner, confetti } from './celebrate.js?v=20261109232300';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, shake, instruction, flyStar } from './board.js?v=20261109095539';
+import { drawBoard, enableDrag, shake, instruction, flyStar } from './board.js?v=20261109232300';
 
 const $ = (s) => document.querySelector(s);
 // { [id]: { learned: 0|1, box, due, times: [your three best ms] } }, synced with your account (header.js). Numbers
