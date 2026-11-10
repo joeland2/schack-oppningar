@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261109232300';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261109232300';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261109232300';
-import { NAMED_TRAPS } from './traps.js?v=20261109232300';
-import { GUIDE } from './guide.js?v=20261109232300';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261109232300';
-import { banner, confetti } from './celebrate.js?v=20261109232300';
-import { maia3Move } from './maia3.js?v=20261109232300';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261109232300';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261109232300';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261109232300';
-import { openLogin } from './login.js?v=20261109232300';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261109232300';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261110093255';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261110093255';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261110093255';
+import { NAMED_TRAPS } from './traps.js?v=20261110093255';
+import { GUIDE } from './guide.js?v=20261110093255';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261110093255';
+import { banner, confetti } from './celebrate.js?v=20261110093255';
+import { maia3Move } from './maia3.js?v=20261110093255';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261110093255';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261110093255';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261110093255';
+import { openLogin } from './login.js?v=20261110093255';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261110093255';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -386,8 +386,8 @@ console.assert(NAMED_TRAPS.every((t) => { const g = new Chess(); try { t.moves.f
 // The known traps set against your side in this opening, as lines that play the safe move instead.
 function avoidTraps(op) {
   const starts = op.roots ? op.roots.map((r) => r.moves) : [op.root.split(' ')];
-  return NAMED_TRAPS.filter((t) => t.avoid && t.side !== op.side && starts.some((r) => lineKey(t.moves.slice(0, r.length)) === lineKey(r))).map((t) => {
-    const { ply, safe, note } = t.avoid, pre = t.moves.slice(0, ply), x = gamesAt(pre), m = x.moves.find((y) => y.san === t.moves[ply]);
+  return NAMED_TRAPS.map((t) => ({ ...t, moves: t.moves.map(clean) })).filter((t) => t.avoid && t.side !== op.side && starts.some((r) => lineKey(t.moves.slice(0, r.length)) === lineKey(r))).map((t) => {
+    const { ply, note } = t.avoid, safe = clean(t.avoid.safe), pre = t.moves.slice(0, ply), x = gamesAt(pre), m = x.moves.find((y) => y.san === t.moves[ply]);
     // Lines end on the opponent's move, and not on a capture (that reads as material given): the most played moves on.
     const moves = [...pre, safe], reply = gamesAt(moves).moves[0];
     if (reply) moves.push(reply.san);
@@ -402,7 +402,8 @@ function avoidTraps(op) {
 }
 function namedTraps(op) {
   const starts = op.roots ? op.roots.map((r) => r.moves) : [op.root.split(' ')], them = op.side === 'w' ? 'b' : 'w';
-  return NAMED_TRAPS.filter((t) => t.side === op.side && starts.some((r) => lineKey(t.moves.slice(0, r.length)) === lineKey(r))).map((t) => {
+  // Lines hold SAN without + and #, as your moves are checked: the traps' moves are cleaned to match.
+  return NAMED_TRAPS.map((t) => ({ ...t, moves: t.moves.map(clean) })).filter((t) => t.side === op.side && starts.some((r) => lineKey(t.moves.slice(0, r.length)) === lineKey(r))).map((t) => {
     const x = gamesAt(t.moves.slice(0, t.slip)), m = x.moves.find((y) => y.san === t.moves[t.slip]);
     return { moves: t.moves, share: 0, name: t.name, branch: 0, theory: false,
       trap: { ply: t.slip, san: t.moves[t.slip], kind: 'named', name: t.name, win: t.win, note: t.note, ...(m && m.n >= MIN_GAMES ? { score: scoreFor(m, them), share: m.n / x.total } : {}) } };

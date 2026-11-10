@@ -1,11 +1,11 @@
 // Spot the blunder: a few moves from one of your own games play out on the board, and one of yours was
 // a blunder. Pick it. From the slips Find my mistakes and your analysed games have found (the puzzles
 // on mistakes.html), with the game's moves from the games kept in this browser.
-import { banner, confetti } from './celebrate.js?v=20261109232300';
+import { banner, confetti } from './celebrate.js?v=20261110093255';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard } from './board.js?v=20261109232300';
-import { THEMES, findMistakes, pickPuzzles } from './mistakes.js?v=20261109232300';
-import { storedGames, gamesReady } from './profile.js?v=20261109232300';
+import { drawBoard } from './board.js?v=20261110093255';
+import { THEMES, findMistakes, pickPuzzles } from './mistakes.js?v=20261110093255';
+import { storedGames, gamesReady } from './profile.js?v=20261110093255';
 
 const PUZZLES = 'opening-book-v2-mistakes';
 export const puzzles = () => { try { return JSON.parse(localStorage.getItem(PUZZLES)) || []; } catch { return []; } };
