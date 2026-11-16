@@ -703,11 +703,11 @@ const msgEl = () => (quiet ? { textContent: '' } : $('#profile-msg'));
 // A known pro's or streamer's games, fetched every few hours by the pros function into our own
 // storage: read in one go, so only the games since come from Lichess (which sends ~20 a second).
 const SNAPSHOT = new URLSearchParams(location.search).has('snapshot');
-// Every pro's and VIP's profile with its games, read every 3 hours by tools/snapshot_pros.py into the branch
+// Every pro's and VIP's profile with its games, read once a day by tools/snapshot_pros.py into the branch
 // pros-data, so their page draws at once and nothing is fetched from Lichess or Chess.com. index.json: when
 // each account last played, for the order of their accounts.
 // shortcut: served by raw.githubusercontent.com (cached 5 min, no promises on traffic); move behind the site if visits grow large.
-const SNAPS = 'https://raw.githubusercontent.com/joeland2/schack-oppningar/pros-data', SNAP_FRESH = 12 * 36e5;
+const SNAPS = 'https://raw.githubusercontent.com/joeland2/schack-oppningar/pros-data', SNAP_FRESH = 26 * 36e5; // a day's snapshot, with time for the run
 const SNAP = new Map();
 const snapOf = (n) => {
   const f = n.toLowerCase().replace(':', '_');
@@ -723,9 +723,18 @@ function useSnap(name, s) {
   if (s?.games?.length && !(MEM.get(me)?.at > s.at)) { const v = { at: s.at, games: s.games }; MEM.set(me, v); persist(me, v); }
 }
 const PRO_STORE = 'https://duhlvhjtxoofgnjegspa.supabase.co/storage/v1/object/public/pros';
+// Read gzipped (<file>.gz, about a fifth of the bytes, since Storage sends files uncompressed); the plain file only
+// while an account's .gz is not there yet. Unzipped here unless the browser already did.
+const storeText = async (f) => {
+  const r = await fetch(`${PRO_STORE}/${f}.gz`);
+  if (!r.ok) return fetch(`${PRO_STORE}/${f}`).then((x) => (x.ok ? x.text() : ''));
+  const b = new Uint8Array(await r.arrayBuffer());
+  if (b[0] !== 0x1f || b[1] !== 0x8b) return new TextDecoder().decode(b);
+  return new Response(new Blob([b]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+};
 const serverGames = (name) => (isCC(name)
-  ? fetch(`${PRO_STORE}/cc_${encodeURIComponent(nick(name).toLowerCase())}.json`).then((r) => (r.ok ? r.json() : [])).then(fromCC)
-  : fetch(`${PRO_STORE}/${encodeURIComponent(name.toLowerCase())}.ndjson`).then((r) => (r.ok ? r.text() : ''))
+  ? storeText(`cc_${encodeURIComponent(nick(name).toLowerCase())}.json`).then((t) => (t ? JSON.parse(t) : [])).then(fromCC)
+  : storeText(`${encodeURIComponent(name.toLowerCase())}.ndjson`)
     .then((t) => t.split('\n').filter(Boolean).map((l) => JSON.parse(l)).filter((g) => g.variant === 'standard'))).then((gs) => gs.slice(0, MAX)).catch(() => []);
 // The bar over the profile while games come in: one line that never wraps, a percentage, a thick track.
 // It fades out when the card is in (done), and a time control still coming shows it again when picked.

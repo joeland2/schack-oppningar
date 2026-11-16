@@ -1,10 +1,10 @@
-# Every 3 hours: each pro's and VIP's profile read by the site in a headless browser (tools/snapshot_pros.py)
+# Once a day (04:20 UTC; every 3 hours used ~0.5 GB of Supabase egress a day): each pro's and VIP's profile read by the site in a headless browser (tools/snapshot_pros.py)
 # from the games kept on our server, pushed with those games to the branch pros-data, which profile.js reads.
 # The branch is one commit, replaced each time, so the repo does not grow; [skip ci] keeps Cloudflare from building it.
 # Run by hand (or by the admin page's button) with refresh on: every account's games fetched again first.
 name: Snapshot pros
 on:
-  schedule: [{ cron: '20 */3 * * *' }]
+  schedule: [{ cron: '20 4 * * *' }]
   workflow_dispatch:
     inputs:
       refresh: { description: 'Fetch every account again from Lichess and Chess.com first', type: boolean, default: false }

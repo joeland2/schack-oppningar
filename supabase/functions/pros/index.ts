@@ -24,6 +24,14 @@ async function loadAccounts() {
 const isCC = (a: string) => a.startsWith('cc:');
 const file = (a: string) => (isCC(a) ? `cc_${a.slice(3).toLowerCase()}.json` : `${a.toLowerCase()}.ndjson`);
 const UA = { 'User-Agent': 'chess-labs (chesslabs.gg)' };
+// An account's games stored twice: as is, and gzipped beside it as <file>.gz, which profile.js reads
+// (about a fifth of the bytes, as Storage sends files uncompressed and egress is what the plan limits).
+async function putGames(name: string, text: string, contentType: string) {
+  const { error } = await db.storage.from(BUCKET).upload(name, text, { upsert: true, contentType, cacheControl: '600' });
+  const gz = await new Response(new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
+  const { error: gzError } = await db.storage.from(BUCKET).upload(`${name}.gz`, gz, { upsert: true, contentType: 'application/gzip', cacheControl: '600' });
+  return error || gzError;
+}
 
 // One game, the same few fields from either site, for the week.
 type G = { at: number; speed: string; white: boolean; score: number; rating: number; opening: string | null };
@@ -40,7 +48,7 @@ async function refresh() {
   }), { headers: { Accept: 'application/x-ndjson' } });
   if (!res.ok) return { account: a, error: res.status };
   const text = await res.text();
-  const { error } = await db.storage.from(BUCKET).upload(file(a), slimLichess(text), { upsert: true, contentType: 'application/x-ndjson', cacheControl: '600' });
+  const error = await putGames(file(a), slimLichess(text), 'application/x-ndjson');
   const gs = lichessGames(a, text);
   await db.storage.from(BUCKET).upload(`${a.toLowerCase()}.json`, JSON.stringify(gs), { upsert: true, contentType: 'application/json', cacheControl: '600' });
   return { account: a, games: gs.length, error: error?.message };
@@ -61,7 +69,7 @@ async function refreshCC(a: string) {
       if (g.rated && g.rules === 'chess' && ['bullet', 'blitz', 'rapid'].includes(g.time_class) && g.pgn) games.push(g);
     }
   }
-  const { error } = await db.storage.from(BUCKET).upload(file(a), JSON.stringify(games.slice(0, KEEP).map(slimCC)), { upsert: true, contentType: 'application/json', cacheControl: '600' });
+  const error = await putGames(file(a), JSON.stringify(games.slice(0, KEEP).map(slimCC)), 'application/json');
   return { account: a, games: games.length, error: error?.message };
 }
 
