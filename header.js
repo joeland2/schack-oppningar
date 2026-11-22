@@ -56,6 +56,7 @@
     // The scorebug: your rating on every page (Openings has its own, editable one), to your profile.
     let speed = 'blitz', rating = null;
     try { speed = JSON.parse(localStorage.getItem('opening-book-v2-speed')) || speed; rating = JSON.parse(localStorage.getItem(`opening-book-v2-${speed}-rating`)); } catch {}
+    const openSpeed = speed, openRating = rating; // Openings' own: the time control its filters use
     // Logged in, the rating shown is the one on your card (profile.js saves it), kept current from Lichess below.
     let card = null;
     try { card = JSON.parse(localStorage.getItem('opening-book-v2-card-rating')); } catch {}
@@ -80,14 +81,18 @@
       const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`), btn = document.querySelector('#lichess-login');
       const cur = (p) => (page === p ? ' aria-current="page"' : '');
       const shownName = who.replace(/^cc:/i, ''); // a Chess Labs account is its Chess.com name
-      const head = btn ? `<span class="top-me-name">${esc(shownName)}</span>` : rating ? `<span class="top-me-who"><b>${esc(shownName)}</b><small>Your profile</small></span><strong title="${esc(speed)} rating">${esc(rating)}</strong><i class="top-me-chev" aria-hidden="true">▾</i>` : `<span class="top-me-name">${esc(shownName)}</span>`;
-      const menu = `<details class="top-me"><summary class="${rating && !btn ? 'top-bug' : ''}" title="Your profile">${head}</summary><div class="top-me-menu">
+      // Openings, logged in with Lichess: its rating box joins your name, as on every other page, so the
+      // name is not cut short on smaller screens (with a Chess Labs account the rating is still typed in there).
+      const join = btn && !/^cc:/i.test(who), r = join ? openRating : rating, sp = join ? openSpeed : speed;
+      const bug = r && (!btn || join);
+      const head = bug ? `<span class="top-me-who"><b>${esc(shownName)}</b><small>${join ? `${esc(sp)} rating` : 'Your profile'}</small></span><strong title="${esc(sp)} rating">${esc(r)}</strong><i class="top-me-chev" aria-hidden="true">▾</i>` : `<span class="top-me-name">${esc(shownName)}</span>`;
+      const menu = `<details class="top-me"><summary class="${bug ? 'top-bug' : ''}" title="Your profile">${head}</summary><div class="top-me-menu">
         <a href="profile.html?u=${encodeURIComponent(who)}"${cur('profile.html')}>Profile</a><a href="practice.html"${cur('practice.html')}>My practice</a><a href="rivals.html?u=${encodeURIComponent(who)}"${cur('rivals.html')}>My rivals</a><button type="button" class="top-me-out">Log out</button></div></details>`;
-      if (btn) { btn.insertAdjacentHTML('beforebegin', menu); btn.style.display = 'none'; } // Openings: in place of its name button
+      if (btn) { btn.insertAdjacentHTML('beforebegin', menu); btn.style.display = 'none'; if (bug) document.querySelector('.account .acct-stat').style.display = 'none'; } // Openings: in place of its name button
       else at?.insertAdjacentHTML('beforebegin', menu);
       const me = document.querySelector('.top-me');
       // At most every 5 minutes, and after the page's own calls: Lichess blocks bursts.
-      if (card?.live && page !== 'profile.html' && Date.now() - card.at > 3e5) setTimeout(() => {
+      if (card?.live && !btn && page !== 'profile.html' && Date.now() - card.at > 3e5) setTimeout(() => {
         const save = (x) => { try { localStorage.setItem('opening-book-v2-card-rating', JSON.stringify({ ...card, ...x, at: Date.now() })); } catch {} };
         save({});
         fetch(`https://lichess.org/api/user/${encodeURIComponent(card.live)}`).then((r) => (r.ok ? r.json() : null)).then((u) => {
@@ -292,9 +297,9 @@ addEventListener('DOMContentLoaded', () => {
     const row = document.querySelector('.foot-row');
     if (row) row.insertAdjacentHTML('beforeend', b);
     else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
-    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261122114150')).openChat());
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261122120915')).openChat());
     // Supporters: the hearts and card frames on every page, and Support (header and bottom) opens its dialog.
-    const sup = import('./supporter.js?v=20261122114150');
+    const sup = import('./supporter.js?v=20261122120915');
     document.addEventListener('click', async (e) => { if (e.target.closest('[data-support]')) (await sup).openSupport(); });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();

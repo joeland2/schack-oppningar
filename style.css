@@ -1424,7 +1424,7 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
 .top-login { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line); font-weight: 700; color: var(--hot); text-decoration: none; white-space: nowrap; }
 .top-login:hover { background: var(--surface); }
 .account #lichess-login.acct-login { color: var(--hot); font-weight: 700; }
-@media (max-width: 1100px) { .top-search input { width: 52px; padding: 0; background-position: center; } .top-search input::placeholder { color: transparent; }
+@media (max-width: 1400px) { /* the name, rating and every section fit beside it on a laptop */ .top-search input { width: 52px; padding: 0; background-position: center; } .top-search input::placeholder { color: transparent; }
   .top-search input:focus { position: absolute; inset: 0 0 0 auto; width: min(320px, 100%); z-index: 2; padding: 0 16px 0 40px; background-position: 16px 50%; background-color: var(--surface); }
   .top-search input:focus::placeholder { color: var(--muted); }
   /* Open, the field and its suggestions hang from the header's top row, not from the narrow icon,
@@ -1434,8 +1434,8 @@ a.pf-res, a.pf-res:visited { color: #f4efe6; }
   .top-search:focus-within .top-suggest { top: var(--top-row, 50px); } }
 @media (max-width: 560px) { .top-search input:focus { width: 100%; } .top-search:focus-within .top-suggest { left: 0; right: 0; width: auto; } }
 /* Five sections and your menu: tighter on a laptop; narrower, the sections take their own row */
-@media (max-width: 1240px) { .top-nav a { padding: 0 10px; font-size: 17px; } .brand { padding-right: 26px; } }
-@media (max-width: 1100px) {
+@media (max-width: 1400px) { .top-nav a { padding: 0 10px; font-size: 17px; } .brand { padding-right: 26px; } }
+@media (max-width: 1200px) {
   .top-in { flex-wrap: wrap; }
   .top-nav { order: 5; flex: 1 0 100%; margin: 0; border-top: 1px solid var(--line); overflow: visible; }
   .top-nav a { flex: 1; justify-content: center; padding: 13px 4px 12px; font-size: 17px; }
