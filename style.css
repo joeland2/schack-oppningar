@@ -3427,3 +3427,19 @@ body:has(> .msg-foot) > main { min-height: calc(100dvh - 210px); }
   .game-layout .gm-left ol { max-height: calc(100vh - 170px); }
   .game-layout .panel { max-height: calc(100vh - 110px); overflow-y: auto; }
 }
+
+/* Shuffle: the favorites' lines as a playlist, the bar over the board while it runs. */
+.shuf-go { display: inline-flex; align-items: center; gap: 8px; }
+.shuf-go svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.shuf-bar { background: var(--card); color: var(--card-ink); border-radius: var(--radius); padding: 10px 12px; display: grid; gap: 8px; margin-bottom: var(--gap-tight); }
+.shuf-now { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
+.shuf-now b { font-family: var(--font-poster); font-weight: 400; font-size: 19px; letter-spacing: .01em; text-transform: uppercase; min-width: 0; }
+.shuf-now span, .shuf-next { font-family: var(--font-mono); font-size: 12px; opacity: .7; }
+.shuf-next b { font-weight: 500; }
+.shuf-ctrls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.shuf-ic { position: relative; width: 38px; height: 38px; display: grid; place-items: center; border-radius: var(--radius); border: 1.5px solid color-mix(in srgb, var(--card-ink) 25%, transparent); background: transparent; color: var(--card-ink); cursor: pointer; }
+.shuf-ic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.shuf-ic[aria-pressed="true"] { color: var(--card-hot); border-color: var(--card-hot); }
+.shuf-ic i { position: absolute; top: 2px; right: 4px; font: 700 9px var(--font-body); font-style: normal; }
+.shuf-next { flex: 1; min-width: 0; }
+.shuf-bar button.link { color: inherit; opacity: .7; }

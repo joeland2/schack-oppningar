@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261110093255';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261110093255';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261110093255';
-import { NAMED_TRAPS } from './traps.js?v=20261110093255';
-import { GUIDE } from './guide.js?v=20261110093255';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261110093255';
-import { banner, confetti } from './celebrate.js?v=20261110093255';
-import { maia3Move } from './maia3.js?v=20261110093255';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261110093255';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261110093255';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261110093255';
-import { openLogin } from './login.js?v=20261110093255';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261110093255';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261122114150';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261122114150';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261122114150';
+import { NAMED_TRAPS } from './traps.js?v=20261122114150';
+import { GUIDE } from './guide.js?v=20261122114150';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261122114150';
+import { banner, confetti } from './celebrate.js?v=20261122114150';
+import { maia3Move } from './maia3.js?v=20261122114150';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261122114150';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261122114150';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261122114150';
+import { openLogin } from './login.js?v=20261122114150';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261122114150';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -690,7 +690,7 @@ function renderList(still) { // still: only the panel changed, so the cards do n
       : `No opening at your level matches "${q.replace(/[<&"]/g, '')}".`}</p>
       <div class="olist">${list.map((o) => card(o).replace('</h3>', `<small class="as">you play ${sideName(o.side)}</small></h3>`)).join('')}</div>`;
   } else if (listSide === 'r') {
-    body = `<p class="og-about">${favs.length ? `The openings you have starred${played.length ? ', and the ones you play most in your Lichess games' : ''}, from both sides. <button type="button" class="link" data-traps>Practise punishing their blunders</button>` : 'Nothing here yet. Star (★) an opening, or check your Lichess games, and it shows up here.'}</p>
+    body = `<p class="og-about">${favs.length ? `The openings you have starred${played.length ? ', and the ones you play most in your Lichess games' : ''}, from both sides. <button type="button" class="link" data-traps>Practise punishing their blunders</button>${window.earlyAccess?.() ? '</p><p class="og-about"><button type="button" class="cta shuf-go" data-shuffle><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>Shuffle their lines</button>' : ''}` : 'Nothing here yet. Star (★) an opening, or check your Lichess games, and it shows up here.'}</p>
       <div class="olist">${favs.map((o) => (played.includes(o) ? card(o).replace('<button type="button" class="star"', '<span class="tag played">Played most</span><button type="button" class="star"') : card(o))).join('')}</div>`;
   } else {
     // Your starred openings of this side come first, pinned, even ones the style or the cut would hide.
@@ -740,6 +740,7 @@ $('#side-tabs').addEventListener('click', (e) => {
 });
 listEl.addEventListener('click', (e) => {
   if (e.target.closest('[data-traps]')) return startTraps();
+  if (e.target.closest('[data-shuffle]')) return startShuffle();
   const star = e.target.closest('[data-star]');
   if (star) {
     const id = star.dataset.star;
@@ -1781,7 +1782,7 @@ function lineTips() {
 function start(op, keepTraps = false) {
   if (!lineSent && ply > 0) trackLine('left'); // the line in progress, before the new opening replaces it
   if (needTree(() => start(op, keepTraps))) return;
-  if (!keepTraps) trapRun = null; // choosing an opening ends trap training
+  if (!keepTraps) { trapRun = null; if (shuf) { shuf = null; renderShuffle(); } } // choosing an opening ends trap training and shuffle
   if (mode === 'explore') setMode('learn', false);
   cur = op;
   window.track?.('practise', `${op.side === 'b' ? 'Black' : 'White'}: ${(isVs(op) ? 'vs ' : '') + op.name}`);
@@ -1819,7 +1820,7 @@ function start(op, keepTraps = false) {
   if (!keepTraps) scrollTo(0, 0); // the board first, wherever the list was scrolled to (phones)
   if (!rating) return say(`Enter your Lichess ${speed} rating at the top.`);
   // The first time an opening is opened, what it is about comes first, over the board.
-  if (!trapRun && !load(STORE + '-intro', {})[op.id] && !stats[statKey(op.id)]?.played?.length) return askIntro(); // not for openings already practised
+  if (!trapRun && !shuf && !load(STORE + '-intro', {})[op.id] && !stats[statKey(op.id)]?.played?.length) return askIntro(); // not for openings already practised
   const all = buildLines(op), depths = load(STORE + '-depth', {});
   allLines = all;
   // Trap training needs every line; otherwise the depth picked for the opening, Essentials until one is
@@ -1849,7 +1850,7 @@ function start(op, keepTraps = false) {
     play(0); $('#op-more').open = true;
     return;
   }
-  if (!trapRun && mode !== 'explore') {
+  if (!trapRun && !shuf && mode !== 'explore') {
     const k = (i) => lineKey(lines[i].moves), idx = [...lines.keys()];
     const learn = idx.find((i) => !s.played.includes(k(i)) && !s.done.includes(k(i))), tryIt = idx.find((i) => !s.done.includes(k(i)));
     const [want, at] = learn !== undefined ? ['learn', learn] : tryIt !== undefined ? ['try', tryIt] : ['time', Math.max(0, idx.find((i) => !(s.timed || []).includes(k(i))) ?? 0)];
@@ -2455,7 +2456,7 @@ function startTraps() {
   if (needTree(startTraps)) return;
   // Opening by opening, its traps in line order, so you stay in one opening until its traps are done.
   const trapsOf = (ops) => ops.flatMap((op) => buildLines(op).filter((l) => l.trap).map((l) => ({ op, key: lineKey(l.moves), ply: l.trap.ply }))).slice(0, 30);
-  let queue = trapsOf([...OPENINGS.filter((o) => repertoire.has(o.id)), ...mostPlayed().filter((o) => !repertoire.has(o.id))]);
+  let queue = trapsOf(favOpenings());
   if (!queue.length) queue = trapsOf(shown().filter((o) => o.side === 'w').slice(0, 10)); // starred ones without traps: the most played
   if (!queue.length) return say('No common blunders to punish in these openings at your level.');
   trapRun = { queue, done: 0, total: queue.length };
@@ -2486,6 +2487,78 @@ function setupTrap(t) {
   say(`Blunder ${trapRun.done} of ${trapRun.total}: watch their next move.`);
   reply(); // their move: the slip
 }
+
+// ---------- Shuffle: your favorites' lines, White and Black mixed, like a playlist ----------
+// Each line once, in random order (or the list's order with shuffle off), never twice before all have come
+// unless repeat is on; a line you slip in goes to the back of the queue. Repeat: 0 off, 1 the whole list
+// again when it runs out, 2 the same line again until you skip.
+let shuf = null; // { all: [{ op, key, name }], queue, done, now }
+const SHUF_KEY = STORE + '-shuffle';
+const shufOpt = { on: true, rep: 0, ...load(SHUF_KEY, {}) };
+const favOpenings = () => [...OPENINGS.filter((o) => repertoire.has(o.id)), ...mostPlayed().filter((o) => !repertoire.has(o.id))];
+const mix = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function startShuffle() {
+  if (needTree(startShuffle)) return;
+  const depths = load(STORE + '-depth', {});
+  const all = favOpenings().flatMap((op) => buildLines(op).slice(0, depths[op.id] || DEPTHS[0][1])
+    .map((l, n) => ({ op, n, key: lineKey(l.moves), name: `${isVs(op) ? 'vs ' : ''}${op.name} · ${lineName(l)}` })));
+  if (!all.length) return say('Star (★) a few openings first: Shuffle plays their lines.');
+  trapRun = null;
+  if (mode !== 'try') setMode('try', false, false); // from memory; Learn can be picked on the way
+  shuf = { all, queue: shufOpt.on ? mix(all) : [...all], done: 0, now: null };
+  nextShuffle(true);
+}
+function nextShuffle(skip = false) {
+  closeMoment();
+  if (shufOpt.rep === 2 && shuf.now && !skip) return setupShuffle(shuf.now);
+  let t = shuf.queue.shift();
+  if (!t && shufOpt.rep === 1) { shuf.queue = shufOpt.on ? mix(shuf.all) : [...shuf.all]; t = shuf.queue.shift(); }
+  if (!t) {
+    const n = shuf.done;
+    shuf = null; renderShuffle(); renderLineBox();
+    return say(`Shuffle done: ${plural(n, 'line')} played. Press Next line to go on with this opening.`, 'good');
+  }
+  shuf.now = t; shuf.done++;
+  setupShuffle(t);
+}
+function setupShuffle(t) {
+  if (mode !== 'try' && mode !== 'learn') setMode('try', false, false); // Time and Explore have no lines one by one
+  if (cur?.id !== t.op.id) start(t.op, true);
+  const i = lines.findIndex((l) => lineKey(l.moves) === t.key);
+  if (i < 0) { shuf.now = null; return nextShuffle(true); } // the depth changed since: that line is no longer in
+  play(i);
+  renderShuffle();
+}
+const SHUF_ICON = {
+  mix: '<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>',
+  rep: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>',
+  skip: '<path d="M5 4l10 8-10 8z" fill="currentColor"/><path d="M18 4v16"/>',
+};
+function renderShuffle() {
+  const el = $('#shuf-bar');
+  el.hidden = !shuf;
+  if (!shuf) return (el.innerHTML = '');
+  const t = shuf.now, next = shufOpt.rep === 2 ? t : shuf.queue[0], ic = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${SHUF_ICON[k]}</svg>`;
+  const rep = ['Repeat: off', 'Repeat: the whole list again when it runs out', 'Repeat: this line again'][shufOpt.rep];
+  el.innerHTML = `<div class="shuf-now"><b>${esc(t?.name || '')}</b><span>${t?.op.side === 'w' ? 'White' : 'Black'} · line ${(t?.n ?? 0) + 1} · ${shuf.done} of ${shuf.done + shuf.queue.length}</span></div>
+    <div class="shuf-ctrls">
+      <button type="button" class="shuf-ic" data-shuf="mix" aria-pressed="${shufOpt.on}" title="${shufOpt.on ? 'Shuffle: on' : 'Shuffle: off, in list order'}" aria-label="Shuffle">${ic('mix')}</button>
+      <button type="button" class="shuf-ic" data-shuf="rep" aria-pressed="${shufOpt.rep > 0}" title="${rep}" aria-label="${rep}">${ic('rep')}${shufOpt.rep === 2 ? '<i>1</i>' : ''}</button>
+      <button type="button" class="shuf-ic" data-shuf="skip" title="Next line" aria-label="Next line">${ic('skip')}</button>
+      <span class="shuf-next">${next ? `Next: <b>${esc(next.name)}</b>` : shufOpt.rep === 1 ? 'Then all again' : 'Last line'}</span>
+      <button type="button" class="link shuf-stop" data-shuf="stop">Stop</button>
+    </div>`;
+}
+$('#shuf-bar').addEventListener('click', (e) => {
+  const k = e.target.closest('[data-shuf]')?.dataset.shuf;
+  if (!k || !shuf) return;
+  if (k === 'skip') return nextShuffle(true);
+  if (k === 'stop') { shuf = null; return renderShuffle(); }
+  if (k === 'mix') { shufOpt.on = !shufOpt.on; shuf.queue = shufOpt.on ? mix(shuf.queue) : shuf.queue.sort((a, b) => shuf.all.indexOf(a) - shuf.all.indexOf(b)); }
+  if (k === 'rep') shufOpt.rep = (shufOpt.rep + 1) % 3;
+  store(SHUF_KEY, shufOpt);
+  renderShuffle();
+});
 
 // ---------- Idea questions: what your next move should do ----------
 // Now and then in Practice, before your move: what should it do? Three answers in words, from the
@@ -3275,7 +3348,7 @@ function finish() {
   const newStar = !trapRun && (mode === 'learn' || mode === 'try') ? (!hadGold && (s.done || []).includes(k) ? 'gold' : !hadGreen ? 'green' : null) : null;
   if (newStar) flying = starFly(lineIdx, newStar);
   renderLineBox();
-  $('#restart').textContent = trapRun ? 'Next trap' : mode === 'try' && (misses || assisted) ? 'Try again' : 'Next line';
+  $('#restart').textContent = trapRun ? 'Next trap' : shuf ? 'Next line' : mode === 'try' && (misses || assisted) ? 'Try again' : 'Next line';
   const on = game.isGameOver() ? '' : 'Play on if you like: the arrow shows a good next move.'; // a trap's line can end in mate
   if (mode === 'learn') say(`Line learned. ${on ? `${on} ` : ''}Or press Next line, or switch to Practice to play it from memory.`, 'good');
   else if (assisted) say(`Line done. You switched to Practice on the way, so it does not count as cleared: press Try again to play it from the start. ${on}`, 'good');
@@ -3514,6 +3587,7 @@ document.addEventListener('keydown', (e) => {
 
 $('#restart').addEventListener('click', () => {
   if (trapRun) return nextTrap();
+  if (shuf && ply >= line.length) { if ((misses || assisted) && shufOpt.rep !== 2) shuf.queue.push(shuf.now); return nextShuffle(); }
   if (!lines.length) return start(cur);
   if (mode === 'time') { wrongSq = null; return startTrial(); }
   if (mode === 'learn') return ply >= line.length ? learnNext() : play(lineIdx);
@@ -3678,6 +3752,7 @@ $('#rand').addEventListener('click', () => {
 $('.m-modes').addEventListener('click', (e) => e.target.dataset.mode && $(`#mode-${e.target.dataset.mode}`).click());
 function setMode(m, restart = true, remember = true) {
   const was = mode;
+  if (shuf && (m === 'time' || m === 'explore')) { shuf = null; renderShuffle(); }
   mode = m; view = null;
   if (m !== 'time') stopTrial();
   if (remember && m !== 'explore' && m !== 'time') store(STORE + '-mode', m);
