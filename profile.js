@@ -3,11 +3,11 @@
 // analysis is used where a game has it (accuracy, blunders, who was winning when). The result is kept
 // in this browser, and so are the games themselves: later visits fetch only the games played since.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261122122324';
-import { openLogin } from './login.js?v=20261122122324';
-import { STYLE_OF } from './styles.js?v=20261122122324';
-import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261122122324';
-import { PEOPLE } from './pros.js?v=20261122122324';
+import { account, login, finishLogin, lichessAuth } from './lichess.js?v=20261122122714';
+import { openLogin } from './login.js?v=20261122122714';
+import { STYLE_OF } from './styles.js?v=20261122122714';
+import { isCC, nick, siteOf, ccUrl, fetchCC, ccUser, asLichess, fromCC } from './chesscom.js?v=20261122122714';
+import { PEOPLE } from './pros.js?v=20261122122714';
 
 const MAX = 500;
 const EARLY = 60, REDRAW = 150; // a first look-up draws the profile after EARLY games, then again every REDRAW, while the rest still come in
@@ -1374,7 +1374,7 @@ function shareHtml(name, t) {
       <a data-share="reddit" href="https://www.reddit.com/submit?url=${url}&title=${text}" target="_blank" rel="noopener">Share on Reddit</a>
       <button type="button" data-share="discord" title="Copies the link; pasted in Discord it shows your card">Copy link for Discord</button>
       ${navigator.share ? '<button type="button" data-share="more">More…</button>' : ''}
-      ${window.earlyAccess?.() ? '<button type="button" data-share="wanted">Wanted poster: your nemesis</button>' : ''}
+      <button type="button" data-share="wanted">Wanted poster: your nemesis</button>
       <p class="pf-share-note" aria-live="polite"></p>
     </div></details>`;
 }
@@ -1878,7 +1878,7 @@ function render(name, at, full) {
   $('#profile').innerHTML = `
     ${accountsRow(name)}${combo && comboOwn ? comboRow() : ''}${nameRow(name)}${proLine(name)}${proBio(name, p)}
     <section class="pf-hero">
-      <div class="pf-card-col">${playerCard(name, p, t, skills)}<div class="pf-cardbar">${combo ? '' : speedBar(name, full, sp, avail)}<div class="pf-tools">${more(me && window.earlyAccess?.() && shareHtml(name, t), `<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg><span>Download</span></summary>
+      <div class="pf-card-col">${playerCard(name, p, t, skills)}<div class="pf-cardbar">${combo ? '' : speedBar(name, full, sp, avail)}<div class="pf-tools">${more(me && shareHtml(name, t), `<details class="pf-dl"><summary title="Download the card" aria-label="Download the card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg><span>Download</span></summary>
         <div class="pf-dl-menu" role="group" aria-label="Download"><div class="pf-dl-look" role="group" aria-label="Look">${['dark', 'light'].map((k) => `<button type="button" data-card-look="${k}" aria-pressed="${cardLook() === k}">${k === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div><button type="button" data-card-png="card">Card</button><button type="button" data-card-png="style">Card + style</button><button type="button" data-card-png="both">Both</button><button type="button" data-card-link title="A link that shows this card when it is shared">Copy link</button>${me && window.supporterOf?.(name) ? '<button type="button" data-card-video title="The card counting up, about four seconds">Video</button>' : ''}</div></details>${cardNote(name, p, me)}`)}</div></div>${combo ? '' : lockNote(skills, p, me, !!(p.todo || full.todo))}</div>
       <div class="pf-hero-text">
         <div class="pf-type-row"><div><h2 class="pf-h1">${esc(t[0].name)}</h2>
@@ -1919,7 +1919,7 @@ function render(name, at, full) {
       </div>
       ${SCORES?.buckets && p.speeds[0] ? '<p class="pf-res-note">The mark on a bar: what players at this rating usually score, counting a draw as half a win.</p>' : ''}
     </section>
-    ${me && window.earlyAccess?.() ? fitCard(p, name) : ''}
+    ${me ? fitCard(p, name) : ''}
     ${opponentsCard(p, me, name)}
     ${rivalsCard(name, me)}
     <section class="pf-card" id="pf-games"></section>
@@ -2258,10 +2258,9 @@ function rivalsBody(name, me, rated, casual, page) {
   const friends = casual ? panel(casual) : { rivals: [], html: `<p class="info">Looking for ${your} rivals in ${your} casual games…</p>${page ? SKELETON : ''}` }, pool = panel(rated);
   RIVALS.set(name, [...friends.rivals, ...pool.rivals]);
   // Not read yet and not on its way (a visitor's card): Rated first, and pressing Friends reads them.
-  const onTap = !casual && !page && !window.earlyAccess?.();
-  const first = friends.rivals.length || (!casual && !onTap) ? 'f' : 'r';
+  const first = friends.rivals.length || !casual ? 'f' : 'r';
   const tab = (k, label, n, more = '') => `<button type="button" data-rv-tab="${k}" aria-pressed="${k === first}"${more}>${label}${n === null ? '' : ` <span class="og-n">${n}</span>`}</button>`;
-  return `<div class="seg pf-rv-tabs" role="group" aria-label="Which games">${tab('f', 'Friends', onTap ? null : friends.rivals.length, onTap ? ` data-rv-load="${esc(name)}"` : '')}${tab('r', 'Rated', pool.rivals.length)}</div>
+  return `<div class="seg pf-rv-tabs" role="group" aria-label="Which games">${tab('f', 'Friends', friends.rivals.length, '')}${tab('r', 'Rated', pool.rivals.length)}</div>
     <p class="pf-rv-about" data-rv="f"${first === 'f' ? '' : ' hidden'}>Casual games: the challenges, mostly with people ${you} know. From ${your} last ${casual?.length || 0} casual games.</p>
     <p class="pf-rv-about" data-rv="r"${first === 'r' ? '' : ' hidden'}>Rated games: the opponents the pairing gave ${me ? 'you' : 'them'}. From ${your} last ${rated.length} rated games.</p>
     <div data-rv="f"${first === 'f' ? '' : ' hidden'}>${friends.html}</div><div data-rv="r"${first === 'r' ? '' : ' hidden'}>${pool.html}</div>`;
@@ -2272,7 +2271,7 @@ function rivalsCard(name, me) {
   if (!rated?.length) return '';
   const casual = casualOf(name);
   // Friendly games read by themselves only for supporters: for everyone it would be a second Lichess call beside the profile's own reading. Others press Friends.
-  if (!casual && window.earlyAccess?.()) setTimeout(() => loadCasual(name, () => redrawRivals(name, me)), 2000);
+  if (!casual) setTimeout(() => loadCasual(name, () => redrawRivals(name, me)), 2000);
   return `<section class="pf-card pf-rivals" id="rivals"><div class="pf-more-head"><h2>Rivals</h2><span>The players ${me ? 'you' : 'they'} met ${RIVAL_MIN} times or more · <a href="rivals.html?u=${encodeURIComponent(name)}">Open as a page →</a></span></div>
     ${rivalsBody(name, me, rated, casual)}<div class="pf-rv-acts"><a class="pf-rv-btn hot" href="rivals.html?u=${encodeURIComponent(name)}">All ${me ? 'your' : 'their'} rivals on one page →</a></div></section>`;
 }
@@ -2281,8 +2280,6 @@ document.addEventListener('click', (e) => {
   const box = b.closest('.pf-rivals');
   box.querySelectorAll('[data-rv-tab]').forEach((x) => x.setAttribute('aria-pressed', x === b));
   box.querySelectorAll('[data-rv]').forEach((x) => { x.hidden = x.dataset.rv !== b.dataset.rvTab; });
-  const load = b.dataset.rvLoad;
-  if (load) { b.removeAttribute('data-rv-load'); loadCasual(load, () => {}).then(() => redrawRivals(load, isMe(load))); }
 });
 
 // ---------- The rivals page (rivals.html) ----------

@@ -1,14 +1,14 @@
 // Test my opening: a game against Maia 3 at your rating, then what the opening is called, where you went
 // wrong and how it scores at your level. Nothing leaves the browser: the games are the site's own data files.
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, BOOK, GLYPH } from './board.js?v=20261122122324';
-import { engineEval, winPct } from './profile.js?v=20261122122324';
-import { banner, confetti } from './celebrate.js?v=20261122122324';
-import { PLAN, VS_PLAN } from './styles.js?v=20261122122324';
-import { GUIDE } from './guide.js?v=20261122122324';
-import { hanging } from './ideas.js?v=20261122122324';
-import { ideaSteps, sentencesOf, playIdea } from './ideaboard.js?v=20261122122324';
-import { openingOf, loadBook, key } from './book.js?v=20261122122324';
+import { drawBoard, enableDrag, BOOK, GLYPH } from './board.js?v=20261122122714';
+import { engineEval, winPct } from './profile.js?v=20261122122714';
+import { banner, confetti } from './celebrate.js?v=20261122122714';
+import { PLAN, VS_PLAN } from './styles.js?v=20261122122714';
+import { GUIDE } from './guide.js?v=20261122122714';
+import { hanging } from './ideas.js?v=20261122122714';
+import { ideaSteps, sentencesOf, playIdea } from './ideaboard.js?v=20261122122714';
+import { openingOf, loadBook, key } from './book.js?v=20261122122714';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -200,7 +200,7 @@ function humanPick(ranked) {
 async function maiaPlays() {
   const t = g, fen = t.c.fen(), legal = t.c.moves({ verbose: true });
   t.busy = true; buttons(); $('#test-status').textContent = t.c.history().length < 2 ? 'Maia 3 is waking up: the first move takes a moment…' : 'Maia 3 is thinking…';
-  const { maia3Move } = await import('./maia3.js?v=20261122122324'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261122122324');
+  const { maia3Move } = await import('./maia3.js?v=20261122122714'), { maiaMove, MAIA_MAX } = await import('./maia.js?v=20261122122714');
   let r = null;
   try { r = humanPick((await within(20000, maia3Move(fen, legal, rating, rating))).ranked); } catch (e) { console.warn(e); }
   if (!r && rating < MAIA_MAX + 100) try { r = (await within(15000, maiaMove(rating, [fen], legal))).move; } catch (e) { console.warn(e); }
@@ -637,6 +637,4 @@ document.querySelectorAll('[data-side]').forEach((b) => b.addEventListener('clic
 $('#test-rating').value = rating;
 $('#test-rating').addEventListener('change', (e) => { const r = Number(e.target.value); if (r >= 600 && r <= 2800) { rating = r; draw(); } else e.target.value = rating; });
 
-// New, so supporters and admins try it first.
-if (window.earlyAccess?.()) { $('#test-game').hidden = false; newGame(); }
-else $('#test-gate').innerHTML = '<p class="info">Test my opening is new, and supporters try it first. <a href="supporters.html">See what supporters get</a>.</p>';
+$('#test-game').hidden = false; newGame();

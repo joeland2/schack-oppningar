@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261122122324';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261122122324';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261122122324';
-import { NAMED_TRAPS } from './traps.js?v=20261122122324';
-import { GUIDE } from './guide.js?v=20261122122324';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261122122324';
-import { banner, confetti } from './celebrate.js?v=20261122122324';
-import { maia3Move } from './maia3.js?v=20261122122324';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261122122324';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261122122324';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261122122324';
-import { openLogin } from './login.js?v=20261122122324';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261122122324';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261122122714';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261122122714';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261122122714';
+import { NAMED_TRAPS } from './traps.js?v=20261122122714';
+import { GUIDE } from './guide.js?v=20261122122714';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261122122714';
+import { banner, confetti } from './celebrate.js?v=20261122122714';
+import { maia3Move } from './maia3.js?v=20261122122714';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261122122714';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261122122714';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261122122714';
+import { openLogin } from './login.js?v=20261122122714';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261122122714';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -56,7 +56,7 @@ const statKey = (id) => `${speed}:${id}`;
 let rating = load(ratingKey(), null);
 let style = load(STORE + '-style', 'any');
 let pinFavs = load(STORE + '-pin-favs', true); // starred openings first, or in their place in the sort
-let sort = load(STORE + '-sort', window.earlyAccess?.() ? 'you' : 'score'); // score: best results for your side first; played: most played first
+let sort = load(STORE + '-sort', 'you'); // score: best results for your side first; played: most played first
 let OPENINGS = [];   // most played openings at your level
 let cur = null;      // current opening
 let lines = [];      // real-game lines for cur, most common first
@@ -573,7 +573,7 @@ function picksOf(side) {
 }
 let PICKS = [], gamesIn = false;
 function forYou(side) {
-  if (!window.earlyAccess?.() || side === 'r') return '';
+  if (side === 'r') return '';
   if (!MINE) return gamesIn ? `<section class="foryou foryou-none" aria-label="For you"><p>Picks for you show once your games are read. <a href="profile.html">Read your games on your profile</a></p></section>`
     : '<section class="foryou foryou-wait" aria-busy="true" aria-label="For you"><p>Reading your games…</p></section>'; // keeps the panel's place, so the list does not jump
   if (!PICKS.length) return '';
@@ -666,8 +666,7 @@ if (matchMedia('(min-width: 1400px)').matches) document.querySelectorAll('.side 
 gamesReady.then(() => { gamesIn = true; if (OPENINGS.length) renderList(true); }); // the kept games may load after the first draw; never before the openings
 function renderList(still) { // still: only the panel changed, so the cards do not glide
   if (!OPENINGS.length) return; // still loading: the outline stays, never a false "no openings"
-  if (sort === 'you' && !window.earlyAccess?.()) sort = 'score';
-  MINE = window.earlyAccess?.() ? myOpenings(true) : null; WHY = new Map(); PICKS = picksOf(listSide);
+  MINE = myOpenings(true); WHY = new Map(); PICKS = picksOf(listSide);
   $('#style-choice').hidden = listSide === 'b'; // Black's list is every White opening, whatever its style
   const lead = { played: 'Most played first', you: 'For you: the picks above first, then the openings you play, then new ones that fit your style' }[sort] || 'Best results first';
   const about = {
@@ -1809,7 +1808,7 @@ function start(op, keepTraps = false) {
     $('#op-about').innerHTML = `${about ? `<p>${about}</p>` : ''}${plan ? `<p><b>Your plan:</b> ${plan}</p>` : ''}${gd ? `<p class="op-guide-k">Main variations</p>
       <ul class="op-lines">${gd.lines.map(([n, t]) => `<li><b>${n}:</b> ${t}</li>`).join('')}</ul><p><b>Watch out:</b> ${gd.watch}</p>` : ''}`; }
   // Why it fits you, at length (supporters first), above what the opening is about.
-  if (window.earlyAccess?.() && (MINE ??= myOpenings(true))) { fitOf(op); $('#op-about').insertAdjacentHTML('afterbegin', `<p class="ofit ofit-long"><b>For you:</b> ${WHY.get(op).long}</p>`); }
+  if (MINE ??= myOpenings(true)) { fitOf(op); $('#op-about').insertAdjacentHTML('afterbegin', `<p class="ofit ofit-long"><b>For you:</b> ${WHY.get(op).long}</p>`); }
   if (REVENGE?.op === op) $('#op-about').insertAdjacentHTML('afterbegin', `<p class="ofit ofit-long"><b>Revenge on ${esc(REVENGE.who)}:</b> your games against them went into the ${esc(REVENGE.family)} ${REVENGE.n} times, and you scored ${REVENGE.s}%. Learn the lines here, then play them again.</p>`);
   $('#op-side').textContent = op.side === 'w' ? 'You play White' : 'You play Black';
   $('#restart').textContent = 'Restart';
@@ -3705,8 +3704,6 @@ function renderChoices() {
   const bug = document.querySelector('.account .top-me summary.top-bug'); // logged in: the rating sits with your name (header.js)
   if (bug) { bug.querySelector('strong').textContent = rating || '–'; bug.querySelector('.top-me-who small').textContent = `${speed} rating`; }
   $('#filters-sum').innerHTML = `Filters <span>${speed[0].toUpperCase() + speed.slice(1)} · ${levelText()} · ${style === 'any' ? 'any style' : STYLES[style].label} · ${{ played: 'most played', you: 'for you' }[sort] || 'best results'}</span>`;
-  document.querySelector('[data-sort="you"]').hidden = !window.earlyAccess?.();
-  $('#test-link').hidden = !window.earlyAccess?.();
 }
 document.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('click', () => {
   speed = b.dataset.speed;
