@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261122121450';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261122121450';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261122121450';
-import { NAMED_TRAPS } from './traps.js?v=20261122121450';
-import { GUIDE } from './guide.js?v=20261122121450';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261122121450';
-import { banner, confetti } from './celebrate.js?v=20261122121450';
-import { maia3Move } from './maia3.js?v=20261122121450';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261122121450';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261122121450';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261122121450';
-import { openLogin } from './login.js?v=20261122121450';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261122121450';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261122122324';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261122122324';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261122122324';
+import { NAMED_TRAPS } from './traps.js?v=20261122122324';
+import { GUIDE } from './guide.js?v=20261122122324';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261122122324';
+import { banner, confetti } from './celebrate.js?v=20261122122324';
+import { maia3Move } from './maia3.js?v=20261122122324';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261122122324';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261122122324';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261122122324';
+import { openLogin } from './login.js?v=20261122122324';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261122122324';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -690,7 +690,7 @@ function renderList(still) { // still: only the panel changed, so the cards do n
       : `No opening at your level matches "${q.replace(/[<&"]/g, '')}".`}</p>
       <div class="olist">${list.map((o) => card(o).replace('</h3>', `<small class="as">you play ${sideName(o.side)}</small></h3>`)).join('')}</div>`;
   } else if (listSide === 'r') {
-    body = `<p class="og-about">${favs.length ? `The openings you have starred${played.length ? ', and the ones you play most in your Lichess games' : ''}, from both sides. <button type="button" class="link" data-traps>Practise punishing their blunders</button>${window.earlyAccess?.() ? '</p><p class="og-about"><button type="button" class="cta shuf-go" data-shuffle><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>Shuffle their lines</button>' : ''}` : 'Nothing here yet. Star (★) an opening, or check your Lichess games, and it shows up here.'}</p>
+    body = `<p class="og-about">${favs.length ? `The openings you have starred${played.length ? ', and the ones you play most in your Lichess games' : ''}, from both sides. <button type="button" class="link" data-traps>Practise punishing their blunders</button></p><p class="og-about"><button type="button" class="cta shuf-go" data-shuffle><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>Shuffle their lines</button>` : 'Nothing here yet. Star (★) an opening, or check your Lichess games, and it shows up here.'}</p>
       <div class="olist">${favs.map((o) => (played.includes(o) ? card(o).replace('<button type="button" class="star"', '<span class="tag played">Played most</span><button type="button" class="star"') : card(o))).join('')}</div>`;
   } else {
     // Your starred openings of this side come first, pinned, even ones the style or the cut would hide.
