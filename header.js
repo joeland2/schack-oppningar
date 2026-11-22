@@ -87,10 +87,20 @@
       const bug = r && (!btn || join);
       const head = bug ? `<span class="top-me-who"><b>${esc(shownName)}</b><small>${join ? `${esc(sp)} rating` : 'Your profile'}</small></span><strong title="${esc(sp)} rating">${esc(r)}</strong><i class="top-me-chev" aria-hidden="true">▾</i>` : `<span class="top-me-name">${esc(shownName)}</span>`;
       const menu = `<details class="top-me"><summary class="${bug ? 'top-bug' : ''}" title="Your profile">${head}</summary><div class="top-me-menu">
-        <a href="profile.html?u=${encodeURIComponent(who)}"${cur('profile.html')}>Profile</a><a href="practice.html"${cur('practice.html')}>My practice</a><a href="rivals.html?u=${encodeURIComponent(who)}"${cur('rivals.html')}>My rivals</a><button type="button" class="top-me-out">Log out</button></div></details>`;
+        <a href="profile.html?u=${encodeURIComponent(who)}"${cur('profile.html')}>Profile</a><a href="practice.html"${cur('practice.html')}>My practice</a><a href="rivals.html?u=${encodeURIComponent(who)}"${cur('rivals.html')}>My rivals</a><div class="top-me-stars"></div><button type="button" class="top-me-out">Log out</button></div></details>`;
       if (btn) { btn.insertAdjacentHTML('beforebegin', menu); btn.style.display = 'none'; if (bug) document.querySelector('.account .acct-stat').style.display = 'none'; } // Openings: in place of its name button
       else at?.insertAdjacentHTML('beforebegin', menu);
       const me = document.querySelector('.top-me');
+      // Logged in, your starred players are in this menu too, so the ★ button leaves the top row.
+      const stars = () => {
+        let names = [];
+        try { names = JSON.parse(localStorage.getItem('opening-book-v2-players')) || []; } catch {}
+        me.querySelector('.top-me-stars').innerHTML = `<small>★ Starred players</small>${names.length
+          ? names.map((n) => `<a href="profile.html?u=${encodeURIComponent(n)}">${esc(n.replace(/^cc:/i, ''))}${/^cc:/i.test(n) ? ' <i>Chess.com</i>' : ''}</a>`).join('')
+          : '<p>None yet: press ☆ Star player on a profile.</p>'}`;
+      };
+      stars(); me.addEventListener('toggle', () => { if (me.open) stars(); });
+      if (at) at.style.display = 'none';
       // At most every 5 minutes, and after the page's own calls: Lichess blocks bursts.
       if (card?.live && !btn && page !== 'profile.html' && Date.now() - card.at > 3e5) setTimeout(() => {
         const save = (x) => { try { localStorage.setItem('opening-book-v2-card-rating', JSON.stringify({ ...card, ...x, at: Date.now() })); } catch {} };
@@ -297,9 +307,9 @@ addEventListener('DOMContentLoaded', () => {
     const row = document.querySelector('.foot-row');
     if (row) row.insertAdjacentHTML('beforeend', b);
     else document.body.insertAdjacentHTML('beforeend', `<footer class="wrap msg-foot">${b}</footer>`);
-    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261122120915')).openChat());
+    document.querySelector('[data-msg-admins]').addEventListener('click', async () => (await import('./chat.js?v=20261122121450')).openChat());
     // Supporters: the hearts and card frames on every page, and Support (header and bottom) opens its dialog.
-    const sup = import('./supporter.js?v=20261122120915');
+    const sup = import('./supporter.js?v=20261122121450');
     document.addEventListener('click', async (e) => { if (e.target.closest('[data-support]')) (await sup).openSupport(); });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
