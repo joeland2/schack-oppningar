@@ -1,17 +1,17 @@
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
-import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261126170819';
-import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261126170819';
-import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261126170819';
-import { NAMED_TRAPS } from './traps.js?v=20261126170819';
-import { GUIDE } from './guide.js?v=20261126170819';
-import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261126170819';
-import { banner, confetti } from './celebrate.js?v=20261126170819';
-import { maia3Move } from './maia3.js?v=20261126170819';
-import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261126170819';
-import { nick, isCC, asLichess } from './chesscom.js?v=20261126170819';
-import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261126170819';
-import { openLogin } from './login.js?v=20261126170819';
-import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261126170819';
+import { drawBoard, enableDrag, clearShapes, shake, moveWords, instruction, GLYPH, flyStar } from './board.js?v=20261126170947';
+import { findMistakes, byTheme, pickPuzzles, THEMES } from './mistakes.js?v=20261126170947';
+import { ideaAt, CENTRE, hanging, dangerAfter, asMover } from './ideas.js?v=20261126170947';
+import { NAMED_TRAPS } from './traps.js?v=20261126170947';
+import { GUIDE } from './guide.js?v=20261126170947';
+import { STYLES, STYLE_OF, ABOUT, PLAN, VS_PLAN } from './styles.js?v=20261126170947';
+import { banner, confetti } from './celebrate.js?v=20261126170947';
+import { maia3Move } from './maia3.js?v=20261126170947';
+import { maiaMove, maiaLevel, MAIA_MAX } from './maia.js?v=20261126170947';
+import { nick, isCC, asLichess } from './chesscom.js?v=20261126170947';
+import { login, finishLogin, account, liveGames, lichessToken } from './lichess.js?v=20261126170947';
+import { openLogin } from './login.js?v=20261126170947';
+import { storedGames, gamesReady, profileFromRaw, skillsOf, playerCard, flagHtml, loadFlags, bandColor, proClass, tierOf, keptTypes } from './profile.js?v=20261126170947';
 
 const STORE = 'opening-book-v2';
 const MIN_SHARE = 0.05;   // an opponent reply must be played in at least 5% of games from that position
@@ -32,7 +32,7 @@ const DATA = '2026-10-31-k20'; // version of data/explorer-*.json
 const BUCKETS = [0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]; // Lichess explorer rating groups
 // The strong players your own Lichess games are judged against: 2200+ in blitz; 2000+ in classical, where 2200+ games are scarce.
 const STRONG = { blitz: [7, 8], classical: [6, 7, 8] };
-const WANT = { w: 30 };   // White openings listed; Black's list is the same openings from the other side
+const WANT = { w: 30, b: 12 };   // White openings listed; Black's list is its WANT.b most played own defences and the same White openings from the other side
 const POOL = 80;          // White openings collected, so a style filter still has enough to show
 // First-move names that are not an opening plan of their own.
 const GENERIC = new Set(["King's Pawn Game", "Queen's Pawn Game", "King's Knight Opening"]);
@@ -596,7 +596,9 @@ function forYou(side) {
 function shown() {
   const white = OPENINGS.filter((o) => o.side === 'w' && o.rank !== undefined && fitsStyle(o))
     .sort((a, b) => a.rank - b.rank).slice(0, WANT.w).sort(byChoice);
-  return [...white, ...OPENINGS.filter(isVs).sort(byChoice)];
+  // Black: your own defences (the Caro-Kann, the Sicilian), the most played at your level, among the White openings you meet.
+  const defs = OPENINGS.filter((o) => o.side === 'b' && !isVs(o) && blacksName(o.family)).sort((a, b) => b.share - a.share).slice(0, WANT.b);
+  return [...white, ...[...defs, ...OPENINGS.filter(isVs)].sort(byChoice)];
 }
 
 // ---------- Opening list ----------
@@ -673,7 +675,7 @@ function renderList(still) { // still: only the panel changed, so the cards do n
     w: (n) => `${lead}. ${style === 'any'
       ? `The ${n} most played openings among players rated ${levelText()}.`
       : `The ${n} most played ${STYLES[style].label.toLowerCase()} openings among players rated ${levelText()}.`}`,
-    b: (n) => `The same ${n} White openings, from Black's side: how to meet them, ${sort === 'played' ? 'most often met first' : sort === 'you' ? 'the ones you meet most and do worst against first' : 'the ones Black does best against first'}. Search for your own defences, like the Sicilian.`,
+    b: (n) => `${n} openings as Black: your own defences, like the Caro-Kann and the Sicilian, and the White openings you meet ("vs"), ${sort === 'played' ? 'most played first' : sort === 'you' ? 'the ones you meet most and do worst against first' : 'best results for Black first'}. Search for any other defence.`,
   };
   const q = query.trim().toLowerCase();
   const list = q ? OPENINGS.filter((o) => o.family.toLowerCase().includes(q)).sort((a, b) => b.share - a.share) : shown();
